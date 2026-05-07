@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { upsertPersonalHealthProfile, getPersonalHealthProfile } from '../../api/profileApi';
 
@@ -47,6 +47,23 @@ const chronicDiseaseOptions = [
     '其他',
 ];
 
+const numericFieldLimits = {
+    age: { min: 0, max: 130, label: '年齡', unit: '歲' },
+    height: { min: 30, max: 300, label: '身高', unit: 'cm' },
+    weight: { min: 1, max: 1000, label: '體重', unit: 'kg' },
+} as const;
+
+const validateNumericField = (
+    value: string,
+    field: (typeof numericFieldLimits)[keyof typeof numericFieldLimits],
+) => {
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue) || parsedValue < field.min || parsedValue > field.max) {
+        return `${field.label}請輸入 ${field.min} 到 ${field.max} ${field.unit} 之間的數字`;
+    }
+    return '';
+};
+
 const PersonalHealthPage: React.FC = () => {
     const [form, setForm] = useState<HealthData>(defaultData);
     const [otherInput, setOtherInput] = useState('');
@@ -55,14 +72,30 @@ const PersonalHealthPage: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
     // 儲存提示訊息
     const [saveMessage, setSaveMessage] = useState('');
-    // 慢性病史下拉開關
-    const [isChronicOpen, setIsChronicOpen] = useState(false);
-    // 修改：性別下拉開關
-    const [isGenderOpen, setIsGenderOpen] = useState(false);
+    // 用一個狀態控制目前打開的下拉，避免每個下拉都要一個 state
+    const [openDropdown, setOpenDropdown] = useState<'gender' | 'chronic' | null>(null);
     // 顯示使用者名稱與頭像
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
     const navigate = useNavigate();
+    const genderDropdownRef = useRef<HTMLDivElement | null>(null);
+    const chronicDropdownRef = useRef<HTMLDivElement | null>(null);
+
+    // 點頁面其他地方時，收起目前打開的下拉
+    useEffect(() => {
+        const handleOutsideClick = (event: MouseEvent) => {
+            const target = event.target as Node;
+            const isClickInsideGender = genderDropdownRef.current?.contains(target);
+            const isClickInsideChronic = chronicDropdownRef.current?.contains(target);
+
+            if (!isClickInsideGender && !isClickInsideChronic) {
+                setOpenDropdown(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
 
     const readDecodedIdToken = (): DecodedIdToken | null => {
         const liffId = (import.meta.env.VITE_LIFF_ID ?? '').trim();
@@ -179,7 +212,11 @@ const PersonalHealthPage: React.FC = () => {
     // 修改：性別單選下拉處理
     const handleGenderSelect = (value: string) => {
         setForm((prev) => ({ ...prev, gender: value }));
-        setIsGenderOpen(false);
+        setOpenDropdown(null);
+    };
+
+    const toggleDropdown = (key: 'gender' | 'chronic') => {
+        setOpenDropdown((prev) => (prev === key ? null : key));
     };
 
     // 修改：儲存訊息 3 秒後收回
@@ -225,7 +262,6 @@ const PersonalHealthPage: React.FC = () => {
             surgeryHistory: (form.surgeryHistory || '').trim() || '無'
         };
 
-        console.log("最終提交資料：", finalData);
         // 不再寫死Id，而是從 LIFF 取得 userId 作為 API 識別用
         const userId = (localStorage.getItem('CARE_LINE_USER_ID') || '').trim();
         if (!userId) {
@@ -233,9 +269,6 @@ const PersonalHealthPage: React.FC = () => {
             setSaveStatus('error');
             return;
         }
-        const profileName = userName || (readDecodedIdToken()?.name || '').trim();
-        console.log("LIFF User ID:", userId);
-        console.log("LIFF User Name:", profileName);
         const payload = {
             name: finalData.name,
             gender: finalData.gender,
@@ -248,7 +281,18 @@ const PersonalHealthPage: React.FC = () => {
             surgery_history: finalData.surgeryHistory || '無',
             health_consultations: {} // 先放空 JSON
         };
+        // 驗證數值欄位
+        const validationMessages = [
+            validateNumericField(finalData.age, numericFieldLimits.age),
+            validateNumericField(finalData.height, numericFieldLimits.height),
+            validateNumericField(finalData.weight, numericFieldLimits.weight),
+        ].filter(Boolean);
 
+        if (validationMessages.length > 0) {
+            setSaveMessage(validationMessages.join('，'));
+            setSaveStatus('error');
+            return;
+        }
 
         try {
             const data = await upsertPersonalHealthProfile(userId, payload);
@@ -261,7 +305,6 @@ const PersonalHealthPage: React.FC = () => {
             setSaveStatus('error');
         }
     };
-
 
     const handleOtherSave = () => {
         setForm((prev) => ({ ...prev, chronicDiseaseOther: otherInput }));
@@ -334,20 +377,20 @@ const PersonalHealthPage: React.FC = () => {
                 <div className="formGroup">
                     <label className="label" htmlFor="gender">性別</label>
                     {/* 修改：性別改為自訂下拉樣式 */}
-                    <div className="singleSelectWrapper">
+                    <div ref={genderDropdownRef} className="singleSelectWrapper">
                         <button
                             type="button"
                             className="singleSelectButton"
                             aria-haspopup="listbox"
-                            aria-expanded={isGenderOpen}
-                            onClick={() => setIsGenderOpen((prev) => !prev)}
+                            aria-expanded={openDropdown === 'gender'}
+                            onClick={() => toggleDropdown('gender')}
                         >
                             <span className="singleSelectText">
                                 {form.gender || '請選擇性別'}
                             </span>
                             <span className="singleSelectCaret" aria-hidden="true">▼</span>
                         </button>
-                        {isGenderOpen && (
+                        {openDropdown === 'gender' && (
                             <div className="singleSelectMenu" role="listbox">
                                 {['男', '女'].map((opt) => (
                                     <button
@@ -374,7 +417,9 @@ const PersonalHealthPage: React.FC = () => {
                         value={form.height}
                         onChange={handleChange}
                         placeholder="請輸入身高"
-                        min="0"
+                        min="30"
+                        max="300"
+                        step="0.1"
                         required
                     />
                 </div>
@@ -388,7 +433,9 @@ const PersonalHealthPage: React.FC = () => {
                         value={form.weight}
                         onChange={handleChange}
                         placeholder="請輸入體重"
-                        min="0"
+                        min="1"
+                        max="500"
+                        step="0.1"
                         required
                     />
                 </div>
@@ -403,19 +450,21 @@ const PersonalHealthPage: React.FC = () => {
                         onChange={handleChange}
                         placeholder="請輸入年齡"
                         min="0"
+                        max="130"
+                        step="1"
                         required
                     />
                 </div>
                 <div className="formGroup">
                     <label className="label">慢性病史</label>
                     {/* 用自訂下拉與勾勾標記取代藍色選取背景 */}
-                    <div className="multiSelectWrapper" style={{ marginBottom: showOtherInput ? 8 : 0 }}>
+                    <div ref={chronicDropdownRef} className="multiSelectWrapper" style={{ marginBottom: showOtherInput ? 8 : 0 }}>
                         <button
                             type="button"
                             className="multiSelectButton"
                             aria-haspopup="listbox"
-                            aria-expanded={isChronicOpen}
-                            onClick={() => setIsChronicOpen((prev) => !prev)}
+                            aria-expanded={openDropdown === 'chronic'}
+                            onClick={() => toggleDropdown('chronic')}
                         >
                             <span className="multiSelectText">
                                 {form.chronicDisease.length > 0
@@ -424,7 +473,7 @@ const PersonalHealthPage: React.FC = () => {
                             </span>
                             <span className="multiSelectCaret" aria-hidden="true">▼</span>
                         </button>
-                        {isChronicOpen && (
+                        {openDropdown === 'chronic' && (
                             <div className="multiSelectMenu" role="listbox" aria-multiselectable="true">
                                 {chronicDiseaseOptions.map(opt => {
                                     const checked = form.chronicDisease.includes(opt);
