@@ -1,11 +1,18 @@
 .home-grid {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 20px;
 }
 
 .home-hero {
   text-align: center;
   margin-bottom: 40px;
+}
+
+.home-hero h1 {
+  font-size: 2rem;
+  color: var(--text-main, #333);
+  margin-bottom: 8px;
 }
 
 .card-container {
@@ -16,18 +23,39 @@
 
 .feature-card {
   background: white;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border, #eee);
   border-radius: 16px;
   padding: 24px;
   display: flex;
   align-items: center;
   gap: 20px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.feature-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .feature-card:active {
   transform: scale(0.98);
+}
+
+.card-icon {
+  font-size: 2.5rem;
+}
+
+.card-info h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.card-info p {
+  margin: 4px 0 0;
+  color: #666;
+  font-size: 0.9rem;
 }
 
 /* RWD 中大螢幕調整 */
@@ -44,5 +72,6 @@
   .feature-card {
     flex-direction: column;
     text-align: center;
+    padding: 40px 20px;
   }
 }
