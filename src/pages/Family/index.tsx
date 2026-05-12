@@ -55,6 +55,7 @@ const FamilyPage = () => {
           await liff.init({ liffId: LIFF_ID });
         } catch (initErr) {
           console.warn('LIFF initialization failed. Please verify LIFF ID and LINE client environment.', initErr);
+          throw new Error('LINE_CLIENT_REQUIRED');
         }
       }
 
