@@ -49,18 +49,18 @@ const FamilyPage = () => {
       // 1. 後端產生邀請連結
       const { invite_url } = await createInvitation(MOCK_USER_ID);
 
-      // 2. 初始化 LIFF
+      // Initialize LIFF
       if (LIFF_ID) {
         try {
           await liff.init({ liffId: LIFF_ID });
         } catch (initErr) {
-          console.warn('LIFF init 失敗:', initErr);
+          console.warn('LIFF initialization failed. Please verify LIFF ID and LINE client environment.', initErr);
         }
       }
 
-      // 3. 組合 Flex Message 並呼叫 shareTargetPicker
+      // Compose Flex Message and call shareTargetPicker
       if (!liff.isApiAvailable('shareTargetPicker')) {
-        throw new Error('shareTargetPicker is not available in current environment');
+        throw new Error('LINE_CLIENT_REQUIRED');
       }
 
       const result = await liff.shareTargetPicker([
@@ -118,14 +118,17 @@ const FamilyPage = () => {
       ]);
 
       if (result === null) {
-        setToast({ msg: t('family.inviteError'), type: 'error' });
+        // User cancelled share, not treated as an error
         return;
       }
 
       setToast({ msg: t('family.inviteSuccess'), type: 'success' });
     } catch (err) {
-      console.error('邀請失敗:', err);
-      setToast({ msg: t('family.inviteError'), type: 'error' });
+      console.error('Invitation failed:', err);
+      const msg = err instanceof Error && err.message === 'LINE_CLIENT_REQUIRED'
+        ? t('family.inviteLineRequired')
+        : t('family.inviteError');
+      setToast({ msg, type: 'error' });
     } finally {
       setInviting(false);
     }
