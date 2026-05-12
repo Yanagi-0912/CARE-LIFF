@@ -6,10 +6,21 @@ function Header() {
   const navigate = useNavigate();
   const { t } = useI18n();
 
+  // 判斷是否有 Token
+  const isLoggedIn = !!localStorage.getItem('CARE_AUTH_TOKEN');
+
+  const handleAuthClick = () => {
+    if (isLoggedIn) {
+      // 如果已登入，執行登出並清除 Token
+      localStorage.removeItem('CARE_AUTH_TOKEN');
+    }
+    navigate('/login');
+  };
+
   return (
     <header className="app-header">
       <div className="header-container">
-        {/* 左側 Logo (加上游標指標與點擊回首頁功能) */}
+        {/* 左側 Logo */}
         <h1 
           className="header-logo clickable"
           onClick={() => navigate('/')}
@@ -27,13 +38,14 @@ function Header() {
           <button className="search-btn" aria-label={t('header.searchAriaLabel')}>🔍</button>
         </div>
 
-        {/* 右側按鈕：點擊前往 /login */}
+        {/* 右側按鈕 */}
         <nav className="header-nav">
           <button 
             className="login-btn" 
-            onClick={() => navigate('/login')}
+            onClick={handleAuthClick}
           >
-            {t('header.login')}
+            {/* 根據登入狀態顯示文字，這裡假設你的 i18n 有 header.logout，若無則顯示純文字 '登出' */}
+            {isLoggedIn ? (t('header.logout') || '登出') : t('header.login')}
           </button>
         </nav>
       </div>

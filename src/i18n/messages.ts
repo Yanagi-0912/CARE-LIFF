@@ -7,6 +7,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     'header.searchPlaceholder': '搜尋附近醫院或診所...',
     'header.searchAriaLabel': '搜尋',
     'header.login': '登入',
+    'header.logout': '登出',
     'nav.home': '首頁',
     'nav.health': '健康',
     'nav.family': '家庭',
