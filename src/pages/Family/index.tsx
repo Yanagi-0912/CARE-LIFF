@@ -54,7 +54,7 @@ const FamilyPage = () => {
         try {
           await liff.init({ liffId: LIFF_ID });
         } catch (initErr) {
-          console.warn('LIFF initialization failed. Please verify LIFF ID and LINE client environment.', initErr);
+          console.warn('LIFF initialization failed in current environment.', initErr);
           throw new Error('LINE_CLIENT_REQUIRED');
         }
       }
@@ -119,7 +119,7 @@ const FamilyPage = () => {
       ]);
 
       if (result === null) {
-        // User cancelled share, not treated as an error
+        // shareTargetPicker returns null when user closes/cancels the picker
         return;
       }
 
