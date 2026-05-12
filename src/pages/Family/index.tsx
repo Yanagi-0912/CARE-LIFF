@@ -49,76 +49,80 @@ const FamilyPage = () => {
       // 1. 後端產生邀請連結
       const { invite_url } = await createInvitation(MOCK_USER_ID);
 
-      // 2. 初始化 LIFF（若尚未初始化）
-      if (LIFF_ID && !liff.isInClient()) {
+      // 2. 初始化 LIFF
+      if (LIFF_ID) {
         try {
           await liff.init({ liffId: LIFF_ID });
         } catch (initErr) {
-          console.warn('LIFF init 略過（非 LINE 環境）:', initErr);
+          console.warn('LIFF init 失敗:', initErr);
         }
       }
 
       // 3. 組合 Flex Message 並呼叫 shareTargetPicker
-      if (liff.isApiAvailable('shareTargetPicker')) {
-        await liff.shareTargetPicker([
-          {
-            type: 'flex',
-            altText: t('family.shareTitle'),
-            contents: {
-              type: 'bubble',
-              hero: {
-                type: 'image',
-                url: 'https://developers.line.biz/assets/images/services/bot-designer-icon.png',
-                size: 'full',
-                aspectRatio: '20:13',
-                aspectMode: 'cover',
-              },
-              body: {
-                type: 'box',
-                layout: 'vertical',
-                contents: [
-                  {
-                    type: 'text',
-                    text: t('family.shareTitle'),
-                    weight: 'bold',
-                    size: 'lg',
+      if (!liff.isApiAvailable('shareTargetPicker')) {
+        throw new Error('shareTargetPicker is not available in current environment');
+      }
+
+      const result = await liff.shareTargetPicker([
+        {
+          type: 'flex',
+          altText: t('family.shareTitle'),
+          contents: {
+            type: 'bubble',
+            hero: {
+              type: 'image',
+              url: 'https://developers.line.biz/assets/images/services/bot-designer-icon.png',
+              size: 'full',
+              aspectRatio: '20:13',
+              aspectMode: 'cover',
+            },
+            body: {
+              type: 'box',
+              layout: 'vertical',
+              contents: [
+                {
+                  type: 'text',
+                  text: t('family.shareTitle'),
+                  weight: 'bold',
+                  size: 'lg',
+                },
+                {
+                  type: 'text',
+                  text: t('family.shareDesc'),
+                  size: 'sm',
+                  color: '#999999',
+                  margin: 'md',
+                  wrap: true,
+                },
+              ],
+            },
+            footer: {
+              type: 'box',
+              layout: 'vertical',
+              spacing: 'sm',
+              contents: [
+                {
+                  type: 'button',
+                  style: 'primary',
+                  color: '#06c755',
+                  action: {
+                    type: 'uri',
+                    label: t('family.inviteBtn'),
+                    uri: invite_url,
                   },
-                  {
-                    type: 'text',
-                    text: t('family.shareDesc'),
-                    size: 'sm',
-                    color: '#999999',
-                    margin: 'md',
-                    wrap: true,
-                  },
-                ],
-              },
-              footer: {
-                type: 'box',
-                layout: 'vertical',
-                spacing: 'sm',
-                contents: [
-                  {
-                    type: 'button',
-                    style: 'primary',
-                    color: '#06c755',
-                    action: {
-                      type: 'uri',
-                      label: t('family.inviteBtn'),
-                      uri: invite_url,
-                    },
-                  },
-                ],
-              },
+                },
+              ],
             },
           },
-        ]);
-        setToast({ msg: t('family.inviteSuccess'), type: 'success' });
-      } else {
-        // 非 LINE 環境：複製連結到剪貼簿
-        await navigator.clipboard.writeText(invite_url);
-        setToast({ msg: `邀請連結已複製：${invite_url}`, type: 'success' });
+        },
+      ]);
+
+      if (result === null) {
+        setToast({ msg: t('family.inviteError'), type: 'error' });
+        return;
       }
+
+      setToast({ msg: t('family.inviteSuccess'), type: 'success' });
     } catch (err) {
       console.error('邀請失敗:', err);
       setToast({ msg: t('family.inviteError'), type: 'error' });
