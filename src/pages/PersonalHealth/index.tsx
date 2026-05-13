@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { upsertPersonalHealthProfile, getPersonalHealthProfile } from '../../api/profileApi';
-
+import liff from '@line/liff';
 import './index.css';
 /*http://localhost:5173/personalHealth*/
+
+const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
+
 interface HealthData {
     name: string;
     gender: string;
@@ -15,11 +18,6 @@ interface HealthData {
     chronicDiseaseOther: string;
     majorIllness: string;
     surgeryHistory?: string;
-}
-
-interface DecodedIdToken {
-    name?: string;
-    picture?: string;
 }
 
 const defaultData: HealthData = {
@@ -77,6 +75,8 @@ const PersonalHealthPage: React.FC = () => {
     // 顯示使用者名稱與頭像
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
+    const [liffReady, setLiffReady] = useState(false);
+    const [liffError, setLiffError] = useState('');
     const navigate = useNavigate();
     const genderDropdownRef = useRef<HTMLDivElement | null>(null);
     const chronicDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -97,68 +97,49 @@ const PersonalHealthPage: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleOutsideClick);
     }, []);
 
-    const readDecodedIdToken = (): DecodedIdToken | null => {
-        const liffId = (import.meta.env.VITE_LIFF_ID ?? '').trim();
-        if (liffId) {
-            const storedKey = `LIFF_STORE:${liffId}:decodedIDToken`;
-            const storedValue = localStorage.getItem(storedKey);
-            if (storedValue) {
-                try {
-                    return JSON.parse(storedValue) as DecodedIdToken;
-                } catch (error) {
-                    console.warn('解析 decodedIDToken 失敗:', error);
-                }
-            }
-        }
-
-        const fallbackKey = Object.keys(localStorage).find((key) => key.endsWith(':decodedIDToken'));
-        if (!fallbackKey) {
-            return null;
-        }
-
-        const fallbackValue = localStorage.getItem(fallbackKey);
-        if (!fallbackValue) {
-            return null;
-        }
-
-        try {
-            return JSON.parse(fallbackValue) as DecodedIdToken;
-        } catch (error) {
-            console.warn('解析 fallback decodedIDToken 失敗:', error);
-            return null;
-        }
-    };
-
     useEffect(() => {
-        const decodedIdToken = readDecodedIdToken();
-        const displayName = (decodedIdToken?.name || localStorage.getItem('CARE_LINE_DISPLAY_NAME') || '').trim();
-        const avatarUrl = (decodedIdToken?.picture || '').trim();
-
-        if (displayName) {
-            setUserName(displayName);
-            setForm((prev) => ({ ...prev, name: prev.name || displayName }));
-        }
-
-        if (avatarUrl) {
-            setUserAvatar(avatarUrl);
-        }
-
-        // 讀取使用者資料，預填表單
-        const loadUserData = async () => {
-            const userId = (localStorage.getItem('CARE_LINE_USER_ID') || '').trim();
-            if (!userId) {
-                console.log('未找到使用者ID，跳過加載資料');
+        const initializeUserProfile = () => {
+            if (!LIFF_ID) {
+                setLiffError('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
                 return;
             }
 
-            try {
-                //呼叫api取得user資料
-                const data = await getPersonalHealthProfile(userId);
-                console.log('已加載使用者資料:', data);
-                if (data) {
+            liff
+                .init({ liffId: LIFF_ID })
+                .then(() => {
+                    setLiffReady(true);
+
+                    // 1. 從 LIFF 獲取 user 頭像資訊
+                    liff
+                        .getProfile()
+                        .then((profile) => {
+                            if (profile.displayName) {
+                                // 以資料庫名稱為優先，LIFF 名稱只當 fallback
+                                setUserName((prev) => prev || profile.displayName.trim());
+                                setForm((prev) => ({ ...prev, name: prev.name || profile.displayName }));
+                            }
+
+                            if (profile.pictureUrl) {
+                                setUserAvatar(profile.pictureUrl.trim());
+                            }
+                        })
+                        .catch((err) => {
+                            console.warn('獲取 LIFF 用戶資訊失敗:', err);
+                        });
+
+                    // /me API 由 token 辨識使用者，不需要前端提供 userId
+                    return getPersonalHealthProfile();
+                })
+                .then((data) => {
+                    if (!data) {
+                        return;
+                    }
+
+                    console.log('已加載使用者資料:', data);
+
                     setForm((prev) => ({
                         ...prev,
-                        name: data.name || prev.name,  // 資料庫優先，沒有才用LINE 名稱
+                        name: data.name || prev.name,  // 資料庫優先
                         gender: data.gender || '',
                         height: data.height?.toString() || '',
                         weight: data.weight?.toString() || '',
@@ -168,18 +149,18 @@ const PersonalHealthPage: React.FC = () => {
                         majorIllness: data.major_illness_history || '',
                         surgeryHistory: data.surgery_history || '',
                     }));
-                    // 若資料庫有 name，也更新顯示用的 userName
+
                     if (data.name) {
                         setUserName(data.name);
                     }
-                }
-            } catch (error) {
-                console.warn('載入使用者資料失敗:', error);
-                // 不阻斷頁面使用
-            }
+                })
+                .catch((error) => {
+                    console.warn('LIFF 初始化或載入使用者資料失敗:', error);
+                    setLiffError(error instanceof Error ? error.message : 'LIFF 初始化失敗，請稍後再試。');
+                });
         };
 
-        loadUserData();
+        initializeUserProfile();
     }, []);
 
 
@@ -262,8 +243,8 @@ const PersonalHealthPage: React.FC = () => {
             surgeryHistory: (form.surgeryHistory || '').trim() || '無'
         };
 
-        // 不再寫死Id，而是從 LIFF 取得 userId 作為 API 識別用
-        const userId = (localStorage.getItem('CARE_LINE_USER_ID') || '').trim();
+        // 從 LIFF 取得 userId 作為 API 識別用
+        const userId = liff.getContext()?.userId;
         if (!userId) {
             setSaveMessage('找不到 LINE 使用者資訊，請先重新登入');
             setSaveStatus('error');
@@ -295,7 +276,7 @@ const PersonalHealthPage: React.FC = () => {
         }
 
         try {
-            const data = await upsertPersonalHealthProfile(userId, payload);
+            const data = await upsertPersonalHealthProfile(payload);
             console.log('儲存成功:', data);
             setSaveMessage('已成功儲存個人健康資料');
             setSaveStatus('success');
@@ -325,13 +306,12 @@ const PersonalHealthPage: React.FC = () => {
         !!form.majorIllness ||
         !!otherInput;
 
-    const isLoggedIn = Boolean(
-        (localStorage.getItem('CARE_AUTH_TOKEN') || '').trim() &&
-        (localStorage.getItem('CARE_LINE_USER_ID') || '').trim()
-    );
+    const isLoggedIn = liffReady && liff.isLoggedIn();
+
 
     return (
         <div className="pageContainer">
+            {liffError && <div className="saveToast saveToastError">{liffError}</div>}
             <section className="profileBanner">
                 <div className="profileAvatarWrap">
                     {userAvatar ? (
