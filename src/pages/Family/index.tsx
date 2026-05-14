@@ -8,6 +8,7 @@ import './index.css';
 
 /** LIFF App ID — 由環境變數注入，或留空讓 init 時跳過 */
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || '';
+const LINE_CLIENT_REQUIRED_ERROR = 'LIFF initialization failed: LINE client required';
 
 /** 暫用 mock userId（MVP）；後續整合 LIFF 登入後由 liff.getProfile() 取得 */
 const MOCK_USER_ID = '123456789';
@@ -55,13 +56,13 @@ const FamilyPage = () => {
           await liff.init({ liffId: LIFF_ID });
         } catch (initErr) {
           console.warn('LIFF initialization failed in current environment.', initErr);
-          throw new Error('LINE_CLIENT_REQUIRED');
+          throw new Error(LINE_CLIENT_REQUIRED_ERROR);
         }
       }
 
       // Compose Flex Message and call shareTargetPicker
       if (!liff.isApiAvailable('shareTargetPicker')) {
-        throw new Error('LINE_CLIENT_REQUIRED');
+        throw new Error(LINE_CLIENT_REQUIRED_ERROR);
       }
 
       const result = await liff.shareTargetPicker([
@@ -126,7 +127,7 @@ const FamilyPage = () => {
       setToast({ msg: t('family.inviteSuccess'), type: 'success' });
     } catch (err) {
       console.error('Invitation failed:', err);
-      const msg = err instanceof Error && err.message === 'LINE_CLIENT_REQUIRED'
+      const msg = err instanceof Error && err.message === LINE_CLIENT_REQUIRED_ERROR
         ? t('family.inviteLineRequired')
         : t('family.inviteError');
       setToast({ msg, type: 'error' });

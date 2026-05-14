@@ -1,28 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import liff from '@line/liff';
 import { acceptInvitation, FamilyApiError } from '../../../api/familyApi';
 import { useI18n } from '../../../i18n';
 import './index.css';
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || '';
+const REDIRECT_DELAY_MS = 1500;
+const ERROR_MESSAGE_KEYS: Record<string, string> = {
+  INVITE_EXPIRED: 'family.join.expired',
+  INVITE_ALREADY_USED: 'family.join.alreadyUsed',
+  INVITE_INVALID: 'family.join.invalidCode',
+  LINE_CLIENT_REQUIRED: 'family.inviteLineRequired',
+};
 
 type JoinStatus = 'loading' | 'success' | 'error';
 
 const FamilyJoinPage = () => {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<JoinStatus>('loading');
   const [message, setMessage] = useState('');
 
   const inviteCode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('code')?.trim() || '';
-  }, []);
+    return searchParams.get('code')?.trim() || '';
+  }, [searchParams]);
 
   useEffect(() => {
     let mounted = true;
-    let redirectTimer: number | undefined;
+    let redirectTimer: ReturnType<typeof window.setTimeout> | undefined;
 
     const run = async () => {
       if (!inviteCode) {
@@ -45,25 +52,14 @@ const FamilyJoinPage = () => {
         if (!mounted) return;
         setStatus('success');
         setMessage(t('family.join.success'));
-        redirectTimer = window.setTimeout(() => navigate('/family'), 1500);
+        redirectTimer = window.setTimeout(() => navigate('/family'), REDIRECT_DELAY_MS);
       } catch (err) {
         if (!mounted) return;
         setStatus('error');
         if (err instanceof FamilyApiError) {
-          if (err.code === 'INVITE_EXPIRED') {
-            setMessage(t('family.join.expired'));
-            return;
-          }
-          if (err.code === 'INVITE_ALREADY_USED') {
-            setMessage(t('family.join.alreadyUsed'));
-            return;
-          }
-          if (err.code === 'INVITE_INVALID') {
-            setMessage(t('family.join.invalidCode'));
-            return;
-          }
-          if (err.code === 'LINE_CLIENT_REQUIRED') {
-            setMessage(t('family.inviteLineRequired'));
+          const key = err.code ? ERROR_MESSAGE_KEYS[err.code] : undefined;
+          if (key) {
+            setMessage(t(key));
             return;
           }
         }

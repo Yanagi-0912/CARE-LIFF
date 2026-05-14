@@ -18,14 +18,24 @@ export async function fetchFamilyTree(userId: string): Promise<GetFamilyTreeResp
 }
 
 export class FamilyApiError extends Error {
+  public readonly status: number;
+  public readonly code?: string;
+
   constructor(
     message: string,
-    public readonly status: number,
-    public readonly code?: string,
+    status: number,
+    code?: string,
   ) {
     super(message);
     this.name = 'FamilyApiError';
+    this.status = status;
+    this.code = code;
   }
+}
+
+interface AcceptInvitationErrorResponse {
+  error_code?: string;
+  message?: string;
 }
 
 /**
@@ -58,7 +68,7 @@ export async function acceptInvitation(code: string): Promise<AcceptInvitationRe
     let errorCode: string | undefined;
     let message = `接受邀請失敗：${res.status}`;
     try {
-      const data = await res.json() as { error_code?: string; message?: string };
+      const data = await res.json() as AcceptInvitationErrorResponse;
       errorCode = data.error_code;
       if (data.message) message = data.message;
     } catch {
