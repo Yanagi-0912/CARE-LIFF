@@ -25,6 +25,12 @@ export interface SendInvitationResponse {
   invite_url: string;
 }
 
+/** POST /family-tree/invite/accept 回應 */
+export interface AcceptInvitationResponse {
+  status?: string;
+  message?: string;
+}
+
 /** 稱謂中文對照表 */
 export const RELATIONSHIP_LABEL: Record<string, string> = {
   parent:      '父/母',

@@ -47,7 +47,7 @@ const FamilyPage = () => {
     setInviting(true);
     try {
       // 1. 後端產生邀請連結
-      const { invite_url } = await createInvitation(MOCK_USER_ID);
+      const { invite_url } = await createInvitation();
 
       // Initialize LIFF
       if (LIFF_ID) {

@@ -1,0 +1,26 @@
+.family-join-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, #f7fafc 0%, #eef2ff 100%);
+}
+
+.family-join-card {
+  width: min(520px, 100%);
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 24px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.family-join-card h2 {
+  margin: 0 0 12px;
+}
+
+.family-join-card p {
+  margin: 0;
+  color: #334155;
+}
