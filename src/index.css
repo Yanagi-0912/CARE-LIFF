@@ -37,3 +37,361 @@ body {
     padding-bottom: 24px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   Family Page Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 家庭頁面 ─────────────────────────────────────────── */
+.family-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── 頂部標題列 ───────────────────────────────────────── */
+.family-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.family-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 加入家人按鈕 ─────────────────────────────────────── */
+.invite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #06c755, #04a847);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(6, 199, 85, 0.25);
+}
+
+.invite-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+}
+
+.invite-btn:active {
+  transform: scale(0.97);
+}
+
+.invite-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── shareTargetPicker overlay（LINE 選擇器遮罩）────────── */
+.share-target-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 900;
+  animation: overlayFadeIn 0.2s ease;
+}
+
+.share-target-picker-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 36px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+  animation: sheetSlideUp 0.25s ease;
+}
+
+.share-target-picker-sheet h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  text-align: center;
+  color: #1f2937;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── 成員卡片 Grid ────────────────────────────────────── */
+.member-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* ── 單張成員卡片 ─────────────────────────────────────── */
+.member-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+
+.member-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ── 頭像 ─────────────────────────────────────────────── */
+.member-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 名稱 ─────────────────────────────────────────────── */
+.member-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+/* ── 稱謂 badge ───────────────────────────────────────── */
+.member-relation {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.member-relation.unset {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+/* ── 空狀態 ───────────────────────────────────────────── */
+.family-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+}
+
+.family-empty .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.family-empty p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* ── Toast 提示 ───────────────────────────────────────── */
+.family-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 1000;
+  animation: familyToastIn 0.3s ease;
+}
+
+.family-toast.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.family-toast.error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+@keyframes familyToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ── Family RWD ───────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .member-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .member-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .family-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .invite-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .member-card {
+    padding: 18px 12px;
+  }
+
+  .member-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MemberCard — 展開健康詳情
+   ═══════════════════════════════════════════════════════ */
+
+.member-card {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.member-card.expanded {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-color: #86efac;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.1);
+}
+
+.member-expand-hint {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  transition: transform 0.2s;
+}
+
+.member-card.expanded .member-expand-hint {
+  color: #16a34a;
+}
+
+/* ── 健康詳情面板 ─────────────────────────────────────── */
+.member-health-detail {
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  animation: healthSlideIn 0.25s ease;
+}
+
+@keyframes healthSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.health-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.health-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+
+.health-label {
+  color: #6b7280;
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.health-value {
+  color: #1f2937;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+.health-loading {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 8px 0;
+}
+
+.health-error {
+  text-align: center;
+  color: #dc2626;
+  font-size: 0.85rem;
+  padding: 8px 0;
+}
+
+.health-empty {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 8px 0;
+}
+
+@media (max-width: 640px) {
+  .member-card.expanded {
+    grid-column: span 2;
+  }
+}
+

@@ -1,18 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import './index.css';
 import { useI18n } from '../../i18n';
+import { isAuthenticated, clearAuth } from '../../utils/auth';
 
 function Header() {
   const navigate = useNavigate();
   const { t } = useI18n();
 
-  // 判斷是否有 Token
-  const isLoggedIn = !!localStorage.getItem('CARE_AUTH_TOKEN');
+  const isLoggedIn = isAuthenticated();
 
   const handleAuthClick = () => {
     if (isLoggedIn) {
       // 如果已登入，執行登出並清除 Token
-      localStorage.removeItem('CARE_AUTH_TOKEN');
+      clearAuth();
     }
     navigate('/login');
   };

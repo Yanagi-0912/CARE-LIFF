@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { upsertPersonalHealthProfile, getPersonalHealthProfile } from '../../api/profileApi';
+import { isAuthenticated, getLineUserId } from '../../utils/auth';
 
 import './index.css';
 /*http://localhost:5173/personalHealth*/
@@ -112,14 +113,8 @@ const PersonalHealthPage: React.FC = () => {
 
         // 讀取使用者資料，預填表單
         const loadUserData = async () => {
-            const userId = (localStorage.getItem('CARE_LINE_USER_ID') || '').trim();
-            if (!userId) {
-                console.log('未找到使用者ID，跳過加載資料');
-                return;
-            }
-
             try {
-                //呼叫api取得user資料
+                const userId = getLineUserId();
                 const data = await getPersonalHealthProfile(userId);
                 console.log('已加載使用者資料:', data);
                 if (data) {
@@ -226,9 +221,10 @@ const PersonalHealthPage: React.FC = () => {
         };
 
         console.log("最終提交資料：", finalData);
-        // 不再寫死Id，而是從 LIFF 取得 userId 作為 API 識別用
-        const userId = (localStorage.getItem('CARE_LINE_USER_ID') || '').trim();
-        if (!userId) {
+        let userId: string;
+        try {
+            userId = getLineUserId();
+        } catch {
             setSaveMessage('找不到 LINE 使用者資訊，請先重新登入');
             setSaveStatus('error');
             return;
@@ -282,10 +278,7 @@ const PersonalHealthPage: React.FC = () => {
         !!form.majorIllness ||
         !!otherInput;
 
-    const isLoggedIn = Boolean(
-        (localStorage.getItem('CARE_AUTH_TOKEN') || '').trim() &&
-        (localStorage.getItem('CARE_LINE_USER_ID') || '').trim()
-    );
+    const isLoggedIn = isAuthenticated();
 
     return (
         <div className="pageContainer">

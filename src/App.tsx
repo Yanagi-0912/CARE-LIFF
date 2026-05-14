@@ -12,11 +12,11 @@ import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/
 import type { SettingsState } from './pages/Settings';
 import './App.css';
 import Login from './pages/Loginpage';
+import { isAuthenticated } from './utils/auth';
 
 // 1. 新增 ProtectedRoute 元件
 function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const token = localStorage.getItem('CARE_AUTH_TOKEN');
-  if (!token) {
+  if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
   return children;

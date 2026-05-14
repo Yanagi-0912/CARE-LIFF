@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { isAuthenticated, clearAuth } from '../../utils/auth';
 import './index.css';
 
 /** * 首頁主入口：提供四個主要功能導航
@@ -7,8 +8,7 @@ import './index.css';
 const Home = () => {
   const navigate = useNavigate();
 
-  // 判斷當前是否已登入 (檢查 localStorage 是否有 Token)
-  const isLoggedIn = !!localStorage.getItem('CARE_AUTH_TOKEN');
+  const isLoggedIn = isAuthenticated();
 
   // 定義功能卡片配置
   const features = [
@@ -44,7 +44,7 @@ const Home = () => {
   const handleCardClick = (feature: typeof features[0]) => {
     if (feature.isAuthAction && isLoggedIn) {
       // 執行登出邏輯：清除 Token
-      localStorage.removeItem('CARE_AUTH_TOKEN');
+      clearAuth();
       // 如果有使用 LIFF，建議也可以加上 liff.logout();
       navigate('/login');
     } else {
