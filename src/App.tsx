@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import PersonalHealth from './pages/PersonalHealth';
 import Family from './pages/Family';
+import FamilyJoinPage from './pages/Family/Join';
 import ConsultRecordsPage from './pages/PersonalHealth/ConsultRecords';
 import { I18nProvider, getInitialLanguage } from './i18n';
 import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
@@ -25,7 +26,7 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 function AppContent() {
   // 2. 取得當前路徑，用來判斷是否要顯示導覽列
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
+  const isStandalonePage = location.pathname === '/login' || location.pathname === '/family/join';
 
   useEffect(() => {
     let settings: SettingsState = defaultSettings;
@@ -41,15 +42,16 @@ function AppContent() {
   return (
     <div className="app-layout">
       {/* 3. 如果不是登入頁，才顯示 Header */}
-      {!isLoginPage && <Header />}
+      {!isStandalonePage && <Header />}
       
       <div className="main-wrapper">
         {/* 3. 如果不是登入頁，才顯示 Sidebar */}
-        {!isLoginPage && <Sidebar />}
+        {!isStandalonePage && <Sidebar />}
         
         <main className="content-area">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/family/join" element={<FamilyJoinPage />} />
             
             {/* 4. 套用 ProtectedRoute */}
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
@@ -62,7 +64,7 @@ function AppContent() {
       </div>
       
       {/* 3. 如果不是登入頁，才顯示 BottomNav */}
-      {!isLoginPage && <BottomNav />}
+      {!isStandalonePage && <BottomNav />}
     </div>
   );
 }
