@@ -51,8 +51,10 @@ export async function upsertPersonalHealthProfile(
             catch (error) {
                 // 只有 JSON 解析失敗才改回泛用錯誤，其它例外直接往外拋
                 if (error instanceof SyntaxError) {
+                    // 改寫${res.status}${text ? ` - ${text}` : ''}`原本寫法以提高可讀性
+                    const errorMessage = text ? ` : ${text}` : ''
                     throw new Error(
-                        `個人資料儲存失敗：${res.status}${text ? ` - ${text}` : ''}`,
+                        `個人資料儲存失敗：${res.status}${errorMessage}`,
                     )
                 }
 
@@ -89,9 +91,8 @@ export async function upsertPersonalHealthProfile(
             )
         }
 
-        throw new Error(
-            `個人資料儲存失敗：${res.status}${text ? ` - ${text}` : ''}`,
-        )
+        const errorDetail = text ? ' - ' + text : ''
+        throw new Error('個人資料儲存失敗：' + res.status + errorDetail)
     }
 
     return res.json()
