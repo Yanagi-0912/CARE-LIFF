@@ -33,7 +33,7 @@ CARE-LIFF
 │  │  │  └─ ConsultRecords/
 │  │  └─ Settings/
 │  ├─ tests/                    # 單元/整合測試（vitest + RTL）
-│  │  └─ setup.ts
+│  │  ├─ setup.ts
 │  │  ├─ home.test.tsx
 │  │  ├─ i18n.test.ts
 │  │  └─ settings.test.ts

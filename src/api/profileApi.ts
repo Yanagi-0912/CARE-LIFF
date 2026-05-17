@@ -37,12 +37,13 @@ export async function upsertPersonalHealthProfile(
     })
     // 針對 422 Unprocessable Entity 錯誤，嘗試解析後端回傳的驗證錯誤訊息，
     // 並提供更具體的錯誤提示
-    const text = await res.text().catch(() => '')
+
 
     if (!res.ok) {
+        const text = await res.text().catch(() => '')
         if (res.status === 422 && text) {
-            let body: { detail?: ValidationErrorDetail[] }
 
+            let body: { detail?: ValidationErrorDetail[] }
             // 先把 422 回應轉成 JSON，才能取出欄位驗證資訊
             try {
                 body = JSON.parse(text)

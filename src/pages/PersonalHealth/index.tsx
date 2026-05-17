@@ -57,7 +57,7 @@ const validateNumericField = (
 ) => {
     const parsedValue = Number(value);
     if (!Number.isFinite(parsedValue) || parsedValue < field.min || parsedValue > field.max) {
-        return `${field.label}請輸入 ${field.min} 到 ${field.max} ${field.unit} 之間的數字`;
+        return `${field.label}，請輸入 ${field.min} 到 ${field.max} ${field.unit} 之間的數字`;
     }
     return '';
 };
