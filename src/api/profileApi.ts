@@ -37,32 +37,61 @@ export async function upsertPersonalHealthProfile(
     })
     // 針對 422 Unprocessable Entity 錯誤，嘗試解析後端回傳的驗證錯誤訊息，
     // 並提供更具體的錯誤提示
+    const text = await res.text().catch(() => '')
+
     if (!res.ok) {
-        const text = await res.text().catch(() => '')
         if (res.status === 422 && text) {
+            let body: { detail?: ValidationErrorDetail[] }
+
+            // 先把 422 回應轉成 JSON，才能取出欄位驗證資訊
             try {
-                const body = JSON.parse(text) as { detail?: ValidationErrorDetail[] }
-                const firstDetail = body.detail?.[0]
-                const fieldKey = firstDetail?.loc?.[firstDetail.loc.length - 1]
-                const fieldLabel =
-                    fieldKey === 'age' ? '年齡' :
-                        fieldKey === 'height' ? '身高' :
-                            fieldKey === 'weight' ? '體重' :
-                                fieldKey === 'name' ? '姓名' :
-                                    fieldKey === 'gender' ? '性別' :
-                                        undefined
-                const detailMessage = firstDetail?.msg || '資料格式不正確'
-                throw new Error(
-                    fieldLabel
-                        ? `個人資料欄位驗證失敗（${fieldLabel}）：${detailMessage}`
-                        : `個人資料欄位驗證失敗：${detailMessage}`,
-                )
-            } catch {
-                throw new Error(`個人資料儲存失敗：${res.status}${text ? ` - ${text}` : ''}`)
+                body = JSON.parse(text)
             }
+
+            catch (error) {
+                // 只有 JSON 解析失敗才改回泛用錯誤，其它例外直接往外拋
+                if (error instanceof SyntaxError) {
+                    throw new Error(
+                        `個人資料儲存失敗：${res.status}${text ? ` - ${text}` : ''}`,
+                    )
+                }
+
+                throw error
+            }
+
+            const firstDetail = body.detail?.[0]
+
+            const loc = firstDetail?.loc
+
+            const fieldKey = loc?.[loc.length - 1]
+
+            let fieldLabel: string | undefined
+            //把後端回傳的英文欄位名稱轉成前端顯示給使用者的中文名稱。
+            if (fieldKey === 'age') {
+                fieldLabel = '年齡'
+            } else if (fieldKey === 'height') {
+                fieldLabel = '身高'
+            } else if (fieldKey === 'weight') {
+                fieldLabel = '體重'
+            } else if (fieldKey === 'name') {
+                fieldLabel = '姓名'
+            } else if (fieldKey === 'gender') {
+                fieldLabel = '性別'
+            }
+
+            const detailMessage = firstDetail?.msg || '資料格式不正確'
+            // 如果能從後端回傳的驗證錯誤中解析出具體的欄位資訊，就顯示更明確的錯誤訊息；
+            // 否則就顯示泛用的錯誤提示
+            throw new Error(
+                fieldLabel
+                    ? `個人資料欄位驗證失敗（${fieldLabel}）：${detailMessage}`
+                    : `個人資料欄位驗證失敗：${detailMessage}`,
+            )
         }
 
-        throw new Error(`個人資料儲存失敗：${res.status}${text ? ` - ${text}` : ''}`)
+        throw new Error(
+            `個人資料儲存失敗：${res.status}${text ? ` - ${text}` : ''}`,
+        )
     }
 
     return res.json()

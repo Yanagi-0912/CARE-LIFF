@@ -48,7 +48,7 @@ const chronicDiseaseOptions = [
 const numericFieldLimits = {
     age: { min: 0, max: 130, label: '年齡', unit: '歲' },
     height: { min: 30, max: 300, label: '身高', unit: 'cm' },
-    weight: { min: 1, max: 1000, label: '體重', unit: 'kg' },
+    weight: { min: 1, max: 500, label: '體重', unit: 'kg' },
 } as const;
 
 const validateNumericField = (
@@ -97,6 +97,45 @@ const PersonalHealthPage: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleOutsideClick);
     }, []);
 
+    // 處理 LIFF 個人檔案資訊（從 .getProfile() 回傳）
+    const handleLiffProfile = (profile: any) => {
+        if (profile.displayName) {
+            // 以資料庫名稱為優先，LIFF 名稱只當 fallback
+            setUserName((prev) => prev || profile.displayName.trim());
+            setForm((prev) => ({ ...prev, name: prev.name || profile.displayName }));
+        }
+
+        if (profile.pictureUrl) {
+            setUserAvatar(profile.pictureUrl.trim());
+        }
+    };
+
+    // 處理從資料庫載入的個人健康資料（從 getPersonalHealthProfile() 回傳）
+    const handleUserProfileData = (data: any) => {
+        if (!data) {
+            return;
+        }
+
+        console.log('已加載使用者資料');
+
+        setForm((prev) => ({
+            ...prev,
+            name: data.name || prev.name,  // 資料庫優先
+            gender: data.gender || '',
+            height: data.height?.toString() || '',
+            weight: data.weight?.toString() || '',
+            age: data.age?.toString() || '',
+            chronicDisease: data.chronic_history ? data.chronic_history.split('、').filter(Boolean) : [],
+            chronicDiseaseOther: '',
+            majorIllness: data.major_illness_history || '',
+            surgeryHistory: data.surgery_history || '',
+        }));
+
+        if (data.name) {
+            setUserName(data.name);
+        }
+    };
+
     useEffect(() => {
         const initializeUserProfile = () => {
             if (!LIFF_ID) {
@@ -112,17 +151,7 @@ const PersonalHealthPage: React.FC = () => {
                     // 1. 從 LIFF 獲取 user 頭像資訊
                     liff
                         .getProfile()
-                        .then((profile) => {
-                            if (profile.displayName) {
-                                // 以資料庫名稱為優先，LIFF 名稱只當 fallback
-                                setUserName((prev) => prev || profile.displayName.trim());
-                                setForm((prev) => ({ ...prev, name: prev.name || profile.displayName }));
-                            }
-
-                            if (profile.pictureUrl) {
-                                setUserAvatar(profile.pictureUrl.trim());
-                            }
-                        })
+                        .then(handleLiffProfile)
                         .catch((err) => {
                             console.warn('獲取 LIFF 用戶資訊失敗:', err);
                         });
@@ -130,30 +159,7 @@ const PersonalHealthPage: React.FC = () => {
                     // /me API 由 token 辨識使用者，不需要前端提供 userId
                     return getPersonalHealthProfile();
                 })
-                .then((data) => {
-                    if (!data) {
-                        return;
-                    }
-
-                    console.log('已加載使用者資料:', data);
-
-                    setForm((prev) => ({
-                        ...prev,
-                        name: data.name || prev.name,  // 資料庫優先
-                        gender: data.gender || '',
-                        height: data.height?.toString() || '',
-                        weight: data.weight?.toString() || '',
-                        age: data.age?.toString() || '',
-                        chronicDisease: data.chronic_history ? data.chronic_history.split('、').filter(Boolean) : [],
-                        chronicDiseaseOther: '',
-                        majorIllness: data.major_illness_history || '',
-                        surgeryHistory: data.surgery_history || '',
-                    }));
-
-                    if (data.name) {
-                        setUserName(data.name);
-                    }
-                })
+                .then(handleUserProfileData)
                 .catch((error) => {
                     console.warn('LIFF 初始化或載入使用者資料失敗:', error);
                     setLiffError(error instanceof Error ? error.message : 'LIFF 初始化失敗，請稍後再試。');
@@ -243,13 +249,6 @@ const PersonalHealthPage: React.FC = () => {
             surgeryHistory: (form.surgeryHistory || '').trim() || '無'
         };
 
-        // 從 LIFF 取得 userId 作為 API 識別用
-        const userId = liff.getContext()?.userId;
-        if (!userId) {
-            setSaveMessage('找不到 LINE 使用者資訊，請先重新登入');
-            setSaveStatus('error');
-            return;
-        }
         const payload = {
             name: finalData.name,
             gender: finalData.gender,

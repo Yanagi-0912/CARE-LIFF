@@ -32,9 +32,8 @@ CARE-LIFF
 │  │  ├─ PersonalHealth/
 │  │  │  └─ ConsultRecords/
 │  │  └─ Settings/
-│  ├─ test/                     # 測試設定（例如 setup）
-│  │  └─ setup.ts
 │  ├─ tests/                    # 單元/整合測試（vitest + RTL）
+│  │  └─ setup.ts
 │  │  ├─ home.test.tsx
 │  │  ├─ i18n.test.ts
 │  │  └─ settings.test.ts
