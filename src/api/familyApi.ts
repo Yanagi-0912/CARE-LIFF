@@ -1,90 +1,89 @@
 import type {
-  AcceptInvitationResponse,
+  AcceptInviteResponse,
+  CreateInviteResponse,
   GetFamilyTreeResponse,
-  SendInvitationResponse,
+  VerifyInviteResponse,
+  FamilyTree,
 } from '../types/family';
-import type { GetFamilyTreeResponse, SendInvitationResponse } from '../types/family';
 import { authHeaders } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 /**
- * 取得指定使用者的族譜
+ * 輔助函式：解析錯誤訊息
  */
-export async function fetchFamilyTree(userId: string): Promise<GetFamilyTreeResponse> {
-  const res = await fetch(
-    `${BASE_URL}/family-tree/me?user_id=${encodeURIComponent(userId)}`,
-    { headers: authHeaders() },
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`取得族譜失敗：${res.status}${text ? ` - ${text}` : ''}`);
+async function parseError(res: Response): Promise<Error> {
+  let message = `API 請求失敗：${res.status}`;
+  try {
+    const data = await res.json();
+    if (data.detail) {
+      message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+    } else if (data.message) {
+      message = data.message;
+    }
+  } catch {
+    // ignore parse error
   }
-  return res.json();
-}
-
-export class FamilyApiError extends Error {
-  public readonly status: number;
-  public readonly code?: string;
-
-  constructor(
-    message: string,
-    status: number,
-    code?: string,
-  ) {
-    super(message);
-    this.name = 'FamilyApiError';
-    this.status = status;
-    this.code = code;
-  }
-}
-
-interface AcceptInvitationErrorResponse {
-  error_code?: string;
-  message?: string;
+  return new Error(message);
 }
 
 /**
- * 產生邀請連結
+ * 1. 取得當前使用者的族譜 (由後端透過 JWT 識別)
  */
-export async function createInvitation(inviterId?: string): Promise<SendInvitationResponse> {
-  const body = inviterId ? JSON.stringify({ inviter_id: inviterId }) : undefined;
-  const res = await fetch(`${BASE_URL}/family-tree/invite`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
+export async function fetchFamilyTree(): Promise<GetFamilyTreeResponse> {
+  const res = await fetch(`${BASE_URL}/family-tree/me`, {
     headers: authHeaders(),
-    body: JSON.stringify({ inviter_id: inviterId }),
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`建立邀請失敗：${res.status}${text ? ` - ${text}` : ''}`);
-  }
+  if (!res.ok) throw await parseError(res);
   return res.json();
 }
 
 /**
- * 使用邀請碼加入家庭
+ * 2. 產生邀請碼 (POST /family-tree/invites)
  */
-export async function acceptInvitation(code: string): Promise<AcceptInvitationResponse> {
-  const res = await fetch(`${BASE_URL}/family-tree/invite/accept`, {
+export async function createInvite(): Promise<CreateInviteResponse> {
+  const res = await fetch(`${BASE_URL}/family-tree/invites`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 3. 驗證邀請碼 (GET /family-tree/invites/verify/{code}) - 公開 API
+ */
+export async function verifyInvite(code: string): Promise<VerifyInviteResponse> {
+  const res = await fetch(`${BASE_URL}/family-tree/invites/verify/${encodeURIComponent(code)}`);
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 4. 接受邀請 (POST /family-tree/invites/accept)
+ */
+export async function acceptInvite(code: string): Promise<AcceptInviteResponse> {
+  const res = await fetch(`${BASE_URL}/family-tree/invites/accept`, {
+    method: 'POST',
+    headers: authHeaders(),
     body: JSON.stringify({ code }),
   });
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
 
-  if (!res.ok) {
-    let errorCode: string | undefined;
-    let message = `接受邀請失敗：${res.status}`;
-    try {
-      const data = await res.json() as AcceptInvitationErrorResponse;
-      errorCode = data.error_code;
-      if (data.message) message = data.message;
-    } catch {
-      // ignore parse error
-    }
-    throw new FamilyApiError(message, res.status, errorCode);
-  }
-
+/**
+ * 5. 設定關係 (POST /family-tree/relationship)
+ */
+export async function setRelationship(memberId: string, relationshipType: string): Promise<FamilyTree> {
+  const res = await fetch(`${BASE_URL}/family-tree/relationship`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      member_id: memberId,
+      relationship_type: relationshipType,
+    }),
+  });
+  if (!res.ok) throw await parseError(res);
   return res.json();
 }

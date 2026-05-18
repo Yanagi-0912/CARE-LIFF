@@ -6,7 +6,7 @@ import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import PersonalHealth from './pages/PersonalHealth';
 import Family from './pages/Family';
-import FamilyJoinPage from './pages/Family/Join';
+import JoinPage from './pages/Join';
 import ConsultRecordsPage from './pages/PersonalHealth/ConsultRecords';
 import { I18nProvider, getInitialLanguage } from './i18n';
 import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
@@ -26,7 +26,7 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 function AppContent() {
   // 2. 取得當前路徑，用來判斷是否要顯示導覽列
   const location = useLocation();
-  const isStandalonePage = location.pathname === '/login' || location.pathname === '/family/join';
+  const isStandalonePage = location.pathname === '/login' || location.pathname === '/join';
 
   useEffect(() => {
     let settings: SettingsState = defaultSettings;
@@ -51,7 +51,7 @@ function AppContent() {
         <main className="content-area">
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/family/join" element={<FamilyJoinPage />} />
+            <Route path="/join" element={<JoinPage />} />
             
             {/* 4. 套用 ProtectedRoute */}
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />

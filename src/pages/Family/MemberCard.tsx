@@ -29,6 +29,7 @@ export function MemberCard({ member }: Props) {
     setExpanded(willExpand);
 
     // 第一次展開時才載入健康資料（lazy loading）
+    // 後端應透過 JWT 驗證請求者是否有權限查看該成員資料
     if (willExpand && !health && !healthLoading) {
       setHealthLoading(true);
       setHealthError(null);

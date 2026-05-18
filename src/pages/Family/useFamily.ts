@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchFamilyTree } from '../../api/familyApi';
-import { getLineUserId } from '../../utils/auth';
 import type { FamilyMember } from '../../types/family';
 
 interface UseFamilyReturn {
@@ -22,8 +21,7 @@ export function useFamily(): UseFamilyReturn {
     setLoading(true);
     setError(null);
     try {
-      const userId = getLineUserId();
-      const res = await fetchFamilyTree(userId);
+      const res = await fetchFamilyTree();
       setMembers(res.family_tree.family_members);
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入族譜失敗');

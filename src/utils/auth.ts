@@ -20,6 +20,7 @@ export function getLineUserId(): string {
 export function authHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
     Authorization: `Bearer ${getAccessToken()}`,
   };
 }

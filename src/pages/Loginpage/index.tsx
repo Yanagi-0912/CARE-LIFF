@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import liff from '@line/liff'
 import { loginWithLiffIdToken } from '../../api/authApi'
+import { consumeRedirectUrl } from '../../utils/redirect'
 import './index.css'
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim()
@@ -41,8 +42,19 @@ function LoginPage() {
 				localStorage.setItem('CARE_AUTH_TOKEN', authResult.access_token)
 				localStorage.setItem('CARE_LINE_USER_ID', authResult.line_user_id)
 
-				setStatusText('驗證成功，正在返回首頁...')
-				navigate('/', { replace: true })
+				setStatusText('驗證成功，正在返回...')
+				const redirectUrl = consumeRedirectUrl()
+				if (redirectUrl) {
+					// 如果是完整 URL，擷取路徑與參數
+					try {
+						const url = new URL(redirectUrl)
+						navigate(url.pathname + url.search, { replace: true })
+					} catch {
+						navigate(redirectUrl, { replace: true })
+					}
+				} else {
+					navigate('/', { replace: true })
+				}
 			} catch (error) {
 				if (cancelled) return
 				setErrorText(error instanceof Error ? error.message : 'LIFF 初始化失敗，請稍後再試。')

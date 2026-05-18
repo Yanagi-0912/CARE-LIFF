@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import liff from '@line/liff';
-import { createInvitation } from '../../api/familyApi';
-import { getLineUserId } from '../../utils/auth';
+import { createInvite } from '../../api/familyApi';
 import { useI18n } from '../../i18n';
 
 interface Props {
@@ -20,14 +19,26 @@ export function InviteButton({ liffReady, onSuccess, onError }: Props) {
   const handleInvite = useCallback(async () => {
     setInviting(true);
     try {
-      const { invite_url } = await createInvitation(getLineUserId());
+      const { invite_token } = await createInvite();
+      const inviteUrl = `${window.location.origin}/join?code=${invite_token}`;
 
       if (!liffReady || !liff.isApiAvailable('shareTargetPicker')) {
+        // 退而求其次，如果是瀏覽器則複製到剪貼簿或使用 Web Share
+        if (navigator.share) {
+          await navigator.share({
+            title: t('family.shareTitle'),
+            text: t('family.shareDesc'),
+            url: inviteUrl,
+          });
+          onSuccess();
+          return;
+        }
+        // 若都不支援，可能需要一個備用的複製連結 UI (此處先拋錯)
         throw new Error('LINE_CLIENT_REQUIRED');
       }
 
       const result = await liff.shareTargetPicker([
-        buildFlexMessage(t, invite_url),
+        buildFlexMessage(t, inviteUrl),
       ]);
 
       if (result === null) return; // 使用者取消

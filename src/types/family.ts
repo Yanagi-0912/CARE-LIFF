@@ -19,16 +19,28 @@ export interface GetFamilyTreeResponse {
   family_tree: FamilyTree;
 }
 
-/** POST /family-tree/invite 回應 */
-export interface SendInvitationResponse {
-  invite_id: string;
-  invite_url: string;
+/** POST /family-tree/invites 回應 */
+export interface CreateInviteResponse {
+  invite_token: string;
+  expires_at: string; // ISO 8601
 }
 
-/** POST /family-tree/invite/accept 回應 */
-export interface AcceptInvitationResponse {
-  status?: string;
+/** GET /family-tree/invites/verify/{code} 回應 */
+export interface VerifyInviteResponse {
+  inviter_display_name: string;
+  expires_at: string;
+}
+
+/** POST /family-tree/invites/accept 回應 */
+export interface AcceptInviteResponse {
+  status: 'joined' | 'already_member';
   message?: string;
+}
+
+/** POST /family-tree/relationship 請求 */
+export interface SetRelationshipRequest {
+  member_id: string;
+  relationship_type: string;
 }
 
 /** 稱謂中文對照表 */
