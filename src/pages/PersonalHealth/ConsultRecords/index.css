@@ -67,6 +67,7 @@
     color: var(--muted);
 }
 
+
 .consult-card {
     position: relative;
     z-index: 1;
@@ -173,6 +174,14 @@
     position: relative;
 }
 
+.panel-item.is-muted {
+    background: rgba(148, 163, 184, 0.16);
+}
+
+.panel-item.is-error {
+    background: rgba(248, 113, 113, 0.18);
+}
+
 .panel-item p {
     margin: 0;
     color: #e2e8f0;
@@ -236,6 +245,13 @@
     transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+    box-shadow: none;
+}
+
 .btn.primary {
     background: var(--accent);
     color: #fff;
@@ -257,12 +273,6 @@
     background: #fff5f1;
 }
 
-.records {
-    position: relative;
-    z-index: 1;
-    margin-top: 18px;
-}
-
 .empty {
     padding: 18px;
     border: 1px dashed var(--line);
@@ -271,55 +281,174 @@
     background: rgba(255, 255, 255, 0.7);
 }
 
-.record {
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 14px;
-    background: #fff;
-    margin-bottom: 14px;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
-    animation: fadeIn 0.45s ease both;
+/* 讓 Markdown 產生的列表和文字更好看 */
+.markdown-content p {
+    margin: 0 0 8px 0;
+    line-height: 1.6;
 }
 
-.record:nth-child(2) {
-    animation-delay: 0.04s;
+.markdown-content strong {
+    color: #1e3a8a;
+    /* 讓標題顏色明顯一點 */
+    font-weight: 600;
 }
 
-.record:nth-child(3) {
-    animation-delay: 0.08s;
+.markdown-content ul {
+    margin: 4px 0 12px 0;
+    padding-left: 20px;
+    /* 讓點點列表縮進 */
 }
 
-.record:nth-child(4) {
-    animation-delay: 0.12s;
+.markdown-content li {
+    margin-bottom: 4px;
+    line-height: 1.5;
+    color: #374151;
 }
 
-.record-meta {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 8px;
-}
 
+/* 修正名稱未對齊與未加點的選擇器，並優化歷史紀錄區塊的間距與視覺層次 */
 .record-row,
 .record-summary {
     display: grid;
     grid-template-columns: 64px 1fr;
-    gap: 10px;
-    padding: 6px 0;
+    gap: 12px;
+    padding: 8px 12px;
     align-items: start;
+    border-radius: 8px;
+    margin-bottom: 6px;
 }
 
+/* 歷史紀錄中的對話角色標籤 */
 .record-row span,
 .record-summary span {
     font-weight: 600;
-    color: var(--muted);
+    color: #4b5563;
+    display: inline-block;
 }
 
+/* 修正與 React 中 className="record-summary" 對應的樣式 */
 .record-summary {
     color: #1e3a8a;
     background: #f0f6ff;
     border-radius: 10px;
-    padding: 10px 12px;
-    margin-top: 6px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    border: 1px solid #dbeafe;
+}
+
+/* 對應下方列表中的歷史對話框樣式優化 */
+.record-row {
+    background: #f9fafb;
+    border-left: 4px solid #e5e7eb;
+}
+
+/* 頂部手機模擬面板中的對話列基礎設定 */
+.chat-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+}
+
+.chat-row.user {
+    flex-direction: row-reverse;
+}
+
+/* 對應面板中「你」與「AI」的泡泡對話框樣式 */
+.user-bubble {
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 12px 2px 12px 12px;
+    padding: 10px 14px;
+    max-width: 75%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    line-height: 1.5;
+}
+
+.ai-bubble {
+    background: #f3f4f6;
+    color: #1f2937;
+    border-radius: 2px 12px 12px 12px;
+    padding: 10px 14px;
+    max-width: 75%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    line-height: 1.5;
+}
+
+/* 面板中的角色標籤樣式調整 */
+.user-badge {
+    background: #2563eb;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.ai-badge {
+    background: #374151;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* 面板一般文字與狀態優化 */
+.panel-item {
+    color: #111827;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.panel-item p {
+    color: #111827;
+    font-weight: 500;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* 錯誤狀態改為高對比，避免深色背景看不清 */
+.panel-item.is-error {
+    background: #7f1d1d;
+    border: 1px solid #fecaca;
+    color: #fff;
+    display: block;
+}
+
+.panel-item.is-error .panel-badge {
+    background: #fff;
+    color: #991b1b;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.panel-item.is-error p {
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.7;
+}
+
+.panel-list {
+    /* 設定一個固定高度，超出才會觸發滾動 */
+    overflow-y: auto;
+    /* 允許垂直方向滾動 */
+
+    /* 隱藏滾動條：適用於 Chrome, Safari, Opera 以及新版 Edge */
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* 隱藏滾動條：適用於 Firefox */
+    scrollbar-width: none;
+
+    /* 隱藏滾動條：適用於舊版 IE 和 Edge */
+    -ms-overflow-style: none;
 }
 
 @keyframes rise {
