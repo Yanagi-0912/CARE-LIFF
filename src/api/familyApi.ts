@@ -31,7 +31,7 @@ async function parseError(res: Response): Promise<Error> {
  * 1. 取得當前使用者的族譜 (由後端透過 JWT 識別)
  */
 export async function fetchFamilyTree(): Promise<GetFamilyTreeResponse> {
-  const res = await fetch(`${BASE_URL}/family-tree/me`, {
+  const res = await fetch(`${BASE_URL}/api/family/me`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw await parseError(res);
@@ -42,7 +42,7 @@ export async function fetchFamilyTree(): Promise<GetFamilyTreeResponse> {
  * 2. 產生邀請碼 (POST /family-tree/invites)
  */
 export async function createInvite(): Promise<CreateInviteResponse> {
-  const res = await fetch(`${BASE_URL}/family-tree/invites`, {
+  const res = await fetch(`${BASE_URL}/api/family/invites`, {
     method: 'POST',
     headers: authHeaders(),
   });
@@ -54,7 +54,9 @@ export async function createInvite(): Promise<CreateInviteResponse> {
  * 3. 驗證邀請碼 (GET /family-tree/invites/verify/{code}) - 公開 API
  */
 export async function verifyInvite(code: string): Promise<VerifyInviteResponse> {
-  const res = await fetch(`${BASE_URL}/family-tree/invites/verify/${encodeURIComponent(code)}`);
+  const res = await fetch(`${BASE_URL}/api/family/invites/verify/${encodeURIComponent(code)}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
@@ -63,7 +65,7 @@ export async function verifyInvite(code: string): Promise<VerifyInviteResponse> 
  * 4. 接受邀請 (POST /family-tree/invites/accept)
  */
 export async function acceptInvite(code: string): Promise<AcceptInviteResponse> {
-  const res = await fetch(`${BASE_URL}/family-tree/invites/accept`, {
+  const res = await fetch(`${BASE_URL}/api/family/invites/accept`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ code }),
@@ -76,7 +78,7 @@ export async function acceptInvite(code: string): Promise<AcceptInviteResponse> 
  * 5. 設定關係 (POST /family-tree/relationship)
  */
 export async function setRelationship(memberId: string, relationshipType: string): Promise<FamilyTree> {
-  const res = await fetch(`${BASE_URL}/family-tree/relationship`, {
+  const res = await fetch(`${BASE_URL}/api/family/relationship`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
