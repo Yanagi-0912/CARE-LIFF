@@ -3,7 +3,6 @@ import type {
     ConsultationSummary,
     ConsultationViewResponse,
 } from '../types/consultation'
-
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
 function getAuthToken() {
@@ -33,8 +32,8 @@ function buildConsultationErrorMessage(status: number, defaultMessage: string) {
 
     return defaultMessage
 }
-
-export async function fetchConsultationMe(): Promise<ConsultationViewResponse> {
+//優先回傳摘要，沒有就回傳原始訊息
+export async function fetchConsultationSummary(): Promise<ConsultationViewResponse> {
     const res = await fetch(`${BASE_URL}/api/consultations/me`, {
         method: 'GET',
         headers: buildAuthHeaders(),
@@ -51,23 +50,7 @@ export async function fetchConsultationMe(): Promise<ConsultationViewResponse> {
     return res.json()
 }
 
-export async function fetchConsultationMeToday(): Promise<ConsultationViewResponse> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/today`, {
-        method: 'GET',
-        headers: buildAuthHeaders(),
-    })
-
-    if (!res.ok) {
-        const message = buildConsultationErrorMessage(
-            res.status,
-            `取得今日諮詢紀錄失敗：${res.status}`,
-        )
-        throw new Error(message)
-    }
-
-    return res.json()
-}
-
+//回傳原始訊息
 export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse> {
     const res = await fetch(`${BASE_URL}/api/consultations/me/raw`, {
         method: 'GET',

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { fetchConsultationMe, summarizeConsultationMe } from '../../../api/consultationApi';
+import React, { useState, useEffect, useRef } from 'react';
+import { fetchConsultationSummary, fetchConsultationMeRaw, summarizeConsultationMe } from '../../../api/consultationApi';
 import './index.css';
 import ReactMarkdown from 'react-markdown';
+import type { ConsultationMessage, } from '../../../types/consultation';
 
 interface ConsultRecord {
     id: string;
@@ -9,11 +10,6 @@ interface ConsultRecord {
     aiReply: string;
     summary: string;
     timestamp: number;
-}
-
-interface RawMessage {
-    message_type?: string;
-    content?: string;
 }
 
 const LOCAL_KEY = 'consult_records';
@@ -44,15 +40,16 @@ function loadRecords(): ConsultRecord[] {
 const ConsultRecordsPage: React.FC = () => {
     const [records, setRecords] = useState<ConsultRecord[]>([]);
     const [summaryText, setSummaryText] = useState<string | null>(null);
-    const [rawMessages, setRawMessages] = useState<RawMessage[]>([]);
+    const [rawMessages, setRawMessages] = useState<ConsultationMessage[]>([]);
+    const hasSummary = Boolean(summaryText);
+    const hasRawMessages = rawMessages.length > 0;
+    const hasInitializedView = useRef(false);
 
-    // 控制摘要/原始對話畫面切換
     const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryActionLoading, setSummaryActionLoading] = useState(false);
     const [summaryError, setSummaryError] = useState<string | null>(null);
 
-    // 截斷過長的文字
     const truncateText = (text: string, maxLength: number = 100): string => {
         if (!text) return '（無內容）';
         return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
@@ -62,22 +59,39 @@ const ConsultRecordsPage: React.FC = () => {
         setSummaryLoading(true);
         setSummaryError(null);
         try {
-            const data = await fetchConsultationMe();
-            setSummaryText(data.summary?.trim() || null);
-            setRawMessages(
-                Array.isArray(data.messages)
-                    ? data.messages.map((message: RawMessage) => ({
-                        message_type: message.message_type,
-                        content: message.content,
-                    }))
-                    : []
-            );
+            const data = await fetchConsultationSummary();
+            let messages = data.messages ?? [];
 
-            // 根據後端預設的 view_type 來決定初始畫面
-            if (data.view_type === 'raw') {
-                setViewMode('raw');
-            } else {
-                setViewMode('summary');
+            if (messages.length === 0) {
+                try {
+                    const rawData = await fetchConsultationMeRaw();
+                    messages = rawData.messages ?? [];
+                }
+                catch (error) {
+                    console.warn('Failed to fetch raw consultation messages', error);
+                }
+            }
+
+            const summary = data.summary?.trim() || null;
+
+            console.log('[ConsultRecords] loadSummary', {
+                view_type: data.view_type,
+                summary: Boolean(summary),
+                rawCount: messages.length,
+            });
+
+            setSummaryText(summary);
+            setRawMessages(messages);
+
+            if (!hasInitializedView.current) {
+                if (!summary && messages.length > 0) {
+                    setViewMode('raw');
+                } else if (summary) {
+                    setViewMode('summary');
+                } else {
+                    setViewMode(data.view_type === 'raw' ? 'raw' : 'summary');
+                }
+                hasInitializedView.current = true;
             }
         }
         catch (error) {
@@ -90,7 +104,6 @@ const ConsultRecordsPage: React.FC = () => {
         }
     };
 
-    // 載入紀錄，僅保留 7 天內
     useEffect(() => {
         loadSummary();
         const now = Date.now();
@@ -106,12 +119,14 @@ const ConsultRecordsPage: React.FC = () => {
         try {
             const result = await summarizeConsultationMe({ force: true });
             const newSummary = result.summary?.trim() || null;
+            console.log('[ConsultRecords] summarizeConsultationMe result', {
+                hasSummary: Boolean(newSummary),
+            });
             setSummaryText(newSummary);
+            await loadSummary();
 
-            // 並把畫面切到摘要
             setViewMode('summary');
 
-            // 存入本地歷史紀錄
             if (newSummary) {
                 const newRecord: ConsultRecord = {
                     id: Date.now().toString(),
@@ -133,7 +148,6 @@ const ConsultRecordsPage: React.FC = () => {
         }
     };
 
-    // 下載 json
     const handleDownload = () => {
         const data = JSON.stringify(records, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
@@ -149,7 +163,7 @@ const ConsultRecordsPage: React.FC = () => {
         <div className="consult-page">
             <header className="consult-header">
                 <h2>健康諮詢紀錄</h2>
-                <p>保存 7 天內的對話，並以 AI 摘要整理重點。</p>
+                <p>保存並顯示當天的對話，並以 AI 摘要整理重點，摘要將保存七天。</p>
             </header>
             <section className="consult-card">
                 <div className="panel">
@@ -169,24 +183,24 @@ const ConsultRecordsPage: React.FC = () => {
                             </svg>
                         </div>
 
-                        {(summaryText || rawMessages.length > 0) && (
-                            <div className="panel-controls">
-                                <button
-                                    className={`toggle-btn ${viewMode === 'summary' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('summary')}
-                                    disabled={!summaryText} // 沒有摘要時禁用
-                                >
-                                    摘要
-                                </button>
-                                <button
-                                    className={`toggle-btn ${viewMode === 'raw' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('raw')}
-                                    disabled={rawMessages.length === 0} // 沒有對話時禁用
-                                >
-                                    對話
-                                </button>
-                            </div>
-                        )}
+                        <div className="panel-controls" role="tablist" aria-label="諮詢畫面切換">
+                            <button
+                                type="button"
+                                className={`summaryBtn ${viewMode === 'summary' ? 'active' : ''}`}
+                                onClick={() => setViewMode('summary')}
+                                aria-pressed={viewMode === 'summary'}
+                            >
+                                摘要
+                            </button>
+                            <button
+                                type="button"
+                                className={`rawMsgBtn ${viewMode === 'raw' ? 'active' : ''}`}
+                                onClick={() => setViewMode('raw')}
+                                aria-pressed={viewMode === 'raw'}
+                            >
+                                對話
+                            </button>
+                        </div>
                     </div>
 
                     <div className="panel-list">
@@ -204,12 +218,10 @@ const ConsultRecordsPage: React.FC = () => {
                             </div>
                         )}
 
-                        {/* 根據 viewMode 來決定秀出哪一個區塊 */}
                         {!summaryLoading && !summaryError && (
                             <>
-                                {/* 顯示 AI 摘要 */}
                                 {viewMode === 'summary' && (
-                                    summaryText ? (
+                                    hasSummary ? (
                                         <div className="panel-item">
                                             <div className="panel-badge">AI</div>
                                             <div className="markdown-content">
@@ -217,16 +229,15 @@ const ConsultRecordsPage: React.FC = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="panel-item is-muted">
+                                        <div className="panel-item is-empty">
                                             <div className="panel-badge">AI</div>
-                                            <p>尚未產生摘要，請點「立即產生摘要」開始。</p>
+                                            <p>目前沒有摘要資料，請點「立即產生摘要」建立今天的摘要。</p>
                                         </div>
                                     )
                                 )}
 
-                                {/* 顯示原始對話紀錄 */}
                                 {viewMode === 'raw' && (
-                                    rawMessages.length > 0 ? (
+                                    hasRawMessages ? (
                                         rawMessages.map((message, index) => {
                                             const isYou = message.message_type === 'text';
                                             return (
@@ -238,16 +249,15 @@ const ConsultRecordsPage: React.FC = () => {
                                                         {isYou ? '你' : 'AI'}
                                                     </div>
                                                     <div className={`chat-bubble ${isYou ? 'user-bubble' : 'ai-bubble'}`}>
-                                                        {/* 避免文字太長，只保留前 50 個字 */}
-                                                        {truncateText(message.content || '', 50)}
+                                                        {truncateText(message.content || "", 50)}
                                                     </div>
                                                 </div>
                                             );
                                         })
                                     ) : (
-                                        <div className="panel-item is-muted">
+                                        <div className="panel-item is-empty">
                                             <div className="panel-badge">AI</div>
-                                            <p>暫無對話紀錄。</p>
+                                            <p>目前沒有對話紀錄。</p>
                                         </div>
                                     )
                                 )}
