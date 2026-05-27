@@ -29,7 +29,10 @@ export type ConsultationViewResponse = {
 }
 
 export type ConsultationSummary = {
+    line_id?: string
     summary?: string
+    summary_date?: string
+    created_at?: string
     target_date?: string
     [key: string]: unknown
 }

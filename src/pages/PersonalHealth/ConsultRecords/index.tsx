@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { fetchConsultationSummary, fetchConsultationMeRaw, summarizeConsultationMe } from '../../../api/consultationApi';
+import React, { useState, useEffect } from 'react';
+import {
+    getAllSummaries,
+    fetchConsultationMeRaw,
+    summarizeConsultationMe,
+} from '../../../api/consultationApi';
 import './index.css';
 import ReactMarkdown from 'react-markdown';
-import type { ConsultationMessage, } from '../../../types/consultation';
+import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
 
 interface ConsultRecord {
     id: string;
@@ -14,6 +18,24 @@ interface ConsultRecord {
 
 const LOCAL_KEY = 'consult_records';
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+function getSummaryKey(summary: ConsultationSummary): string {
+    return summary.summary_date || summary.target_date || summary.created_at || '';
+}
+
+function formatSummaryDate(summary: ConsultationSummary): string {
+    const rawDate = summary.summary_date || summary.target_date || summary.created_at || '';
+    if (!rawDate) {
+        return '未命名日期';
+    }
+
+    const datePart = rawDate.slice(0, 10);
+    return datePart.replace(/-/g, '/');
+}
+
+function trimSummaryText(summary: ConsultationSummary): string {
+    return summary.summary?.trim() || '目前沒有摘要內容';
+}
 
 function saveRecords(records: ConsultRecord[]) {
     try {
@@ -39,16 +61,20 @@ function loadRecords(): ConsultRecord[] {
 
 const ConsultRecordsPage: React.FC = () => {
     const [records, setRecords] = useState<ConsultRecord[]>([]);
-    const [summaryText, setSummaryText] = useState<string | null>(null);
+    const [summaryItems, setSummaryItems] = useState<ConsultationSummary[]>([]);
+    const [selectedSummaryKey, setSelectedSummaryKey] = useState<string>('');
     const [rawMessages, setRawMessages] = useState<ConsultationMessage[]>([]);
-    const hasSummary = Boolean(summaryText);
     const hasRawMessages = rawMessages.length > 0;
-    const hasInitializedView = useRef(false);
 
     const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryActionLoading, setSummaryActionLoading] = useState(false);
     const [summaryError, setSummaryError] = useState<string | null>(null);
+
+    const selectedSummary =
+        summaryItems.find(item => getSummaryKey(item) === selectedSummaryKey) ||
+        summaryItems[0] ||
+        null;
 
     const truncateText = (text: string, maxLength: number = 100): string => {
         if (!text) return '（無內容）';
@@ -59,43 +85,52 @@ const ConsultRecordsPage: React.FC = () => {
         setSummaryLoading(true);
         setSummaryError(null);
         try {
-            const data = await fetchConsultationSummary();
-            let messages = data.messages ?? [];
+            const [summariesResult, rawResult] = await Promise.allSettled([
+                getAllSummaries(),
+                fetchConsultationMeRaw(),
+            ]);
 
-            if (messages.length === 0) {
-                try {
-                    const rawData = await fetchConsultationMeRaw();
-                    messages = rawData.messages ?? [];
+            if (summariesResult.status === 'fulfilled') {
+                const summaries = summariesResult.value;
+                setSummaryItems(summaries);
+
+                const firstKey = getSummaryKey(summaries[0] || {} as ConsultationSummary);
+                setSelectedSummaryKey(previousKey => {
+                    if (previousKey && summaries.some(item => getSummaryKey(item) === previousKey)) {
+                        return previousKey;
+                    }
+
+                    return firstKey;
+                });
+
+                if (summaries.length > 0) {
+                    setViewMode('summary');
                 }
-                catch (error) {
-                    console.warn('Failed to fetch raw consultation messages', error);
-                }
+            } else {
+                setSummaryItems([]);
+                setSelectedSummaryKey('');
+                setSummaryError(
+                    summariesResult.reason instanceof Error
+                        ? summariesResult.reason.message
+                        : '取得摘要清單失敗',
+                );
             }
 
-            const summary = data.summary?.trim() || null;
-
-            console.log('[ConsultRecords] loadSummary', {
-                view_type: data.view_type,
-                summary: Boolean(summary),
-                rawCount: messages.length,
-            });
-
-            setSummaryText(summary);
-            setRawMessages(messages);
-
-            if (!hasInitializedView.current) {
-                if (!summary && messages.length > 0) {
+            if (rawResult.status === 'fulfilled') {
+                const rawData = rawResult.value;
+                const messages = rawData.messages ?? [];
+                setRawMessages(messages);
+                if (summariesResult.status !== 'fulfilled' && messages.length > 0) {
                     setViewMode('raw');
-                } else if (summary) {
-                    setViewMode('summary');
-                } else {
-                    setViewMode(data.view_type === 'raw' ? 'raw' : 'summary');
                 }
-                hasInitializedView.current = true;
+            } else {
+                console.warn('Failed to fetch raw consultation messages', rawResult.reason);
+                setRawMessages([]);
             }
         }
         catch (error) {
-            setSummaryText(null);
+            setSummaryItems([]);
+            setSelectedSummaryKey('');
             setRawMessages([]);
             setSummaryError(error instanceof Error ? error.message : '取得摘要失敗');
         }
@@ -119,21 +154,16 @@ const ConsultRecordsPage: React.FC = () => {
         try {
             const result = await summarizeConsultationMe({ force: true });
             const newSummary = result.summary?.trim() || null;
-            console.log('[ConsultRecords] summarizeConsultationMe result', {
-                hasSummary: Boolean(newSummary),
-            });
-            setSummaryText(newSummary);
             await loadSummary();
-
             setViewMode('summary');
 
             if (newSummary) {
                 const newRecord: ConsultRecord = {
                     id: Date.now().toString(),
-                    userMessage: "本次健康諮詢摘要",
-                    aiReply: "已產生摘要",
+                    userMessage: '本次健康諮詢摘要',
+                    aiReply: '已產生摘要',
                     summary: newSummary,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
                 };
                 const updated = [newRecord, ...records];
                 setRecords(updated);
@@ -218,20 +248,45 @@ const ConsultRecordsPage: React.FC = () => {
                             </div>
                         )}
 
-                        {!summaryLoading && !summaryError && (
+                        {!summaryLoading && (
                             <>
                                 {viewMode === 'summary' && (
-                                    hasSummary ? (
-                                        <div className="panel-item">
-                                            <div className="panel-badge">AI</div>
-                                            <div className="markdown-content">
-                                                <ReactMarkdown>{summaryText}</ReactMarkdown>
+                                    summaryItems.length > 0 ? (
+                                        <>
+                                            <div className="panel-item compact">
+                                                <div className="compact-header">
+
+                                                    <label className="summary-label" htmlFor="summary-select">
+                                                        摘要日期
+                                                    </label>
+                                                    <select
+                                                        id="summary-select"
+                                                        className="summary-select"
+                                                        value={selectedSummaryKey}
+                                                        onChange={event => setSelectedSummaryKey(event.target.value)}
+                                                    >
+                                                        {summaryItems.map(summary => {
+                                                            const summaryKey = getSummaryKey(summary);
+                                                            return (
+                                                                <option key={summaryKey} value={summaryKey}>
+                                                                    {formatSummaryDate(summary)}
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </div>
+
+                                                <div className="markdown-content compact-body">
+                                                    <ReactMarkdown>
+                                                        {trimSummaryText(selectedSummary)}
+                                                    </ReactMarkdown>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </>
                                     ) : (
                                         <div className="panel-item is-empty">
                                             <div className="panel-badge">AI</div>
-                                            <p>目前沒有摘要資料，請點「立即產生摘要」建立今天的摘要。</p>
+                                            <p>目前沒有摘要資料，請點「立即產生摘要」建立摘要。</p>
                                         </div>
                                     )
                                 )}

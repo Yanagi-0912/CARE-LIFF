@@ -32,6 +32,30 @@ function buildConsultationErrorMessage(status: number, defaultMessage: string) {
 
     return defaultMessage
 }
+
+export async function getAllSummaries(): Promise<ConsultationSummary[]> {
+    const res = await fetch(`${BASE_URL}/api/consultations/me/allsummaries`, {
+        method: 'GET',
+        headers: buildAuthHeaders(),
+    })
+
+    if (!res.ok) {
+        const message = buildConsultationErrorMessage(
+            res.status,
+            `取得諮詢摘要清單失敗：${res.status}`,
+        )
+        throw new Error(message)
+    }
+
+    const data = (await res.json()) as ConsultationSummary[]
+    return Array.isArray(data)
+        ? data.map(summary => ({
+            ...summary,
+            summary: summary.summary?.trim() || '',
+        }))
+        : []
+}
+
 //優先回傳摘要，沒有就回傳原始訊息
 export async function fetchConsultationSummary(): Promise<ConsultationViewResponse> {
     const res = await fetch(`${BASE_URL}/api/consultations/me`, {
@@ -46,8 +70,29 @@ export async function fetchConsultationSummary(): Promise<ConsultationViewRespon
         )
         throw new Error(message)
     }
-    console.log('fetchConsultationMe response:', res);
-    return res.json()
+
+    const data = (await res.json()) as ConsultationViewResponse
+    const summary =
+        data.summary?.trim() ||
+        data.consultation_summary?.trim() ||
+        data.data?.summary?.trim() ||
+        data.data?.consultation_summary?.trim() ||
+        null
+
+    const messages =
+        data.messages ??
+        data.conversation ??
+        data.records ??
+        data.data?.messages ??
+        data.data?.conversation ??
+        data.data?.records ??
+        []
+
+    return {
+        ...data,
+        summary: summary ?? undefined,
+        messages,
+    }
 }
 
 //回傳原始訊息
@@ -65,7 +110,21 @@ export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse
         throw new Error(message)
     }
 
-    return res.json()
+    const data = (await res.json()) as ConsultationViewResponse
+
+    const messages =
+        data.messages ??
+        data.conversation ??
+        data.records ??
+        data.data?.messages ??
+        data.data?.conversation ??
+        data.data?.records ??
+        []
+
+    return {
+        ...data,
+        messages,
+    }
 }
 
 export async function summarizeConsultationMe(
@@ -100,5 +159,9 @@ export async function summarizeConsultationMe(
         throw new Error(message)
     }
 
-    return res.json()
+    const data = (await res.json()) as ConsultationSummary
+    return {
+        ...data,
+        summary: data.summary?.trim() || '',
+    }
 }

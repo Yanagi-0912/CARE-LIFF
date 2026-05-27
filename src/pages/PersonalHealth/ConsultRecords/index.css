@@ -1,3 +1,4 @@
+/* ── Variables & Base ── */
 .consult-page {
     --ink: #0f172a;
     --muted: #475569;
@@ -49,6 +50,7 @@
     right: -70px;
 }
 
+/* ── Header ── */
 .consult-header {
     position: relative;
     z-index: 1;
@@ -63,11 +65,10 @@
 }
 
 .consult-header p {
-    margin: 0;
     color: var(--muted);
 }
 
-
+/* ── Card & Panel ── */
 .consult-card {
     position: relative;
     z-index: 1;
@@ -107,6 +108,7 @@
     pointer-events: none;
 }
 
+/* ── Panel Top ── */
 .panel-top {
     display: flex;
     align-items: center;
@@ -133,20 +135,6 @@
     flex: 1;
 }
 
-.panel-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: #e2e8f0;
-}
-
-
-.iconOnPhone {
-    width: 24px;
-    height: 24px;
-    opacity: 0.9;
-}
-
 .panel-dot {
     width: 8px;
     height: 8px;
@@ -161,31 +149,68 @@
     background: #475569;
 }
 
+.panel-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #e2e8f0;
+}
 
+.iconOnPhone {
+    width: 24px;
+    height: 24px;
+    opacity: 0.9;
+}
+
+/* ── Panel List ── */
 .panel-list {
     display: grid;
     gap: 10px;
-    overflow: auto;
-    padding-right: 2px;
     flex: 1;
     position: relative;
     z-index: 1;
+    overflow-y: auto;
+    padding-right: 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
+.panel-list::-webkit-scrollbar {
+    display: none;
+}
+
+.panel-list>* {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+/* ── Panel Items ── */
 .panel-item {
-    background: rgba(148, 163, 184, 0.1);
-    border-radius: 14px;
-    padding: 10px 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: #111827;
+    min-width: 0;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.panel-item p {
+    margin: 0;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 500;
     line-height: 1.5;
-    position: relative;
 }
 
 .panel-item.is-muted {
     background: rgba(148, 163, 184, 0.16);
-}
-
-.panel-item.is-error {
-    background: rgba(248, 113, 113, 0.18);
 }
 
 .panel-item.is-empty {
@@ -199,12 +224,87 @@
     line-height: 1.4;
 }
 
-.panel-item p {
-    margin: 0;
-    color: #e2e8f0;
-    font-size: 14px;
+.panel-item.is-error {
+    background: #7f1d1d;
+    border: 1px solid #fecaca;
+    color: #fff;
+    display: block;
 }
 
+.panel-item.is-error p {
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.7;
+}
+
+/* ── Compact (summary selector) ── */
+.panel-item.compact {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 8px;
+    flex-direction: column;
+    gap: 8px;
+    color: #111827;
+}
+
+.compact-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.compact-header .summary-label {
+    color: #475569;
+    font-weight: 600;
+}
+
+.compact-body {
+    padding-top: 4px;
+    color: #111827;
+}
+
+/* ── Summary Select ── */
+.summary-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #475569;
+    font-weight: 600;
+    font-size: 2vw;
+}
+
+.summary-select {
+    width: 50%;
+    border: 2px solid #475569;
+    background: rgba(15, 23, 42, 0.92);
+    color: #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+}
+
+.summary-select:focus {
+    border-color: rgba(255, 107, 74, 0.85);
+    box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.18);
+}
+
+.panel-item.compact .summary-select {
+    margin-left: auto;
+    width: 40%;
+    min-width: 110px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    background: #ffffff;
+    color: #111827;
+}
+
+.panel-item.compact .summary-select:focus {
+    border-color: rgba(37, 99, 235, 0.85);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+/* ── Badge ── */
 .panel-badge {
     display: inline-block;
     font-size: 11px;
@@ -218,41 +318,87 @@
     margin-bottom: 6px;
 }
 
-.form-group {
-    margin-bottom: 12px;
-}
-
-.form-label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-.form-textarea {
-    width: 100%;
-    border: 1px solid var(--line);
-    background: var(--wash);
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 14px;
-    resize: vertical;
-    transition: border 0.2s ease, box-shadow 0.2s ease;
-}
-
-.form-textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(255, 107, 74, 0.15);
+.panel-item.is-error .panel-badge {
     background: #fff;
+    color: #991b1b;
+    font-size: 20px;
+    font-weight: 700;
 }
 
-.form-actions {
+.user-badge {
+    background: #2563eb;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.ai-badge {
+    background: #374151;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* ── Chat Bubbles ── */
+.chat-row {
     display: flex;
-    flex-wrap: wrap;
     gap: 10px;
-    margin-top: 8px;
+    margin-bottom: 12px;
+    align-items: flex-start;
 }
 
+.chat-row.user {
+    flex-direction: row-reverse;
+}
+
+.user-bubble {
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 12px 2px 12px 12px;
+    padding: 10px 14px;
+    max-width: 75%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    line-height: 1.5;
+}
+
+.ai-bubble {
+    background: #f3f4f6;
+    color: #1f2937;
+    border-radius: 2px 12px 12px 12px;
+    padding: 10px 14px;
+    max-width: 75%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    line-height: 1.5;
+}
+
+/* ── Markdown ── */
+.markdown-content p {
+    margin: 0 0 8px 0;
+    line-height: 1.6;
+}
+
+.markdown-content strong {
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+.markdown-content ul {
+    margin: 4px 0 12px 0;
+    padding-left: 20px;
+    font-size: 18px;
+}
+
+.markdown-content li {
+    margin-bottom: 4px;
+    line-height: 1.5;
+    color: #374151;
+}
+
+/* ── Buttons ── */
 .btn {
     border: none;
     border-radius: 999px;
@@ -296,51 +442,49 @@
     color: #64748b;
 }
 
-.summaryBtn.active {
-    background-color: #2563eb;
-    color: #ffffff;
-}
-
-
+.summaryBtn.active,
 .rawMsgBtn.active {
     background-color: #2563eb;
     color: #ffffff;
 }
 
-.empty {
-    padding: 18px;
-    border: 1px dashed var(--line);
-    border-radius: 14px;
-    color: var(--muted);
-    background: rgba(255, 255, 255, 0.7);
+/* ── Form ── */
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
 }
 
-/* 讓 Markdown 產生的列表和文字更好看 */
-.markdown-content p {
-    margin: 0 0 8px 0;
-    line-height: 1.6;
+.form-group {
+    margin-bottom: 12px;
 }
 
-.markdown-content strong {
-    color: #1e3a8a;
-    /* 讓標題顏色明顯一點 */
+.form-label {
+    display: block;
     font-weight: 600;
+    margin-bottom: 6px;
 }
 
-.markdown-content ul {
-    margin: 4px 0 12px 0;
-    padding-left: 20px;
-    /* 讓點點列表縮進 */
+.form-textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--wash);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    resize: vertical;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
 }
 
-.markdown-content li {
-    margin-bottom: 4px;
-    line-height: 1.5;
-    color: #374151;
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(255, 107, 74, 0.15);
+    background: #fff;
 }
 
-
-/* 修正名稱未對齊與未加點的選擇器，並優化歷史紀錄區塊的間距與視覺層次 */
+/* ── Record Rows ── */
 .record-row,
 .record-summary {
     display: grid;
@@ -352,7 +496,6 @@
     margin-bottom: 6px;
 }
 
-/* 歷史紀錄中的對話角色標籤 */
 .record-row span,
 .record-summary span {
     font-weight: 600;
@@ -360,7 +503,11 @@
     display: inline-block;
 }
 
-/* 修正與 React 中 className="record-summary" 對應的樣式 */
+.record-row {
+    background: #f9fafb;
+    border-left: 4px solid #e5e7eb;
+}
+
 .record-summary {
     color: #1e3a8a;
     background: #f0f6ff;
@@ -370,121 +517,15 @@
     border: 1px solid #dbeafe;
 }
 
-/* 對應下方列表中的歷史對話框樣式優化 */
-.record-row {
-    background: #f9fafb;
-    border-left: 4px solid #e5e7eb;
+.empty {
+    padding: 18px;
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.7);
 }
 
-/* 頂部手機模擬面板中的對話列基礎設定 */
-.chat-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
-    align-items: flex-start;
-}
-
-.chat-row.user {
-    flex-direction: row-reverse;
-}
-
-/* 對應面板中「你」與「AI」的泡泡對話框樣式 */
-.user-bubble {
-    background: #dbeafe;
-    color: #1e40af;
-    border-radius: 12px 2px 12px 12px;
-    padding: 10px 14px;
-    max-width: 75%;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    line-height: 1.5;
-}
-
-.ai-bubble {
-    background: #f3f4f6;
-    color: #1f2937;
-    border-radius: 2px 12px 12px 12px;
-    padding: 10px 14px;
-    max-width: 75%;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    line-height: 1.5;
-}
-
-/* 面板中的角色標籤樣式調整 */
-.user-badge {
-    background: #2563eb;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.ai-badge {
-    background: #374151;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-/* 面板一般文字與狀態優化 */
-.panel-item {
-    color: #111827;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 10px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-}
-
-.panel-item p {
-    color: #111827;
-    font-weight: 500;
-    margin: 0;
-    line-height: 1.5;
-}
-
-/* 錯誤狀態改為高對比，避免深色背景看不清 */
-.panel-item.is-error {
-    background: #7f1d1d;
-    border: 1px solid #fecaca;
-    color: #fff;
-    display: block;
-}
-
-.panel-item.is-error .panel-badge {
-    background: #fff;
-    color: #991b1b;
-    font-size: 20px;
-    font-weight: 700;
-}
-
-.panel-item.is-error p {
-    color: #fff;
-    font-size: 28px;
-    font-weight: 700;
-    line-height: 1.7;
-}
-
-.panel-list {
-    /* 設定一個固定高度，超出才會觸發滾動 */
-    overflow-y: auto;
-    /* 允許垂直方向滾動 */
-
-    /* 隱藏滾動條：適用於 Chrome, Safari, Opera 以及新版 Edge */
-    &::-webkit-scrollbar {
-        display: none;
-    }
-
-    /* 隱藏滾動條：適用於 Firefox */
-    scrollbar-width: none;
-
-    /* 隱藏滾動條：適用於舊版 IE 和 Edge */
-    -ms-overflow-style: none;
-}
-
+/* ── Animations ── */
 @keyframes rise {
     from {
         transform: translateY(12px);
@@ -509,14 +550,28 @@
     }
 }
 
+/* ── Mobile ── */
 @media (max-width: 600px) {
-    .consult-page {
-        padding: 24px;
+    .consult-header h2 {
+        font-size: 24px;
+    }
+
+    .consult-card {
+        width: 100%;
+        gap: 8px;
     }
 
     .panel {
-        width: min(86vw, 340px);
+        width: calc(100% - 48px);
+        max-width: 260px;
         min-height: 380px;
+        box-sizing: border-box;
+    }
+
+    .panel-top {
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 6px;
     }
 
     .panel-time {
@@ -529,43 +584,118 @@
         height: 16px;
     }
 
-
-
-    .summaryBtn,
-    .rawMsgBtn {
-        /* 僅改字體大小與最小寬度，保留既有 padding 與邊框 */
-        font-size: 13px;
-        min-width: 10px;
-        height: 34px;
-        line-height: 34px;
+    .panel-controls {
+        order: 2;
+        flex-basis: 100%;
+        display: flex;
+        gap: 44px;
+        justify-content: center;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(226, 232, 240, 0.06);
     }
 
-
-
-
-
-    @media (max-width: 420px) {
-        .panel {
-            width: min(90vw, 320px);
-            min-height: 360px;
-        }
-
-        .panel-time {
-            font-size: 10px;
-            letter-spacing: 0.04em;
-        }
-
-        .panel-notch {
-            gap: 6px;
-        }
-    }
-
-    .consult-header h2 {
-        font-size: 24px;
+    .panel-list {
+        padding-left: 0;
+        padding-right: 0;
+        -webkit-overflow-scrolling: touch;
     }
 
     .record-row,
     .record-summary {
         grid-template-columns: 48px 1fr;
+    }
+
+    .compact-header .summary-label {
+        font-size: 14px;
+        margin-right: 8px;
+    }
+
+    .panel-item.compact .summary-select {
+        width: 34%;
+        min-width: 90px;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    .summaryBtn,
+    .rawMsgBtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding-left: 12px;
+        padding-right: 34px;
+        font-size: 13px;
+        line-height: 1;
+        border-radius: 999px;
+        color: #64748b;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .summaryBtn::after,
+    .rawMsgBtn::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        transform: translateY(-50%);
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        pointer-events: none;
+    }
+
+    .summaryBtn {
+        background-color: #eef2f7;
+    }
+
+    .rawMsgBtn {
+        background-color: #eef2f7;
+    }
+
+    .summaryBtn::after {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' d='M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z' /></svg>");
+    }
+
+    .rawMsgBtn::after {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' d='M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z' /></svg>");
+    }
+
+    .summaryBtn.active,
+    .rawMsgBtn.active {
+        background-color: #2563eb;
+        color: #ffffff;
+    }
+}
+
+@media (max-width: 420px) {
+    .panel {
+        width: min(90vw, 320px);
+        min-height: 360px;
+    }
+
+    .panel-time {
+        font-size: 10px;
+        letter-spacing: 0.04em;
+    }
+
+    .panel-notch {
+        gap: 6px;
+    }
+
+    .compact-header .summary-label {
+        font-size: 13px;
+    }
+
+    .panel-item.compact .summary-select {
+        width: 38%;
+        min-width: 84px;
+        padding: 6px 8px;
+        font-size: 12px;
     }
 }
