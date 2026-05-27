@@ -607,12 +607,12 @@
     }
 
     .compact-header .summary-label {
-        font-size: 14px;
+        font-size: 1.5vw;
         margin-right: 8px;
     }
 
     .panel-item.compact .summary-select {
-        width: 34%;
+        width: 40%;
         min-width: 90px;
         padding: 8px 10px;
         font-size: 13px;
@@ -689,11 +689,11 @@
     }
 
     .compact-header .summary-label {
-        font-size: 13px;
+        font-size: 4.5vw;
     }
 
     .panel-item.compact .summary-select {
-        width: 38%;
+        width: 50%;
         min-width: 84px;
         padding: 6px 8px;
         font-size: 12px;
