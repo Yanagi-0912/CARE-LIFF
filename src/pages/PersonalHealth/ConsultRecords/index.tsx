@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import liff from '@line/liff';
 import {
     getAllSummaries,
     fetchConsultationMeRaw,
+    getConsultationSummaryDownloadToken,
+    buildConsultationSummaryDownloadUrl,
     summarizeConsultationMe,
 } from '../../../api/consultationApi';
 import './index.css';
@@ -15,6 +18,24 @@ interface ConsultRecord {
     summary: string;
     timestamp: number;
 }
+
+type SummaryValue = string | string[] | null;
+
+type SummarySection = {
+    key: string;
+    label: string;
+    value: SummaryValue;
+};
+
+type DownloadToastState = {
+    status: 'success' | 'error';
+    message: string;
+} | null;
+
+type SummaryToastState = {
+    status: 'success' | 'error';
+    message: string;
+} | null;
 
 const LOCAL_KEY = 'consult_records';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -35,6 +56,82 @@ function formatSummaryDate(summary: ConsultationSummary): string {
 
 function trimSummaryText(summary: ConsultationSummary): string {
     return summary.summary?.trim() || '目前沒有摘要內容';
+}
+
+function getSummarySource(summary: ConsultationSummary): unknown {
+    return summary.summary;
+}
+
+function parseSummaryContent(summary: ConsultationSummary): Record<string, unknown> | null {
+    const source = getSummarySource(summary);
+
+    if (source && typeof source === 'object' && !Array.isArray(source)) {
+        return source as Record<string, unknown>;
+    }
+
+    if (typeof source !== 'string') {
+        return null;
+    }
+
+    const trimmed = source.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed as Record<string, unknown>;
+        }
+    }
+    catch {
+        return null;
+    }
+
+    return null;
+}
+
+function stringifySummaryValue(value: unknown): string {
+    if (value === null || value === undefined) {
+        return '無';
+    }
+
+    if (Array.isArray(value)) {
+        return value.length > 0 ? value.map(item => `- ${String(item)}`).join('\n') : '無';
+    }
+
+    if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2);
+    }
+
+    return String(value).trim() || '無';
+}
+
+function toSummarySections(summary: ConsultationSummary): SummarySection[] {
+    const content = parseSummaryContent(summary);
+
+    if (!content) {
+        const fallback = trimSummaryText(summary);
+        return fallback
+            ? [{ key: 'summary', label: '摘要內容', value: fallback }]
+            : [];
+    }
+
+    return Object.entries(content)
+        .map(([key, rawValue]) => ({
+            key,
+            label: key,
+            value: Array.isArray(rawValue)
+                ? (rawValue as string[])
+                : stringifySummaryValue(rawValue),
+        }))
+        .filter(section => {
+            if (Array.isArray(section.value)) {
+                return section.value.length > 0;
+            }
+
+            return String(section.value ?? '').trim().length > 0;
+        });
 }
 
 function saveRecords(records: ConsultRecord[]) {
@@ -69,19 +166,24 @@ const ConsultRecordsPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryActionLoading, setSummaryActionLoading] = useState(false);
+    const [downloadLoading, setDownloadLoading] = useState(false);
     const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [downloadToast, setDownloadToast] = useState<DownloadToastState>(null);
+    const [summaryToast, setSummaryToast] = useState<SummaryToastState>(null);
 
     const selectedSummary =
         summaryItems.find(item => getSummaryKey(item) === selectedSummaryKey) ||
         summaryItems[0] ||
         null;
 
+    const selectedSummarySections = selectedSummary ? toSummarySections(selectedSummary) : [];
+
     const truncateText = (text: string, maxLength: number = 100): string => {
         if (!text) return '（無內容）';
         return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
     };
 
-    const loadSummary = async () => {
+    const loadSummary = async (preserveSelection: boolean = true) => {
         setSummaryLoading(true);
         setSummaryError(null);
         try {
@@ -96,6 +198,10 @@ const ConsultRecordsPage: React.FC = () => {
 
                 const firstKey = getSummaryKey(summaries[0] || {} as ConsultationSummary);
                 setSelectedSummaryKey(previousKey => {
+                    if (!preserveSelection) {
+                        return firstKey;
+                    }
+
                     if (previousKey && summaries.some(item => getSummaryKey(item) === previousKey)) {
                         return previousKey;
                     }
@@ -148,13 +254,37 @@ const ConsultRecordsPage: React.FC = () => {
         if (filtered.length !== all.length) saveRecords(filtered);
     }, []);
 
+    useEffect(() => {
+        if (!downloadToast) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            setDownloadToast(null);
+        }, 3000);
+
+        return () => window.clearTimeout(timer);
+    }, [downloadToast]);
+
+    useEffect(() => {
+        if (!summaryToast) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            setSummaryToast(null);
+        }, 3000);
+
+        return () => window.clearTimeout(timer);
+    }, [summaryToast]);
+
     const handleSummarizeNow = async () => {
         setSummaryActionLoading(true);
-        setSummaryError(null);
+        setSummaryToast(null);
         try {
             const result = await summarizeConsultationMe({ force: true });
             const newSummary = result.summary?.trim() || null;
-            await loadSummary();
+            await loadSummary(false);
             setViewMode('summary');
 
             if (newSummary) {
@@ -169,28 +299,63 @@ const ConsultRecordsPage: React.FC = () => {
                 setRecords(updated);
                 saveRecords(updated);
             }
+
+            setSummaryToast({
+                status: newSummary ? 'success' : 'error',
+                message: newSummary ? '摘要已成功產生' : '摘要已產生，但目前沒有可顯示的內容',
+            });
         }
         catch (error) {
-            setSummaryError(error instanceof Error ? error.message : '產生摘要失敗');
+            setSummaryToast({
+                status: 'error',
+                message: error instanceof Error ? error.message : '產生摘要失敗',
+            });
         }
         finally {
             setSummaryActionLoading(false);
         }
     };
 
-    const handleDownload = () => {
-        const data = JSON.stringify(records, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `consult_records_${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const handleDownload = async () => {
+        setDownloadLoading(true);
+        setDownloadToast(null);
+
+        try {
+            const tokenResult = await getConsultationSummaryDownloadToken();
+            const downloadUrl = buildConsultationSummaryDownloadUrl(tokenResult.downloadToken);
+
+            if (liff.isInClient()) {
+                liff.openWindow({ url: downloadUrl, external: true });
+                setDownloadToast({
+                    status: 'success',
+                    message: '下載連結已在外部瀏覽器開啟',
+                });
+                return;
+            }
+        }
+        catch (error) {
+            setDownloadToast({
+                status: 'error',
+                message: error instanceof Error ? error.message : '下載摘要失敗',
+            });
+        }
+        finally {
+            setDownloadLoading(false);
+        }
     };
 
     return (
         <div className="consult-page">
+            {summaryToast && (
+                <div className={`saveToast ${summaryToast.status === 'success' ? 'saveToastSuccess' : 'saveToastError'}`}>
+                    {summaryToast.message}
+                </div>
+            )}
+            {downloadToast && (
+                <div className={`saveToast ${downloadToast.status === 'success' ? 'saveToastSuccess' : 'saveToastError'}`}>
+                    {downloadToast.message}
+                </div>
+            )}
             <header className="consult-header">
                 <h2>健康諮詢紀錄</h2>
                 <p>保存並顯示當天的對話，並以 AI 摘要整理重點，摘要將保存七天。</p>
@@ -276,10 +441,24 @@ const ConsultRecordsPage: React.FC = () => {
                                                     </select>
                                                 </div>
 
-                                                <div className="markdown-content compact-body">
-                                                    <ReactMarkdown>
-                                                        {trimSummaryText(selectedSummary)}
-                                                    </ReactMarkdown>
+                                                <div className="summary-viewer compact-body">
+                                                    <div className="summary-title">醫療諮詢紀錄摘要</div>
+                                                    {selectedSummarySections.length > 0 ? (
+                                                        selectedSummarySections.map(section => (
+                                                            <section key={section.key} className="summary-section">
+                                                                <div className="summary-section-title">{section.label}</div>
+                                                                <div className="summary-section-body markdown-content">
+                                                                    <ReactMarkdown>
+                                                                        {Array.isArray(section.value)
+                                                                            ? section.value.map(item => `- ${item}`).join('\n')
+                                                                            : section.value ?? '無'}
+                                                                    </ReactMarkdown>
+                                                                </div>
+                                                            </section>
+                                                        ))
+                                                    ) : (
+                                                        <div className="summary-empty">目前沒有摘要內容</div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </>
@@ -328,7 +507,9 @@ const ConsultRecordsPage: React.FC = () => {
                     >
                         {summaryActionLoading ? '摘要產生中...' : '立即產生摘要'}
                     </button>
-                    <button onClick={handleDownload} className="btn ghost">下載所有紀錄（JSON）</button>
+                    <button onClick={handleDownload} className="btn ghost" disabled={downloadLoading}>
+                        {downloadLoading ? '下載準備中...' : '下載所有紀錄（JSON）'}
+                    </button>
                 </div>
             </section>
         </div>

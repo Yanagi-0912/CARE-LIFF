@@ -5,6 +5,11 @@ import type {
 } from '../types/consultation'
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
+export interface ConsultationDownloadTokenResponse {
+    downloadToken: string
+    expiresIn: number
+}
+
 function getAuthToken() {
     const token = (localStorage.getItem('CARE_AUTH_TOKEN') || '').trim()
     if (!token) {
@@ -54,6 +59,27 @@ export async function getAllSummaries(): Promise<ConsultationSummary[]> {
             summary: summary.summary?.trim() || '',
         }))
         : []
+}
+
+export async function getConsultationSummaryDownloadToken(): Promise<ConsultationDownloadTokenResponse> {
+    const res = await fetch(`${BASE_URL}/api/consultations/me/allsummaries/downloadtoken`, {
+        method: 'GET',
+        headers: buildAuthHeaders(),
+    })
+
+    if (!res.ok) {
+        const message = buildConsultationErrorMessage(
+            res.status,
+            `取得摘要下載票券失敗：${res.status}`,
+        )
+        throw new Error(message)
+    }
+
+    return (await res.json()) as ConsultationDownloadTokenResponse
+}
+
+export function buildConsultationSummaryDownloadUrl(downloadToken: string): string {
+    return `${BASE_URL}/api/consultations/me/allsummaries/download?downloadToken=${encodeURIComponent(downloadToken)}`
 }
 
 //優先回傳摘要，沒有就回傳原始訊息
