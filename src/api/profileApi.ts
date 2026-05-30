@@ -114,13 +114,17 @@ export async function upsertPersonalHealthProfile(
     return res.json()
 }
 
-export async function getPersonalHealthProfile() {
+export async function getPersonalHealthProfile(userId?: string) {
     const token = (localStorage.getItem('CARE_AUTH_TOKEN') || '').trim()
     if (!token) {
         throw new Error('缺少登入憑證，請先重新登入')
     }
 
-    const res = await fetch(`${BASE_URL}/api/profiles/me`, {
+    const url = userId
+        ? `${BASE_URL}/api/profiles/${encodeURIComponent(userId)}`
+        : `${BASE_URL}/api/profiles/me`
+
+    const res = await fetch(url, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
