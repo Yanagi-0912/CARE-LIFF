@@ -44,10 +44,24 @@ export function MemberCard({ member }: Props) {
     }
   }, [expanded, health, healthLoading, member.user_id]);
 
-  const hasAnyData = health && (
-    health.age != null || health.gender || health.height != null
-    || health.weight != null || health.chronic_history
-    || health.major_illness_history || health.surgery_history
+  const isDefaultProfile = health && (
+    health.age === 0 &&
+    health.gender === 'unknown' &&
+    health.height === 1.0 &&
+    health.weight === 1.0 &&
+    !health.chronic_history &&
+    !health.major_illness_history &&
+    !health.surgery_history
+  );
+
+  const hasAnyData = health && !isDefaultProfile && (
+    (health.age != null && health.age !== 0) ||
+    (health.gender && health.gender !== 'unknown') ||
+    (health.height != null && health.height !== 1.0) ||
+    (health.weight != null && health.weight !== 1.0) ||
+    health.chronic_history ||
+    health.major_illness_history ||
+    health.surgery_history
   );
 
   return (
@@ -87,7 +101,7 @@ export function MemberCard({ member }: Props) {
             <p className="health-error">⚠️ {healthError}</p>
           ) : hasAnyData ? (
             <div className="health-fields">
-              {health!.age != null && (
+              {health!.age != null && health!.age !== 0 && (
                 <div className="health-field">
                   <span className="health-label">年齡</span>
                   <span className="health-value">{health!.age} 歲</span>
@@ -96,16 +110,16 @@ export function MemberCard({ member }: Props) {
               {health!.gender && (
                 <div className="health-field">
                   <span className="health-label">性別</span>
-                  <span className="health-value">{health!.gender}</span>
+                  <span className="health-value">{health!.gender === 'unknown' ? '未設定' : health!.gender}</span>
                 </div>
               )}
-              {(health!.height != null || health!.weight != null) && (
+              {((health!.height != null && health!.height !== 1.0) || (health!.weight != null && health!.weight !== 1.0)) && (
                 <div className="health-field">
                   <span className="health-label">身體指標</span>
                   <span className="health-value">
-                    {health!.height != null ? `${health!.height} cm` : ''}
-                    {health!.height != null && health!.weight != null ? ' / ' : ''}
-                    {health!.weight != null ? `${health!.weight} kg` : ''}
+                    {health!.height != null && health!.height !== 1.0 ? `${health!.height} cm` : ''}
+                    {health!.height != null && health!.height !== 1.0 && health!.weight != null && health!.weight !== 1.0 ? ' / ' : ''}
+                    {health!.weight != null && health!.weight !== 1.0 ? `${health!.weight} kg` : ''}
                   </span>
                 </div>
               )}

@@ -1,9 +1,12 @@
+import type { HealthProfile } from '../api/profileApi';
+
 /** 族譜中的一位成員 */
 export interface FamilyMember {
   user_id: string;
   relationship_type: string | null;
   display_name?: string;   // 後續由後端擴充提供（方案 A）
   picture_url?: string;    // 後續由後端擴充提供（方案 A）
+  health_profile?: HealthProfile;
 }
 
 /** 完整族譜 */
