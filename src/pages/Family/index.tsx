@@ -4,27 +4,12 @@ import { useToast } from '../../hooks/useToast';
 import { useFamily } from './useFamily';
 import { MemberCard } from './MemberCard';
 import { InviteButton } from './InviteButton';
-import { RELATIONSHIP_LABEL } from '../../types/family';
-import type { FamilyMember } from '../../types/family';
-
-
-/** LIFF App ID — 由環境變數注入，或留空讓 init 時跳過 */
-const LIFF_ID = import.meta.env.VITE_LIFF_ID || '';
 
 const FamilyPage = () => {
   const { t } = useI18n();
   const { liffReady } = useLiff();
   const { members, loading, error, refetch } = useFamily();
   const { toast, showToast } = useToast();
-
-  /* ── 顯示名稱 (方案 A：優先使用 display_name，否則顯示 user_id 前 8 碼) ── */
-  const getDisplayName = (m: FamilyMember) => m.display_name || m.user_id.slice(0, 8);
-
-  /* ── 顯示稱謂 ──────────────────────────────────────── */
-  const getRelationLabel = (m: FamilyMember) => {
-    if (!m.relationship_type) return t('family.unset');
-    return RELATIONSHIP_LABEL[m.relationship_type] || m.relationship_type;
-  };
 
   /* ── render ────────────────────────────────────────── */
   return (

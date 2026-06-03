@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
@@ -16,7 +16,7 @@ import Login from './pages/Loginpage';
 import { isAuthenticated } from './utils/auth';
 
 // 1. 新增 ProtectedRoute 元件
-function ProtectedRoute({ children }: { children: JSX.Element }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
