@@ -170,7 +170,8 @@ const ConsultRecordsPage: React.FC = () => {
     const [summaryError, setSummaryError] = useState<string | null>(null);
     const [downloadToast, setDownloadToast] = useState<DownloadToastState>(null);
     const [summaryToast, setSummaryToast] = useState<SummaryToastState>(null);
-
+    //顯示詳細對話內容
+    const [selectedMessage, setSelectedMessage] = useState<ConsultationMessage | null>(null);
     const selectedSummary =
         summaryItems.find(item => getSummaryKey(item) === selectedSummaryKey) ||
         summaryItems[0] ||
@@ -323,7 +324,7 @@ const ConsultRecordsPage: React.FC = () => {
         try {
             const tokenResult = await getConsultationSummaryDownloadToken();
             const downloadUrl = buildConsultationSummaryDownloadUrl(tokenResult.downloadToken);
-
+            // isInClient確認是否在LINE內建瀏覽器，false表示在外部瀏覽器
             if (liff.isInClient()) {
                 liff.openWindow({ url: downloadUrl, external: true });
                 setDownloadToast({
@@ -332,6 +333,8 @@ const ConsultRecordsPage: React.FC = () => {
                 });
                 return;
             }
+            // 電腦版
+            window.location.href = downloadUrl;
         }
         catch (error) {
             setDownloadToast({
@@ -471,6 +474,7 @@ const ConsultRecordsPage: React.FC = () => {
                                 )}
 
                                 {viewMode === 'raw' && (
+                                    // 2. raw 訊息列表加上 onClick（取代原本 hasRawMessages ? rawMessages.map(...) 這段）
                                     hasRawMessages ? (
                                         rawMessages.map((message, index) => {
                                             const isYou = message.message_type === 'text';
@@ -478,6 +482,14 @@ const ConsultRecordsPage: React.FC = () => {
                                                 <div
                                                     key={`raw_${index}`}
                                                     className={`chat-row ${isYou ? 'user' : 'ai'}`}
+                                                    onClick={() => setSelectedMessage(message)}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onKeyDown={event => {
+                                                        if (event.key === 'Enter' || event.key === ' ') {
+                                                            setSelectedMessage(message);
+                                                        }
+                                                    }}
                                                 >
                                                     <div className={`panel-badge ${isYou ? 'user-badge' : 'ai-badge'}`}>
                                                         {isYou ? '你' : 'AI'}
@@ -512,6 +524,34 @@ const ConsultRecordsPage: React.FC = () => {
                     </button>
                 </div>
             </section>
+            {/* Modal 區塊，放在 return 的最後面 */}
+            {selectedMessage && (
+                <div className="modal-overlay" onClick={() => setSelectedMessage(null)}>
+                    <div className="modal-content" onClick={event => event.stopPropagation()}>
+                        <button
+                            type="button"
+                            className="modal-close"
+                            aria-label="關閉視窗"
+                            onClick={() => setSelectedMessage(null)}
+                        >
+                            ×
+                        </button>
+
+                        <div className={`modal-header ${selectedMessage.message_type === 'text' ? 'is-user' : 'is-ai'}`}>
+                            <div className="modal-avatar">
+                                {selectedMessage.message_type === 'text' ? '你' : 'AI'}
+                            </div>
+                            <h3 className="modal-title">
+                                {selectedMessage.message_type === 'text' ? '你的訊息' : 'AI 回覆'}
+                            </h3>
+                        </div>
+
+                        <div className="modal-body markdown-content">
+                            <ReactMarkdown>{selectedMessage.content || '（無內容）'}</ReactMarkdown>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

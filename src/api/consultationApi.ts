@@ -62,7 +62,7 @@ export async function getAllSummaries(): Promise<ConsultationSummary[]> {
 }
 
 export async function getConsultationSummaryDownloadToken(): Promise<ConsultationDownloadTokenResponse> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/allsummaries/downloadtoken`, {
+    const res = await fetch(`${BASE_URL}/api/consultations/me/summary/downloadtoken`, {
         method: 'GET',
         headers: buildAuthHeaders(),
     })
@@ -70,7 +70,7 @@ export async function getConsultationSummaryDownloadToken(): Promise<Consultatio
     if (!res.ok) {
         const message = buildConsultationErrorMessage(
             res.status,
-            `取得摘要下載票券失敗：${res.status}`,
+            `取得摘要下載token失敗：${res.status}`,
         )
         throw new Error(message)
     }
@@ -79,51 +79,13 @@ export async function getConsultationSummaryDownloadToken(): Promise<Consultatio
 }
 
 export function buildConsultationSummaryDownloadUrl(downloadToken: string): string {
-    return `${BASE_URL}/api/consultations/me/allsummaries/download?downloadToken=${encodeURIComponent(downloadToken)}`
+    return `${BASE_URL}/api/consultations/me/summary/download?downloadToken=${encodeURIComponent(downloadToken)}`
 }
 
-//優先回傳摘要，沒有就回傳原始訊息
-export async function fetchConsultationSummary(): Promise<ConsultationViewResponse> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me`, {
-        method: 'GET',
-        headers: buildAuthHeaders(),
-    })
-
-    if (!res.ok) {
-        const message = buildConsultationErrorMessage(
-            res.status,
-            `取得諮詢紀錄失敗：${res.status}`,
-        )
-        throw new Error(message)
-    }
-
-    const data = (await res.json()) as ConsultationViewResponse
-    const summary =
-        data.summary?.trim() ||
-        data.consultation_summary?.trim() ||
-        data.data?.summary?.trim() ||
-        data.data?.consultation_summary?.trim() ||
-        null
-
-    const messages =
-        data.messages ??
-        data.conversation ??
-        data.records ??
-        data.data?.messages ??
-        data.data?.conversation ??
-        data.data?.records ??
-        []
-
-    return {
-        ...data,
-        summary: summary ?? undefined,
-        messages,
-    }
-}
 
 //回傳原始訊息
 export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/raw`, {
+    const res = await fetch(`${BASE_URL}/api/consultations/me/messages/raw`, {
         method: 'GET',
         headers: buildAuthHeaders(),
     })
@@ -156,7 +118,7 @@ export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse
 export async function summarizeConsultationMe(
     payload: ConsultationSummarizePayload = {},
 ): Promise<ConsultationSummary> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/summarize`, {
+    const res = await fetch(`${BASE_URL}/api/consultations/me/summary/generate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
