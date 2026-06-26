@@ -22,9 +22,16 @@ function useAutoClose<T>(value: T, setter: (v: null) => void) {
     }, [value, setter]);
 }
 
-const truncateText = (text: string) => !text ? '（無內容）' : text.length > 50 ? `${text.slice(0, 50)}...` : text;
+const truncateText = (text: string) => {
+    if (!text)
+        return '（無內容）';
+    if (text.length > 50)
+        return `${text.slice(0, 50)}...`;
+    return text;
+};
 const getSummaryKey = (s: ConsultationSummary) => s?.summary_date ?? '';
-const formatSummaryDate = (s: ConsultationSummary) => getSummaryKey(s).slice(0, 10).replace(/-/g, '/') || '未命名日期';
+const formatSummaryDate = (s: ConsultationSummary) =>
+    getSummaryKey(s).slice(0, 10).replaceAll('-', '/') || '未命名日期';
 
 function toSummarySections(summary: ConsultationSummary): SummarySection[] {
     const source = summary.summary;
@@ -58,7 +65,8 @@ function toSummarySections(summary: ConsultationSummary): SummarySection[] {
             } else if (typeof val === 'object') {
                 finalValue = JSON.stringify(val, null, 2);
             } else {
-                finalValue = String(val).trim() || '無';
+                const trimmed = String(val).trim();
+                finalValue = trimmed || '無';
             }
 
             return {
@@ -159,7 +167,7 @@ const ConsultRecordsPage: React.FC = () => {
                 liff.openWindow({ url: downloadUrl, external: true });
                 setToast({ status: 'success', message: '下載連結已在外部瀏覽器開啟' });
             } else {
-                window.location.href = downloadUrl;
+                globalThis.location.href = downloadUrl;
             }
         } catch (error) {
             setToast({ status: 'error', message: error instanceof Error ? error.message : '下載摘要失敗' });
