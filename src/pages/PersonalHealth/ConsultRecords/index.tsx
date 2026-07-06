@@ -6,7 +6,6 @@ import {
     fetchConsultationMeRaw,
     getConsultationSummaryDownloadToken,
     buildConsultationSummaryDownloadUrl,
-    summarizeConsultationMe,
 } from '../../../api/consultationApi';
 import './index.css';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
@@ -65,8 +64,7 @@ function toSummarySections(summary: ConsultationSummary): SummarySection[] {
             } else if (typeof val === 'object') {
                 finalValue = JSON.stringify(val, null, 2);
             } else {
-                const trimmed = String(val).trim();
-                finalValue = trimmed || '無';
+                finalValue = String(val).trim() || '無';
             }
 
             return {
@@ -143,21 +141,6 @@ const ConsultRecordsPage: React.FC = () => {
 
     useEffect(() => { loadSummary(); }, []);
 
-    const handleSummarizeNow = async () => {
-        setLoading(prev => ({ ...prev, action: true })); setToast(null);
-        try {
-            const result = await summarizeConsultationMe({ force: true });
-            const hasContent = !!result.summary?.trim();
-            await loadSummary(false);
-            setViewMode('summary');
-            setToast({ status: hasContent ? 'success' : 'error', message: hasContent ? '摘要已成功產生' : '摘要已產生，但目前沒有可顯示的內容' });
-        } catch (error) {
-            setToast({ status: 'error', message: error instanceof Error ? error.message : '產生摘要失敗' });
-        } finally {
-            setLoading(prev => ({ ...prev, action: false }));
-        }
-    };
-
     const handleDownload = async () => {
         setLoading(prev => ({ ...prev, download: true })); setToast(null);
         try {
@@ -182,7 +165,7 @@ const ConsultRecordsPage: React.FC = () => {
 
             <header className="consult-header">
                 <h2>健康諮詢紀錄</h2>
-                <p>保存並顯示當天的對話，並以 AI 摘要整理重點，摘要將保存七天。</p>
+                <p>保存並顯示24小時內的對話，並定時以 AI 摘要整理重點，摘要至多保存20筆。</p>
             </header>
 
             <section className="consult-card">
@@ -232,9 +215,20 @@ const ConsultRecordsPage: React.FC = () => {
                                     rawMessages.length > 0 ? rawMessages.map((msg, idx) => {
                                         const isYou = msg.message_type === 'text';
                                         return (
-                                            <div key={`raw_${idx}`} className={`chat-row ${isYou ? 'user' : 'ai'}`} onClick={() => setSelectedMessage(msg)} role="button" tabIndex={0} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedMessage(msg)}>
-                                                <div className={`panel-badge ${isYou ? 'user-badge' : 'ai-badge'}`}>{isYou ? '你' : 'AI'}</div>
-                                                <div className={`chat-bubble ${isYou ? 'user-bubble' : 'ai-bubble'}`}>{truncateText(msg.content || "")}</div>
+                                            <div
+                                                key={`raw_${idx}`}
+                                                className={`chat-row ${isYou ? 'user' : 'ai'}`}
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => setSelectedMessage(msg)}
+                                                onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedMessage(msg)}
+                                            >
+                                                <div className={`panel-badge ${isYou ? 'user-badge' : 'ai-badge'}`}>
+                                                    {isYou ? '你' : 'AI'}
+                                                </div>
+                                                <div className={`chat-bubble ${isYou ? 'user-bubble' : 'ai-bubble'}`}>
+                                                    {truncateText(msg.content || '')}
+                                                </div>
                                             </div>
                                         );
                                     }) : <div className="panel-item is-empty"><div className="panel-badge">AI</div><p>目前沒有對話紀錄。</p></div>
@@ -245,14 +239,23 @@ const ConsultRecordsPage: React.FC = () => {
                 </div>
 
                 <div className="form-actions">
-                    <button onClick={handleSummarizeNow} className="btn primary" disabled={loading.action}>{loading.action ? '摘要產生中...' : '立即產生摘要'}</button>
-                    <button onClick={handleDownload} className="btn ghost" disabled={loading.download}>{loading.download ? '下載準備中...' : '下載所有紀錄（JSON）'}</button>
+                    {/*<button onClick={handleSummarizeNow} className="btn primary" disabled={loading.action}>{loading.action ? '摘要產生中...' : '立即產生摘要'}</button>*/}
+                    <button onClick={handleDownload} className="btn ghost" disabled={loading.download}>{loading.download ? '下載準備中...' : '下載所有摘要'}</button>
                 </div>
             </section>
 
             {selectedMessage && (
-                <div className="modal-overlay" onClick={() => setSelectedMessage(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div
+                    className="modal-overlay"
+                    onClick={() => setSelectedMessage(null)}
+                    role="presentation"
+                >
+                    <div
+                        className="modal-content"
+                        onClick={e => e.stopPropagation()}
+                        role="dialog"//role屬性是為這個元素賦予明確的語義和功能角色
+                        aria-modal="true"
+                    >
                         <button type="button" className="modal-close" aria-label="關閉視窗" onClick={() => setSelectedMessage(null)}>×</button>
                         <div className={`modal-header ${selectedMessage.message_type === 'text' ? 'is-user' : 'is-ai'}`}>
                             <div className="modal-avatar">{selectedMessage.message_type === 'text' ? '你' : 'AI'}</div>
