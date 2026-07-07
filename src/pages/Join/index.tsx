@@ -111,7 +111,7 @@ const JoinPage: React.FC = () => {
           </div>
         ) : state === 'already_member' ? (
           <div className="result-content">
-            <div className="icon-info">ℹ️</div>
+            <div className="icon-info">i</div>
             <h1>已是成員</h1>
             <p>您已經在此家族成員名單中。</p>
             <button className="btn-primary" onClick={() => navigate('/family')}>
@@ -120,13 +120,13 @@ const JoinPage: React.FC = () => {
           </div>
         ) : state === 'success' ? (
           <div className="result-content">
-            <div className="icon-success">🎉</div>
+            <div className="icon-success">✓</div>
             <h1>加入成功！</h1>
             <p>正在為您導向家族頁面...</p>
           </div>
         ) : (
           <div className="result-content">
-            <div className="icon-error">❌</div>
+            <div className="icon-error">×</div>
             <h1>連結無效</h1>
             <p>{error}</p>
             <button className="btn-primary" onClick={() => navigate('/')}>

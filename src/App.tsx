@@ -14,6 +14,7 @@ import type { SettingsState } from './pages/Settings';
 import './App.css';
 import Login from './pages/Loginpage';
 import { isAuthenticated } from './utils/auth';
+import { getTheme, applyThemeAttribute } from './utils/theme';
 
 // 1. 新增 ProtectedRoute 元件
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -37,6 +38,8 @@ function AppContent() {
       // ignore
     }
     applyTheme(settings);
+    // 套用已儲存的深色/淺色主題（index.html 的早期腳本已先設定，這裡確保一致）
+    applyThemeAttribute(getTheme());
   }, []);
 
   return (
@@ -48,7 +51,8 @@ function AppContent() {
         {/* 3. 如果不是登入頁，才顯示 Sidebar */}
         {!isStandalonePage && <Sidebar />}
         
-        <main className="content-area">
+        {/* key 綁定路徑：切頁時重新掛載，觸發進場動畫 */}
+        <main className="content-area" key={location.pathname}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/join" element={<JoinPage />} />

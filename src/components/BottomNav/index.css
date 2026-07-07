@@ -1,16 +1,17 @@
+/* ── 底部導覽列（手機版）── */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: white;
+  background: var(--surface);
+  border-top: 1px solid var(--hair);
   display: flex;
   justify-content: space-around;
-  padding: 12px 0;
-  border-top: 1px solid #e5e7eb;
+  padding: 8px 0;
   z-index: 100;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -4px 16px -8px rgba(20, 32, 29, 0.12);
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .nav-item {
@@ -20,22 +21,46 @@
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  color: #9ca3af;
-  gap: 4px;
+  color: var(--faint);
+  gap: 3px;
   min-width: 64px;
-}
-
-.nav-item.active {
-  color: #0D9488;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  transition: color var(--dur-1) var(--ease);
 }
 
 .nav-item .icon {
-  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  border-radius: var(--r-pill);
+  transition: background var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
+}
+
+.nav-item:active .icon {
+  transform: scale(0.88);
+}
+
+/* 現在頁面：icon 加上綠色膠囊底 + 彈跳一下 */
+.nav-item.active {
+  color: var(--primary-strong);
+}
+
+.nav-item.active .icon {
+  background: var(--primary-soft);
+  animation: navPop 320ms var(--ease-out);
+}
+
+@keyframes navPop {
+  0% { transform: scale(0.8); }
+  55% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 .nav-item .label {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.72rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
