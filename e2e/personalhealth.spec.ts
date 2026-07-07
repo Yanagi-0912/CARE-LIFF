@@ -193,7 +193,7 @@ test.describe('個人健康頁面 (Personal Health Page) 完整測試', () => {
     });
 
     await page.goto('http://localhost:5173/personalhealth');
-    await expect(page.getByText(/取得個人資料失敗：401/)).toBeVisible();
+    await expect(page.getByText('取得個人資料失敗:401')).toBeVisible();
   });
 
   test('缺少必要權限應該顯示錯誤訊息', async ({ page }) => {
@@ -211,6 +211,6 @@ test.describe('個人健康頁面 (Personal Health Page) 完整測試', () => {
     });
 
     await page.goto('http://localhost:5173/personalhealth');
-    await expect(page.getByText(/取得個人資料失敗：403/)).toBeVisible();
+    await expect(page.getByText('取得個人資料失敗:403')).toBeVisible();
   });
 });
