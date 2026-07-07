@@ -3,10 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { upsertPersonalHealthProfile, getPersonalHealthProfile } from '../../api/profileApi';
 import liff from '@line/liff';
 import './index.css';
-/*http://localhost:5173/personalHealth*/
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
-
 interface HealthData {
     name: string;
     gender: string;
@@ -137,38 +135,42 @@ const PersonalHealthPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const initializeUserProfile = () => {
-            if (!LIFF_ID) {
-                setLiffError('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
-                return;
+        const initializeUserProfile = async () => {
+            // 1. 獨立的後端 API 載入流程：/me API 由 token 辨識使用者，不需要前端提供 userId
+            try {
+                const data = await getPersonalHealthProfile();
+                handleUserProfileData(data);
+            } catch (error) {
+                console.warn('載入使用者資料失敗:', error);
+                setLiffError(error instanceof Error ? error.message : '取得個人資料失敗，請稍後再試。');
             }
 
-            liff
-                .init({ liffId: LIFF_ID })
-                .then(() => {
-                    setLiffReady(true);
+            // 2. 獨立的 LINE LIFF 初始化流程
+            if (!LIFF_ID) {
+                setLiffError('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
+                console.error('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
+            } else {
+                liff
+                    .init({ liffId: LIFF_ID })
+                    .then(() => {
+                        setLiffReady(true);
 
-                    // 1. 從 LIFF 獲取 user 頭像資訊
-                    liff
-                        .getProfile()
-                        .then(handleLiffProfile)
-                        .catch((err) => {
-                            console.warn('獲取 LIFF 用戶資訊失敗:', err);
-                        });
-
-                    // /me API 由 token 辨識使用者，不需要前端提供 userId
-                    return getPersonalHealthProfile();
-                })
-                .then(handleUserProfileData)
-                .catch((error) => {
-                    console.warn('LIFF 初始化或載入使用者資料失敗:', error);
-                    setLiffError(error instanceof Error ? error.message : 'LIFF 初始化失敗，請稍後再試。');
-                });
+                        // 1. 從 LIFF 獲取 user 頭像資訊
+                        liff
+                            .getProfile()
+                            .then(handleLiffProfile)
+                            .catch((err) => {
+                                console.warn('獲取 LIFF 用戶資訊失敗:', err);
+                            });
+                    })
+                    .catch((error) => {
+                        console.warn('LIFF 初始化失敗:', error);
+                    });
+            }
         };
 
         initializeUserProfile();
     }, []);
-
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -532,7 +534,6 @@ const PersonalHealthPage: React.FC = () => {
                     查看諮詢紀錄
                 </button>
             </div>
-
         </div>
     );
 };
