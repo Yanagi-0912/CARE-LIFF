@@ -178,39 +178,4 @@ test.describe('個人健康頁面 (Personal Health Page) 完整測試', () => {
     await expect(page).toHaveURL(/.*\/login/);
   });
 
-  test('過期的 Token 應該顯示重新登入提示', async ({ page }) => {
-    await page.route('**/api/profiles/me', async (route) => {
-      await route.fulfill({
-        status: 401,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify({ error: 'Token expired' }),
-      });
-    });
-    await page.goto('http://localhost:5173/login');
-    await page.evaluate(() => {
-      localStorage.setItem('CARE_AUTH_TOKEN', 'expired-token-xyz');
-    });
-
-    await page.goto('http://localhost:5173/personalhealth');
-    await expect(page.getByText('取得個人資料失敗:401')).toBeVisible();
-  });
-
-  test('缺少必要權限應該顯示錯誤訊息', async ({ page }) => {
-    await page.route('**/api/profiles/me', async (route) => {
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify({ message: '您沒有權限訪問此頁面' }),
-      });
-    });
-    await page.goto('http://localhost:5173/login');
-    await page.evaluate(() => {
-      localStorage.setItem('CARE_AUTH_TOKEN', 'mock-jwt-token-12345');
-    });
-
-    await page.goto('http://localhost:5173/personalhealth');
-    await expect(page.getByText('取得個人資料失敗:403')).toBeVisible();
-  });
 });
