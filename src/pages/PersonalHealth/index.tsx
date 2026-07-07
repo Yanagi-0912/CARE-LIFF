@@ -140,9 +140,15 @@ const PersonalHealthPage: React.FC = () => {
             try {
                 const data = await getPersonalHealthProfile();
                 handleUserProfileData(data);
-            } catch (error) {
+            } catch (error: any) {
                 console.warn('載入使用者資料失敗:', error);
-                setLiffError(error instanceof Error ? error.message : '取得個人資料失敗，請稍後再試。');
+                const status = error.response?.status || error.status;
+                if (status) {
+                    // 配合 Playwright 測試案例的 getByText(/取得個人資料失敗：401/)
+                    setLiffError(`取得個人資料失敗：${status}`);
+                } else {
+                    setLiffError(error instanceof Error ? error.message : '取得個人資料失敗，請稍後再試。');
+                }
             }
 
             // 2. 獨立的 LINE LIFF 初始化流程
