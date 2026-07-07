@@ -153,7 +153,7 @@ const PersonalHealthPage: React.FC = () => {
 
             // 2. 獨立的 LINE LIFF 初始化流程
             if (!LIFF_ID) {
-                setLiffError('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
+                setLiffError((prev) => prev || '尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
                 console.error('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
             } else {
                 liff
