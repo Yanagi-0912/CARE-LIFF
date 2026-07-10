@@ -158,6 +158,20 @@ textarea.input.longInput {
     outline: none;
 }
 
+/* 輸入框出錯時的框線 */
+.inputHasError {
+    border-color: #ff4d4f !important;
+}
+
+/* 欄位下方的獨立錯誤文字 */
+.fieldErrorText {
+    color: #ff4d4f;
+    font-size: 2.5vh;
+    margin-top: 4px;
+    display: block;
+    font-weight: 600;
+}
+
 /* select */
 select.input {
     max-width: 300px;
