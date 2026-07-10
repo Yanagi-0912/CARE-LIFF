@@ -1,12 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import './index.css';
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { HomeIcon, HealthIcon, FamilyIcon, SettingsIcon } from '../icons';
 
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useI18n();
+  const { t } = useTranslation();
 
   const isActive = (path: string) => (location.pathname === path ? 'active' : '');
 
