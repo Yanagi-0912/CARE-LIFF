@@ -1,7 +1,3 @@
-.app-layout {
-  min-height: 100vh;
-}
-
 .main-content {
   max-width: 980px;
   margin: 0 auto;
@@ -10,41 +6,34 @@
 }
 
 .placeholder-page {
-  padding: 24px 16px 110px;
+  padding: var(--sp-5) var(--sp-4) 110px;
 }
 
 .placeholder-page p {
-  color: #6b7280;
-}
-
-.login-page {
-  padding: 48px 24px 110px;
-  text-align: center;
-}
-
-.login-page p {
-  color: #6b7280;
-  margin-bottom: 24px;
+  color: var(--muted);
 }
 
 .line-login-btn {
-  background-color: #06c755;
-  color: #fff;
+  background: #06c755; /* LINE 品牌綠 */
+  color: #ffffff;
   border: none;
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: var(--r-lg);
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+  box-shadow: 0 6px 16px -6px rgba(6, 199, 85, 0.5);
+}
+
+.line-login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -8px rgba(6, 199, 85, 0.6);
 }
 
 @media (max-width: 640px) {
   .main-content {
     padding-left: 0;
     padding-right: 0;
-  }
-
-  .login-page {
-    padding: 32px 16px 110px;
   }
 }

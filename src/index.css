@@ -1,17 +1,59 @@
-:root {
-  --primary: #0d9488;
-  --bg-gray: #f9fafb;
-  --border: #e5e7eb;
-  --sidebar-w: 240px;
-  --header-h: 64px;
-  --bottom-h: 72px;
+@import './styles/tokens.css';
+
+/* ═══════════════════════════════════════════════════════
+   CARE 健康管家 — Global base
+   ═══════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  /* 設定頁的字體大小功能：normal 16 / large 20 / xlarge 24 */
+  font-size: var(--base-font-size, 16px);
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--bg-gray);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  /* 頁面頂部的柔和色霧：綠 × 珊瑚，往下淡出到底色 */
+  background:
+    radial-gradient(900px 420px at 8% -8%, var(--wash-a) 0%, transparent 62%),
+    radial-gradient(760px 380px at 96% -4%, var(--wash-b) 0%, transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  transition: color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
 }
+
+h1, h2, h3, h4 {
+  color: var(--ink);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* 通用 focus ring */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-soft), 0 0 0 1.5px var(--primary);
+}
+
+/* 數字資料對齊 */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════ App 骨架 ═══════════════ */
 
 .app-layout {
   display: flex;
@@ -27,63 +69,87 @@ body {
 /* 內容區 RWD：手機版底部預留空間，電腦版則不用 */
 .content-area {
   flex: 1;
-  padding: 24px;
-  box-sizing: border-box;
+  padding: var(--sp-5);
+  min-width: 0;
   padding-bottom: calc(var(--bottom-h) + 20px);
+  /* 路由切換進場動畫（App.tsx 以 key 重新掛載觸發）*/
+  animation: pageIn 320ms var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 尊重使用者的減少動態偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (min-width: 768px) {
   .content-area {
-    padding-bottom: 24px;
+    padding-bottom: var(--sp-5);
   }
 }
 
 /* ═══════════════════════════════════════════════════════
-   Family Page Styles
+   Family Page
    ═══════════════════════════════════════════════════════ */
 
-/* ── 家庭頁面 ─────────────────────────────────────────── */
 .family-page {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* ── 頂部標題列 ───────────────────────────────────────── */
+/* ── 頂部標題列 ── */
 .family-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  margin-bottom: var(--sp-5);
 }
 
 .family-header h2 {
   margin: 0;
   font-size: 1.5rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
-/* ── 加入家人按鈕 ─────────────────────────────────────── */
+/* ── 加入家人按鈕（accent 珊瑚，代表「行動」）── */
 .invite-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #06c755, #04a847);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #ffffff;
   border: none;
-  padding: 10px 20px;
-  border-radius: 24px;
+  padding: 11px 22px;
+  border-radius: var(--r-pill);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(6, 199, 85, 0.25);
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), opacity var(--dur-1) var(--ease);
+  box-shadow: 0 6px 16px -6px rgba(239, 119, 87, 0.55);
 }
 
 .invite-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+  box-shadow: 0 10px 22px -8px rgba(239, 119, 87, 0.65);
 }
 
 .invite-btn:active {
@@ -91,39 +157,39 @@ body {
 }
 
 .invite-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-/* ── shareTargetPicker overlay（LINE 選擇器遮罩）────────── */
+/* ── shareTargetPicker overlay（LINE 選擇器遮罩）── */
 .share-target-picker-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--scrim);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 900;
-  animation: overlayFadeIn 0.2s ease;
+  animation: overlayFadeIn var(--dur-2) var(--ease-out);
 }
 
 .share-target-picker-sheet {
   width: 100%;
   max-width: 480px;
-  background: #fff;
-  border-radius: 20px 20px 0 0;
-  padding: 24px 20px 36px;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
-  animation: sheetSlideUp 0.25s ease;
+  background: var(--surface);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-5) var(--sp-4) var(--sp-6);
+  box-shadow: var(--shadow-3);
+  animation: sheetSlideUp var(--dur-2) var(--ease-out);
 }
 
 .share-target-picker-sheet h3 {
-  margin: 0 0 16px;
+  margin: 0 0 var(--sp-4);
   font-size: 1.1rem;
   text-align: center;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 @keyframes overlayFadeIn {
@@ -136,44 +202,77 @@ body {
   to   { transform: translateY(0); }
 }
 
-/* ── 成員卡片 Grid ────────────────────────────────────── */
+/* ── 成員卡片 Grid ── */
 .member-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: var(--sp-4);
 }
 
-/* ── 單張成員卡片 ─────────────────────────────────────── */
+/* ── 單張成員卡片 ── */
 .member-card {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px 16px;
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-4);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: default;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), background var(--dur-2) var(--ease);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  animation: cardFloatIn 360ms var(--ease-out) both;
+}
+
+/* 成員卡片瀑布式進場（最多前 8 張有延遲） */
+.member-grid .member-card:nth-child(1) { animation-delay: 40ms; }
+.member-grid .member-card:nth-child(2) { animation-delay: 100ms; }
+.member-grid .member-card:nth-child(3) { animation-delay: 160ms; }
+.member-grid .member-card:nth-child(4) { animation-delay: 220ms; }
+.member-grid .member-card:nth-child(5) { animation-delay: 280ms; }
+.member-grid .member-card:nth-child(6) { animation-delay: 340ms; }
+.member-grid .member-card:nth-child(7) { animation-delay: 400ms; }
+.member-grid .member-card:nth-child(8) { animation-delay: 460ms; }
+
+@keyframes cardFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .member-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-2);
+  border-color: var(--line);
 }
 
-/* ── 頭像 ─────────────────────────────────────────────── */
+.member-card:hover .member-avatar {
+  transform: scale(1.06);
+}
+
+/* ── 頭像 ── */
 .member-avatar {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-softer));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.8rem;
   flex-shrink: 0;
   overflow: hidden;
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-2) var(--ease);
 }
 
 .member-avatar img {
@@ -182,42 +281,42 @@ body {
   object-fit: cover;
 }
 
-/* ── 名稱 ─────────────────────────────────────────────── */
+/* ── 名稱 ── */
 .member-name {
   font-size: 0.95rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 700;
+  color: var(--ink);
   text-align: center;
   word-break: break-all;
   line-height: 1.3;
 }
 
-/* ── 稱謂 badge ───────────────────────────────────────── */
+/* ── 稱謂 badge ── */
 .member-relation {
   display: inline-block;
   padding: 3px 12px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   font-size: 0.8rem;
-  font-weight: 500;
-  background: #f0fdf4;
-  color: #16a34a;
+  font-weight: 600;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
 }
 
 .member-relation.unset {
-  background: #f3f4f6;
-  color: #9ca3af;
+  background: var(--surface-2);
+  color: var(--faint);
 }
 
-/* ── 空狀態 ───────────────────────────────────────────── */
+/* ── 空狀態 ── */
 .family-empty {
   text-align: center;
-  padding: 60px 20px;
-  color: #9ca3af;
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--faint);
 }
 
 .family-empty .empty-icon {
   font-size: 3rem;
-  margin-bottom: 16px;
+  margin-bottom: var(--sp-4);
 }
 
 .family-empty p {
@@ -225,28 +324,29 @@ body {
   line-height: 1.6;
 }
 
-/* ── Toast 提示 ───────────────────────────────────────── */
+/* ── Toast 提示 ── */
 .family-toast {
   position: fixed;
   top: 80px;
   left: 50%;
   transform: translateX(-50%);
   padding: 10px 24px;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   z-index: 1000;
-  animation: familyToastIn 0.3s ease;
+  box-shadow: var(--shadow-2);
+  animation: familyToastIn var(--dur-2) var(--ease-out);
 }
 
 .family-toast.success {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .family-toast.error {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 @keyframes familyToastIn {
@@ -260,7 +360,7 @@ body {
   }
 }
 
-/* ── Family RWD ───────────────────────────────────────── */
+/* ── Family RWD ── */
 @media (max-width: 1024px) {
   .member-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -277,7 +377,7 @@ body {
   }
 
   .invite-btn {
-    padding: 8px 14px;
+    padding: 8px 16px;
     font-size: 0.85rem;
   }
 
@@ -296,36 +396,30 @@ body {
    MemberCard — 展開健康詳情
    ═══════════════════════════════════════════════════════ */
 
-.member-card {
-  cursor: pointer;
-  user-select: none;
-  position: relative;
-}
-
 .member-card.expanded {
   grid-column: span 2;
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border-color: #86efac;
-  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.1);
+  background: linear-gradient(160deg, var(--primary-softer), var(--surface) 55%);
+  border-color: var(--primary-soft);
+  box-shadow: var(--shadow-2);
 }
 
 .member-expand-hint {
   font-size: 0.7rem;
-  color: #9ca3af;
-  transition: transform 0.2s;
+  color: var(--faint);
+  transition: color var(--dur-1) var(--ease);
 }
 
 .member-card.expanded .member-expand-hint {
-  color: #16a34a;
+  color: var(--primary);
 }
 
-/* ── 健康詳情面板 ─────────────────────────────────────── */
+/* ── 健康詳情面板 ── */
 .member-health-detail {
   width: 100%;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
-  animation: healthSlideIn 0.25s ease;
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--hair);
+  animation: healthSlideIn var(--dur-2) var(--ease-out);
 }
 
 @keyframes healthSlideIn {
@@ -342,7 +436,7 @@ body {
 .health-fields {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
   width: 100%;
 }
 
@@ -350,43 +444,38 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 4px 0;
+  padding: var(--sp-1) 0;
   font-size: 0.85rem;
 }
 
 .health-label {
-  color: #6b7280;
+  color: var(--muted);
   font-weight: 500;
   flex-shrink: 0;
-  margin-right: 12px;
+  margin-right: var(--sp-3);
 }
 
 .health-value {
-  color: #1f2937;
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
   text-align: right;
   word-break: break-word;
+  font-variant-numeric: tabular-nums;
 }
 
-.health-loading {
+.health-loading,
+.health-empty {
   text-align: center;
-  color: #9ca3af;
+  color: var(--faint);
   font-size: 0.85rem;
-  padding: 8px 0;
+  padding: var(--sp-2) 0;
 }
 
 .health-error {
   text-align: center;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 0.85rem;
-  padding: 8px 0;
-}
-
-.health-empty {
-  text-align: center;
-  color: #9ca3af;
-  font-size: 0.85rem;
-  padding: 8px 0;
+  padding: var(--sp-2) 0;
 }
 
 @media (max-width: 640px) {
@@ -394,4 +483,3 @@ body {
     grid-column: span 2;
   }
 }
-

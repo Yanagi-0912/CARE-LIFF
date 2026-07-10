@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════════
+   CARE 健康管家 — Design Tokens
+   溫潤醫療綠 × 珊瑚橘點綴 · 柔和卡片 · 長輩友善的大字與高對比支援
+   Light (:root) / Dark ([data-theme="dark"]) / High contrast (html.high-contrast)
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Typography ── */
+  --font-sans: 'Plus Jakarta Sans', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, -apple-system, sans-serif;
+
+  /* ── Surface ── */
+  --bg: #f5f7f6;
+  --surface: #ffffff;
+  --surface-2: #eef2f0;
+  --surface-3: #e3eae7;
+
+  /* ── Ink ── */
+  --ink: #14201d;
+  --ink-2: #27342f;
+  --muted: #5d6b66;
+  --faint: #8b9793;
+
+  /* ── Brand：醫療暖綠 ── */
+  --primary: #0e9384;
+  --primary-2: #2db5a2;          /* 漸層尾端 / hover 輔助 */
+  --primary-strong: #0a7062;
+  --primary-soft: #d9f2ee;
+  --primary-softer: #ecf9f6;
+
+  /* ── Accent：珊瑚橘（溫暖、行動提示）── */
+  --accent: #ef7757;
+  --accent-strong: #d05a3b;
+  --accent-soft: #fdeae4;
+
+  /* ── 輔助色（功能卡片、圖示底色）── */
+  --violet: #7568e8;
+  --violet-soft: #edeafd;
+  --amber: #c98a12;
+  --amber-soft: #fbf1dc;
+
+  /* ── Status ── */
+  --success: #178a50;
+  --success-soft: #e2f5ea;
+  --danger: #d5473f;
+  --danger-soft: #fdebea;
+  --warning: #b97f10;
+  --warning-soft: #fdf3dd;
+
+  /* ── Lines ── */
+  --hair: rgba(20, 32, 29, 0.08);
+  --line: rgba(20, 32, 29, 0.16);
+
+  /* ── 背景暈染（頁面頂部的柔和色霧）── */
+  --wash-a: rgba(14, 147, 132, 0.10);
+  --wash-b: rgba(239, 119, 87, 0.07);
+
+  /* ── Overlay ── */
+  --scrim: rgba(16, 28, 25, 0.42);
+
+  /* ── Shadows（帶一點綠意的柔影）── */
+  --shadow-1: 0 1px 2px rgba(20, 32, 29, 0.05), 0 1px 6px rgba(20, 32, 29, 0.04);
+  --shadow-2: 0 6px 18px -6px rgba(20, 32, 29, 0.12);
+  --shadow-3: 0 16px 44px -12px rgba(20, 32, 29, 0.20);
+
+  /* ── Spacing（4px 網格）── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* ── Radii（圓潤友善）── */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* ── Motion ── */
+  --dur-1: 140ms;
+  --dur-2: 220ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ── Layout ── */
+  --sidebar-w: 240px;
+  --header-h: 60px;
+  --bottom-h: 72px;
+}
+
+/* ═══════════════ Dark mode ═══════════════ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0f1513;
+  --surface: #171f1c;
+  --surface-2: #1e2925;
+  --surface-3: #26332e;
+
+  --ink: #f2f6f4;
+  --ink-2: #dbe4e0;
+  --muted: #9caba5;
+  --faint: #6e7c77;
+
+  --primary: #3ecfbc;
+  --primary-2: #66dccb;
+  --primary-strong: #7ce6d6;
+  --primary-soft: rgba(62, 207, 188, 0.16);
+  --primary-softer: rgba(62, 207, 188, 0.09);
+
+  --accent: #ff9578;
+  --accent-strong: #ffb09a;
+  --accent-soft: rgba(255, 149, 120, 0.14);
+
+  --violet: #a89cff;
+  --violet-soft: rgba(168, 156, 255, 0.14);
+  --amber: #e8b04d;
+  --amber-soft: rgba(232, 176, 77, 0.13);
+
+  --success: #4cc98a;
+  --success-soft: rgba(76, 201, 138, 0.14);
+  --danger: #ff8a80;
+  --danger-soft: rgba(255, 138, 128, 0.13);
+  --warning: #e8c063;
+  --warning-soft: rgba(232, 192, 99, 0.13);
+
+  --hair: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.18);
+
+  --wash-a: rgba(62, 207, 188, 0.07);
+  --wash-b: rgba(255, 149, 120, 0.05);
+
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 6px 18px -6px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 16px 44px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* ═══════════════ 高對比（沿用設定頁的無障礙選項）═══════════════ */
+html.high-contrast {
+  --hair: rgba(20, 32, 29, 0.30);
+  --line: rgba(20, 32, 29, 0.48);
+  --muted: #3c4844;
+  --faint: #5d6b66;
+}
+
+html.high-contrast[data-theme='dark'] {
+  --hair: rgba(255, 255, 255, 0.32);
+  --line: rgba(255, 255, 255, 0.5);
+  --muted: #c7d2cd;
+  --faint: #9caba5;
+}

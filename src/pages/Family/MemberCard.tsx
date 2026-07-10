@@ -3,7 +3,7 @@ import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
 import { RELATIONSHIP_LABEL } from '../../types/family';
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   member: FamilyMember;
@@ -13,7 +13,7 @@ interface Props {
  * 成員卡片 — 點擊展開顯示該成員的健康狀況
  */
 export function MemberCard({ member }: Props) {
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [health, setHealth] = useState<HealthProfile | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);

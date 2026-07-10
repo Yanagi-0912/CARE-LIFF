@@ -1,33 +1,31 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import { I18nProvider, getInitialLanguage } from '../i18n';
+import i18n, { getInitialLanguage } from '../i18n';
 import SettingsPage from '../pages/Settings';
 
-function renderSettings(initialLanguage = 'zh-TW' as const) {
-  return render(
-    <I18nProvider initialLanguage={initialLanguage}>
-      <SettingsPage />
-    </I18nProvider>,
-  );
+async function renderSettings(initialLanguage = 'zh-TW' as const) {
+  await i18n.changeLanguage(initialLanguage);
+  return render(<SettingsPage />);
 }
 
 describe('設定頁語言行為', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    await i18n.changeLanguage('zh-TW');
   });
 
-  it('切換語言後，應同步更新 localStorage 與畫面語言', () => {
-    renderSettings();
+  it('切換語言後，應同步更新 localStorage 與畫面語言', async () => {
+    await renderSettings();
 
     const select = screen.getByLabelText('顯示語言') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'en' } });
-//使用者改語言 → 有沒有存進 localStorage
+
     const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
     expect(saved.language).toBe('en');
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
   });
-//UI 有沒有真的變英文
-  it('重新掛載後，應保留先前選擇的語言', () => {
+
+  it('重新掛載後，應保留先前選擇的語言', async () => {
     localStorage.setItem(
       'care-settings',
       JSON.stringify({
@@ -39,7 +37,7 @@ describe('設定頁語言行為', () => {
       }),
     );
 
-    renderSettings(getInitialLanguage('care-settings'));
+    await renderSettings(getInitialLanguage('care-settings'));
 
     const select = screen.getByLabelText('Display Language') as HTMLSelectElement;
     expect(select.value).toBe('en');

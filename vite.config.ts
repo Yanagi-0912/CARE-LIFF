@@ -18,5 +18,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/tests/setup.ts',
+    env: {
+      VITE_LIFF_ID: 'test-liff-id',
+    },
+    // e2e 由 Playwright 跑，vitest 不要抓
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
   },
 })
