@@ -68,7 +68,7 @@ export async function upsertPersonalHealthProfile(
                     // 改寫${res.status}${text ? ` - ${text}` : ''}`原本寫法以提高可讀性
                     const errorMessage = text ? ` : ${text}` : ''
                     throw new Error(
-                        `個人資料儲存失敗：${res.status}${errorMessage}`,
+                        `個人資料儲存失敗:${res.status}${errorMessage}`,
                     )
                 }
 
@@ -100,13 +100,13 @@ export async function upsertPersonalHealthProfile(
             // 否則就顯示泛用的錯誤提示
             throw new Error(
                 fieldLabel
-                    ? `個人資料欄位驗證失敗（${fieldLabel}）：${detailMessage}`
-                    : `個人資料欄位驗證失敗：${detailMessage}`,
+                    ? `個人資料欄位驗證失敗（${fieldLabel}):${detailMessage}`
+                    : `個人資料欄位驗證失敗:${detailMessage}`,
             )
         }
 
         const errorDetail = text ? ' - ' + text : ''
-        throw new Error('個人資料儲存失敗：' + res.status + errorDetail)
+        throw new Error('個人資料儲存失敗:' + res.status + errorDetail)
     }
 
     return res.json()
@@ -138,7 +138,7 @@ export async function getPersonalHealthProfile(userId?: string) {
 
     if (!res.ok) {
         const text = await res.text().catch(() => '')
-        throw new Error(`取得個人資料失敗：${res.status}${text ? ` - ${text}` : ''}`)
+        throw new Error(`取得個人資料失敗:${res.status}${text ? ` - ${text}` : ''}`)
     }
 
     return res.json()

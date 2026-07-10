@@ -3,10 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { upsertPersonalHealthProfile, getPersonalHealthProfile } from '../../api/profileApi';
 import liff from '@line/liff';
 import './index.css';
-/*http://localhost:5173/personalHealth*/
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
-
 interface HealthData {
     name: string;
     gender: string;
@@ -15,7 +13,6 @@ interface HealthData {
     age: string;
     // 修改：慢性病史改為可複選
     chronicDisease: string[];
-    chronicDiseaseOther: string;
     majorIllness: string;
     surgeryHistory?: string;
 }
@@ -28,7 +25,6 @@ const defaultData: HealthData = {
     age: '',
     // 修改：慢性病史改為可複選
     chronicDisease: [],
-    chronicDiseaseOther: '',
     majorIllness: '',
     surgeryHistory: '',
 };
@@ -70,6 +66,8 @@ const PersonalHealthPage: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
     // 儲存提示訊息
     const [saveMessage, setSaveMessage] = useState('');
+    // 新增欄位獨立錯誤狀態
+    const [fieldErrors, setFieldErrors] = useState<{ age?: string; height?: string; weight?: string }>({});
     // 用一個狀態控制目前打開的下拉，避免每個下拉都要一個 state
     const [openDropdown, setOpenDropdown] = useState<'gender' | 'chronic' | null>(null);
     // 顯示使用者名稱與頭像
@@ -126,7 +124,6 @@ const PersonalHealthPage: React.FC = () => {
             weight: data.weight?.toString() || '',
             age: data.age?.toString() || '',
             chronicDisease: data.chronic_history ? data.chronic_history.split('、').filter(Boolean) : [],
-            chronicDiseaseOther: '',
             majorIllness: data.major_illness_history || '',
             surgeryHistory: data.surgery_history || '',
         }));
@@ -137,40 +134,44 @@ const PersonalHealthPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const initializeUserProfile = () => {
-            if (!LIFF_ID) {
-                setLiffError('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
-                return;
+        const initializeUserProfile = async () => {
+            // 1. 獨立的後端 API 載入流程：/me API 由 token 辨識使用者，不需要前端提供 userId
+            try {
+                const data = await getPersonalHealthProfile();
+                handleUserProfileData(data);
+            } catch (error: any) {
+                console.warn('載入使用者資料失敗:', error);
+                setLiffError(error instanceof Error ? error.message : '取得個人資料失敗，請稍後再試。');
             }
 
-            liff
-                .init({ liffId: LIFF_ID })
-                .then(() => {
-                    setLiffReady(true);
+            // 2. 獨立的 LINE LIFF 初始化流程
+            if (!LIFF_ID) {
+                setLiffError((prev) => prev || '尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
+                console.error('尚未設定 VITE_LIFF_ID，無法初始化 LINE LIFF。');
+            } else {
+                liff
+                    .init({ liffId: LIFF_ID })
+                    .then(() => {
+                        setLiffReady(true);
 
-                    // 1. 從 LIFF 獲取 user 頭像資訊
-                    liff
-                        .getProfile()
-                        .then(handleLiffProfile)
-                        .catch((err) => {
-                            console.warn('獲取 LIFF 用戶資訊失敗:', err);
-                        });
-
-                    // /me API 由 token 辨識使用者，不需要前端提供 userId
-                    return getPersonalHealthProfile();
-                })
-                .then(handleUserProfileData)
-                .catch((error) => {
-                    console.warn('LIFF 初始化或載入使用者資料失敗:', error);
-                    setLiffError(error instanceof Error ? error.message : 'LIFF 初始化失敗，請稍後再試。');
-                });
+                        // 1. 從 LIFF 獲取 user 頭像資訊
+                        liff
+                            .getProfile()
+                            .then(handleLiffProfile)
+                            .catch((err) => {
+                                console.warn('獲取 LIFF 用戶資訊失敗:', err);
+                            });
+                    })
+                    .catch((error) => {
+                        console.warn('LIFF 初始化失敗:', error);
+                    });
+            }
         };
 
         initializeUserProfile();
     }, []);
 
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         // 慢性病史改為可複選，這裡只處理其他欄位
         if (name === 'chronicDiseaseOther') {
@@ -188,7 +189,7 @@ const PersonalHealthPage: React.FC = () => {
             const next = exists
                 ? prev.chronicDisease.filter((item) => item !== value)
                 : [...prev.chronicDisease, value];
-            return { ...prev, chronicDisease: next, chronicDiseaseOther: '' };
+            return { ...prev, chronicDisease: next };
         });
         if (value === '其他' && form.chronicDisease.includes('其他')) {
             setOtherInput('');
@@ -196,87 +197,79 @@ const PersonalHealthPage: React.FC = () => {
         }
     };
 
-    // 修改：性別單選下拉處理
-    const handleGenderSelect = (value: string) => {
-        setForm((prev) => ({ ...prev, gender: value }));
-        setOpenDropdown(null);
-    };
-
-    const toggleDropdown = (key: 'gender' | 'chronic') => {
-        setOpenDropdown((prev) => (prev === key ? null : key));
-    };
-
     // 修改：儲存訊息 3 秒後收回
     useEffect(() => {
         if (saveStatus === 'idle') {
             return;
         }
-        const timer = window.setTimeout(() => setSaveStatus('idle'), 3000);
+        const timer = window.setTimeout(() => {
+            setSaveStatus('idle');
+            setFieldErrors({});
+        }, 3000);
         return () => window.clearTimeout(timer);
     }, [saveStatus]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // 修改：送出前重置提示狀態
-        setSaveStatus('idle');
         // 性別必填檢查，避免空值送出
         if (!form.gender) {
             setSaveMessage('請先選擇性別');
             setSaveStatus('error');
             return;
         }
+
+        const errors: { age?: string; height?: string; weight?: string } = {
+            age: validateNumericField(form.age, numericFieldLimits.age),
+            height: validateNumericField(form.height, numericFieldLimits.height),
+            weight: validateNumericField(form.weight, numericFieldLimits.weight),
+        };
+
+        // 過濾掉沒有錯誤的欄位（保留真正有錯誤訊息的）
+        const activeErrors = Object.fromEntries(
+            Object.entries(errors).filter(([_, msg]) => msg !== '')
+        );
+
+        if (Object.keys(activeErrors).length > 0) {
+            setFieldErrors(activeErrors);              // 1. 將錯誤塞進對應欄位狀態
+            setSaveMessage('欄位輸入有誤，請檢查下方提示'); // 2. Toast 只顯示簡單的主標題
+            setSaveStatus('error');
+            return; // 擋住不送出
+        }
+
+        // 驗證通過，清空先前的錯誤
+        setFieldErrors({});
+
         // 慢性病沒有選或是選其他但不輸入都存"無"
         // 慢性病史改為可複選，整理成陣列再轉成字串
-        const hasOther = form.chronicDisease.includes('其他');
         const selected = form.chronicDisease.filter((v) => v !== '其他');
         const otherValue = otherInput.trim();
-        let finalChronicList = selected;
+        let chronicList = selected;
         // 選擇其他但未輸入時，不自動塞 "無"
-        if (hasOther && otherValue) {
-            finalChronicList = [...selected, otherValue];
+        if (form.chronicDisease.includes('其他') && otherValue) {
+            chronicList = [...selected, otherValue];
         }
-        if (finalChronicList.length === 0) {
-            finalChronicList = ['無'];
+        if (chronicList.length === 0) {
+            chronicList = ['無'];
         }
-
-        const finalData: HealthData = {
-            ...form,
-            // 慢性病史改為可複選
-            chronicDisease: finalChronicList,
-            // 重大傷病紀錄：如果沒填就存 "無"
-            majorIllness: form.majorIllness.trim() || '無',
-            // 手術史：如果沒填或不存在，就存 "無"
-            surgeryHistory: (form.surgeryHistory || '').trim() || '無'
-        };
 
         const payload = {
-            name: finalData.name,
-            gender: finalData.gender,
-            height: Number(finalData.height),
-            weight: Number(finalData.weight),
-            age: Number(finalData.age),
+            name: form.name,
+            gender: form.gender,
+            height: Number(form.height),
+            weight: Number(form.weight),
+            age: Number(form.age),
             // 修改：慢性病史改為可複選，後端目前是字串欄位
-            chronic_history: finalData.chronicDisease.join('、'),
-            major_illness_history: finalData.majorIllness,
-            surgery_history: finalData.surgeryHistory || '無',
+            chronic_history: chronicList.join('、'),
+            // 重大傷病紀錄：如果沒填就存 "無"
+            major_illness_history: form.majorIllness.trim() || '無',
+            // 手術史：如果沒填或不存在，就存 "無"
+            surgery_history: (form.surgeryHistory || '').trim() || '無',
             health_consultations: {} // 先放空 JSON
         };
-        // 驗證數值欄位
-        const validationMessages = [
-            validateNumericField(finalData.age, numericFieldLimits.age),
-            validateNumericField(finalData.height, numericFieldLimits.height),
-            validateNumericField(finalData.weight, numericFieldLimits.weight),
-        ].filter(Boolean);
-
-        if (validationMessages.length > 0) {
-            setSaveMessage(validationMessages.join('，'));
-            setSaveStatus('error');
-            return;
-        }
 
         try {
-            const data = await upsertPersonalHealthProfile(payload);
-            console.log('儲存成功:', data);
+            await upsertPersonalHealthProfile(payload);
+            console.log('儲存成功');
             setSaveMessage('已成功儲存個人健康資料');
             setSaveStatus('success');
         } catch (error) {
@@ -286,27 +279,20 @@ const PersonalHealthPage: React.FC = () => {
         }
     };
 
-    const handleOtherSave = () => {
-        setForm((prev) => ({ ...prev, chronicDiseaseOther: otherInput }));
-        setOtherSaved(true);
-    };
-
     // 慢性病史改為可複選
     const showOtherInput = form.chronicDisease.includes('其他');
 
     // 判斷是否有任一欄位有輸入
-    const hasInput =
-        !!form.height ||
-        !!form.weight ||
-        !!form.age ||
-        // 慢性病史改為可複選
-        form.chronicDisease.length > 0 ||
-        !!form.chronicDiseaseOther ||
-        !!form.majorIllness ||
-        !!otherInput;
+    const hasInput = !!(
+        form.height ||
+        form.weight ||
+        form.age ||
+        form.chronicDisease.length || // 慢性病史改為可複選
+        form.majorIllness ||
+        otherInput
+    );
 
     const isLoggedIn = liffReady && liff.isLoggedIn();
-
 
     return (
         <div className="pageContainer">
@@ -338,7 +324,8 @@ const PersonalHealthPage: React.FC = () => {
             {saveStatus === 'error' && (
                 <div className="saveToast saveToastError">{saveMessage || '儲存失敗，請稍後再試'}</div>
             )}
-            <form id="personalHealthForm" className="formContainer" onSubmit={handleSubmit}>
+            {/* 加上 noValidate 阻擋瀏覽器原生彈窗攔截 */}
+            <form id="personalHealthForm" className="formContainer" onSubmit={handleSubmit} noValidate>
                 <div className="formGroup">
                     <label className="label" htmlFor="name">姓名</label>
                     <input
@@ -348,21 +335,20 @@ const PersonalHealthPage: React.FC = () => {
                         name="name"
                         value={form.name}
                         onChange={handleChange}
-                        /*若有登入就顯示user名字*/
                         placeholder="請輸入姓名"
                         required
                     />
                 </div>
                 <div className="formGroup">
                     <label className="label" htmlFor="gender">性別</label>
-                    {/* 修改：性別改為自訂下拉樣式 */}
                     <div ref={genderDropdownRef} className="singleSelectWrapper">
+                        {/* 修改：性別單選下拉處理 */}
                         <button
                             type="button"
                             className="singleSelectButton"
                             aria-haspopup="listbox"
                             aria-expanded={openDropdown === 'gender'}
-                            onClick={() => toggleDropdown('gender')}
+                            onClick={() => setOpenDropdown(openDropdown === 'gender' ? null : 'gender')}
                         >
                             <span className="singleSelectText">
                                 {form.gender || '請選擇性別'}
@@ -376,7 +362,7 @@ const PersonalHealthPage: React.FC = () => {
                                         key={opt}
                                         type="button"
                                         className={`singleSelectItem ${form.gender === opt ? 'isSelected' : ''}`}
-                                        onClick={() => handleGenderSelect(opt)}
+                                        onClick={() => { setForm(prev => ({ ...prev, gender: opt })); setOpenDropdown(null); }}
                                     >
                                         {opt}
                                     </button>
@@ -386,10 +372,9 @@ const PersonalHealthPage: React.FC = () => {
                     </div>
                 </div>
                 <div className="formGroup">
-
                     <label className="label" htmlFor="height">身高 (cm)</label>
                     <input
-                        className="input"
+                        className={`input ${fieldErrors.height ? 'inputHasError' : ''}`}
                         type="number"
                         id="height"
                         name="height"
@@ -401,11 +386,12 @@ const PersonalHealthPage: React.FC = () => {
                         step="0.1"
                         required
                     />
+                    {fieldErrors.height && <span className="fieldErrorText">{fieldErrors.height}</span>}
                 </div>
                 <div className="formGroup">
                     <label className="label" htmlFor="weight">體重 (kg)</label>
                     <input
-                        className="input"
+                        className={`input ${fieldErrors.weight ? 'inputHasError' : ''}`}
                         type="number"
                         id="weight"
                         name="weight"
@@ -417,11 +403,12 @@ const PersonalHealthPage: React.FC = () => {
                         step="0.1"
                         required
                     />
+                    {fieldErrors.weight && <span className="fieldErrorText">{fieldErrors.weight}</span>}
                 </div>
                 <div className="formGroup">
                     <label className="label" htmlFor="age">年齡</label>
                     <input
-                        className="input"
+                        className={`input ${fieldErrors.age ? 'inputHasError' : ''}`}
                         type="number"
                         id="age"
                         name="age"
@@ -433,17 +420,18 @@ const PersonalHealthPage: React.FC = () => {
                         step="1"
                         required
                     />
+                    {fieldErrors.age && <span className="fieldErrorText">{fieldErrors.age}</span>}
                 </div>
                 <div className="formGroup">
                     <label className="label">慢性病史</label>
-                    {/* 用自訂下拉與勾勾標記取代藍色選取背景 */}
+                    {/* 慢性病史改為可複選 */}
                     <div ref={chronicDropdownRef} className="multiSelectWrapper" style={{ marginBottom: showOtherInput ? 8 : 0 }}>
                         <button
                             type="button"
                             className="multiSelectButton"
                             aria-haspopup="listbox"
                             aria-expanded={openDropdown === 'chronic'}
-                            onClick={() => toggleDropdown('chronic')}
+                            onClick={() => setOpenDropdown(openDropdown === 'chronic' ? null : 'chronic')}
                         >
                             <span className="multiSelectText">
                                 {form.chronicDisease.length > 0
@@ -486,16 +474,14 @@ const PersonalHealthPage: React.FC = () => {
                             <button
                                 type="button"
                                 aria-label="儲存其他慢性病"
-                                onClick={handleOtherSave}
+                                onClick={() => { setForm(prev => ({ ...prev, chronicDiseaseOther: otherInput })); setOtherSaved(true); }}
                                 disabled={!otherInput.trim()}
                             >
-                                {/*勾勾圖案的svg*/}
-                                <svg width="24px" height="24px" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" aria-labelledby="okIconTitle" stroke="#4a90e2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" color="#4a90e2">
-                                    <title id="okIconTitle">Ok</title>
+                                <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="#4a90e2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="4 13 9 18 20 7" />
                                 </svg>
                             </button>
-                            {otherSaved && <span style={{ color: '#000000', fontSize: 14 }}>已儲存</span>}
+                            {otherSaved && <span className="otherSavedBadge">已儲存</span>}
                         </div>
                     )}
                 </div>
@@ -532,7 +518,6 @@ const PersonalHealthPage: React.FC = () => {
                     查看諮詢紀錄
                 </button>
             </div>
-
         </div>
     );
 };
