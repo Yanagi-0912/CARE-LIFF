@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './index.css';
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import type { SupportedLanguage } from '../../i18n/messages';
+import { isSupportedLanguage } from '../../i18n';
+import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
+import type { UpdateUserSettingsPayload } from '../../api/settingsApi';
+import { isAuthenticated } from '../../utils/auth';
 
 /* ────────── 型別定義 ────────── */
 interface SettingsState {
@@ -30,6 +34,13 @@ const fontSizeMap = {
   xlarge: '24px',
 };
 
+/* ────────── 前端欄位（camelCase）對應後端欄位（snake_case） ────────── */
+const toggleFieldMap: Record<'highContrast' | 'notifyReminder' | 'notifyFamily', keyof UpdateUserSettingsPayload> = {
+  highContrast: 'high_contrast',
+  notifyReminder: 'notify_reminder',
+  notifyFamily: 'notify_family',
+};
+
 const languageOptions: Array<{ value: SettingsState['language']; label: string }> = [
   { value: 'zh-TW', label: '繁體中文' },
   { value: 'en', label: 'English' },
@@ -53,7 +64,7 @@ function applyTheme(settings: SettingsState) {
 
 /* ────────── 元件 ────────── */
 const SettingsPage: React.FC = () => {
-  const { t, setLanguage, language } = useI18n();
+  const { t, i18n } = useTranslation();
   const fontSizeLabelMap = {
     normal: t('settings.fontSizeNormal'),
     large: t('settings.fontSizeLarge'),
@@ -79,12 +90,47 @@ const SettingsPage: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   }, [settings]);
 
+  // 登入狀態下，掛載時以資料庫的值為準覆蓋本機設定（其他裝置登入過就能同步過來）；
+  // 未登入或 API 失敗則靜默 fallback，繼續使用 localStorage 目前的值
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+
+    getUserSettings()
+      .then((apiSettings) => {
+        if (!apiSettings) return;
+        setSettings((prev) => ({
+          ...prev,
+          fontSize: apiSettings.font_size,
+          highContrast: apiSettings.high_contrast,
+          notifyReminder: apiSettings.notify_reminder,
+          notifyFamily: apiSettings.notify_family,
+        }));
+
+        // language 存在資料庫的 settings.language 裡，用它來實際切換介面語言，
+        // 而不只是更新 select 的顯示值，確保多裝置登入後語言也會同步
+        if (apiSettings.language && isSupportedLanguage(apiSettings.language)) {
+          void i18n.changeLanguage(apiSettings.language);
+        }
+      })
+      .catch((err) => {
+        console.error('讀取伺服器設定失敗，改用本機設定', err);
+      });
+  }, [i18n]);
+
+  // 同步變更到後端資料庫，未登入或發生錯誤時只記錄，不中斷畫面操作
+  const persistSettings = (partial: UpdateUserSettingsPayload) => {
+    if (!isAuthenticated()) return;
+    updateUserSettings(partial).catch((err) => {
+      console.error('同步設定到伺服器失敗', err);
+    });
+  };
+
   // 以 i18n 全域語言為準，確保下拉顯示與頁面語言一致
   useEffect(() => {
     setSettings((prev) => (
-      prev.language === language ? prev : { ...prev, language }
+      prev.language === i18n.language ? prev : { ...prev, language: i18n.language as SupportedLanguage }
     ));
-  }, [language]);
+  }, [i18n.language]);
 
   // 顯示儲存成功提示
   const handleSave = () => {
@@ -94,15 +140,21 @@ const SettingsPage: React.FC = () => {
 
   const handleFontSize = (size: SettingsState['fontSize']) => {
     setSettings((prev) => ({ ...prev, fontSize: size }));
+    persistSettings({ font_size: size });
   };
 
   const handleLanguage = (language: SettingsState['language']) => {
     setSettings((prev) => ({ ...prev, language }));
-    setLanguage(language);
+    void i18n.changeLanguage(language);
+    persistSettings({ language });
   };
 
-  const toggle = (key: keyof Omit<SettingsState, 'fontSize'>) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggle = (key: keyof typeof toggleFieldMap) => {
+    setSettings((prev) => {
+      const nextValue = !prev[key];
+      persistSettings({ [toggleFieldMap[key]]: nextValue });
+      return { ...prev, [key]: nextValue };
+    });
   };
 
   return (

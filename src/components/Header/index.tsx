@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './index.css';
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
 import { getTheme, toggleTheme, type Theme } from '../../utils/theme';
 import { SearchIcon, SunIcon, MoonIcon, PulseIcon } from '../icons';
 
 function Header() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const [theme, setThemeState] = useState<Theme>(getTheme);
 
   const isLoggedIn = isAuthenticated();

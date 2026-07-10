@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import liff from '@line/liff';
 import { createInvite } from '../../api/familyApi';
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   liffReady: boolean;
@@ -13,7 +13,7 @@ interface Props {
  * 邀請按鈕 — 呼叫後端產生邀請連結，透過 shareTargetPicker 分享
  */
 export function InviteButton({ liffReady, onSuccess, onError }: Props) {
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const [inviting, setInviting] = useState(false);
 
   const handleInvite = useCallback(async () => {

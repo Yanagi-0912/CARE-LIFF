@@ -1,4 +1,4 @@
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useLiff } from '../../hooks/useLiff';
 import { useToast } from '../../hooks/useToast';
 import { useFamily } from './useFamily';
@@ -6,7 +6,7 @@ import { MemberCard } from './MemberCard';
 import { InviteButton } from './InviteButton';
 
 const FamilyPage = () => {
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const { liffReady } = useLiff();
   const { members, loading, error, refetch } = useFamily();
   const { toast, showToast } = useToast();

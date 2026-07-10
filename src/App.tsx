@@ -8,7 +8,6 @@ import PersonalHealth from './pages/PersonalHealth';
 import Family from './pages/Family';
 import JoinPage from './pages/Join';
 import ConsultRecordsPage from './pages/PersonalHealth/ConsultRecords';
-import { I18nProvider, getInitialLanguage } from './i18n';
 import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
 import type { SettingsState } from './pages/Settings';
 import './App.css';
@@ -74,14 +73,10 @@ function AppContent() {
 }
 
 function App() {
-  const initialLanguage = getInitialLanguage(STORAGE_KEY);
   return (
-    <I18nProvider initialLanguage={initialLanguage}>
-      {/* 5. 將 Router 移到這裡，讓內部的 AppContent 可以使用 useLocation */}
-      <Router>
-        <AppContent />
-      </Router>
-    </I18nProvider>
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

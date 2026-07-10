@@ -1,12 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import './index.css';
-import { useI18n } from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { HomeIcon, HealthIcon, FamilyIcon, SettingsIcon } from '../icons';
 
 function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useI18n();
+  const { t } = useTranslation();
 
   // 判斷目前網址是否與按鈕對應，來決定要不要加上 active class
   const isActive = (path: string) => (location.pathname === path ? 'active' : '');
