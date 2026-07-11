@@ -37,6 +37,16 @@ export function HealthIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function KnowledgeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+      <path d="M9.5 9a2.5 2.5 0 1 1 4.15 1.88C12.72 11.7 12 12.2 12 13" />
+      <path d="M12 16h.01" />
+    </svg>
+  );
+}
+
 export function FamilyIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>

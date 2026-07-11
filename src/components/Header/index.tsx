@@ -4,7 +4,7 @@ import './index.css';
 import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
 import { getTheme, toggleTheme, type Theme } from '../../utils/theme';
-import { SearchIcon, SunIcon, MoonIcon, PulseIcon } from '../icons';
+import { SunIcon, MoonIcon, PulseIcon } from '../icons';
 
 function Header() {
   const navigate = useNavigate();
@@ -41,30 +41,18 @@ function Header() {
           </h1>
         </div>
 
-        {/* 中間搜尋框 */}
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder={t('header.searchPlaceholder')}
-            className="search-input"
-          />
-          <button className="search-btn" aria-label={t('header.searchAriaLabel')}>
-            <SearchIcon width={16} height={16} />
-          </button>
-        </div>
-
         {/* 右側按鈕 */}
         <nav className="header-nav">
           <button
             className="theme-toggle-btn"
             onClick={handleThemeToggle}
-            aria-label={theme === 'dark' ? '切換為淺色模式' : '切換為深色模式'}
-            title={theme === 'dark' ? '切換為淺色模式' : '切換為深色模式'}
+            aria-label={theme === 'dark' ? t('header.themeToggleToLight') : t('header.themeToggleToDark')}
+            title={theme === 'dark' ? t('header.themeToggleToLight') : t('header.themeToggleToDark')}
           >
             {theme === 'dark' ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />}
           </button>
           <button className="login-btn" onClick={handleAuthClick}>
-            {isLoggedIn ? (t('header.logout') || '登出') : t('header.login')}
+            {isLoggedIn ? t('header.logout') : t('header.login')}
           </button>
         </nav>
       </div>

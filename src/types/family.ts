@@ -4,8 +4,10 @@ import type { HealthProfile } from '../api/profileApi';
 export interface FamilyMember {
   user_id: string;
   relationship_type: string | null;
-  display_name?: string;   // 後續由後端擴充提供（方案 A）
-  picture_url?: string;    // 後續由後端擴充提供（方案 A）
+  /** LINE 顯示名稱（由後端 JOIN user profile 回傳） */
+  display_name?: string;
+  /** LINE 頭像網址（由後端 JOIN user profile 回傳） */
+  picture_url?: string;
   health_profile?: HealthProfile;
 }
 

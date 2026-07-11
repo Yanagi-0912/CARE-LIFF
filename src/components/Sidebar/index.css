@@ -2,9 +2,11 @@
 .sidebar {
   display: none;
   width: var(--sidebar-w);
-  background: var(--surface);
+  background:
+    radial-gradient(circle at 5% 18%, var(--primary-softer), transparent 32%),
+    var(--surface);
   border-right: 1px solid var(--hair);
-  padding: var(--sp-5) var(--sp-3);
+  padding: var(--sp-6) var(--sp-4);
   flex-shrink: 0;
   position: sticky;
   top: var(--header-h);
@@ -13,43 +15,14 @@
   overflow-y: auto;
 }
 
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
+.careLineSidebar {
+  animation: lineSidebarIn 360ms var(--ease-out) both;
 }
 
-.side-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: 12px 16px;
-  border: none;
-  background: transparent;
-  border-radius: var(--r-md);
-  cursor: pointer;
-  font-size: 0.98rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-align: left;
-  position: relative;
-  transition:
-    background var(--dur-1) var(--ease),
-    color var(--dur-1) var(--ease),
-    transform var(--dur-2) var(--ease);
-  animation: sideItemIn 300ms var(--ease-out) both;
-}
-
-/* 側欄項目依序滑入 */
-.sidebar-nav .side-item:nth-child(1) { animation-delay: 40ms; }
-.sidebar-nav .side-item:nth-child(2) { animation-delay: 90ms; }
-.sidebar-nav .side-item:nth-child(3) { animation-delay: 140ms; }
-.sidebar-nav .side-item:nth-child(4) { animation-delay: 190ms; }
-
-@keyframes sideItemIn {
+@keyframes lineSidebarIn {
   from {
     opacity: 0;
-    transform: translateX(-12px);
+    transform: translateX(-10px);
   }
   to {
     opacity: 1;
@@ -57,57 +30,10 @@
   }
 }
 
-.side-item .icon {
-  display: inline-flex;
-  align-items: center;
-  color: inherit;
-  transition: transform var(--dur-2) var(--ease);
-}
-
-.side-item:hover {
-  background: var(--surface-2);
-  color: var(--ink);
-  transform: translateX(3px);
-}
-
-.side-item:hover .icon {
-  transform: scale(1.12);
-}
-
-.side-item:active {
-  transform: translateX(3px) scale(0.97);
-}
-
-/* 現在頁面：綠底 + 左側圓角指示條 */
-.side-item.active {
-  background: var(--primary-soft);
-  color: var(--primary-strong);
-  font-weight: 700;
-  transform: none;
-}
-
-.side-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 60%;
-  border-radius: var(--r-pill);
-  background: var(--primary);
-  animation: indicatorGrow 260ms var(--ease-out) both;
-}
-
-@keyframes indicatorGrow {
-  from {
-    height: 0;
-    opacity: 0;
-  }
-  to {
-    height: 60%;
-    opacity: 1;
-  }
+[data-theme='dark'] .sidebar {
+  background:
+    radial-gradient(circle at 5% 18%, rgba(62, 207, 188, 0.08), transparent 32%),
+    var(--surface);
 }
 
 /* 僅在桌面版顯示 */

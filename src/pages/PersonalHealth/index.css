@@ -98,6 +98,38 @@
     animation: bannerIn 400ms var(--ease-out) 120ms both;
 }
 
+.stepperForm {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.healthStepIntro {
+    padding-bottom: var(--sp-4);
+    margin-bottom: var(--sp-5);
+    border-bottom: 1px solid var(--hair);
+}
+
+.healthStepIntro span {
+    color: var(--primary-strong);
+    font-size: 0.78rem;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+}
+
+.healthStepIntro h2 {
+    margin: var(--sp-1) 0 var(--sp-2);
+    color: var(--ink);
+    font-size: 1.45rem;
+}
+
+.healthStepIntro p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
 /* 標題 */
 .formTitle {
     font-size: 2rem;
@@ -136,6 +168,18 @@
     transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 
+.fieldControl {
+    display: flex;
+    flex: 1;
+    max-width: 300px;
+    flex-direction: column;
+    gap: var(--sp-1);
+}
+
+.fieldControl .input {
+    max-width: none;
+}
+
 .input::placeholder {
     color: var(--faint);
 }
@@ -166,10 +210,20 @@ textarea.input.longInput {
 /* 欄位下方的獨立錯誤文字 */
 .fieldErrorText {
     color: #ff4d4f;
-    font-size: 2.5vh;
+    font-size: 0.82rem;
     margin-top: 4px;
     display: block;
     font-weight: 600;
+}
+
+.stepRequirement {
+    margin: 0;
+    padding: var(--sp-3);
+    border-radius: var(--r-md);
+    color: var(--warning);
+    background: var(--warning-soft);
+    font-size: 0.86rem;
+    font-weight: 650;
 }
 
 /* select */
@@ -263,6 +317,19 @@ select.input {
     flex: 1;
     max-width: 360px;
     position: relative;
+}
+
+.historyControl {
+    display: flex;
+    flex: 1;
+    max-width: 500px;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.historyControl .multiSelectWrapper {
+    width: 100%;
 }
 
 .multiSelectButton {
@@ -460,8 +527,20 @@ select.input {
     align-items: center;
 }
 
+.otherInputRow button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
 .otherInputRow svg {
     stroke: var(--primary);
+}
+
+.otherSavedBadge {
+    flex: 0 0 auto;
+    color: var(--success);
+    font-size: 0.78rem;
+    font-weight: 700;
 }
 
 /* 手機版 */
@@ -497,6 +576,10 @@ select.input {
         padding: var(--sp-4);
     }
 
+    .stepperForm {
+        padding: 0;
+    }
+
     .formGroup {
         flex-direction: column;
         align-items: flex-start;
@@ -512,16 +595,29 @@ select.input {
         max-width: 80%;
     }
 
+    .fieldControl,
+    .fieldControl .input {
+        width: 100%;
+        max-width: 100%;
+    }
+
     select.input {
         max-width: 80%;
     }
 
     .multiSelectWrapper {
-        width: 75%;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .historyControl {
+        width: 100%;
+        max-width: 100%;
     }
 
     .singleSelectWrapper {
-        max-width: 80%;
+        width: 100%;
+        max-width: 100%;
     }
 
     input.longInput,

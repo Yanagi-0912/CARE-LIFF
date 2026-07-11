@@ -1,0 +1,790 @@
+.knowledgeReportsPage {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-4) calc(var(--bottom-h) + var(--sp-5));
+}
+
+.knowledgeNoticeCard {
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  margin-bottom: var(--sp-4);
+  animation: knowledgeCardIn 380ms var(--ease-out) both;
+}
+
+.knowledgeNotice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--primary-softer);
+}
+
+.knowledgeNoticeIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  color: var(--primary-strong);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.knowledgeNotice p {
+  flex: 1;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.knowledgeNotice button,
+.knowledgePrimaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.knowledgeNotice button {
+  color: var(--primary-strong);
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  box-shadow: var(--shadow-1);
+}
+
+.knowledgeNotice button:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.knowledgeHero {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(420px, 1.22fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+.knowledgeSummaryCard,
+.knowledgeFeaturedCard {
+  overflow: hidden;
+  min-height: 280px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  animation: knowledgeCardIn 420ms var(--ease-out) both;
+}
+
+.knowledgeSummary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  gap: var(--sp-4);
+  width: 100%;
+  min-height: 280px;
+  padding: var(--sp-5);
+  background: var(--surface);
+}
+
+.knowledgeAvatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 3px solid var(--surface);
+  color: #ffffff;
+  background: linear-gradient(145deg, var(--primary), var(--primary-2));
+  box-shadow: 0 10px 24px -10px rgba(14, 147, 132, 0.6);
+  font-size: 1.55rem;
+  font-weight: 850;
+}
+
+.knowledgeSummaryCopy {
+  align-self: center;
+}
+
+.knowledgeEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 10px;
+  border-radius: var(--r-pill);
+  background: var(--primary-softer);
+  color: var(--primary-strong);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.knowledgeSummary h1 {
+  margin: var(--sp-2) 0 0;
+  color: var(--ink);
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+  line-height: 1.18;
+}
+
+.knowledgeStats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: var(--sp-3) 0;
+}
+
+.knowledgeStats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border-right: 1px solid var(--hair);
+}
+
+.knowledgeStats > div:last-child {
+  border-right: 0;
+}
+
+.knowledgeStats strong {
+  color: var(--primary-strong);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.knowledgeStats span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.knowledgePrimaryButton {
+  grid-column: 1 / -1;
+  width: 100%;
+  color: #ffffff;
+  background: var(--ink);
+  box-shadow: var(--shadow-2);
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.knowledgePrimaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-3);
+}
+
+.knowledgeFeatured {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 280px;
+  padding: clamp(24px, 5vw, 52px);
+  background: var(--primary-softer);
+}
+
+.featuredContent {
+  position: relative;
+  z-index: 2;
+  max-width: 68%;
+}
+
+.featuredContent .knowledgeEyebrow {
+  padding-left: 0;
+  color: var(--primary-strong);
+  background: transparent;
+}
+
+.featuredContent .knowledgeEyebrow::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.knowledgeFeatured h2 {
+  margin: var(--sp-3) 0 var(--sp-4);
+  color: var(--ink);
+  font-size: clamp(1.45rem, 2.9vw, 2.15rem);
+  line-height: 1.25;
+}
+
+.knowledgeFeatured time {
+  display: block;
+  margin-top: var(--sp-4);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.featuredMedicalMark {
+  position: absolute;
+  z-index: 1;
+  right: 7%;
+  bottom: 11%;
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 146px;
+  border: 8px solid rgba(255, 255, 255, 0.82);
+  border-radius: 26px;
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 20px 40px -20px rgba(20, 80, 76, 0.45);
+  transform: rotate(6deg);
+}
+
+.featuredMedicalMark::before,
+.featuredMedicalMark::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: rgba(14, 147, 132, 0.24);
+}
+
+.featuredMedicalMark::before {
+  bottom: 36px;
+  box-shadow: 0 18px 0 rgba(14, 147, 132, 0.18);
+}
+
+.featuredMedicalMark::after {
+  top: -17px;
+  left: 35px;
+  right: 35px;
+  height: 22px;
+  background: var(--primary);
+}
+
+.featuredMedicalMark span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #ffffff;
+  background: var(--primary);
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.featuredGlow {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.featuredGlowOne {
+  top: -100px;
+  right: -30px;
+  width: 260px;
+  height: 260px;
+}
+
+.featuredGlowTwo {
+  right: 165px;
+  bottom: -70px;
+  width: 150px;
+  height: 150px;
+}
+
+.knowledgeListSection {
+  animation: knowledgeCardIn 420ms var(--ease-out) 120ms both;
+}
+
+.knowledgeListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0;
+  margin-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--hair);
+}
+
+.knowledgeTabs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  overflow-x: auto;
+}
+
+.knowledgeTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.knowledgeTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.knowledgeTabs button span {
+  color: var(--primary-strong);
+}
+
+.knowledgeTabs button:hover {
+  background: var(--surface-2);
+}
+
+.knowledgeTabs button.isActive {
+  color: var(--primary-strong);
+  border-color: rgba(14, 147, 132, 0.25);
+  background: var(--primary-softer);
+}
+
+.knowledgeSort {
+  min-width: 122px;
+  padding: 9px 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  color: var(--ink-2);
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.knowledgeReportList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}
+
+.knowledgeReportCard {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1.25fr) minmax(210px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  color: inherit;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
+}
+
+.knowledgeReportCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--line);
+  box-shadow: var(--shadow-2);
+}
+
+.reportIcon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md);
+  color: var(--warning);
+  background: var(--warning-soft);
+  font-size: 1.15rem;
+  font-weight: 850;
+}
+
+.report-reviewing .reportIcon {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+
+.report-resolved .reportIcon {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.reportQuestion,
+.reportReview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.reportQuestion strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.96rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reportMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: 5px;
+}
+
+.reportMeta time,
+.reportReview small {
+  color: var(--faint);
+  font-size: 0.73rem;
+}
+
+.reasonTag {
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  color: var(--warning);
+  background: var(--warning-soft);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.reason-reviewing {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+
+.reason-resolved {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.reportReview {
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--hair);
+}
+
+.reportReview span {
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.79rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledgeStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+  padding: 7px 11px;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.status-pending {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.status-reviewing {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+
+.status-resolved {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.reportChevron {
+  color: var(--faint);
+  font-size: 1.6rem;
+  transition: transform var(--dur-1) var(--ease);
+}
+
+.knowledgeReportCard:hover .reportChevron {
+  transform: translateX(3px);
+}
+
+.knowledgeEmpty {
+  display: grid;
+  justify-items: center;
+  padding: var(--sp-7) var(--sp-4);
+  margin-top: var(--sp-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-xl);
+  text-align: center;
+}
+
+.knowledgeEmpty > span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: 1.3rem;
+}
+
+.knowledgeEmpty h3 {
+  margin: var(--sp-3) 0 var(--sp-1);
+  color: var(--ink);
+}
+
+.knowledgeEmpty p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.reportDialogBackdrop {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: var(--scrim);
+  animation: dialogFadeIn var(--dur-2) var(--ease-out);
+}
+
+.reportDialog {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: var(--sp-6);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+}
+
+.reportDialogClose {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-size: 1.4rem;
+}
+
+.reportDialogId {
+  margin: var(--sp-4) 0 var(--sp-1);
+  color: var(--faint);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.reportDialog h2 {
+  margin: 0;
+  padding-right: var(--sp-6);
+  color: var(--ink);
+  font-size: 1.5rem;
+  line-height: 1.35;
+}
+
+.reportDialog dl {
+  display: grid;
+  gap: var(--sp-3);
+  margin: var(--sp-5) 0 0;
+}
+
+.reportDialog dl > div {
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.reportDialog dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.reportDialog dd {
+  margin: var(--sp-1) 0 0;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes knowledgeCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 900px) {
+  .knowledgeHero {
+    grid-template-columns: 1fr;
+  }
+
+  .knowledgeSummary,
+  .knowledgeFeatured {
+    min-height: 240px;
+  }
+
+  .knowledgeReportCard {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .reportReview {
+    grid-column: 2 / -1;
+    padding: var(--sp-2) 0 0;
+    border-top: 1px solid var(--hair);
+    border-left: 0;
+  }
+
+  .knowledgeReportCard .knowledgeStatus {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .reportChevron {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .knowledgeReportsPage {
+    padding: var(--sp-3) var(--sp-3) calc(var(--bottom-h) + var(--sp-4));
+  }
+
+  .knowledgeNotice {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .knowledgeNotice p {
+    align-self: center;
+    font-size: 0.84rem;
+  }
+
+  .knowledgeNotice button {
+    width: 100%;
+  }
+
+  .knowledgeSummary {
+    grid-template-columns: 62px 1fr;
+    padding: var(--sp-4);
+  }
+
+  .knowledgeAvatar {
+    width: 62px;
+    height: 62px;
+    font-size: 1.25rem;
+  }
+
+  .knowledgeSummary h1 {
+    font-size: 1.35rem;
+  }
+
+  .knowledgeFeatured {
+    min-height: 255px;
+    padding: var(--sp-5);
+  }
+
+  .featuredContent {
+    max-width: 75%;
+  }
+
+  .knowledgeFeatured h2 {
+    font-size: 1.45rem;
+  }
+
+  .featuredMedicalMark {
+    right: -20px;
+    bottom: 10px;
+    width: 100px;
+    height: 126px;
+    opacity: 0.78;
+  }
+
+  .knowledgeListHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .knowledgeSort {
+    align-self: flex-end;
+  }
+
+  .knowledgeReportCard {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+  }
+
+  .knowledgeReportCard .knowledgeStatus {
+    grid-column: 2;
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .reportQuestion strong {
+    white-space: normal;
+  }
+
+  .reportMeta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reportReview {
+    grid-column: 1 / -1;
+  }
+
+  .reportReview span {
+    white-space: normal;
+  }
+
+  .reportDialog {
+    padding: var(--sp-5);
+  }
+}

@@ -8,6 +8,8 @@ import PersonalHealth from './pages/PersonalHealth';
 import Family from './pages/Family';
 import JoinPage from './pages/Join';
 import ConsultRecordsPage from './pages/PersonalHealth/ConsultRecords';
+import KnowledgeReportsPage from './pages/KnowledgeReports';
+import NearbyHospitalsPage from './pages/NearbyHospitals';
 import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
 import type { SettingsState } from './pages/Settings';
 import './App.css';
@@ -60,6 +62,8 @@ function AppContent() {
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
+            <Route path="/knowledge-reports" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
+            <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
             <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           </Routes>

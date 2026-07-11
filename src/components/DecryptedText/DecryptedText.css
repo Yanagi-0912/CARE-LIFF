@@ -1,0 +1,32 @@
+.decrypted-text {
+  position: relative;
+  cursor: default;
+}
+
+.decrypted-text__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.decrypted-text__revealed {
+  color: inherit;
+}
+
+.decrypted-text__encrypted {
+  color: var(--primary-soft);
+  text-shadow: 0 0 12px currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decrypted-text__encrypted {
+    color: inherit;
+    text-shadow: none;
+  }
+}

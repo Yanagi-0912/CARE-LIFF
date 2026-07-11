@@ -1,45 +1,62 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
-import { HealthIcon, FamilyIcon, SettingsIcon, KeyIcon } from '../../components/icons';
+import { HealthIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, KeyIcon, SearchIcon } from '../../components/icons';
+import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import './index.css';
 
-/** * 首頁主入口：提供四個主要功能導航
+/** * 首頁主入口：提供主要功能導航
  * 整合登入狀態判斷與登出邏輯
  */
 const Home = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const isLoggedIn = isAuthenticated();
 
   // 定義功能卡片配置（tone 對應各自的圖示底色）
   const features = [
     {
-      title: '個人健康',
-      icon: <HealthIcon width={26} height={26} />,
-      path: '/personalhealth',
-      desc: '紀錄與預約',
+      title: t('home.nearbyHospitals'),
+      icon: <SearchIcon width={26} height={26} />,
+      path: '/nearby-hospitals',
+      desc: t('home.nearbyHospitalsDesc'),
       tone: 'teal'
     },
     {
-      title: '家庭介面',
+      title: t('home.personalHealth'),
+      icon: <HealthIcon width={26} height={26} />,
+      path: '/personalhealth',
+      desc: t('home.personalHealthDesc'),
+      tone: 'teal'
+    },
+    {
+      title: t('home.family'),
       icon: <FamilyIcon width={26} height={26} />,
       path: '/family',
-      desc: '管理家人狀況',
+      desc: t('home.familyDesc'),
       tone: 'violet'
     },
     {
-      title: '設定頁面',
+      title: t('home.knowledgeReports'),
+      icon: <KnowledgeIcon width={26} height={26} />,
+      path: '/knowledge-reports',
+      desc: t('home.knowledgeReportsDesc'),
+      tone: 'teal'
+    },
+    {
+      title: t('home.settings'),
       icon: <SettingsIcon width={26} height={26} />,
       path: '/settings',
-      desc: '系統偏好設定',
+      desc: t('home.settingsDesc'),
       tone: 'amber'
     },
     {
       // 根據狀態切換文字與描述
-      title: isLoggedIn ? '帳號登出' : '帳號登入',
+      title: isLoggedIn ? t('home.logout') : t('home.login'),
       icon: <KeyIcon width={26} height={26} />,
       path: '/login',
-      desc: isLoggedIn ? '登出目前帳號' : '切換 LINE 帳號',
+      desc: isLoggedIn ? t('home.logoutDesc') : t('home.loginDesc'),
       tone: 'coral',
       isAuthAction: true // 標記這是身分驗證相關的操作
     },
@@ -60,25 +77,42 @@ const Home = () => {
 
   return (
     <div className="home-grid">
-      <header className="home-hero">
-        <h1>CARE 健康管家</h1>
-        <p>點選下方卡片開始管理您的健康</p>
-      </header>
+      <div className="homeHeroCard">
+        <header className="home-hero">
+          <h1>
+            <DecryptedText
+              text={t('home.title')}
+              speed={36}
+              sequential
+              revealDirection="center"
+              useOriginalCharsOnly
+              animateOn="view"
+              className="decrypted-text__revealed"
+              encryptedClassName="decrypted-text__encrypted"
+            />
+          </h1>
+          <p>{t('home.subtitle')}</p>
+        </header>
+      </div>
 
       <section className="card-container">
         {features.map((f) => (
-          <button
+          <div
             key={f.path}
-            className={`feature-card tone-${f.tone}`}
-            onClick={() => handleCardClick(f)}
+            className={`homeFeatureCard tone-${f.tone}`}
           >
-            <span className="card-icon">{f.icon}</span>
-            <div className="card-info">
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-            <span className="card-arrow" aria-hidden="true">›</span>
-          </button>
+            <button
+              className="feature-card"
+              onClick={() => handleCardClick(f)}
+            >
+              <span className="card-icon">{f.icon}</span>
+              <div className="card-info">
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+              <span className="card-arrow" aria-hidden="true">›</span>
+            </button>
+          </div>
         ))}
       </section>
     </div>

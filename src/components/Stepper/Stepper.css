@@ -1,0 +1,209 @@
+.outer-container {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.step-circle-container {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.step-indicator-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+}
+
+.step-content-default {
+  position: relative;
+  overflow: hidden;
+}
+
+.step-slide {
+  position: absolute;
+  inset: 0 0 auto;
+  will-change: transform, opacity;
+}
+
+.step-default {
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.footer-container {
+  padding: 0 var(--sp-5) var(--sp-5);
+}
+
+.footer-nav {
+  display: flex;
+  margin-top: var(--sp-4);
+  gap: var(--sp-3);
+}
+
+.footer-nav.spread {
+  justify-content: space-between;
+}
+
+.footer-nav.end {
+  justify-content: flex-end;
+}
+
+.back-button,
+.next-button {
+  min-height: 44px;
+  border-radius: var(--r-pill);
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    color var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    transform var(--dur-1) var(--ease);
+}
+
+.back-button {
+  border: 1px solid var(--hair);
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.back-button:hover:not(:disabled) {
+  border-color: var(--line);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.next-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.next-button:hover:not(:disabled) {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+}
+
+.back-button:active:not(:disabled),
+.next-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.back-button:disabled,
+.next-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.step-indicator {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.step-indicator:disabled {
+  cursor: default;
+}
+
+.step-indicator-inner {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  color: var(--muted);
+  background: var(--surface-2);
+  font-weight: 750;
+  transition:
+    color var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease);
+}
+
+.step-indicator.is-active .step-indicator-inner,
+.step-indicator.is-complete .step-indicator-inner {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.active-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.step-number {
+  font-size: 0.85rem;
+}
+
+.step-connector {
+  position: relative;
+  height: 3px;
+  flex: 1;
+  overflow: hidden;
+  margin: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+}
+
+.step-connector-inner {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: var(--primary);
+}
+
+.check-icon {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 600px) {
+  .step-indicator-row {
+    padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  }
+
+  .step-default {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .footer-container {
+    padding: 0 var(--sp-4) var(--sp-4);
+  }
+
+  .back-button,
+  .next-button {
+    min-width: 108px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-slide {
+    will-change: auto;
+  }
+
+  .back-button,
+  .next-button,
+  .step-indicator-inner {
+    transition: none;
+  }
+}

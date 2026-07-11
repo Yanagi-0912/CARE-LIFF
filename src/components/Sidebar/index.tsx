@@ -1,36 +1,49 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import './index.css';
 import { useTranslation } from 'react-i18next';
-import { HomeIcon, HealthIcon, FamilyIcon, SettingsIcon } from '../icons';
+import LineSidebar from '../LineSidebar/LineSidebar';
 
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
 
-  const isActive = (path: string) => (location.pathname === path ? 'active' : '');
-
   const items = [
-    { path: '/', label: t('sidebar.home'), icon: <HomeIcon /> },
-    { path: '/personalhealth', label: t('sidebar.health'), icon: <HealthIcon /> },
-    { path: '/family', label: t('sidebar.family'), icon: <FamilyIcon /> },
-    { path: '/settings', label: t('sidebar.settings'), icon: <SettingsIcon /> },
+    { path: '/', label: t('sidebar.home') },
+    { path: '/nearby-hospitals', label: t('sidebar.nearbyHospitals') },
+    { path: '/personalhealth', label: t('sidebar.health') },
+    { path: '/knowledge-reports', label: t('sidebar.knowledgeReports') },
+    { path: '/family', label: t('sidebar.family') },
+    { path: '/settings', label: t('sidebar.settings') },
   ];
+
+  const activeIndex = items.findIndex((item) => (
+    item.path === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(item.path)
+  ));
 
   return (
     <aside className="sidebar">
-      <nav className="sidebar-nav">
-        {items.map((item) => (
-          <button
-            key={item.path}
-            className={`side-item ${isActive(item.path)}`}
-            onClick={() => navigate(item.path)}
-          >
-            <span className="icon">{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <LineSidebar
+        key={location.pathname}
+        items={items.map((item) => item.label)}
+        accentColor="var(--primary)"
+        textColor="var(--muted)"
+        markerColor="var(--line)"
+        proximityRadius={84}
+        maxShift={12}
+        markerLength={34}
+        markerGap={10}
+        tickScale={0.42}
+        itemGap={22}
+        fontSize={0.95}
+        smoothing={90}
+        defaultActive={activeIndex >= 0 ? activeIndex : null}
+        onItemClick={(index) => navigate(items[index].path)}
+        className="careLineSidebar"
+        ariaLabel={t('sidebar.mainNavAriaLabel')}
+      />
     </aside>
   );
 }

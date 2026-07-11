@@ -78,8 +78,6 @@ const SettingsPage: React.FC = () => {
     return defaultSettings;
   });
 
-  const [saved, setSaved] = useState(false);
-
   // 每次 settings 變動都即時套用
   useEffect(() => {
     applyTheme(settings);
@@ -117,7 +115,7 @@ const SettingsPage: React.FC = () => {
       });
   }, [i18n]);
 
-  // 同步變更到後端資料庫，未登入或發生錯誤時只記錄，不中斷畫面操作
+  // 變更即寫入後端；未登入或失敗時只記錄，不中斷畫面操作
   const persistSettings = (partial: UpdateUserSettingsPayload) => {
     if (!isAuthenticated()) return;
     updateUserSettings(partial).catch((err) => {
@@ -131,12 +129,6 @@ const SettingsPage: React.FC = () => {
       prev.language === i18n.language ? prev : { ...prev, language: i18n.language as SupportedLanguage }
     ));
   }, [i18n.language]);
-
-  // 顯示儲存成功提示
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   const handleFontSize = (size: SettingsState['fontSize']) => {
     setSettings((prev) => ({ ...prev, fontSize: size }));
@@ -254,11 +246,6 @@ const SettingsPage: React.FC = () => {
           <div className="about-row"><span>{t('settings.team')}</span><strong>CARE Team</strong></div>
         </div>
       </section>
-
-      {/* ── 儲存按鈕 ── */}
-      <button className="save-btn" onClick={handleSave}>
-        {saved ? t('settings.saved') : t('settings.save')}
-      </button>
     </div>
   );
 };

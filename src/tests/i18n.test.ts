@@ -31,4 +31,21 @@ describe('多語系初始化邏輯', () => {
     await i18n.changeLanguage('en');
     expect(i18n.t('settings.title')).toBe('Settings');
   });
+
+  it('越南文包含知識回報頁的完整翻譯', async () => {
+    await i18n.changeLanguage('vi');
+    expect(i18n.t('home.knowledgeReports')).toBe('Báo cáo kiến thức');
+    expect(i18n.t('knowledgeReports.status.reviewing')).toBe('Đang kiểm duyệt thủ công');
+    expect(i18n.t('knowledgeReports.sample.question2')).not.toContain('高血壓');
+  });
+
+  it('個人健康頁文案支援英文與越南文', async () => {
+    await i18n.changeLanguage('en');
+    expect(i18n.t('personalHealth.step1.title')).toBe('Basic info');
+    expect(i18n.t('personalHealth.save')).toBe('Save');
+
+    await i18n.changeLanguage('vi');
+    expect(i18n.t('personalHealth.step1.title')).toBe('Thông tin cơ bản');
+    expect(i18n.t('personalHealth.gender.male')).toBe('Nam');
+  });
 });

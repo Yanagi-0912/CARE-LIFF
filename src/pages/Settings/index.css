@@ -227,36 +227,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 儲存按鈕（滿版寬、手指好按）── */
-.save-btn {
-  display: block;
-  width: 100%;
-  margin: var(--sp-4) 0 0;
-  padding: 15px 0;
-  font-size: 1.1rem;
-  font-weight: 800;
-  border: none;
-  border-radius: var(--r-lg);
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  color: #ffffff;
-  cursor: pointer;
-  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
-  box-shadow: 0 8px 20px -8px rgba(14, 147, 132, 0.6);
-  letter-spacing: 0.04em;
-  /* 觸控友善 */
-  min-height: 52px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.save-btn:hover {
-  box-shadow: 0 12px 26px -10px rgba(14, 147, 132, 0.7);
-  transform: translateY(-1px);
-}
-
-.save-btn:active {
-  transform: scale(0.98);
-}
-
 @media (max-width: 480px) {
   .settings-page {
     padding: var(--sp-3) var(--sp-3) 116px;
