@@ -1,0 +1,76 @@
+.expand-search {
+  --expand-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --expand-dur: 0.4s;
+  --expand-collapsed: 56px;
+
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: var(--expand-collapsed);
+  max-width: 100%;
+  height: var(--expand-collapsed);
+  margin-top: var(--sp-4);
+  padding: 0 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  transition: width var(--expand-dur) var(--expand-ease);
+}
+
+.expand-search:focus-within {
+  width: min(100%, 420px);
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.expand-search__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: #ffffff;
+  pointer-events: none;
+}
+
+.expand-search:focus-within .expand-search__icon {
+  color: var(--primary-strong, #0b6b60);
+}
+
+.expand-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  margin-left: 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink, #14201d);
+  font-size: 0.95rem;
+  font-weight: 550;
+}
+
+.expand-search__input::placeholder {
+  color: rgba(20, 32, 29, 0.45);
+}
+
+/* 收合時剪裁文字；圖示維持在左側 */
+.expand-search:not(:focus-within) .expand-search__input {
+  color: transparent;
+  caret-color: transparent;
+}
+
+.expand-search:not(:focus-within) .expand-search__input::placeholder {
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expand-search {
+    transition: none;
+  }
+}

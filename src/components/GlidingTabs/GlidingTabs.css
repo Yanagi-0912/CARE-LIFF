@@ -1,26 +1,33 @@
 .gliding-tabs {
+  --gliding-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --gliding-dur: 0.4s;
+
   position: relative;
   display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  width: 100%;
-  gap: 2px;
-  padding: 6px 8px;
-  background: var(--surface);
-  border-top: 1px solid var(--hair);
-  box-shadow: 0 -4px 16px -8px rgba(20, 32, 29, 0.12);
-  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin: 8px 10px;
+  margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 4px;
+  box-sizing: border-box;
+  width: calc(100% - 20px);
+  background: var(--surface-2);
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  box-shadow: 0 -4px 16px -10px rgba(20, 32, 29, 0.1);
 }
 
 .gliding-tabs__indicator {
   position: absolute;
-  top: 6px;
-  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-  border-radius: var(--r-md);
-  background: var(--primary-soft);
+  top: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 4px 12px -4px rgba(14, 147, 132, 0.55);
   transition:
-    left 0.4s cubic-bezier(0.65, 0, 0.35, 1),
-    width 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+    left var(--gliding-dur) var(--gliding-ease),
+    width var(--gliding-dur) var(--gliding-ease);
   pointer-events: none;
   z-index: 0;
 }
@@ -33,35 +40,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
-  padding: 8px 6px;
+  padding: 8px 10px;
   border: none;
   background: transparent;
   color: var(--faint);
   cursor: pointer;
-  border-radius: var(--r-md);
-  transition: color var(--dur-1) var(--ease);
+  border-radius: 999px;
+  transition: color var(--gliding-dur) var(--gliding-ease);
 }
 
 .gliding-tabs__tab.is-active {
-  color: var(--primary-strong);
+  color: #ffffff;
 }
 
 .gliding-tabs__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: color var(--gliding-dur) var(--gliding-ease);
 }
 
 .gliding-tabs__label {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 650;
   white-space: nowrap;
+  transition: color var(--gliding-dur) var(--gliding-ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gliding-tabs__indicator {
+  .gliding-tabs__indicator,
+  .gliding-tabs__tab,
+  .gliding-tabs__icon,
+  .gliding-tabs__label {
     transition: none;
   }
 }

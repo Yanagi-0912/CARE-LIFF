@@ -5,6 +5,14 @@
   left: 0;
   right: 0;
   z-index: 100;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  background: transparent;
+}
+
+.bottom-nav .gliding-tabs {
+  pointer-events: auto;
 }
 
 /* 如果螢幕很大 (電腦版)，就隱藏底部導覽列 */

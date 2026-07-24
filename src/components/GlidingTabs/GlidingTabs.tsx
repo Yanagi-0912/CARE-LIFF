@@ -48,6 +48,14 @@ export default function GlidingTabs({
     return () => window.removeEventListener('resize', updateIndicator);
   }, [activeIndex, tabs]);
 
+  const handleClick = (key: string, index: number) => {
+    const el = refs.current[index];
+    if (el) {
+      setStyle({ left: el.offsetLeft, width: el.offsetWidth });
+    }
+    onChange(key);
+  };
+
   return (
     <nav
       className={`gliding-tabs${className ? ` ${className}` : ''}`}
@@ -72,7 +80,7 @@ export default function GlidingTabs({
             }}
             className={`gliding-tabs__tab${isActive ? ' is-active' : ''}`}
             aria-current={isActive ? 'page' : undefined}
-            onClick={() => onChange(tab.key)}
+            onClick={() => handleClick(tab.key, i)}
           >
             {tab.icon ? <span className="gliding-tabs__icon">{tab.icon}</span> : null}
             <span className="gliding-tabs__label">{tab.label}</span>
