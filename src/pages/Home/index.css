@@ -70,13 +70,6 @@
   animation: heroTextIn 420ms var(--ease-out) 220ms both;
 }
 
-.home-hero__ekg {
-  margin: var(--sp-4) 0 0;
-  margin-inline: 0;
-  max-width: 240px;
-  animation: heroTextIn 420ms var(--ease-out) 320ms both;
-}
-
 @keyframes heroTextIn {
   from {
     opacity: 0;

@@ -30,48 +30,34 @@
   flex-shrink: 0;
 }
 
-/* 圓形品牌徽章：綠色漸層 + 白色脈搏線 */
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  color: #ffffff;
-  flex-shrink: 0;
-  box-shadow: 0 4px 10px -3px rgba(14, 147, 132, 0.5);
-}
-
-/* 脈搏線每 3.2 秒跳動一次，呼應「健康照護」品牌 */
-.brand-badge svg {
-  animation: heartbeat 3.2s var(--ease) infinite;
-  transform-origin: center;
-}
-
-@keyframes heartbeat {
-  0%, 24%, 100% { transform: scale(1); }
-  8% { transform: scale(1.22); }
-  16% { transform: scale(0.95); }
-}
-
-.header-brand:hover .brand-badge {
-  animation: badgeWiggle 420ms var(--ease);
-}
-
-@keyframes badgeWiggle {
-  0%, 100% { transform: rotate(0); }
-  30% { transform: rotate(-8deg); }
-  65% { transform: rotate(6deg); }
-}
-
 .header-logo {
   font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--ink);
   margin: 0;
+}
+
+.header-ekg {
+  flex: 1 1 auto;
+  max-width: 200px;
+  min-width: 88px;
+  height: 28px;
+  aspect-ratio: auto;
+  margin-inline: var(--sp-2);
+}
+
+.header-ekg .ekg__dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+}
+
+@media (max-width: 600px) {
+  .header-ekg {
+    max-width: 120px;
+    min-width: 72px;
+  }
 }
 
 .clickable {

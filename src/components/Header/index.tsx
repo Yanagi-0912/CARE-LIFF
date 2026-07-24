@@ -4,7 +4,8 @@ import './index.css';
 import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
 import { getTheme, toggleTheme, type Theme } from '../../utils/theme';
-import { SunIcon, MoonIcon, PulseIcon } from '../icons';
+import { SunIcon, MoonIcon } from '../icons';
+import Heartbeat from '../Heartbeat/Heartbeat';
 
 function Header() {
   const navigate = useNavigate();
@@ -30,9 +31,6 @@ function Header() {
       <div className="header-container">
         {/* 左側 Logo */}
         <div className="header-brand">
-          <span className="brand-badge" aria-hidden="true">
-            <PulseIcon width={16} height={16} />
-          </span>
           <h1
             className="header-logo clickable"
             onClick={() => navigate('/')}
@@ -40,6 +38,8 @@ function Header() {
             CARE
           </h1>
         </div>
+
+        <Heartbeat tone="onLight" className="header-ekg" />
 
         {/* 右側按鈕 */}
         <nav className="header-nav">
