@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
 import { HealthIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, KeyIcon, SearchIcon } from '../../components/icons';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
-import ExpandableSearch from '../../components/ExpandableSearch/ExpandableSearch';
 import './index.css';
 
 /** * 首頁主入口：提供主要功能導航
@@ -93,12 +92,6 @@ const Home = () => {
             />
           </h1>
           <p>{t('home.subtitle')}</p>
-          <ExpandableSearch
-            className="home-hero__search"
-            placeholder={t('home.hospitalSearchPlaceholder')}
-            ariaLabel={t('home.nearbyHospitals')}
-            onSubmitSearch={() => navigate('/nearby-hospitals')}
-          />
         </header>
       </div>
 

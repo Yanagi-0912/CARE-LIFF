@@ -4,7 +4,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { fetchNearbyHospitals } from '../../api/medicalApi';
 import type { MedicalFacility } from '../../types/medical';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
-import { SearchIcon } from '../../components/icons';
+import ExpandableSearch from '../../components/ExpandableSearch/ExpandableSearch';
 import './index.css';
 
 function formatDistance(meters?: number | null) {
@@ -75,15 +75,15 @@ const NearbyHospitalsPage = () => {
           />
         </h1>
         <p className="nearbyDesc">{t('nearby.desc')}</p>
-        <button
-          type="button"
-          className="nearbyCta"
-          onClick={handleSearch}
+        <ExpandableSearch
+          className="nearbySearch"
+          placeholder={busy ? t('nearby.searching') : t('nearby.searchButton')}
+          ariaLabel={t('nearby.searchButton')}
+          onSubmitSearch={() => {
+            void handleSearch();
+          }}
           disabled={busy}
-        >
-          <SearchIcon width={18} height={18} />
-          {busy ? t('nearby.searching') : t('nearby.searchButton')}
-        </button>
+        />
         <p className="nearbyNote">{t('nearby.privacyNote')}</p>
       </header>
 
