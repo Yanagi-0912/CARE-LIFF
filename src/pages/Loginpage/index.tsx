@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import liff from '@line/liff'
 import { loginWithLiffIdToken } from '../../api/authApi'
 import { consumeRedirectUrl } from '../../utils/redirect'
+import Heartbeat from '../../components/Heartbeat/Heartbeat'
 import './index.css'
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim()
@@ -70,6 +71,7 @@ function LoginPage() {
 
 	return (
 		<main className="login-page">
+			<Heartbeat tone="onLight" className="login-ekg" />
 			<h2 className="login-title">登入 CARE</h2>
 			<p className="login-desc">{statusText}</p>
 			{errorText && <p className="login-error">{errorText}</p>}

@@ -1,0 +1,81 @@
+.ekg {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 230 / 84;
+  margin-inline: auto;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ekg__canvas {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 230px;
+  height: 84px;
+  transform-origin: top left;
+  transform: scale(calc(100cqw / 230));
+}
+
+.ekg__svg {
+  display: block;
+  overflow: visible;
+}
+
+.ekg__line {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ekg--onDark .ekg__line {
+  stroke: rgba(255, 255, 255, 0.38);
+}
+
+.ekg--onLight .ekg__line {
+  stroke: color-mix(in srgb, var(--primary, #0e9384) 35%, transparent);
+}
+
+.ekg__dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  offset-distance: 0%;
+  offset-rotate: 0deg;
+  animation: ekgSweep 2.4s linear infinite;
+}
+
+.ekg--onDark .ekg__dot {
+  background: #ffffff;
+  box-shadow:
+    0 0 6px 2px rgba(255, 255, 255, 0.85),
+    0 0 14px 4px rgba(255, 255, 255, 0.45);
+}
+
+.ekg--onLight .ekg__dot {
+  background: var(--primary, #0e9384);
+  box-shadow:
+    0 0 6px 2px color-mix(in srgb, var(--primary, #0e9384) 75%, transparent),
+    0 0 14px 4px color-mix(in srgb, var(--primary, #0e9384) 40%, transparent);
+}
+
+@keyframes ekgSweep {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ekg__dot {
+    animation: none;
+    offset-distance: 45%;
+  }
+}

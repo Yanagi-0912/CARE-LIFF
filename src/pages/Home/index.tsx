@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
 import { HealthIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, KeyIcon, SearchIcon } from '../../components/icons';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
+import Heartbeat from '../../components/Heartbeat/Heartbeat';
 import './index.css';
 
 /** * 首頁主入口：提供主要功能導航
@@ -92,6 +93,7 @@ const Home = () => {
             />
           </h1>
           <p>{t('home.subtitle')}</p>
+          <Heartbeat tone="onDark" className="home-hero__ekg" />
         </header>
       </div>
 

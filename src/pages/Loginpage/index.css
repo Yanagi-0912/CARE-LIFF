@@ -21,6 +21,11 @@
 	}
 }
 
+.login-ekg {
+	margin: 0 auto var(--sp-4);
+	max-width: 220px;
+}
+
 .login-title {
 	margin: 0;
 	font-size: 1.6rem;
