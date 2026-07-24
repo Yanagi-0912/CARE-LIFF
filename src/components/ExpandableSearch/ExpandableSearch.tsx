@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { SearchIcon } from '../icons';
 import './ExpandableSearch.css';
 
