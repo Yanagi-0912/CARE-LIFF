@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import liff from '@line/liff'
 import { loginWithLiffIdToken } from '../../api/authApi'
-import { consumeRedirectUrl } from '../../utils/redirect'
+import { consumeRedirectUrl, resolveAppPath } from '../../utils/redirect'
 import Heartbeat from '../../components/Heartbeat/Heartbeat'
 import './index.css'
 
@@ -46,13 +46,7 @@ function LoginPage() {
 				setStatusText('驗證成功，正在返回...')
 				const redirectUrl = consumeRedirectUrl()
 				if (redirectUrl) {
-					// 如果是完整 URL，擷取路徑與參數
-					try {
-						const url = new URL(redirectUrl)
-						navigate(url.pathname + url.search, { replace: true })
-					} catch {
-						navigate(redirectUrl, { replace: true })
-					}
+					navigate(resolveAppPath(redirectUrl), { replace: true })
 				} else {
 					navigate('/', { replace: true })
 				}

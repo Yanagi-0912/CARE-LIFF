@@ -15,3 +15,25 @@ export function consumeRedirectUrl(): string | null {
   sessionStorage.removeItem(REDIRECT_URL_KEY);
   return url;
 }
+
+/**
+ * 將 redirect（相對路徑或完整 URL）轉成 React Router path。
+ */
+export function resolveAppPath(
+  redirectUrl: string,
+  origin: string = typeof window !== 'undefined' ? window.location.origin : 'http://localhost',
+): string {
+  try {
+    const url = new URL(redirectUrl, origin);
+    if (url.hostname === 'liff.line.me') {
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        return `/${parts.slice(1).join('/')}${url.search}`;
+      }
+      return '/';
+    }
+    return `${url.pathname}${url.search}` || '/';
+  } catch {
+    return redirectUrl.startsWith('/') ? redirectUrl : '/';
+  }
+}
