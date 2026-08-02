@@ -15,11 +15,18 @@ import type { SettingsState } from './pages/Settings';
 import './App.css';
 import Login from './pages/Loginpage';
 import { isAuthenticated } from './utils/auth';
+import { saveRedirectUrl } from './utils/redirect';
 import { getTheme, applyThemeAttribute } from './utils/theme';
 
 // 1. 新增 ProtectedRoute 元件
 function ProtectedRoute({ children }: { children: ReactNode }) {
+  const location = useLocation();
   if (!isAuthenticated()) {
+    // 保留深連結（如 Rich Menu → /settings），登入後再跳回
+    const redirect = `${location.pathname}${location.search}`;
+    if (redirect && redirect !== '/login') {
+      saveRedirectUrl(redirect);
+    }
     return <Navigate to="/login" replace />;
   }
   return children;
