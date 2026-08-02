@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   saveRedirectUrl,
   consumeRedirectUrl,
+  peekRedirectUrl,
+  redirectFromSearch,
   resolveAppPath,
 } from '../utils/redirect';
 
@@ -34,7 +36,21 @@ describe('save/consumeRedirectUrl', () => {
 
   it('consume 後清除', () => {
     saveRedirectUrl('/settings');
+    expect(peekRedirectUrl()).toBe('/settings');
     expect(consumeRedirectUrl()).toBe('/settings');
     expect(consumeRedirectUrl()).toBeNull();
+  });
+
+  it('忽略 /login 本身', () => {
+    saveRedirectUrl('/login');
+    expect(peekRedirectUrl()).toBeNull();
+  });
+});
+
+describe('redirectFromSearch', () => {
+  it('解析 redirect query', () => {
+    expect(redirectFromSearch('?redirect=%2Fsettings')).toBe('/settings');
+    expect(redirectFromSearch('?redirect=%2Ffamily')).toBe('/family');
+    expect(redirectFromSearch('?foo=1')).toBeNull();
   });
 });

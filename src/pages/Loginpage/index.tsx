@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import liff from '@line/liff'
 import { loginWithLiffIdToken } from '../../api/authApi'
-import { consumeRedirectUrl, resolveAppPath } from '../../utils/redirect'
+import {
+	consumeRedirectUrl,
+	peekRedirectUrl,
+	redirectFromSearch,
+	resolveAppPath,
+	saveRedirectUrl,
+} from '../../utils/redirect'
 import Heartbeat from '../../components/Heartbeat/Heartbeat'
 import './index.css'
 
@@ -10,6 +16,7 @@ const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim()
 
 function LoginPage() {
 	const navigate = useNavigate()
+	const location = useLocation()
 	const [statusText, setStatusText] = useState('正在初始化 LINE 登入...')
 	const [errorText, setErrorText] = useState('')
 
@@ -22,13 +29,28 @@ function LoginPage() {
 				return
 			}
 
+			// OAuth 回來後優先吃 URL ?redirect=（比 sessionStorage 穩）
+			const fromQuery = redirectFromSearch(location.search)
+			if (fromQuery) {
+				saveRedirectUrl(fromQuery)
+			}
+
 			try {
 				await liff.init({ liffId: LIFF_ID })
 				if (cancelled) return
 
 				if (!liff.isLoggedIn()) {
 					setStatusText('正在導向 LINE 官方登入頁...')
-					liff.login({ redirectUri: window.location.href })
+					const pending =
+						fromQuery || peekRedirectUrl() || redirectFromSearch(location.search)
+					if (pending) {
+						saveRedirectUrl(pending)
+					}
+					// redirectUri 必須在 Endpoint URL 之下；/login?redirect= 可撐過 OAuth
+					const redirectUri = pending
+						? `${window.location.origin}/login?redirect=${encodeURIComponent(pending)}`
+						: `${window.location.origin}/login`
+					liff.login({ redirectUri })
 					return
 				}
 
@@ -44,7 +66,8 @@ function LoginPage() {
 				localStorage.setItem('CARE_LINE_USER_ID', authResult.line_user_id)
 
 				setStatusText('驗證成功，正在返回...')
-				const redirectUrl = consumeRedirectUrl()
+				const redirectUrl =
+					fromQuery || consumeRedirectUrl() || redirectFromSearch(location.search)
 				if (redirectUrl) {
 					navigate(resolveAppPath(redirectUrl), { replace: true })
 				} else {
@@ -61,7 +84,7 @@ function LoginPage() {
 		return () => {
 			cancelled = true
 		}
-	}, [navigate])
+	}, [navigate, location.search])
 
 	return (
 		<main className="login-page">

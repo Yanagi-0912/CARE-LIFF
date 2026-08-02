@@ -17,7 +17,11 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
     if (redirect && redirect !== '/login') {
       saveRedirectUrl(redirect);
     }
-    return <Navigate to="/login" replace />;
+    const loginTo =
+      redirect && redirect !== '/login'
+        ? `/login?redirect=${encodeURIComponent(redirect)}`
+        : '/login';
+    return <Navigate to={loginTo} replace />;
   }
   return children;
 }
@@ -28,7 +32,7 @@ describe('ProtectedRoute deep link redirect', () => {
     vi.mocked(isAuthenticated).mockReturnValue(false);
   });
 
-  it('未登入開啟 /settings 時應存下 redirect 並導向 /login', () => {
+  it('未登入開啟 /settings 時應存下 redirect 並導向 /login?redirect=', () => {
     render(
       <MemoryRouter initialEntries={['/settings']}>
         <Routes>

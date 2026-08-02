@@ -6,8 +6,11 @@ const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
 /**
  * 在掛載 React Router 之前完成 liff.init()，並還原 Rich Menu 深連結 path。
  *
- * LINE 會先開到 Endpoint URL + ?liff.state=/settings；
- * 若 Endpoint 誤設成 /login，SDK 可能不會自動改 pathname，需手動還原。
+ * LINE 會先開到 Endpoint URL + ?liff.state=/settings，init 後再二次導向。
+ * 若 Endpoint 誤設成 …/login，二次導向可能變成 /login/settings（無路由），
+ * 或停在 /login?liff.state=… — restorePathFromLiffStateSearch 會矯正。
+ *
+ * 請把 LINE Console 的 Endpoint URL 設成 SPA 根網址（不要加 /login）。
  */
 export async function bootstrapLiff(): Promise<void> {
   if (!LIFF_ID) {

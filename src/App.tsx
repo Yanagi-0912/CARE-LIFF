@@ -23,11 +23,16 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
   if (!isAuthenticated()) {
     // 保留深連結（如 Rich Menu → /settings），登入後再跳回
+    // 同時寫入 URL ?redirect=，避免 LIFF OAuth 清掉 sessionStorage
     const redirect = `${location.pathname}${location.search}`;
     if (redirect && redirect !== '/login') {
       saveRedirectUrl(redirect);
     }
-    return <Navigate to="/login" replace />;
+    const loginTo =
+      redirect && redirect !== '/login'
+        ? `/login?redirect=${encodeURIComponent(redirect)}`
+        : '/login';
+    return <Navigate to={loginTo} replace />;
   }
   return children;
 }
