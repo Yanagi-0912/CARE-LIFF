@@ -513,6 +513,11 @@
   background: var(--success-soft);
 }
 
+.status-rejected {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
 .reportChevron {
   color: var(--faint);
   font-size: 1.6rem;
