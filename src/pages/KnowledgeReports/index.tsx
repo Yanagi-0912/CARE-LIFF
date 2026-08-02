@@ -1,82 +1,109 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import liff from '@line/liff';
 import { useTranslation } from 'react-i18next';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
+import {
+  fetchKnowledgeReports,
+  type KnowledgeReportDto,
+  type KnowledgeReportReason,
+  type KnowledgeReportStatus,
+} from '../../api/knowledgeReportsApi';
 import './index.css';
 
-type ReportStatus = 'pending' | 'reviewing' | 'resolved';
-type ReportFilter = 'all' | ReportStatus;
+type ReportFilter = 'all' | KnowledgeReportStatus;
 
 interface KnowledgeReport {
   id: string;
   question: string;
   reason: string;
-  status: ReportStatus;
+  status: KnowledgeReportStatus;
   submittedAt: string;
   reviewerNote: string;
   resolution?: string;
 }
 
-interface KnowledgeReportDefinition {
-  id: string;
-  questionKey: string;
-  reasonKey: string;
-  status: ReportStatus;
-  submittedAt: string;
-  reviewerNoteKey: string;
-  resolutionKey?: string;
+const REASON_KEYS: Record<KnowledgeReportReason, string> = {
+  outdated: 'knowledgeReports.reason.outdated',
+  missing: 'knowledgeReports.reason.missing',
+  other: 'knowledgeReports.reason.other',
+};
+
+function formatSubmittedAt(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 }
 
-const reportDefinitions: KnowledgeReportDefinition[] = [
-  {
-    id: 'KR-2025-003',
-    questionKey: 'knowledgeReports.sample.question1',
-    reasonKey: 'knowledgeReports.reason.outdated',
-    status: 'pending',
-    submittedAt: '2025/05/10',
-    reviewerNoteKey: 'knowledgeReports.sample.note1',
-  },
-  {
-    id: 'KR-2025-002',
-    questionKey: 'knowledgeReports.sample.question2',
-    reasonKey: 'knowledgeReports.reason.missing',
-    status: 'reviewing',
-    submittedAt: '2025/05/08',
-    reviewerNoteKey: 'knowledgeReports.sample.note2',
-  },
-  {
-    id: 'KR-2025-001',
-    questionKey: 'knowledgeReports.sample.question3',
-    reasonKey: 'knowledgeReports.reason.outdated',
-    status: 'resolved',
-    submittedAt: '2025/05/01',
-    reviewerNoteKey: 'knowledgeReports.sample.note3',
-    resolutionKey: 'knowledgeReports.sample.resolution3',
-  },
-];
+function mapReasonLabel(reason: string, t: (key: string) => string): string {
+  if (reason in REASON_KEYS) {
+    return t(REASON_KEYS[reason as KnowledgeReportReason]);
+  }
+  return t(REASON_KEYS.other);
+}
+
+function mapReportDto(report: KnowledgeReportDto, t: (key: string) => string): KnowledgeReport {
+  return {
+    id: report.report_id,
+    question: report.question,
+    reason: mapReasonLabel(report.reason, t),
+    status: report.status,
+    submittedAt: formatSubmittedAt(report.created_at),
+    reviewerNote: report.reviewer_note?.trim() || t('knowledgeReports.noReviewerNote'),
+    resolution: report.resolution?.trim() || undefined,
+  };
+}
 
 function KnowledgeReportsPage() {
   const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReport | null>(null);
+  const [rawReports, setRawReports] = useState<KnowledgeReportDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const reports = useMemo<KnowledgeReport[]>(
-    () => reportDefinitions.map((report) => ({
-      id: report.id,
-      question: t(report.questionKey),
-      reason: t(report.reasonKey),
-      status: report.status,
-      submittedAt: report.submittedAt,
-      reviewerNote: t(report.reviewerNoteKey),
-      resolution: report.resolutionKey ? t(report.resolutionKey) : undefined,
-    })),
-    [t],
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReports() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetchKnowledgeReports();
+        if (!cancelled) {
+          setRawReports(response.reports);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : t('knowledgeReports.loadError'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadReports();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const reports = useMemo(
+    () => rawReports.map((report) => mapReportDto(report, t)),
+    [rawReports, t],
   );
 
-  const statusMeta: Record<ReportStatus, { label: string; icon: string }> = {
+  const statusMeta: Record<KnowledgeReportStatus, { label: string; icon: string }> = {
     pending: { label: t('knowledgeReports.status.pending'), icon: '○' },
     reviewing: { label: t('knowledgeReports.status.reviewing'), icon: '◌' },
     resolved: { label: t('knowledgeReports.status.resolved'), icon: '✓' },
+    rejected: { label: t('knowledgeReports.status.rejected'), icon: '×' },
   };
 
   const filters: Array<{ value: ReportFilter; label: string }> = [
@@ -91,6 +118,7 @@ function KnowledgeReportsPage() {
     pending: reports.filter((report) => report.status === 'pending').length,
     reviewing: reports.filter((report) => report.status === 'reviewing').length,
     resolved: reports.filter((report) => report.status === 'resolved').length,
+    rejected: reports.filter((report) => report.status === 'rejected').length,
   };
 
   const visibleReports =
@@ -163,24 +191,26 @@ function KnowledgeReportsPage() {
           </div>
         </div>
 
-        <div className="knowledgeFeaturedCard">
-          <article className="knowledgeFeatured" aria-label={t('knowledgeReports.latest')}>
-            <div className="featuredGlow featuredGlowOne" />
-            <div className="featuredGlow featuredGlowTwo" />
-            <div className="featuredMedicalMark" aria-hidden="true">
-              <span>+</span>
-            </div>
-            <div className="featuredContent">
-              <span className="knowledgeEyebrow">{t('knowledgeReports.latest')}</span>
-              <h2>{latestReport.question}</h2>
-              <span className={`knowledgeStatus status-${latestReport.status}`}>
-                {statusMeta[latestReport.status].icon}
-                {statusMeta[latestReport.status].label}
-              </span>
-              <time>{t('knowledgeReports.submittedAtValue', { date: latestReport.submittedAt })}</time>
-            </div>
-          </article>
-        </div>
+        {latestReport && (
+          <div className="knowledgeFeaturedCard">
+            <article className="knowledgeFeatured" aria-label={t('knowledgeReports.latest')}>
+              <div className="featuredGlow featuredGlowOne" />
+              <div className="featuredGlow featuredGlowTwo" />
+              <div className="featuredMedicalMark" aria-hidden="true">
+                <span>+</span>
+              </div>
+              <div className="featuredContent">
+                <span className="knowledgeEyebrow">{t('knowledgeReports.latest')}</span>
+                <h2>{latestReport.question}</h2>
+                <span className={`knowledgeStatus status-${latestReport.status}`}>
+                  {statusMeta[latestReport.status].icon}
+                  {statusMeta[latestReport.status].label}
+                </span>
+                <time>{t('knowledgeReports.submittedAtValue', { date: latestReport.submittedAt })}</time>
+              </div>
+            </article>
+          </div>
+        )}
       </section>
 
       <section className="knowledgeListSection" aria-labelledby="knowledge-list-title">
@@ -207,47 +237,67 @@ function KnowledgeReportsPage() {
 
         <h2 id="knowledge-list-title" className="visuallyHidden">{t('knowledgeReports.listTitle')}</h2>
 
-        <div className="knowledgeReportList">
-          {visibleReports.map((report) => (
-            <button
-              key={report.id}
-              type="button"
-              className={`knowledgeReportCard report-${report.status}`}
-              onClick={() => setSelectedReport(report)}
-              aria-label={t('knowledgeReports.viewReport', { question: report.question })}
-            >
-              <span className="reportIcon" aria-hidden="true">
-                {report.status === 'resolved' ? '✓' : '!'}
-              </span>
-
-              <span className="reportQuestion">
-                <strong>{report.question}</strong>
-                <span className="reportMeta">
-                  <span className={`reasonTag reason-${report.status}`}>{report.reason}</span>
-                  <time>{t('knowledgeReports.submittedAtValue', { date: report.submittedAt })}</time>
-                </span>
-              </span>
-
-              <span className="reportReview">
-                <small>{t('knowledgeReports.reviewUpdate')}</small>
-                <span>{report.reviewerNote}</span>
-              </span>
-
-              <span className={`knowledgeStatus status-${report.status}`}>
-                {statusMeta[report.status].icon}
-                {statusMeta[report.status].label}
-              </span>
-              <span className="reportChevron" aria-hidden="true">›</span>
-            </button>
-          ))}
-        </div>
-
-        {visibleReports.length === 0 && (
+        {loading ? (
+          <div className="knowledgeEmpty">
+            <p>{t('knowledgeReports.loading')}</p>
+          </div>
+        ) : error ? (
+          <div className="knowledgeEmpty">
+            <span aria-hidden="true">!</span>
+            <h3>{t('knowledgeReports.loadError')}</h3>
+            <p>{error}</p>
+          </div>
+        ) : reports.length === 0 ? (
           <div className="knowledgeEmpty">
             <span aria-hidden="true">✓</span>
-            <h3>{t('knowledgeReports.emptyTitle')}</h3>
-            <p>{t('knowledgeReports.emptyDesc')}</p>
+            <h3>{t('knowledgeReports.emptyAllTitle')}</h3>
+            <p>{t('knowledgeReports.emptyAllDesc')}</p>
           </div>
+        ) : (
+          <>
+            <div className="knowledgeReportList">
+              {visibleReports.map((report) => (
+                <button
+                  key={report.id}
+                  type="button"
+                  className={`knowledgeReportCard report-${report.status}`}
+                  onClick={() => setSelectedReport(report)}
+                  aria-label={t('knowledgeReports.viewReport', { question: report.question })}
+                >
+                  <span className="reportIcon" aria-hidden="true">
+                    {report.status === 'resolved' ? '✓' : report.status === 'rejected' ? '×' : '!'}
+                  </span>
+
+                  <span className="reportQuestion">
+                    <strong>{report.question}</strong>
+                    <span className="reportMeta">
+                      <span className={`reasonTag reason-${report.status}`}>{report.reason}</span>
+                      <time>{t('knowledgeReports.submittedAtValue', { date: report.submittedAt })}</time>
+                    </span>
+                  </span>
+
+                  <span className="reportReview">
+                    <small>{t('knowledgeReports.reviewUpdate')}</small>
+                    <span>{report.reviewerNote}</span>
+                  </span>
+
+                  <span className={`knowledgeStatus status-${report.status}`}>
+                    {statusMeta[report.status].icon}
+                    {statusMeta[report.status].label}
+                  </span>
+                  <span className="reportChevron" aria-hidden="true">›</span>
+                </button>
+              ))}
+            </div>
+
+            {visibleReports.length === 0 && (
+              <div className="knowledgeEmpty">
+                <span aria-hidden="true">✓</span>
+                <h3>{t('knowledgeReports.emptyTitle')}</h3>
+                <p>{t('knowledgeReports.emptyDesc')}</p>
+              </div>
+            )}
+          </>
         )}
       </section>
 
