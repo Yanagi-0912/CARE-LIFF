@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
-import { HealthIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, KeyIcon, SearchIcon } from '../../components/icons';
+import { HealthIcon, PillIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, KeyIcon, SearchIcon } from '../../components/icons';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import './index.css';
 
@@ -29,6 +29,13 @@ const Home = () => {
       path: '/personalhealth',
       desc: t('home.personalHealthDesc'),
       tone: 'teal'
+    },
+    {
+      title: t('home.medications'),
+      icon: <PillIcon width={26} height={26} />,
+      path: '/medications',
+      desc: t('home.medicationsDesc'),
+      tone: 'amber'
     },
     {
       title: t('home.family'),

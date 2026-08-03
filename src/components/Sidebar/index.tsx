@@ -12,6 +12,7 @@ function Sidebar() {
     { path: '/', label: t('sidebar.home') },
     { path: '/nearby-hospitals', label: t('sidebar.nearbyHospitals') },
     { path: '/personalhealth', label: t('sidebar.health') },
+    { path: '/medications', label: t('sidebar.medications') },
     { path: '/knowledge-reports', label: t('sidebar.knowledgeReports') },
     { path: '/family', label: t('sidebar.family') },
     { path: '/settings', label: t('sidebar.settings') },

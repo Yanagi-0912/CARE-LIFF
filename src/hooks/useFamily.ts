@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchFamilyTree } from '../../api/familyApi';
-import type { FamilyMember } from '../../types/family';
+import { fetchFamilyTree } from '../api/familyApi';
+import type { FamilyMember } from '../types/family';
 
 interface UseFamilyReturn {
   members: FamilyMember[];
