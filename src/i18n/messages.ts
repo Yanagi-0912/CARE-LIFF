@@ -1,3 +1,4 @@
+import { medicationFeatureMessages } from './medicationMessages';
 import { personalHealthFeatureMessages } from './personalHealthMessages';
 
 export type SupportedLanguage = 'zh-TW' | 'en' | 'id' | 'vi' | 'th' | 'ja';
@@ -537,6 +538,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...knowledgeFeatureMessages['zh-TW'],
     ...nearbyFeatureMessages['zh-TW'],
     ...personalHealthFeatureMessages['zh-TW'],
+    ...medicationFeatureMessages['zh-TW'],
     'header.login': '登入',
     'header.logout': '登出',
     'nav.home': '首頁',
@@ -600,6 +602,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...knowledgeFeatureMessages.en,
     ...nearbyFeatureMessages.en,
     ...personalHealthFeatureMessages.en,
+    ...medicationFeatureMessages.en,
     'header.login': 'Login',
     'header.logout': 'Logout',
     'nav.home': 'Home',
@@ -663,6 +666,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...knowledgeFeatureMessages.id,
     ...nearbyFeatureMessages.id,
     ...personalHealthFeatureMessages.id,
+    ...medicationFeatureMessages.id,
     'header.login': 'Masuk',
     'header.logout': 'Keluar',
     'nav.home': 'Beranda',
@@ -726,6 +730,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...knowledgeFeatureMessages.vi,
     ...nearbyFeatureMessages.vi,
     ...personalHealthFeatureMessages.vi,
+    ...medicationFeatureMessages.vi,
     'header.login': 'Đăng nhập',
     'header.logout': 'Đăng xuất',
     'nav.home': 'Trang chủ',
@@ -789,6 +794,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...knowledgeFeatureMessages.th,
     ...nearbyFeatureMessages.th,
     ...personalHealthFeatureMessages.th,
+    ...medicationFeatureMessages.th,
     'header.login': 'เข้าสู่ระบบ',
     'header.logout': 'ออกจากระบบ',
     'nav.home': 'หน้าหลัก',
@@ -852,6 +858,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...knowledgeFeatureMessages.ja,
     ...nearbyFeatureMessages.ja,
     ...personalHealthFeatureMessages.ja,
+    ...medicationFeatureMessages.ja,
     'header.login': 'ログイン',
     'header.logout': 'ログアウト',
     'nav.home': 'ホーム',

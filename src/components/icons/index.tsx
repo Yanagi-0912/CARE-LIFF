@@ -101,6 +101,16 @@ export function MoonIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** 藥丸 — 用藥提醒 */
+export function PillIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+      <path d="m8.5 8.5 7 7" />
+    </svg>
+  );
+}
+
 /** 心跳脈搏線 — CARE 品牌識別 */
 export function PulseIcon(props: SVGProps<SVGSVGElement>) {
   return (

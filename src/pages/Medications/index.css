@@ -1,0 +1,598 @@
+/* ═══════════════════════════════════════════════════════
+   用藥提醒頁（/medications）
+   ═══════════════════════════════════════════════════════ */
+
+.medsPage {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ── 標題列 ── */
+.medsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.medsHeader h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* ── 按鈕 ── */
+.medButtonPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #ffffff;
+  border: none;
+  padding: 11px 20px;
+  border-radius: var(--r-pill);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease),
+    opacity var(--dur-1) var(--ease);
+  box-shadow: 0 6px 16px -6px rgba(14, 147, 132, 0.5);
+}
+
+.medButtonPrimary:hover {
+  transform: translateY(-1px);
+}
+
+.medButtonPrimary:active {
+  transform: scale(0.97);
+}
+
+.medButtonGhost {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--hair);
+  padding: 11px 20px;
+  border-radius: var(--r-pill);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.medButtonGhost:hover {
+  background: var(--surface-3);
+}
+
+.medButtonDanger {
+  background: var(--danger);
+  color: #ffffff;
+  border: none;
+  padding: 11px 20px;
+  border-radius: var(--r-pill);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.medButtonPrimary:disabled,
+.medButtonGhost:disabled,
+.medButtonDanger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── 對象切換 chips ── */
+.medTargetChips {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: var(--sp-2);
+  margin-bottom: var(--sp-4);
+  scrollbar-width: none;
+}
+
+.medTargetChips::-webkit-scrollbar {
+  display: none;
+}
+
+.medChip {
+  flex: 0 0 auto;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.medChip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.medChip.isActive {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+/* ── 提醒卡片 ── */
+.medList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.medCard {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  transition: box-shadow var(--dur-1) var(--ease), opacity var(--dur-1) var(--ease);
+}
+
+.medCard:hover {
+  box-shadow: var(--shadow-2);
+}
+
+.medCard.isOff {
+  opacity: 0.62;
+}
+
+.medCardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: transparent;
+  border: none;
+  padding: var(--sp-4);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.medSlotBadge {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.medCard.slot-morning .medSlotBadge {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.medCard.slot-noon .medSlotBadge {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.medCard.slot-evening .medSlotBadge {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.medCard.slot-bedtime .medSlotBadge {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+.medCardInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.medTime {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.medDateRange {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.medChevron {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* ── 啟用開關 ── */
+.medToggle {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 84px;
+  background: var(--surface-2);
+  border: none;
+  border-left: 1px solid var(--hair);
+  padding: var(--sp-3) var(--sp-2);
+  cursor: pointer;
+  font: inherit;
+}
+
+.medToggle:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.medToggleTrack {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  transition: background var(--dur-2) var(--ease);
+}
+
+.medToggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-2) var(--ease);
+}
+
+.medToggle[aria-checked='true'] .medToggleTrack {
+  background: var(--primary);
+}
+
+.medToggle[aria-checked='true'] .medToggleThumb {
+  transform: translateX(18px);
+}
+
+.medToggleText {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ── 空狀態 / 錯誤 ── */
+.medEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-7) var(--sp-4);
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.medEmptyIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--primary-softer);
+  color: var(--primary);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.medEmpty h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.medEmpty p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* ── Toast ── */
+.medToast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--bottom-h) + 16px);
+  transform: translateX(-50%);
+  z-index: 1200;
+  padding: 11px 20px;
+  border-radius: var(--r-pill);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: var(--shadow-3);
+  animation: medToastIn var(--dur-2) var(--ease-out);
+}
+
+.medToast.success {
+  background: var(--success);
+}
+
+.medToast.error {
+  background: var(--danger);
+}
+
+@keyframes medToastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ── Dialog ── */
+.medDialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  overflow-y: auto;
+}
+
+.medDialog {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-3);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.medDialog h2 {
+  margin: 0;
+  padding-right: var(--sp-6);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.medDialogClose {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.medDialogTarget {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.medDialogTarget strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+/* ── 時段複選 ── */
+.medSlotPicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.medSlotPicker legend {
+  padding: 0 0 var(--sp-2);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.medSlotOption {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 11px var(--sp-3);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease);
+}
+
+.medSlotOption:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-softer);
+}
+
+.medSlotOption.isTaken {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.medSlotOption input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.medSlotOptionName {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.medSlotOptionTime {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 表單欄位 ── */
+.medField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.medField > span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.medField input {
+  padding: 10px var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.medField input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.medField small {
+  font-size: 0.76rem;
+  color: var(--faint);
+}
+
+.medFieldInline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.medFieldInline input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.medDialogNote {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--faint);
+}
+
+.medDialogError {
+  margin: 0;
+  padding: 10px var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.medDialogActions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.medDialogActions > button {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── 刪除區 ── */
+.medDangerZone {
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--hair);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.medDangerZone p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.medDeleteLink {
+  align-self: center;
+  background: none;
+  border: none;
+  padding: var(--sp-2);
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.medDeleteLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 窄螢幕 ── */
+@media (max-width: 420px) {
+  .medToggle {
+    width: 68px;
+  }
+
+  .medTime {
+    font-size: 1.2rem;
+  }
+}

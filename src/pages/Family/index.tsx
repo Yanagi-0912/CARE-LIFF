@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useLiff } from '../../hooks/useLiff';
 import { useToast } from '../../hooks/useToast';
-import { useFamily } from './useFamily';
+import { useFamily } from '../../hooks/useFamily';
 import { MemberCard } from './MemberCard';
 import { InviteButton } from './InviteButton';
 
