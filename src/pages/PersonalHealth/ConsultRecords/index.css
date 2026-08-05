@@ -37,11 +37,6 @@
 .consult-card {
     position: relative;
     z-index: 1;
-    padding: var(--sp-4);
-    background: var(--surface);
-    border: 1px solid var(--hair);
-    border-radius: var(--r-xl);
-    box-shadow: var(--shadow-1);
     animation: rise var(--dur-2) var(--ease-out) both;
     display: flex;
     flex-direction: column;
@@ -462,6 +457,15 @@
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
+.panel-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
 /* ── Toast ── */
 .saveToast {
     position: fixed;
@@ -518,6 +522,7 @@
         transform: translateY(12px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -528,6 +533,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -564,6 +570,7 @@
         opacity: 0;
         transform: scale(0.96) translateY(8px);
     }
+
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -660,7 +667,7 @@
 /* ── Mobile ── */
 @media (max-width: 600px) {
     .consult-page {
-        padding: var(--sp-5) var(--sp-4);
+        padding: 10px 10px;
     }
 
     .consult-header h2 {
@@ -674,7 +681,7 @@
 
     .panel {
         width: calc(100% - 48px);
-        max-width: 260px;
+        max-width: 570px;
         min-height: 380px;
         box-sizing: border-box;
     }
@@ -725,7 +732,7 @@
         padding-right: 34px;
         font-size: 13px;
         line-height: 1;
-        border-radius: 999px;
+        border-radius: 10px;
         background-color: #eef2f7;
         color: #374151;
         border: none;

@@ -1,6 +1,6 @@
 /* ── 底部導覽列（手機版）── */
 .bottom-nav {
-  position: fixed;
+  position: sticky;
   bottom: 0;
   left: 0;
   right: 0;

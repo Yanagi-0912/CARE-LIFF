@@ -1,6 +1,6 @@
 import { medicationFeatureMessages } from './medicationMessages';
 import { personalHealthFeatureMessages } from './personalHealthMessages';
-
+import { consultRecordMessages } from './consultRecordMessages';
 export type SupportedLanguage = 'zh-TW' | 'en' | 'id' | 'vi' | 'th' | 'ja';
 
 export const fallbackLanguage: SupportedLanguage = 'zh-TW';
@@ -539,6 +539,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...nearbyFeatureMessages['zh-TW'],
     ...personalHealthFeatureMessages['zh-TW'],
     ...medicationFeatureMessages['zh-TW'],
+    ...consultRecordMessages['zh-TW'],
     'header.login': '登入',
     'header.logout': '登出',
     'nav.home': '首頁',
@@ -603,6 +604,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...nearbyFeatureMessages.en,
     ...personalHealthFeatureMessages.en,
     ...medicationFeatureMessages.en,
+    ...consultRecordMessages.en,
     'header.login': 'Login',
     'header.logout': 'Logout',
     'nav.home': 'Home',
@@ -667,6 +669,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...nearbyFeatureMessages.id,
     ...personalHealthFeatureMessages.id,
     ...medicationFeatureMessages.id,
+    ...consultRecordMessages.id,
     'header.login': 'Masuk',
     'header.logout': 'Keluar',
     'nav.home': 'Beranda',
@@ -731,6 +734,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...nearbyFeatureMessages.vi,
     ...personalHealthFeatureMessages.vi,
     ...medicationFeatureMessages.vi,
+    ...consultRecordMessages.vi,
     'header.login': 'Đăng nhập',
     'header.logout': 'Đăng xuất',
     'nav.home': 'Trang chủ',
@@ -795,6 +799,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...nearbyFeatureMessages.th,
     ...personalHealthFeatureMessages.th,
     ...medicationFeatureMessages.th,
+    ...consultRecordMessages.th,
     'header.login': 'เข้าสู่ระบบ',
     'header.logout': 'ออกจากระบบ',
     'nav.home': 'หน้าหลัก',
@@ -859,6 +864,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...nearbyFeatureMessages.ja,
     ...personalHealthFeatureMessages.ja,
     ...medicationFeatureMessages.ja,
+    ...consultRecordMessages.ja,
     'header.login': 'ログイン',
     'header.logout': 'ログアウト',
     'nav.home': 'ホーム',
