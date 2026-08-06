@@ -1,4 +1,4 @@
-import { authHeaders, isAuthenticated } from '../utils/auth';
+import { fetchWithAuth, isAuthenticated } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
@@ -23,9 +23,8 @@ export type UpdateUserSettingsPayload = Partial<ApiUserSettings>;
 export async function getUserSettings(): Promise<ApiUserSettings | null> {
   if (!isAuthenticated()) return null;
 
-  const res = await fetch(`${BASE_URL}/api/profiles/me/settings`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/profiles/me/settings`, {
     method: 'GET',
-    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -41,9 +40,8 @@ export async function getUserSettings(): Promise<ApiUserSettings | null> {
 export async function updateUserSettings(
   payload: UpdateUserSettingsPayload,
 ): Promise<ApiUserSettings> {
-  const res = await fetch(`${BASE_URL}/api/profiles/me/settings`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/profiles/me/settings`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -55,3 +53,4 @@ export async function updateUserSettings(
   const body = await res.json();
   return body.settings as ApiUserSettings;
 }
+
