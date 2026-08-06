@@ -3,27 +3,13 @@ import type {
     ConsultationSummary,
     ConsultationViewResponse,
 } from '../types/consultation'
+import { fetchWithAuth } from '../utils/auth'
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
 export interface ConsultationDownloadTokenResponse {
     downloadToken: string
     expiresIn: number
-}
-
-function getAuthToken() {
-    const token = (localStorage.getItem('CARE_AUTH_TOKEN') || '').trim()
-    if (!token) {
-        throw new Error('缺少登入憑證，請先重新登入')
-    }
-    return token
-}
-
-function buildAuthHeaders() {
-    return {
-        Authorization: `Bearer ${getAuthToken()}`,
-        // Skip ngrok browser warning when using ngrok
-        'ngrok-skip-browser-warning': 'true',
-    }
 }
 
 function buildConsultationErrorMessage(status: number, defaultMessage: string) {
@@ -39,9 +25,8 @@ function buildConsultationErrorMessage(status: number, defaultMessage: string) {
 }
 
 export async function getAllSummaries(): Promise<ConsultationSummary[]> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/allsummaries`, {
+    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/allsummaries`, {
         method: 'GET',
-        headers: buildAuthHeaders(),
     })
 
     if (!res.ok) {
@@ -62,9 +47,8 @@ export async function getAllSummaries(): Promise<ConsultationSummary[]> {
 }
 
 export async function getConsultationSummaryDownloadToken(): Promise<ConsultationDownloadTokenResponse> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/summary/downloadtoken`, {
+    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/summary/downloadtoken`, {
         method: 'GET',
-        headers: buildAuthHeaders(),
     })
 
     if (!res.ok) {
@@ -85,9 +69,8 @@ export function buildConsultationSummaryDownloadUrl(downloadToken: string): stri
 
 //回傳原始訊息
 export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/messages/raw`, {
+    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/messages/raw`, {
         method: 'GET',
-        headers: buildAuthHeaders(),
     })
 
     if (!res.ok) {
@@ -118,12 +101,8 @@ export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse
 export async function summarizeConsultationMe(
     payload: ConsultationSummarizePayload = {},
 ): Promise<ConsultationSummary> {
-    const res = await fetch(`${BASE_URL}/api/consultations/me/summary/generate`, {
+    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/summary/generate`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...buildAuthHeaders(),
-        },
         body: JSON.stringify(payload),
     })
 
@@ -152,4 +131,4 @@ export async function summarizeConsultationMe(
         ...data,
         summary: data.summary?.trim() || '',
     }
-}
+}

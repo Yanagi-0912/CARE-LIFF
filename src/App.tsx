@@ -15,14 +15,16 @@ import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/
 import type { SettingsState } from './pages/Settings';
 import './App.css';
 import Login from './pages/Loginpage';
-import { isAuthenticated } from './utils/auth';
 import { saveRedirectUrl } from './utils/redirect';
 import { getTheme, applyThemeAttribute } from './utils/theme';
+import { LiffAuthProvider, useLiffAuth } from './context/LiffAuthProvider';
 
-// 1. 新增 ProtectedRoute 元件
+// 1. ProtectedRoute 元件：整合全域 LIFF 驗證狀態與深連結（Rich Menu）跳轉前路徑保存
 function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isLoggedIn } = useLiffAuth();
   const location = useLocation();
-  if (!isAuthenticated()) {
+
+  if (!isLoggedIn) {
     // 保留深連結（如 Rich Menu → /settings），登入後再跳回
     // 同時寫入 URL ?redirect=，避免 LIFF OAuth 清掉 sessionStorage
     const redirect = `${location.pathname}${location.search}`;
@@ -35,7 +37,8 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
         : '/login';
     return <Navigate to={loginTo} replace />;
   }
-  return children;
+
+  return <>{children}</>;
 }
 
 function AppContent() {
@@ -52,25 +55,25 @@ function AppContent() {
       // ignore
     }
     applyTheme(settings);
-    // 套用已儲存的深色/淺色主題（index.html 的早期腳本已先設定，這裡確保一致）
+    // 套用已儲存的深色/淺色主題
     applyThemeAttribute(getTheme());
   }, []);
 
   return (
     <div className="app-layout">
-      {/* 3. 如果不是登入頁，才顯示 Header */}
+      {/* 3. 如果不是獨立頁面，才顯示 Header */}
       {!isStandalonePage && <Header />}
-      
+
       <div className="main-wrapper">
-        {/* 3. 如果不是登入頁，才顯示 Sidebar */}
+        {/* 3. 如果不是獨立頁面，才顯示 Sidebar */}
         {!isStandalonePage && <Sidebar />}
-        
+
         {/* key 綁定路徑：切頁時重新掛載，觸發進場動畫 */}
         <main className="content-area" key={location.pathname}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/join" element={<JoinPage />} />
-            
+
             {/* 4. 套用 ProtectedRoute */}
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
@@ -83,8 +86,8 @@ function AppContent() {
           </Routes>
         </main>
       </div>
-      
-      {/* 3. 如果不是登入頁，才顯示 BottomNav */}
+
+      {/* 3. 如果不是獨立頁面，才顯示 BottomNav */}
       {!isStandalonePage && <BottomNav />}
     </div>
   );
@@ -93,7 +96,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <LiffAuthProvider>
+        <AppContent />
+      </LiffAuthProvider>
     </Router>
   );
 }
