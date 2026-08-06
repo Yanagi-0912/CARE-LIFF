@@ -38,8 +38,8 @@ test.describe('首頁 (Home Page) 完整互動與渲染測試', () => {
     await expect(logoutCard).toBeVisible();
 
     // 也可以進一步驗證卡片內的副標題文字是否正確
-    await expect(healthCard.locator('p')).toHaveText('紀錄與預約');
-    await expect(familyCard.locator('p')).toHaveText('管理家人狀況');
+    await expect(healthCard.locator('p')).toHaveText('健康紀錄與醫院預約');
+    await expect(familyCard.locator('p')).toHaveText('管理長輩與家人狀況');
   });
 
   // 以下分別測試四個卡片的點擊跳轉行為
