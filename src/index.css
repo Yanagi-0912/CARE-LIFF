@@ -28,7 +28,10 @@ body {
   transition: color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   color: var(--ink);
 }
 
@@ -81,6 +84,7 @@ button:focus-visible {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -89,6 +93,7 @@ button:focus-visible {
 
 /* 尊重使用者的減少動態偏好 */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -193,13 +198,23 @@ button:focus-visible {
 }
 
 @keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes sheetSlideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* ── 成員卡片 Grid ── */
@@ -228,20 +243,44 @@ button:focus-visible {
 }
 
 /* 成員卡片瀑布式進場（最多前 8 張有延遲） */
-.member-grid .member-card:nth-child(1) { animation-delay: 40ms; }
-.member-grid .member-card:nth-child(2) { animation-delay: 100ms; }
-.member-grid .member-card:nth-child(3) { animation-delay: 160ms; }
-.member-grid .member-card:nth-child(4) { animation-delay: 220ms; }
-.member-grid .member-card:nth-child(5) { animation-delay: 280ms; }
-.member-grid .member-card:nth-child(6) { animation-delay: 340ms; }
-.member-grid .member-card:nth-child(7) { animation-delay: 400ms; }
-.member-grid .member-card:nth-child(8) { animation-delay: 460ms; }
+.member-grid .member-card:nth-child(1) {
+  animation-delay: 40ms;
+}
+
+.member-grid .member-card:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.member-grid .member-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.member-grid .member-card:nth-child(4) {
+  animation-delay: 220ms;
+}
+
+.member-grid .member-card:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+.member-grid .member-card:nth-child(6) {
+  animation-delay: 340ms;
+}
+
+.member-grid .member-card:nth-child(7) {
+  animation-delay: 400ms;
+}
+
+.member-grid .member-card:nth-child(8) {
+  animation-delay: 460ms;
+}
 
 @keyframes cardFloatIn {
   from {
     opacity: 0;
     transform: translateY(14px) scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -354,6 +393,7 @@ button:focus-visible {
     opacity: 0;
     transform: translateX(-50%) translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -427,6 +467,7 @@ button:focus-visible {
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

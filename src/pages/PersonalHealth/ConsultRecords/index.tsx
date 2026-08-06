@@ -150,7 +150,7 @@ const ConsultRecordsPage: React.FC = () => {
             const downloadUrl = buildConsultationSummaryDownloadUrl(tokenResult.downloadToken);
             if (liff.isInClient()) {
                 liff.openWindow({ url: downloadUrl, external: true });
-                setToast({ status: 'success', message: t('consultRecord.downloadSuccess') });
+                setToast({ status: 'success', message: t('consultRecord.downloadOpened') });
             } else {
                 globalThis.location.href = downloadUrl;
             }
@@ -186,7 +186,7 @@ const ConsultRecordsPage: React.FC = () => {
                         </div>
 
                     </div>
-                    <div className="panel-controls" role="tablist" aria-label="諮詢畫面切換">
+                    <div className="panel-controls" role="tablist" aria-label={t('consultRecord.title')}>
                         <button type="button" className={`summaryBtn ${viewMode === 'summary' ? 'active' : ''}`} onClick={() => setViewMode('summary')} aria-pressed={viewMode === 'summary'}>{t('consultRecord.tabSummary')}</button>
                         <button type="button" className={`rawMsgBtn ${viewMode === 'raw' ? 'active' : ''}`} onClick={() => setViewMode('raw')} aria-pressed={viewMode === 'raw'}>{t('consultRecord.tabRaw')}</button>
                     </div>
