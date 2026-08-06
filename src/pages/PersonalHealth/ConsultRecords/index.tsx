@@ -150,7 +150,7 @@ const ConsultRecordsPage: React.FC = () => {
             const downloadUrl = buildConsultationSummaryDownloadUrl(tokenResult.downloadToken);
             if (liff.isInClient()) {
                 liff.openWindow({ url: downloadUrl, external: true });
-                setToast({ status: 'success', message: t('consultRecord.downloadSuccess') });
+                setToast({ status: 'success', message: t('consultRecord.downloadOpened') });
             } else {
                 globalThis.location.href = downloadUrl;
             }
