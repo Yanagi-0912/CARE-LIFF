@@ -523,4 +523,7 @@ button:focus-visible {
   .member-card.expanded {
     grid-column: span 2;
   }
+  .content-area {
+    padding: 5px 5px;
+  }
 }
