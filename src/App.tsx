@@ -17,7 +17,8 @@ import type { SettingsState } from './pages/Settings';
 import AdminRoute from './components/AdminRoute';
 import Login from './pages/Loginpage';
 import { saveRedirectUrl } from './utils/redirect';
-import { getTheme, applyThemeAttribute } from './utils/theme';
+import { ThemeProvider } from 'next-themes';
+import { Toaster } from '@/components/ui/sonner';
 import { LiffAuthProvider, useLiffAuth } from './context/LiffAuthProvider';
 
 // 1. ProtectedRoute 元件：整合全域 LIFF 驗證狀態與深連結（Rich Menu）跳轉前路徑保存
@@ -55,9 +56,8 @@ function AppContent() {
     } catch {
       // ignore
     }
+    // 字級與高對比仍由設定頁管理；深淺色主題交給 next-themes（見下方 ThemeProvider）
     applyTheme(settings);
-    // 套用已儲存的深色/淺色主題
-    applyThemeAttribute(getTheme());
   }, []);
 
   return (
@@ -106,11 +106,24 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <LiffAuthProvider>
-        <AppContent />
-      </LiffAuthProvider>
-    </Router>
+    // next-themes 標準設定（shadcn 建議）：切換 html 的 .dark class。
+    // storageKey 沿用 care-theme，舊使用者的偏好不會被重置。
+    // enableSystem 讓「跟隨系統」成為可選項——原本自刻的機制沒有這個。
+    // disableTransitionOnChange 避免切換瞬間全站元素一起做色彩過場而閃爍。
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      storageKey="care-theme"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <Router>
+        <LiffAuthProvider>
+          <AppContent />
+        </LiffAuthProvider>
+      </Router>
+      <Toaster />
+    </ThemeProvider>
   );
 }
 

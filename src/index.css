@@ -17,12 +17,14 @@
    又完全不動 tokens.css 的變數。
 
    用 inline 而非一般 @theme：utility 會輸出 var(--xxx) 而不是展開後的值，
-   所以 [data-theme='dark'] 與 html.high-contrast 換掉 token 時，
+   所以 html.dark 與 html.high-contrast 換掉 token 時，
    Tailwind 產生的樣式會跟著變 —— 深色與高對比模式不需要任何額外處理。
    ═══════════════════════════════════════════════════════ */
 
-/* 讓 dark: 變體對齊既有機制（tokens.css 用 [data-theme='dark']，非 .dark） */
-@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+/* dark: 變體綁 .dark class —— next-themes 的標準做法（也是 shadcn 預設）。
+   Tailwind v4 預設的 dark: 是跟隨 prefers-color-scheme，會無視使用者在
+   App 內的選擇，故必須明確覆寫。 */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   /* ── 版面 ── */
@@ -113,7 +115,7 @@
     linear-gradient(135deg, rgba(14, 147, 132, 0.76), rgba(45, 181, 162, 0.58));
 }
 
-[data-theme='dark'] {
+.dark {
   --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(62, 207, 188, 0.08), transparent 32%);
   --hero-bg:
     radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.12) 0%, transparent 70%),

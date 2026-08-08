@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'next-themes';
 import { isAuthenticated, clearAuth } from '../../utils/auth';
-import { getTheme, toggleTheme, type Theme } from '../../utils/theme';
 import { SunIcon, MoonIcon, PulseIcon } from '../icons';
 import { Button } from '@/components/ui/button';
 
 function Header() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [theme, setThemeState] = useState<Theme>(getTheme);
+  const { resolvedTheme, setTheme } = useTheme();
+  // next-themes 在首次掛載前無法得知主題（避免 SSR/localStorage 不一致），
+  // 未 mounted 時先不渲染圖示，否則會閃一下錯誤的太陽／月亮。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = resolvedTheme === 'dark';
 
   const isLoggedIn = isAuthenticated();
 
@@ -22,11 +27,10 @@ function Header() {
   };
 
   const handleThemeToggle = () => {
-    setThemeState(toggleTheme());
+    setTheme(isDark ? 'light' : 'dark');
   };
 
-  const themeLabel =
-    theme === 'dark' ? t('header.themeToggleToLight') : t('header.themeToggleToDark');
+  const themeLabel = isDark ? t('header.themeToggleToLight') : t('header.themeToggleToDark');
 
   return (
     <header className="sticky top-0 z-[100] flex min-h-[var(--header-h)] items-center border-b border-hair bg-surface px-3 shadow-card sm:px-4">
@@ -57,7 +61,7 @@ function Header() {
             aria-label={themeLabel}
             title={themeLabel}
           >
-            {theme === 'dark' ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />}
+            {mounted && (isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />)}
           </Button>
           <Button
             className="rounded-full font-bold shadow-[0_4px_12px_-4px_rgba(14,147,132,0.5)] hover:bg-[var(--primary-strong)] hover:shadow-[0_6px_16px_-5px_rgba(14,147,132,0.6)] active:scale-97"

@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    CARE 健康管家 — Design Tokens
    溫潤醫療綠 × 珊瑚橘點綴 · 柔和卡片 · 長輩友善的大字與高對比支援
-   Light (:root) / Dark ([data-theme="dark"]) / High contrast (html.high-contrast)
+   Light (:root) / Dark (html.dark) / High contrast (html.high-contrast)
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -94,7 +94,7 @@
 }
 
 /* ═══════════════ Dark mode ═══════════════ */
-[data-theme='dark'] {
+.dark {
   color-scheme: dark;
 
   --bg: #0f1513;
@@ -150,7 +150,7 @@ html.high-contrast {
   --faint: #5d6b66;
 }
 
-html.high-contrast[data-theme='dark'] {
+html.high-contrast.dark {
   --hair: rgba(255, 255, 255, 0.32);
   --line: rgba(255, 255, 255, 0.5);
   --muted: #c7d2cd;
