@@ -8,7 +8,8 @@ import {
   type KnowledgeReportReason,
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
-import './index.css';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 
 type ReportFilter = 'all' | KnowledgeReportStatus;
 
@@ -138,25 +139,25 @@ function KnowledgeReportsPage() {
   };
 
   return (
-    <div className="knowledgeReportsPage">
-      <div className="knowledgeNoticeCard">
-        <section className="knowledgeNotice" aria-label={t('knowledgeReports.noticeLabel')}>
-          <span className="knowledgeNoticeIcon" aria-hidden="true">?</span>
-          <p>{t('knowledgeReports.notice')}</p>
-          <button type="button" onClick={handleAskInLine}>
+    <div className={S.PAGE}>
+      <div className={S.NOTICE_CARD}>
+        <section className={S.NOTICE} aria-label={t('knowledgeReports.noticeLabel')}>
+          <span className={S.NOTICE_ICON} aria-hidden="true">?</span>
+          <p className={S.NOTICE_TEXT}>{t('knowledgeReports.notice')}</p>
+          <button type="button" className={S.NOTICE_BTN} onClick={handleAskInLine}>
             {t('knowledgeReports.backToLine')}
             <span aria-hidden="true">›</span>
           </button>
         </section>
       </div>
 
-      <section className="knowledgeHero">
-        <div className="knowledgeSummaryCard">
-          <div className="knowledgeSummary">
-            <div className="knowledgeAvatar" aria-hidden="true">{t('knowledgeReports.avatar')}</div>
-            <div className="knowledgeSummaryCopy">
-              <span className="knowledgeEyebrow">{t('knowledgeReports.eyebrow')}</span>
-              <h1>
+      <section className={S.HERO}>
+        <div className={S.HERO_CARD}>
+          <div className={S.SUMMARY}>
+            <div className={S.AVATAR} aria-hidden="true">{t('knowledgeReports.avatar')}</div>
+            <div className="self-center">
+              <span className={S.EYEBROW}>{t('knowledgeReports.eyebrow')}</span>
+              <h1 className={S.SUMMARY_H1}>
                 <DecryptedText
                   text={t('knowledgeReports.title')}
                   speed={34}
@@ -168,57 +169,59 @@ function KnowledgeReportsPage() {
               </h1>
             </div>
 
-            <div className="knowledgeStats" aria-label={t('knowledgeReports.statsLabel')}>
-              <div>
-                <strong>{counts.all}</strong>
-                <span>{t('knowledgeReports.stats.total')}</span>
+            <div className={S.STATS} aria-label={t('knowledgeReports.statsLabel')}>
+              <div className={S.STATS_ITEM}>
+                <strong className={S.STATS_NUM}>{counts.all}</strong>
+                <span className={S.STATS_LABEL}>{t('knowledgeReports.stats.total')}</span>
               </div>
-              <div>
-                <strong>{counts.reviewing}</strong>
-                <span>{t('knowledgeReports.stats.reviewing')}</span>
+              <div className={S.STATS_ITEM}>
+                <strong className={S.STATS_NUM}>{counts.reviewing}</strong>
+                <span className={S.STATS_LABEL}>{t('knowledgeReports.stats.reviewing')}</span>
               </div>
-              <div>
-                <strong>{counts.resolved}</strong>
-                <span>{t('knowledgeReports.stats.updated')}</span>
+              <div className={S.STATS_ITEM}>
+                <strong className={S.STATS_NUM}>{counts.resolved}</strong>
+                <span className={S.STATS_LABEL}>{t('knowledgeReports.stats.updated')}</span>
               </div>
             </div>
 
-            <button className="knowledgePrimaryButton" type="button" onClick={handleAskInLine}>
+            <button className={S.PRIMARY_BTN} type="button" onClick={handleAskInLine}>
               {t('knowledgeReports.askInLine')}
             </button>
           </div>
         </div>
 
         {latestReport && (
-          <div className="knowledgeFeaturedCard">
-            <article className="knowledgeFeatured" aria-label={t('knowledgeReports.latest')}>
-              <div className="featuredGlow featuredGlowOne" />
-              <div className="featuredGlow featuredGlowTwo" />
-              <div className="featuredMedicalMark" aria-hidden="true">
-                <span>+</span>
+          <div className={S.HERO_CARD}>
+            <article className={S.FEATURED} aria-label={t('knowledgeReports.latest')}>
+              <div className={S.GLOW_ONE} />
+              <div className={S.GLOW_TWO} />
+              <div className={S.MEDICAL_MARK} aria-hidden="true">
+                <span className={S.MEDICAL_MARK_PLUS}>+</span>
               </div>
-              <div className="featuredContent">
-                <span className="knowledgeEyebrow">{t('knowledgeReports.latest')}</span>
-                <h2>{latestReport.question}</h2>
-                <span className={`knowledgeStatus status-${latestReport.status}`}>
+              <div className={S.FEATURED_CONTENT}>
+                <span className={S.FEATURED_EYEBROW}>{t('knowledgeReports.latest')}</span>
+                <h2 className={S.FEATURED_H2}>{latestReport.question}</h2>
+                <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[latestReport.status])}>
                   {statusMeta[latestReport.status].icon}
                   {statusMeta[latestReport.status].label}
                 </span>
-                <time>{t('knowledgeReports.submittedAtValue', { date: latestReport.submittedAt })}</time>
+                <time className={S.FEATURED_TIME}>
+                  {t('knowledgeReports.submittedAtValue', { date: latestReport.submittedAt })}
+                </time>
               </div>
             </article>
           </div>
         )}
       </section>
 
-      <section className="knowledgeListSection" aria-labelledby="knowledge-list-title">
-        <div className="knowledgeListHeader">
-          <div className="knowledgeTabs" role="group" aria-label={t('knowledgeReports.filterLabel')}>
+      <section className={S.LIST_SECTION} aria-labelledby="knowledge-list-title">
+        <div className={S.LIST_HEADER}>
+          <div className={S.TABS} role="group" aria-label={t('knowledgeReports.filterLabel')}>
             {filters.map((filter) => (
               <button
                 key={filter.value}
                 type="button"
-                className={activeFilter === filter.value ? 'isActive' : ''}
+                className={cn(S.TAB_BTN, activeFilter === filter.value && S.TAB_ACTIVE)}
                 aria-pressed={activeFilter === filter.value}
                 onClick={() => setActiveFilter(filter.value)}
               >
@@ -227,72 +230,74 @@ function KnowledgeReportsPage() {
               </button>
             ))}
           </div>
-          <select className="knowledgeSort" aria-label={t('knowledgeReports.sortLabel')} defaultValue="newest">
+          <select className={S.SORT_SELECT} aria-label={t('knowledgeReports.sortLabel')} defaultValue="newest">
             <option value="newest">{t('knowledgeReports.sort.newest')}</option>
             <option value="oldest">{t('knowledgeReports.sort.oldest')}</option>
           </select>
         </div>
 
-        <h2 id="knowledge-list-title" className="visuallyHidden">{t('knowledgeReports.listTitle')}</h2>
+        <h2 id="knowledge-list-title" className="sr-only">{t('knowledgeReports.listTitle')}</h2>
 
         {loading ? (
-          <div className="knowledgeEmpty">
-            <p>{t('knowledgeReports.loading')}</p>
+          <div className={S.EMPTY}>
+            <p className={S.EMPTY_P}>{t('knowledgeReports.loading')}</p>
           </div>
         ) : error ? (
-          <div className="knowledgeEmpty">
-            <span aria-hidden="true">!</span>
-            <h3>{t('knowledgeReports.loadError')}</h3>
-            <p>{error}</p>
+          <div className={S.EMPTY}>
+            <span className={S.EMPTY_ICON} aria-hidden="true">!</span>
+            <h3 className={S.EMPTY_H3}>{t('knowledgeReports.loadError')}</h3>
+            <p className={S.EMPTY_P}>{error}</p>
           </div>
         ) : reports.length === 0 ? (
-          <div className="knowledgeEmpty">
-            <span aria-hidden="true">✓</span>
-            <h3>{t('knowledgeReports.emptyAllTitle')}</h3>
-            <p>{t('knowledgeReports.emptyAllDesc')}</p>
+          <div className={S.EMPTY}>
+            <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
+            <h3 className={S.EMPTY_H3}>{t('knowledgeReports.emptyAllTitle')}</h3>
+            <p className={S.EMPTY_P}>{t('knowledgeReports.emptyAllDesc')}</p>
           </div>
         ) : (
           <>
-            <div className="knowledgeReportList">
+            <div className={S.REPORT_LIST}>
               {visibleReports.map((report) => (
                 <button
                   key={report.id}
                   type="button"
-                  className={`knowledgeReportCard report-${report.status}`}
+                  className={S.REPORT_CARD}
                   onClick={() => setSelectedReport(report)}
                   aria-label={t('knowledgeReports.viewReport', { question: report.question })}
                 >
-                  <span className="reportIcon" aria-hidden="true">
+                  <span className={cn(S.REPORT_ICON, S.STATUS_TONE_SOFT[report.status])} aria-hidden="true">
                     {report.status === 'resolved' ? '✓' : report.status === 'rejected' ? '×' : '!'}
                   </span>
 
-                  <span className="reportQuestion">
-                    <strong>{report.question}</strong>
-                    <span className="reportMeta">
-                      <span className={`reasonTag reason-${report.status}`}>{report.reason}</span>
-                      <time>{t('knowledgeReports.submittedAtValue', { date: report.submittedAt })}</time>
+                  <span className={S.REPORT_QUESTION}>
+                    <strong className={S.REPORT_QUESTION_STRONG}>{report.question}</strong>
+                    <span className={S.REPORT_META}>
+                      <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT[report.status])}>{report.reason}</span>
+                      <time className={S.META_MUTED}>
+                        {t('knowledgeReports.submittedAtValue', { date: report.submittedAt })}
+                      </time>
                     </span>
                   </span>
 
-                  <span className="reportReview">
-                    <small>{t('knowledgeReports.reviewUpdate')}</small>
-                    <span>{report.reviewerNote}</span>
+                  <span className={S.REPORT_REVIEW}>
+                    <small className={S.META_MUTED}>{t('knowledgeReports.reviewUpdate')}</small>
+                    <span className={S.REPORT_REVIEW_TEXT}>{report.reviewerNote}</span>
                   </span>
 
-                  <span className={`knowledgeStatus status-${report.status}`}>
+                  <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[report.status], S.CARD_STATUS_POS)}>
                     {statusMeta[report.status].icon}
                     {statusMeta[report.status].label}
                   </span>
-                  <span className="reportChevron" aria-hidden="true">›</span>
+                  <span className={S.CHEVRON} aria-hidden="true">›</span>
                 </button>
               ))}
             </div>
 
             {visibleReports.length === 0 && (
-              <div className="knowledgeEmpty">
-                <span aria-hidden="true">✓</span>
-                <h3>{t('knowledgeReports.emptyTitle')}</h3>
-                <p>{t('knowledgeReports.emptyDesc')}</p>
+              <div className={S.EMPTY}>
+                <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
+                <h3 className={S.EMPTY_H3}>{t('knowledgeReports.emptyTitle')}</h3>
+                <p className={S.EMPTY_P}>{t('knowledgeReports.emptyDesc')}</p>
               </div>
             )}
           </>
@@ -301,48 +306,48 @@ function KnowledgeReportsPage() {
 
       {selectedReport && (
         <div
-          className="reportDialogBackdrop"
+          className={S.DIALOG_BACKDROP}
           role="presentation"
           onMouseDown={() => setSelectedReport(null)}
         >
           <section
-            className="reportDialog"
+            className={S.DIALOG}
             role="dialog"
             aria-modal="true"
             aria-labelledby="report-dialog-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
-              className="reportDialogClose"
+              className={S.DIALOG_CLOSE}
               type="button"
               aria-label={t('knowledgeReports.closeDetail')}
               onClick={() => setSelectedReport(null)}
             >
               ×
             </button>
-            <span className={`knowledgeStatus status-${selectedReport.status}`}>
+            <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[selectedReport.status])}>
               {statusMeta[selectedReport.status].icon}
               {statusMeta[selectedReport.status].label}
             </span>
-            <p className="reportDialogId">{selectedReport.id}</p>
-            <h2 id="report-dialog-title">{selectedReport.question}</h2>
-            <dl>
-              <div>
-                <dt>{t('knowledgeReports.detail.type')}</dt>
-                <dd>{selectedReport.reason}</dd>
+            <p className={S.DIALOG_ID}>{selectedReport.id}</p>
+            <h2 id="report-dialog-title" className={S.DIALOG_H2}>{selectedReport.question}</h2>
+            <dl className={S.DIALOG_DL}>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.type')}</dt>
+                <dd className={S.DIALOG_DD}>{selectedReport.reason}</dd>
               </div>
-              <div>
-                <dt>{t('knowledgeReports.detail.submittedAt')}</dt>
-                <dd>{selectedReport.submittedAt}</dd>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.submittedAt')}</dt>
+                <dd className={S.DIALOG_DD}>{selectedReport.submittedAt}</dd>
               </div>
-              <div>
-                <dt>{t('knowledgeReports.detail.progress')}</dt>
-                <dd>{selectedReport.reviewerNote}</dd>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.progress')}</dt>
+                <dd className={S.DIALOG_DD}>{selectedReport.reviewerNote}</dd>
               </div>
               {selectedReport.resolution && (
-                <div>
-                  <dt>{t('knowledgeReports.detail.result')}</dt>
-                  <dd>{selectedReport.resolution}</dd>
+                <div className={S.DIALOG_ITEM}>
+                  <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.result')}</dt>
+                  <dd className={S.DIALOG_DD}>{selectedReport.resolution}</dd>
                 </div>
               )}
             </dl>

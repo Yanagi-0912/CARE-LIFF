@@ -9,8 +9,10 @@ import {
   type KnowledgeReportReason,
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
-import '../KnowledgeReports/index.css';
-import './index.css';
+import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+// 與 KnowledgeReports 共用同一組樣式常數（原本是共用同一份 index.css）
+import * as S from '../KnowledgeReports/styles';
 
 type QueueFilter = 'all' | 'pending' | 'reviewing';
 
@@ -146,16 +148,17 @@ function AdminKnowledgeReportsPage() {
   };
 
   return (
-    <div className="knowledgeReportsPage adminKnowledgeReportsPage">
-      <section className="knowledgeHero adminKnowledgeHero">
-        <div className="knowledgeSummaryCard">
-          <div className="knowledgeSummary">
-            <div className="knowledgeAvatar" aria-hidden="true">
+    <div className={S.PAGE}>
+      {/* 管理版 hero 僅單欄；min-h-0 蓋掉共用卡片的 280px 最小高度 */}
+      <section className={cn(S.HERO, 'grid-cols-1')}>
+        <div className={cn(S.HERO_CARD, 'min-h-0')}>
+          <div className={cn(S.SUMMARY, 'min-h-0')}>
+            <div className={S.AVATAR} aria-hidden="true">
               {t('adminKnowledgeReports.avatar')}
             </div>
-            <div className="knowledgeSummaryCopy">
-              <span className="knowledgeEyebrow">{t('adminKnowledgeReports.eyebrow')}</span>
-              <h1>
+            <div className="self-center">
+              <span className={S.EYEBROW}>{t('adminKnowledgeReports.eyebrow')}</span>
+              <h1 className={S.SUMMARY_H1}>
                 <DecryptedText
                   text={t('adminKnowledgeReports.title')}
                   speed={34}
@@ -167,32 +170,32 @@ function AdminKnowledgeReportsPage() {
               </h1>
             </div>
 
-            <div className="knowledgeStats" aria-label={t('adminKnowledgeReports.statsLabel')}>
-              <div>
-                <strong>{counts.all}</strong>
-                <span>{t('adminKnowledgeReports.stats.queue')}</span>
+            <div className={S.STATS} aria-label={t('adminKnowledgeReports.statsLabel')}>
+              <div className={S.STATS_ITEM}>
+                <strong className={S.STATS_NUM}>{counts.all}</strong>
+                <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.queue')}</span>
               </div>
-              <div>
-                <strong>{counts.pending}</strong>
-                <span>{t('adminKnowledgeReports.stats.pending')}</span>
+              <div className={S.STATS_ITEM}>
+                <strong className={S.STATS_NUM}>{counts.pending}</strong>
+                <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.pending')}</span>
               </div>
-              <div>
-                <strong>{counts.reviewing}</strong>
-                <span>{t('adminKnowledgeReports.stats.reviewing')}</span>
+              <div className={S.STATS_ITEM}>
+                <strong className={S.STATS_NUM}>{counts.reviewing}</strong>
+                <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.reviewing')}</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="knowledgeListSection" aria-labelledby="admin-knowledge-list-title">
-        <div className="knowledgeListHeader">
-          <div className="knowledgeTabs" role="group" aria-label={t('adminKnowledgeReports.filterLabel')}>
+      <section className={S.LIST_SECTION} aria-labelledby="admin-knowledge-list-title">
+        <div className={S.LIST_HEADER}>
+          <div className={S.TABS} role="group" aria-label={t('adminKnowledgeReports.filterLabel')}>
             {filters.map((filter) => (
               <button
                 key={filter.value}
                 type="button"
-                className={activeFilter === filter.value ? 'isActive' : ''}
+                className={cn(S.TAB_BTN, activeFilter === filter.value && S.TAB_ACTIVE)}
                 aria-pressed={activeFilter === filter.value}
                 onClick={() => setActiveFilter(filter.value)}
               >
@@ -203,39 +206,39 @@ function AdminKnowledgeReportsPage() {
           </div>
         </div>
 
-        <h2 id="admin-knowledge-list-title" className="visuallyHidden">
+        <h2 id="admin-knowledge-list-title" className="sr-only">
           {t('adminKnowledgeReports.listTitle')}
         </h2>
 
         {loading ? (
-          <div className="knowledgeEmpty">
-            <p>{t('adminKnowledgeReports.loading')}</p>
+          <div className={S.EMPTY}>
+            <p className={S.EMPTY_P}>{t('adminKnowledgeReports.loading')}</p>
           </div>
         ) : error ? (
-          <div className="knowledgeEmpty">
-            <span aria-hidden="true">!</span>
-            <h3>{t('adminKnowledgeReports.loadError')}</h3>
-            <p>{error}</p>
+          <div className={S.EMPTY}>
+            <span className={S.EMPTY_ICON} aria-hidden="true">!</span>
+            <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.loadError')}</h3>
+            <p className={S.EMPTY_P}>{error}</p>
           </div>
         ) : rawReports.length === 0 ? (
-          <div className="knowledgeEmpty">
-            <span aria-hidden="true">✓</span>
-            <h3>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
-            <p>{t('adminKnowledgeReports.emptyAllDesc')}</p>
+          <div className={S.EMPTY}>
+            <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
+            <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
+            <p className={S.EMPTY_P}>{t('adminKnowledgeReports.emptyAllDesc')}</p>
           </div>
         ) : visibleReports.length === 0 ? (
-          <div className="knowledgeEmpty">
-            <span aria-hidden="true">✓</span>
-            <h3>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
-            <p>{t('adminKnowledgeReports.emptyAllDesc')}</p>
+          <div className={S.EMPTY}>
+            <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
+            <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
+            <p className={S.EMPTY_P}>{t('adminKnowledgeReports.emptyAllDesc')}</p>
           </div>
         ) : (
-          <div className="knowledgeReportList">
+          <div className={S.REPORT_LIST}>
             {visibleReports.map((report) => (
               <button
                 key={report.report_id}
                 type="button"
-                className={`knowledgeReportCard report-${report.status}`}
+                className={S.REPORT_CARD}
                 onClick={() => {
                   setSelectedReport(report);
                   setReviewerNote('');
@@ -243,17 +246,17 @@ function AdminKnowledgeReportsPage() {
                 }}
                 aria-label={t('adminKnowledgeReports.viewReport', { question: report.question })}
               >
-                <span className="reportIcon" aria-hidden="true">
+                <span className={cn(S.REPORT_ICON, S.STATUS_TONE_SOFT[report.status])} aria-hidden="true">
                   {report.status === 'reviewing' ? '◌' : '!'}
                 </span>
 
-                <span className="reportQuestion">
-                  <strong>{report.question}</strong>
-                  <span className="reportMeta">
-                    <span className={`reasonTag reason-${report.status}`}>
+                <span className={S.REPORT_QUESTION}>
+                  <strong className={S.REPORT_QUESTION_STRONG}>{report.question}</strong>
+                  <span className={S.REPORT_META}>
+                    <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT[report.status])}>
                       {mapReasonLabel(report.reason, t)}
                     </span>
-                    <time>
+                    <time className={S.META_MUTED}>
                       {t('knowledgeReports.submittedAtValue', {
                         date: formatSubmittedAt(report.created_at),
                       })}
@@ -261,18 +264,18 @@ function AdminKnowledgeReportsPage() {
                   </span>
                 </span>
 
-                <span className="reportReview">
-                  <small>{t('adminKnowledgeReports.userNote')}</small>
-                  <span>
+                <span className={S.REPORT_REVIEW}>
+                  <small className={S.META_MUTED}>{t('adminKnowledgeReports.userNote')}</small>
+                  <span className={S.REPORT_REVIEW_TEXT}>
                     {report.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
                   </span>
                 </span>
 
-                <span className={`knowledgeStatus status-${report.status}`}>
+                <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[report.status], S.CARD_STATUS_POS)}>
                   {statusMeta[report.status].icon}
                   {statusMeta[report.status].label}
                 </span>
-                <span className="reportChevron" aria-hidden="true">›</span>
+                <span className={S.CHEVRON} aria-hidden="true">›</span>
               </button>
             ))}
           </div>
@@ -281,19 +284,19 @@ function AdminKnowledgeReportsPage() {
 
       {selectedReport && (
         <div
-          className="reportDialogBackdrop"
+          className={S.DIALOG_BACKDROP}
           role="presentation"
           onMouseDown={closeDialog}
         >
           <section
-            className="reportDialog adminReportDialog"
+            className={S.DIALOG}
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-report-dialog-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
-              className="reportDialogClose"
+              className={S.DIALOG_CLOSE}
               type="button"
               aria-label={t('adminKnowledgeReports.closeDetail')}
               onClick={closeDialog}
@@ -301,33 +304,38 @@ function AdminKnowledgeReportsPage() {
             >
               ×
             </button>
-            <span className={`knowledgeStatus status-${selectedReport.status}`}>
+            <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[selectedReport.status])}>
               {statusMeta[selectedReport.status].icon}
               {statusMeta[selectedReport.status].label}
             </span>
-            <p className="reportDialogId">{selectedReport.report_id}</p>
-            <h2 id="admin-report-dialog-title">{selectedReport.question}</h2>
-            <dl>
-              <div>
-                <dt>{t('adminKnowledgeReports.detail.reason')}</dt>
-                <dd>{mapReasonLabel(selectedReport.reason, t)}</dd>
+            <p className={S.DIALOG_ID}>{selectedReport.report_id}</p>
+            <h2 id="admin-report-dialog-title" className={S.DIALOG_H2}>{selectedReport.question}</h2>
+            <dl className={S.DIALOG_DL}>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.reason')}</dt>
+                <dd className={S.DIALOG_DD}>{mapReasonLabel(selectedReport.reason, t)}</dd>
               </div>
-              <div>
-                <dt>{t('adminKnowledgeReports.detail.userNote')}</dt>
-                <dd>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.userNote')}</dt>
+                <dd className={S.DIALOG_DD}>
                   {selectedReport.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
                 </dd>
               </div>
-              <div>
-                <dt>{t('adminKnowledgeReports.detail.sourceUrls')}</dt>
-                <dd>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.sourceUrls')}</dt>
+                <dd className={S.DIALOG_DD}>
                   {selectedReport.user_source_urls.length === 0 ? (
                     t('adminKnowledgeReports.noSourceUrls')
                   ) : (
-                    <ul className="adminSourceUrlList">
+                    <ul className="m-0 pl-[1.1rem]">
                       {selectedReport.user_source_urls.map((url) => (
                         <li key={url}>
-                          <a href={url} target="_blank" rel="noopener noreferrer">
+                          <a
+                            className="break-all text-[var(--primary-strong)]"
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             {url}
                           </a>
                         </li>
@@ -336,15 +344,18 @@ function AdminKnowledgeReportsPage() {
                   )}
                 </dd>
               </div>
-              <div>
-                <dt>{t('adminKnowledgeReports.detail.status')}</dt>
-                <dd>{statusMeta[selectedReport.status].label}</dd>
+              <div className={S.DIALOG_ITEM}>
+                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.status')}</dt>
+                <dd className={S.DIALOG_DD}>{statusMeta[selectedReport.status].label}</dd>
               </div>
             </dl>
 
-            <label className="adminReviewerNoteField">
-              <span>{t('adminKnowledgeReports.reviewerNoteLabel')}</span>
-              <textarea
+            <label className="mt-6 grid gap-2">
+              <span className="text-[0.76rem] font-[750] text-muted-foreground">
+                {t('adminKnowledgeReports.reviewerNoteLabel')}
+              </span>
+              <Textarea
+                className="resize-y rounded-md border-hair bg-surface-2 p-3 text-foreground disabled:opacity-70"
                 value={reviewerNote}
                 onChange={(event) => setReviewerNote(event.target.value)}
                 placeholder={t('adminKnowledgeReports.reviewerNotePlaceholder')}
@@ -354,15 +365,15 @@ function AdminKnowledgeReportsPage() {
             </label>
 
             {actionError && (
-              <p className="adminActionError" role="alert">
+              <p className="mt-3 mb-0 text-[0.86rem] font-[650] text-destructive" role="alert">
                 {actionError}
               </p>
             )}
 
-            <div className="adminDialogActions">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                className="adminRejectButton"
+                className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-full border border-transparent bg-destructive-soft px-[18px] font-[750] text-destructive disabled:cursor-not-allowed disabled:opacity-65"
                 onClick={() => void handleAction('reject')}
                 disabled={actionLoading}
               >
@@ -372,7 +383,7 @@ function AdminKnowledgeReportsPage() {
               </button>
               <button
                 type="button"
-                className="adminApproveButton"
+                className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-full border-0 bg-ink px-[18px] font-[750] text-white disabled:cursor-not-allowed disabled:opacity-65"
                 onClick={() => void handleAction('approve')}
                 disabled={actionLoading}
               >
