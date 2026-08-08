@@ -27,8 +27,11 @@ export const CHIP =
 
 /* ── 提醒卡片 ── */
 export const LIST = 'flex flex-col gap-3';
+/* flex-row / ring-0 / py-0 / gap-0 是為了蓋掉 shadcn Card 的預設
+   （flex-col 會讓這張橫向卡片變直向、ring-1 多一圈外框、
+   py-(--card-spacing) 多出上下留白）。 */
 export const CARD =
-  'flex items-stretch overflow-hidden rounded-lg border border-hair bg-surface shadow-card transition-[box-shadow,opacity] duration-140 hover:shadow-pop';
+  'flex flex-row items-stretch gap-0 overflow-hidden rounded-lg border border-hair bg-surface py-0 ring-0 shadow-card transition-[box-shadow,opacity] duration-140 hover:shadow-pop';
 export const CARD_OFF = 'opacity-62';
 export const CARD_MAIN =
   'flex min-w-0 flex-1 cursor-pointer items-center gap-3 border-0 bg-transparent p-4 text-left text-inherit';

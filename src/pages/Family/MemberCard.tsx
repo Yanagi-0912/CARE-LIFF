@@ -5,6 +5,7 @@ import type { FamilyMember } from '../../types/family';
 import { RELATIONSHIP_LABEL } from '../../types/family';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 import * as S from './styles';
 
 interface Props {
@@ -69,7 +70,7 @@ export function MemberCard({ member, delayMs = 0 }: Props) {
   );
 
   return (
-    <div
+    <Card
       className={cn(S.CARD, expanded && S.CARD_EXPANDED)}
       style={{ animationDelay: `${delayMs}ms` }}
       onClick={handleClick}
@@ -152,6 +153,6 @@ export function MemberCard({ member, delayMs = 0 }: Props) {
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

@@ -19,7 +19,7 @@ export const GRID = 'grid grid-cols-4 gap-4 max-[1024px]:grid-cols-3 max-[640px]
 
 /* 成員卡片：進場重用 hero-in（14px 上浮＋微縮放），瀑布延遲由 index 公式給 */
 export const CARD =
-  'group animate-hero-in [animation-duration:360ms] relative flex cursor-pointer flex-col items-center gap-2.5 rounded-lg border border-hair bg-surface px-4 py-6 shadow-card transition-[transform,box-shadow,border-color,background-color] duration-220 select-none hover:-translate-y-[3px] hover:border-line hover:shadow-pop max-[640px]:px-3 max-[640px]:py-[18px]';
+  'group animate-hero-in [animation-duration:360ms] relative flex cursor-pointer flex-col items-center gap-2.5 rounded-lg border border-hair bg-surface px-4 py-6 ring-0 shadow-card transition-[transform,box-shadow,border-color,background-color] duration-220 select-none hover:-translate-y-[3px] hover:border-line hover:shadow-pop max-[640px]:px-3 max-[640px]:py-[18px]';
 export const CARD_EXPANDED =
   'col-span-2 border-[var(--primary-soft)] bg-[linear-gradient(160deg,var(--primary-softer),var(--surface)_55%)] shadow-pop';
 export const AVATAR =
