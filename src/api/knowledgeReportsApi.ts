@@ -45,3 +45,60 @@ export async function fetchKnowledgeReports(): Promise<KnowledgeReportListRespon
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
+
+export async function fetchAdminKnowledgeReports(
+  status?: string,
+): Promise<KnowledgeReportListResponse> {
+  const url = new URL(`${BASE_URL}/api/admin/knowledge-reports`);
+  if (status) {
+    url.searchParams.set('status', status);
+  }
+  const res = await fetch(url.toString(), {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+export type ApproveKnowledgeReportBody = {
+  selected_urls?: string[];
+  resolution?: string;
+  reviewer_note?: string;
+};
+
+export async function approveKnowledgeReport(
+  reportId: string,
+  body?: ApproveKnowledgeReportBody,
+): Promise<KnowledgeReportDto> {
+  const res = await fetch(
+    `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/approve`,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(body ?? {}),
+    },
+  );
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+export type RejectKnowledgeReportBody = {
+  reviewer_note?: string;
+  resolution?: string;
+};
+
+export async function rejectKnowledgeReport(
+  reportId: string,
+  body?: RejectKnowledgeReportBody,
+): Promise<KnowledgeReportDto> {
+  const res = await fetch(
+    `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/reject`,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(body ?? {}),
+    },
+  );
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}

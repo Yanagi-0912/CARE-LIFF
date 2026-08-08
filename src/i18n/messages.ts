@@ -1,6 +1,7 @@
 import { medicationFeatureMessages } from './medicationMessages';
 import { personalHealthFeatureMessages } from './personalHealthMessages';
 import { consultRecordMessages } from './consultRecordMessages';
+import { adminKnowledgeFeatureMessages } from './adminKnowledgeMessages';
 export type SupportedLanguage = 'zh-TW' | 'en' | 'id' | 'vi' | 'th' | 'ja';
 
 export const fallbackLanguage: SupportedLanguage = 'zh-TW';
@@ -540,6 +541,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...personalHealthFeatureMessages['zh-TW'],
     ...medicationFeatureMessages['zh-TW'],
     ...consultRecordMessages['zh-TW'],
+    ...adminKnowledgeFeatureMessages['zh-TW'],
     'header.login': '登入',
     'header.logout': '登出',
     'nav.home': '首頁',
@@ -605,6 +607,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...personalHealthFeatureMessages.en,
     ...medicationFeatureMessages.en,
     ...consultRecordMessages.en,
+    ...adminKnowledgeFeatureMessages.en,
     'header.login': 'Login',
     'header.logout': 'Logout',
     'nav.home': 'Home',
@@ -670,6 +673,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...personalHealthFeatureMessages.id,
     ...medicationFeatureMessages.id,
     ...consultRecordMessages.id,
+    ...adminKnowledgeFeatureMessages.id,
     'header.login': 'Masuk',
     'header.logout': 'Keluar',
     'nav.home': 'Beranda',
@@ -735,6 +739,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...personalHealthFeatureMessages.vi,
     ...medicationFeatureMessages.vi,
     ...consultRecordMessages.vi,
+    ...adminKnowledgeFeatureMessages.vi,
     'header.login': 'Đăng nhập',
     'header.logout': 'Đăng xuất',
     'nav.home': 'Trang chủ',
@@ -800,6 +805,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...personalHealthFeatureMessages.th,
     ...medicationFeatureMessages.th,
     ...consultRecordMessages.th,
+    ...adminKnowledgeFeatureMessages.th,
     'header.login': 'เข้าสู่ระบบ',
     'header.logout': 'ออกจากระบบ',
     'nav.home': 'หน้าหลัก',
@@ -865,6 +871,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...personalHealthFeatureMessages.ja,
     ...medicationFeatureMessages.ja,
     ...consultRecordMessages.ja,
+    ...adminKnowledgeFeatureMessages.ja,
     'header.login': 'ログイン',
     'header.logout': 'ログアウト',
     'nav.home': 'ホーム',

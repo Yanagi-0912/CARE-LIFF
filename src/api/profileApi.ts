@@ -30,6 +30,7 @@ export type HealthProfile = {
     major_illness_history?: string
     surgery_history?: string
     health_consultations?: Record<string, unknown>
+    role?: 'admin' | 'user'
 }
 
 export async function upsertPersonalHealthProfile(

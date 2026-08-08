@@ -1,0 +1,90 @@
+.adminKnowledgeHero {
+  grid-template-columns: 1fr;
+}
+
+.adminKnowledgeHero .knowledgeSummaryCard {
+  min-height: auto;
+}
+
+.adminKnowledgeHero .knowledgeSummary {
+  min-height: auto;
+}
+
+.adminSourceUrlList {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.adminSourceUrlList a {
+  color: var(--primary-strong);
+  word-break: break-all;
+}
+
+.adminReviewerNoteField {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}
+
+.adminReviewerNoteField > span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.adminReviewerNoteField textarea {
+  width: 100%;
+  padding: var(--sp-3);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  color: var(--ink-2);
+  background: var(--surface-2);
+  font: inherit;
+  resize: vertical;
+}
+
+.adminReviewerNoteField textarea:disabled {
+  opacity: 0.7;
+}
+
+.adminActionError {
+  margin: var(--sp-3) 0 0;
+  color: var(--danger);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.adminDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.adminApproveButton,
+.adminRejectButton {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.adminApproveButton {
+  color: #ffffff;
+  background: var(--ink);
+}
+
+.adminRejectButton {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid transparent;
+}
+
+.adminApproveButton:disabled,
+.adminRejectButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

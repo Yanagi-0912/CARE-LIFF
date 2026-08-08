@@ -9,10 +9,12 @@ import Family from './pages/Family';
 import JoinPage from './pages/Join';
 import ConsultRecordsPage from './pages/PersonalHealth/ConsultRecords';
 import KnowledgeReportsPage from './pages/KnowledgeReports';
+import AdminKnowledgeReportsPage from './pages/AdminKnowledgeReports';
 import MedicationsPage from './pages/Medications';
 import NearbyHospitalsPage from './pages/NearbyHospitals';
 import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
 import type { SettingsState } from './pages/Settings';
+import AdminRoute from './components/AdminRoute';
 import './App.css';
 import Login from './pages/Loginpage';
 import { saveRedirectUrl } from './utils/redirect';
@@ -80,6 +82,16 @@ function AppContent() {
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
             <Route path="/medications" element={<ProtectedRoute><MedicationsPage /></ProtectedRoute>} />
             <Route path="/knowledge-reports" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
+            <Route
+              path="/admin/knowledge-reports"
+              element={(
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminKnowledgeReportsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              )}
+            />
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
             <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
