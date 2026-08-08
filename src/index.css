@@ -106,10 +106,18 @@
      寫進 class 要用底線跳脫、既難讀又易錯；做成變數還能讓深色模式
      直接覆寫（見下方），元件端只要 bg-[image:var(--sidebar-wash)]。 */
   --sidebar-wash: radial-gradient(circle at 5% 18%, var(--primary-softer), transparent 32%);
+
+  /* 首頁 Hero 的綠色漸層（同上理由做成變數；深色版彩度降低） */
+  --hero-bg:
+    radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.28) 0%, transparent 70%),
+    linear-gradient(135deg, rgba(14, 147, 132, 0.76), rgba(45, 181, 162, 0.58));
 }
 
 [data-theme='dark'] {
   --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(62, 207, 188, 0.08), transparent 32%);
+  --hero-bg:
+    radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.12) 0%, transparent 70%),
+    linear-gradient(135deg, rgba(31, 128, 115, 0.48), rgba(33, 105, 96, 0.26));
 }
 
 /* 專案自有的動畫。這裡用一般 @theme（而非 inline）：這是新定義而非對既有
@@ -119,6 +127,46 @@
   --animate-badge-wiggle: badge-wiggle 420ms var(--ease);
   --animate-sidebar-in: sidebar-in 360ms var(--ease-out) both;
   --animate-rise: rise var(--dur-2) var(--ease-out);
+
+  /* 首頁進場動畫。hero-text-in 重用 rise 的 keyframes（同樣是 8px 上浮淡入），
+     只是拉長時間；card-in 的位移較大（16px），另立 keyframes。 */
+  --animate-hero-in: hero-in 420ms var(--ease-out) both;
+  --animate-hero-shine: hero-shine 5.5s var(--ease) infinite;
+  --animate-hero-text-in: rise 420ms var(--ease-out) both;
+  --animate-card-in: card-in 380ms var(--ease-out) both;
+
+  @keyframes hero-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Hero 上緣流光：緩慢左右漂移的高光（55% 前停在畫面外，形成間歇感） */
+  @keyframes hero-shine {
+    0%,
+    55% {
+      left: -35%;
+    }
+    100% {
+      left: 130%;
+    }
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   /* 由下淡入。多處共用（登入頁卡片、諮詢紀錄卡片），故取通用名。 */
   @keyframes rise {
