@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { SupportedLanguage } from '../../i18n/messages';
 import { isSupportedLanguage } from '../../i18n';
 import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
@@ -206,20 +207,29 @@ const SettingsPage: React.FC = () => {
         <p className={DESC_CLASS}>{t('settings.languageDesc')}</p>
         <div className="flex flex-col gap-2.5">
           <label htmlFor="language-select" className={LABEL_CLASS}>{t('settings.displayLanguage')}</label>
-          {/* 刻意保留原生 select：手機（LINE webview）會叫出系統選單，
-              對長輩比自訂下拉好用；僅重刻外觀 */}
-          <select
-            id="language-select"
-            className="min-h-12 w-full rounded-md border-[1.5px] border-hair bg-surface px-3 py-2.5 text-base font-semibold text-ink transition-[border-color,box-shadow] duration-140 focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] focus:outline-none"
+          <Select
             value={settings.language}
-            onChange={(e) => handleLanguage(e.target.value as SettingsState['language'])}
+            onValueChange={(value) => handleLanguage(value as SettingsState['language'])}
           >
-            {languageOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              id="language-select"
+              className="min-h-12 w-full rounded-md border-[1.5px] border-hair bg-surface px-3 py-2.5 text-base font-semibold text-ink"
+            >
+              {/* SelectValue 預設顯示原始值（en），需以函式 child 對應回標籤 */}
+              <SelectValue>
+                {(value) =>
+                  languageOptions.find((option) => option.value === value)?.label ?? String(value)
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {languageOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </section>
 

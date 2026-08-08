@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithToaster } from './testUtils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import liff from '@line/liff'
@@ -300,8 +301,11 @@ describe('ConsultRecordsPage測試', () => {
         expect(await screen.findByText('第一天的紀錄內容')).toBeInTheDocument()
 
         // 切換下拉選單至第二筆日期
-        const select = screen.getByLabelText('摘要日期') as HTMLSelectElement
-        fireEvent.change(select, { target: { value: '2026-07-02T00:00:00Z' } })
+        // 日期選單已改用 shadcn Select：以 userEvent 驅動 combobox + option
+        // （選項顯示為 formatSummaryDate 的 MM/DD 格式）
+        const user = userEvent.setup()
+        await user.click(screen.getByRole('combobox'))
+        await user.click(await screen.findByRole('option', { name: '07/02' }))
 
         // 驗證畫面內容切換為第二筆摘要
         expect(await screen.findByText('第二天的紀錄內容')).toBeInTheDocument()

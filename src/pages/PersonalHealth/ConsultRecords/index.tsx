@@ -9,6 +9,7 @@ import {
 } from '../../../api/consultationApi';
 import { toast } from 'sonner';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
@@ -193,9 +194,24 @@ const ConsultRecordsPage: React.FC = () => {
                                             <div className={S.COMPACT_HEADER}>
                                                 <label className={S.SUMMARY_LABEL} htmlFor="summary-select">{t('consultRecord.summaryDate')}</label>
                                                 {/*選擇日期的下拉選單*/}
-                                                <select id="summary-select" className={S.SUMMARY_SELECT} value={selectedSummaryKey} onChange={e => setSelectedSummaryKey(e.target.value)}>
-                                                    {summaryItems.map(s => <option key={getSummaryKey(s)} value={getSummaryKey(s)}>{formatSummaryDate(s)}</option>)}
-                                                </select>
+                                                <Select value={selectedSummaryKey} onValueChange={(value) => setSelectedSummaryKey(value ?? '')}>
+                                                    <SelectTrigger id="summary-select" className={S.SUMMARY_SELECT}>
+                                                        {/* 值是完整日期字串，顯示要用 formatSummaryDate 縮成 MM/DD */}
+                                                        <SelectValue>
+                                                            {(value) => {
+                                                                const item = summaryItems.find(s => getSummaryKey(s) === value);
+                                                                return item ? formatSummaryDate(item) : String(value ?? '');
+                                                            }}
+                                                        </SelectValue>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {summaryItems.map(s => (
+                                                            <SelectItem key={getSummaryKey(s)} value={getSummaryKey(s)}>
+                                                                {formatSummaryDate(s)}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                             <div className={S.VIEWER}>
                                                 <div className={S.SUMMARY_TITLE}>{t('consultRecord.summaryTitle')}</div>

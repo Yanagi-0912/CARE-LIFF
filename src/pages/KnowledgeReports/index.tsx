@@ -10,6 +10,7 @@ import {
 } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as S from './styles';
 
 type ReportFilter = 'all' | KnowledgeReportStatus;
@@ -231,10 +232,20 @@ function KnowledgeReportsPage() {
               </button>
             ))}
           </div>
-          <select className={S.SORT_SELECT} aria-label={t('knowledgeReports.sortLabel')} defaultValue="newest">
-            <option value="newest">{t('knowledgeReports.sort.newest')}</option>
-            <option value="oldest">{t('knowledgeReports.sort.oldest')}</option>
-          </select>
+          <Select defaultValue="newest">
+            <SelectTrigger className={S.SORT_SELECT} aria-label={t('knowledgeReports.sortLabel')}>
+              {/* 同上：需對應回翻譯標籤，否則會顯示 newest／oldest 原始值 */}
+              <SelectValue>
+                {(value) =>
+                  value === 'oldest' ? t('knowledgeReports.sort.oldest') : t('knowledgeReports.sort.newest')
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">{t('knowledgeReports.sort.newest')}</SelectItem>
+              <SelectItem value="oldest">{t('knowledgeReports.sort.oldest')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <h2 id="knowledge-list-title" className="sr-only">{t('knowledgeReports.listTitle')}</h2>

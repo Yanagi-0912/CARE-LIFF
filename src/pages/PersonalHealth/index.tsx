@@ -439,7 +439,14 @@ const PersonalHealthPage: React.FC = () => {
                                     className={cn(S.SELECT_WRAP, S.SELECT_BTN)}
                                     aria-label={t('personalHealth.genderAria', { value: genderLabel })}
                                 >
-                                    <SelectValue placeholder={t('personalHealth.genderPlaceholder')} />
+                                    {/* 需以函式 child 對應回翻譯標籤：儲存值是中文（'男'/'女'，
+                                        與既有資料相容），切到英文時應顯示 Male/Female 而非原始值 */}
+                                    <SelectValue placeholder={t('personalHealth.genderPlaceholder')}>
+                                        {(value) => {
+                                            const option = GENDER_OPTIONS.find((o) => o.value === value);
+                                            return option ? t(option.labelKey) : t('personalHealth.genderPlaceholder');
+                                        }}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {GENDER_OPTIONS.map((option) => (

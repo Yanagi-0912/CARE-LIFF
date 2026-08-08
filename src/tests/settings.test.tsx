@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import i18n, { getInitialLanguage } from '../i18n';
 import SettingsPage from '../pages/Settings';
@@ -17,11 +18,16 @@ describe('設定頁語言行為', () => {
   it('切換語言後，應同步更新 localStorage 與畫面語言', async () => {
     await renderSettings();
 
-    const select = screen.getByLabelText('顯示語言') as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: 'en' } });
+    // 語言選單已改用 shadcn Select：trigger 為 combobox、選項為 option。
+    // 必須用 userEvent（完整指標事件序列）Base UI 的彈出層才會關閉。
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox', { name: '顯示語言' }));
+    await user.click(await screen.findByRole('option', { name: 'English' }));
 
-    const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
-    expect(saved.language).toBe('en');
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+      expect(saved.language).toBe('en');
+    });
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
   });
 
@@ -39,8 +45,8 @@ describe('設定頁語言行為', () => {
 
     await renderSettings(getInitialLanguage('care-settings'));
 
-    const select = screen.getByLabelText('Display Language') as HTMLSelectElement;
-    expect(select.value).toBe('en');
+    // Select 的目前值顯示在 trigger 上（原生 select 時是讀 select.value）
+    expect(screen.getByRole('combobox', { name: 'Display Language' })).toHaveTextContent('English');
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
   });
 });
