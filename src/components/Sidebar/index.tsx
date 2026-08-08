@@ -1,38 +1,22 @@
-import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import LineSidebar from '../LineSidebar/LineSidebar';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
+import { queryKeys } from '@/lib/queryClient';
 
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRole() {
-      try {
-        const profile = await getPersonalHealthProfile();
-        if (!cancelled) {
-          setIsAdmin(isAdminRole(profile?.role));
-        }
-      } catch {
-        if (!cancelled) {
-          setIsAdmin(false);
-        }
-      }
-    }
-
-    void loadRole();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // 與 AdminRoute 共用同一個查詢，兩者都只是要判斷管理員身分；
+  // 分開抓會對同一支 API 打兩次。
+  const { data: profile } = useQuery({
+    queryKey: queryKeys.myProfile,
+    queryFn: () => getPersonalHealthProfile(),
+  });
+  const isAdmin = isAdminRole(profile?.role);
 
   const items = [
     { path: '/', label: t('sidebar.home') },

@@ -22,6 +22,9 @@ export const queryClient = new QueryClient({
 /** 查詢鍵集中管理，避免各處手打字串而失效 */
 export const queryKeys = {
   familyTree: ['family-tree'] as const,
+  /** 本人的健康檔案。Sidebar 與 AdminRoute 都靠它判斷管理員身分，
+      共用同一個 key 才不會各抓一次。 */
+  myProfile: ['my-profile'] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
   knowledgeReports: ['knowledge-reports'] as const,
   adminKnowledgeReports: ['admin-knowledge-reports'] as const,
