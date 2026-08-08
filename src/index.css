@@ -1,4 +1,99 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
 @import './styles/tokens.css';
+
+/* ═══════════════════════════════════════════════════════
+   Tailwind ×  CARE 設計系統 橋接層
+   ═══════════════════════════════════════════════════════
+
+   tokens.css 是唯一的顏色來源。這裡只做「命名映射」，不重新定義顏色值。
+
+   為什麼不照 shadcn 官方那樣在 :root 定義 --primary / --muted / --accent：
+   CARE 早就用了這三個名字，而且語意不同 ——
+     CARE --muted  = 次要「文字」色     shadcn --muted  = 次要「背景」色
+     CARE --accent = 珊瑚橘品牌色        shadcn --accent = hover 底色
+   在 :root 覆寫會連帶改掉所有既有 CSS 的顏色。改成全部在 @theme inline 裡
+   映射到 utility 名稱，既產生 shadcn 元件需要的 bg-primary / text-muted-foreground，
+   又完全不動 tokens.css 的變數。
+
+   用 inline 而非一般 @theme：utility 會輸出 var(--xxx) 而不是展開後的值，
+   所以 [data-theme='dark'] 與 html.high-contrast 換掉 token 時，
+   Tailwind 產生的樣式會跟著變 —— 深色與高對比模式不需要任何額外處理。
+   ═══════════════════════════════════════════════════════ */
+
+/* 讓 dark: 變體對齊既有機制（tokens.css 用 [data-theme='dark']，非 .dark） */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme inline {
+  /* ── 版面 ── */
+  --color-background: var(--bg);
+  --color-foreground: var(--ink-2);
+
+  /* ── 卡片／浮層 ── */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink);
+
+  /* ── 主色（醫療暖綠）── */
+  --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
+
+  /* ── 次要：用 CARE 的淺色面當底 ── */
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--ink);
+
+  /* ── shadcn 的 muted 是「底色」，前景才對應 CARE 的 --muted ── */
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--muted);
+
+  /* ── shadcn 的 accent 是 hover 底色，不是品牌珊瑚橘 ── */
+  --color-accent: var(--primary-soft);
+  --color-accent-foreground: var(--primary-strong);
+
+  /* ── 品牌珊瑚橘另外給名字，避免與 shadcn accent 混淆 ── */
+  --color-coral: var(--accent);
+  --color-coral-strong: var(--accent-strong);
+  --color-coral-soft: var(--accent-soft);
+
+  /* ── 狀態 ── */
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: #ffffff;
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+
+  /* ── 線條與輸入 ── */
+  --color-border: var(--line);
+  --color-hair: var(--hair);
+  --color-input: var(--line);
+  --color-ring: var(--primary);
+
+  /* ── 圓角：對齊 CARE 的 --r-* 級距 ── */
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+
+  /* ── 陰影 ──
+     不可寫成 --shadow-1: var(--shadow-1)：Tailwind 會把它輸出到
+     @layer theme 的 :root，變成字面上的循環宣告。目前只因 tokens.css
+     未分層（未分層優先度高於 @layer）才僥倖不壞，屬於埋雷。
+     改用不與 tokens.css 撞名的鍵，語意也更清楚。 */
+  --shadow-card: var(--shadow-1);
+  --shadow-pop: var(--shadow-2);
+  --shadow-modal: var(--shadow-3);
+
+  /* 字體同理不在此宣告：tokens.css 的 --font-sans 未分層，會蓋過 Tailwind
+     @layer theme 的預設值，因此 preflight 的 --default-font-family
+     自然解析到 CARE 字體堆疊，不需要（也不能）在這裡重複定義。 */
+}
+
+/* shadcn 元件會直接讀 --radius（而非 utility），補上以對齊 CARE 級距 */
+:root {
+  --radius: var(--r-lg);
+}
 
 /* ═══════════════════════════════════════════════════════
    CARE 健康管家 — Global base

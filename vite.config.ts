@@ -1,9 +1,22 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    // 對齊 Tailwind v4 的瀏覽器下限（Chrome 111 / Safari 16.4，皆 2023-03）。
+    // 這個 App 跑在 LINE webview、使用者多為長輩，裝置可能偏舊：
+    // 明確釘住 target，讓 JS 與 CSS 的支援範圍一致，不會只有其中一邊悄悄用了更新的語法。
+    target: ['chrome111', 'safari16.4', 'firefox128', 'edge111'],
+  },
   server: {
     // 允許 ngrok 的網域連線進來
     allowedHosts: [

@@ -3,5 +3,13 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  // 這是 solution-style tsconfig（files: []，本身不編譯任何檔案）。
+  // 這裡的 paths 只是給 shadcn CLI 讀取用，實際編譯以 tsconfig.app.json 為準。
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
 }
