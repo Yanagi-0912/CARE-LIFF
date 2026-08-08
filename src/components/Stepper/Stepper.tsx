@@ -17,7 +17,8 @@ import {
   type Variants,
 } from 'motion/react';
 
-import './Stepper.css';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export interface RenderStepIndicatorProps {
   step: number;
@@ -124,9 +125,16 @@ export default function Stepper({
   };
 
   return (
-    <div {...rest} className={`outer-container ${className}`.trim()}>
-      <div className={`step-circle-container ${stepCircleContainerClassName}`.trim()}>
-        <div className={`step-indicator-row ${stepContainerClassName}`.trim()}>
+    <div {...rest} className={cn('flex w-full flex-col', className)}>
+      <div
+        className={cn(
+          'w-full overflow-hidden rounded-xl border border-hair bg-surface shadow-card',
+          stepCircleContainerClassName,
+        )}
+      >
+        <div
+          className={cn('flex w-full items-center px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4', stepContainerClassName)}
+        >
           {stepsArray.map((_, index) => {
             const stepNumber = index + 1;
             const isNotLastStep = index < totalSteps - 1;
@@ -159,34 +167,48 @@ export default function Stepper({
           isCompleted={isCompleted}
           currentStep={currentStep}
           direction={direction}
-          className={`step-content-default ${contentClassName}`.trim()}
+          className={cn('relative overflow-hidden', contentClassName)}
         >
           {stepsArray[currentStep - 1]}
         </StepContentWrapper>
 
         {!isCompleted && (
-          <div className={`footer-container ${footerClassName}`.trim()}>
-            <div className={`footer-nav ${currentStep !== 1 ? 'spread' : 'end'}`}>
+          <div className={cn('px-4 pb-4 sm:px-6 sm:pb-6', footerClassName)}>
+            <div
+              className={cn(
+                'mt-4 flex gap-3',
+                currentStep !== 1 ? 'justify-between' : 'justify-end',
+              )}
+            >
               {currentStep !== 1 && (
-                <button
+                <Button
                   {...backButtonRest}
                   type="button"
+                  variant="outline"
                   onClick={handleBack}
                   disabled={backButtonDisabled || isCompleting}
-                  className={`back-button ${backButtonClassName}`.trim()}
+                  // 原本手刻的 back-button 即為 outline 樣式；min-w 維持手機版的
+                  // 108px 下限，避免兩顆按鈕在窄螢幕寬度不一致
+                  className={cn(
+                    'min-w-[108px] rounded-full font-bold text-muted-foreground hover:bg-surface-2 hover:text-ink active:scale-97',
+                    backButtonClassName,
+                  )}
                 >
                   {backButtonText}
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 {...nextButtonRest}
                 type="button"
                 onClick={isLastStep ? handleComplete : handleNext}
                 disabled={nextButtonDisabled || isCompleting}
-                className={`next-button ${nextButtonClassName}`.trim()}
+                className={cn(
+                  'min-w-[108px] rounded-full font-bold hover:bg-[var(--primary-strong)] active:scale-97',
+                  nextButtonClassName,
+                )}
               >
                 {isLastStep ? completeButtonText : nextButtonText}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -267,7 +289,7 @@ function SlideTransition({
       animate="center"
       exit={reduceMotion ? 'center' : 'exit'}
       transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
-      className="step-slide"
+      className="absolute inset-x-0 top-0 [will-change:transform,opacity] motion-reduce:[will-change:auto]"
     >
       {children}
     </motion.div>
@@ -294,7 +316,7 @@ interface StepProps {
 }
 
 export function Step({ children }: StepProps) {
-  return <div className="step-default">{children}</div>;
+  return <div className="px-4 py-3 sm:px-6 sm:py-4">{children}</div>;
 }
 
 interface StepIndicatorProps {
@@ -318,20 +340,24 @@ function StepIndicator({
     <motion.button
       type="button"
       onClick={() => onClickStep(step)}
-      className={`step-indicator is-${status}`}
+      // 狀態改以 data 屬性表達，讓子元素能用 group-data-[status=...] 取用。
+      // 原本是 is-${status} 動態類名 —— Tailwind 掃描不到拼接出的字串，
+      // 用 data 屬性才能正確產生規則。
+      data-status={status}
+      className="group relative shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 text-inherit disabled:cursor-default"
       disabled={disableStepIndicators || step === currentStep}
       aria-label={`步驟 ${step}`}
       aria-current={status === 'active' ? 'step' : undefined}
       animate={{ scale: status === 'active' ? 1.08 : 1 }}
       transition={{ duration: reduceMotion ? 0 : 0.2 }}
     >
-      <span className="step-indicator-inner">
+      <span className="flex size-[34px] items-center justify-center rounded-full border-2 border-line bg-surface-2 font-bold text-muted-foreground transition-colors group-data-[status=active]:border-primary group-data-[status=active]:bg-primary group-data-[status=active]:text-white group-data-[status=complete]:border-primary group-data-[status=complete]:bg-primary group-data-[status=complete]:text-white motion-reduce:transition-none">
         {status === 'complete' ? (
-          <CheckIcon className="check-icon" />
+          <CheckIcon className="size-[17px]" />
         ) : status === 'active' ? (
-          <span className="active-dot" />
+          <span className="size-[11px] rounded-full bg-white" />
         ) : (
-          <span className="step-number">{step}</span>
+          <span className="text-[0.85rem]">{step}</span>
         )}
       </span>
     </motion.button>
@@ -346,9 +372,9 @@ function StepConnector({ isComplete }: StepConnectorProps) {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="step-connector">
+    <div className="relative mx-2 h-[3px] flex-1 overflow-hidden rounded-full bg-surface-3">
       <motion.div
-        className="step-connector-inner"
+        className="absolute inset-0 origin-left bg-primary"
         initial={false}
         animate={{ scaleX: isComplete ? 1 : 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
