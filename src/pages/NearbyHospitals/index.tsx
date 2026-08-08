@@ -70,8 +70,6 @@ const NearbyHospitalsPage = () => {
             revealDirection="center"
             useOriginalCharsOnly
             animateOn="view"
-            className="decrypted-text__revealed"
-            encryptedClassName="decrypted-text__encrypted"
           />
         </h1>
         <p className="nearbyDesc">{t('nearby.desc')}</p>

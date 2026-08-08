@@ -1,3 +1,8 @@
+/* 刻意保留為 CSS，不遷移至 Tailwind。
+   本檔用到 container-type / 100cqw 容器查詢單位、offset-path 運動路徑、
+   color-mix()——寫成 Tailwind 任意值會變成
+   scale-[calc(100cqw/230)] 與 [offset-path:path("M0,42_L60,42...")] 這類字串，
+   更難讀也更易錯，且毫無收益。高度特化的圖形動畫留在 CSS 是正確的。 */
 .ekg {
   position: relative;
   container-type: inline-size;

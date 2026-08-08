@@ -6,7 +6,14 @@ import {
   useState,
 } from 'react';
 import { motion, type HTMLMotionProps } from 'motion/react';
-import './DecryptedText.css';
+import { cn } from '@/lib/utils';
+
+// 已解密／未解密字元的預設樣式。設為預設值而非要求每個呼叫端自帶，
+// 是因為這是元件本身的視覺特徵（原本 4 個頁面各重複一次）。
+// motion-reduce 變體對應原 CSS 的 prefers-reduced-motion 區塊：關掉發光。
+const REVEALED_CLASS = 'text-inherit';
+const ENCRYPTED_CLASS =
+  'text-[var(--primary-soft)] [text-shadow:0_0_12px_currentColor] motion-reduce:text-inherit motion-reduce:[text-shadow:none]';
 
 type RevealDirection = 'start' | 'end' | 'center';
 type AnimateOn = 'view' | 'hover' | 'inViewHover' | 'click';
@@ -59,9 +66,9 @@ function DecryptedTextInstance({
   revealDirection = 'start',
   useOriginalCharsOnly = false,
   characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+',
-  className = '',
+  className = REVEALED_CLASS,
   parentClassName = '',
-  encryptedClassName = '',
+  encryptedClassName = ENCRYPTED_CLASS,
   animateOn = 'hover',
   clickMode = 'once',
   style,
@@ -248,13 +255,15 @@ function DecryptedTextInstance({
     <motion.span
       {...motionProps}
       ref={containerRef}
-      className={`decrypted-text ${parentClassName}`.trim()}
+      className={cn('relative cursor-default', parentClassName)}
       style={{ ...style, display: 'inline-block', whiteSpace: 'pre-wrap' }}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <span className="decrypted-text__sr-only">{text}</span>
+      {/* decrypted-text__sr-only 保留作為測試定位點（decryptedText.test.tsx 以此選取），
+          視覺隱藏改用 Tailwind 內建的 sr-only，不再自刻 clip 那套 */}
+      <span className="decrypted-text__sr-only sr-only">{text}</span>
       <span aria-hidden="true">
         {displayText.split('').map((character, index) => {
           const revealed = revealedIndices.has(index) || (!isAnimating && isDecrypted);

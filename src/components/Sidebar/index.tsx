@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import './index.css';
 import { useTranslation } from 'react-i18next';
 import LineSidebar from '../LineSidebar/LineSidebar';
 import { getPersonalHealthProfile } from '../../api/profileApi';
@@ -55,7 +54,8 @@ function Sidebar() {
   ));
 
   return (
-    <aside className="sidebar">
+    // 僅桌面版顯示（手機用底部導覽）；黏在 header 下方、自身可捲動
+    <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] w-[var(--sidebar-w)] shrink-0 self-start overflow-y-auto border-r border-hair bg-surface bg-[image:var(--sidebar-wash)] px-4 py-8 md:block">
       <LineSidebar
         key={`${location.pathname}-${isAdmin ? 'admin' : 'user'}`}
         items={items.map((item) => item.label)}
@@ -72,7 +72,7 @@ function Sidebar() {
         smoothing={90}
         defaultActive={activeIndex >= 0 ? activeIndex : null}
         onItemClick={(index) => navigate(items[index].path)}
-        className="careLineSidebar"
+        className="animate-sidebar-in"
         ariaLabel={t('sidebar.mainNavAriaLabel')}
       />
     </aside>

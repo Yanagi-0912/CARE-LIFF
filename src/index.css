@@ -100,6 +100,15 @@
 /* shadcn 元件會直接讀 --radius（而非 utility），補上以對齊 CARE 級距 */
 :root {
   --radius: var(--r-lg);
+
+  /* 側欄的角落色霧。做成變數而非 Tailwind 任意值：漸層字串長且含逗號，
+     寫進 class 要用底線跳脫、既難讀又易錯；做成變數還能讓深色模式
+     直接覆寫（見下方），元件端只要 bg-[image:var(--sidebar-wash)]。 */
+  --sidebar-wash: radial-gradient(circle at 5% 18%, var(--primary-softer), transparent 32%);
+}
+
+[data-theme='dark'] {
+  --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(62, 207, 188, 0.08), transparent 32%);
 }
 
 /* 專案自有的動畫。這裡用一般 @theme（而非 inline）：這是新定義而非對既有
@@ -107,6 +116,18 @@
 @theme {
   --animate-heartbeat: heartbeat 3.2s var(--ease) infinite;
   --animate-badge-wiggle: badge-wiggle 420ms var(--ease);
+  --animate-sidebar-in: sidebar-in 360ms var(--ease-out) both;
+
+  @keyframes sidebar-in {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 
   @keyframes heartbeat {
     0%,

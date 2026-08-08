@@ -94,8 +94,6 @@ const Home = () => {
               revealDirection="center"
               useOriginalCharsOnly
               animateOn="view"
-              className="decrypted-text__revealed"
-              encryptedClassName="decrypted-text__encrypted"
             />
           </h1>
           <p>{t('home.subtitle')}</p>

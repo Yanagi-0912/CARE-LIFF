@@ -164,8 +164,6 @@ function KnowledgeReportsPage() {
                   revealDirection="center"
                   useOriginalCharsOnly
                   animateOn="view"
-                  className="decrypted-text__revealed"
-                  encryptedClassName="decrypted-text__encrypted"
                 />
               </h1>
             </div>
