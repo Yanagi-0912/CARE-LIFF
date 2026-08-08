@@ -15,7 +15,6 @@ import NearbyHospitalsPage from './pages/NearbyHospitals';
 import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
 import type { SettingsState } from './pages/Settings';
 import AdminRoute from './components/AdminRoute';
-import './App.css';
 import Login from './pages/Loginpage';
 import { saveRedirectUrl } from './utils/redirect';
 import { getTheme, applyThemeAttribute } from './utils/theme';
