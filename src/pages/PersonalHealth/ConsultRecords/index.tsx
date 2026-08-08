@@ -7,7 +7,8 @@ import {
     getConsultationSummaryDownloadToken,
     buildConsultationSummaryDownloadUrl,
 } from '../../../api/consultationApi';
-import './index.css';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
 import { useTranslation } from 'react-i18next';
 type SummarySection = { key: string; label: string; value: string | string[] | null };
@@ -162,62 +163,62 @@ const ConsultRecordsPage: React.FC = () => {
     };
 
     return (
-        <div className="consult-page">
-            {toast && <div className={`saveToast ${toast.status === 'success' ? 'saveToastSuccess' : 'saveToastError'}`}>{toast.message}</div>}
+        <div className={S.PAGE}>
+            {toast && <div className={cn(S.TOAST, toast.status === 'success' ? S.TOAST_SUCCESS : S.TOAST_ERROR)}>{toast.message}</div>}
 
-            <header className="consult-header">
-                <h2>{t('consultRecord.title')}</h2>
-                <p>{t('consultRecord.description')}</p>
+            <header className={S.HEADER}>
+                <h2 className={S.HEADER_H2}>{t('consultRecord.title')}</h2>
+                <p className={S.HEADER_P}>{t('consultRecord.description')}</p>
             </header>
 
-            <section className="consult-card">
-                <div className="panel">
-                    <div className="panel-top">
-                        <div className="panel-time">
+            <section className={S.CARD}>
+                <div className={S.PANEL}>
+                    <div className={S.PANEL_TOP}>
+                        <div className={S.PANEL_TIME}>
                             {new Date().toLocaleTimeString(i18n.language || 'zh-TW', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                             })}
                         </div>
-                        <div className="panel-notch"><div className="panel-dot" /><div className="panel-speaker" /><div className="panel-dot" /></div>
-                        <div className="panel-status">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="iconOnPhone"><path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" /></svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="iconOnPhone"><path fillRule="evenodd" d="M3.75 6.75a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-.037c.856-.174 1.5-.93 1.5-1.838v-2.25c0-.907-.644-1.664-1.5-1.837V9.75a3 3 0 0 0-3-3h-15Zm15 1.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-15a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5h15ZM4.5 9.75a.75.75 0 0 0-.75.75V15c0 .414.336.75.75.75H18a.75.75 0 0 0 .75-.75v-4.5a.75.75 0 0 0-.75-.75H4.5Z" clipRule="evenodd" /></svg>
+                        <div className={S.PANEL_NOTCH}><div className={S.PANEL_DOT} /><div className={S.PANEL_SPEAKER} /><div className={S.PANEL_DOT} /></div>
+                        <div className={S.PANEL_STATUS}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.ICON_PHONE}><path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={S.ICON_PHONE}><path fillRule="evenodd" d="M3.75 6.75a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-.037c.856-.174 1.5-.93 1.5-1.838v-2.25c0-.907-.644-1.664-1.5-1.837V9.75a3 3 0 0 0-3-3h-15Zm15 1.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-15a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5h15ZM4.5 9.75a.75.75 0 0 0-.75.75V15c0 .414.336.75.75.75H18a.75.75 0 0 0 .75-.75v-4.5a.75.75 0 0 0-.75-.75H4.5Z" clipRule="evenodd" /></svg>
                         </div>
 
                     </div>
-                    <div className="panel-controls" role="tablist" aria-label={t('consultRecord.title')}>
-                        <button type="button" className={`summaryBtn ${viewMode === 'summary' ? 'active' : ''}`} onClick={() => setViewMode('summary')} aria-pressed={viewMode === 'summary'}>{t('consultRecord.tabSummary')}</button>
-                        <button type="button" className={`rawMsgBtn ${viewMode === 'raw' ? 'active' : ''}`} onClick={() => setViewMode('raw')} aria-pressed={viewMode === 'raw'}>{t('consultRecord.tabRaw')}</button>
+                    <div className={S.PANEL_CONTROLS} role="tablist" aria-label={t('consultRecord.title')}>
+                        <button type="button" className={cn(S.TAB, viewMode === 'summary' && S.TAB_ACTIVE)} onClick={() => setViewMode('summary')} aria-pressed={viewMode === 'summary'}>{t('consultRecord.tabSummary')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></button>
+                        <button type="button" className={cn(S.TAB, viewMode === 'raw' && S.TAB_ACTIVE)} onClick={() => setViewMode('raw')} aria-pressed={viewMode === 'raw'}>{t('consultRecord.tabRaw')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg></button>
                     </div>
-                    <div className="panel-list">
-                        {loading.list && <div className="panel-item is-muted"><div className="panel-badge">AI</div><p>{t('consultRecord.loading')}</p></div>}
-                        {!loading.list && summaryError && <div className="panel-item is-error"><div className="panel-badge">AI</div><p>{t('consultRecord.loadSummaryError')}</p></div>}
+                    <div className={S.PANEL_LIST}>
+                        {loading.list && <div className={cn(S.ITEM, S.ITEM_MUTED)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loading')}</p></div>}
+                        {!loading.list && summaryError && <div className={S.ITEM}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loadSummaryError')}</p></div>}
                         {!loading.list && (
                             <>
                                 {viewMode === 'summary' && (
                                     summaryItems.length > 0 ? (
-                                        <div className="panel-item compact">
-                                            <div className="compact-header">
-                                                <label className="summary-label" htmlFor="summary-select">{t('consultRecord.summaryDate')}</label>
+                                        <div className={cn(S.ITEM, S.COMPACT)}>
+                                            <div className={S.COMPACT_HEADER}>
+                                                <label className={S.SUMMARY_LABEL} htmlFor="summary-select">{t('consultRecord.summaryDate')}</label>
                                                 {/*選擇日期的下拉選單*/}
-                                                <select id="summary-select" className="summary-select" value={selectedSummaryKey} onChange={e => setSelectedSummaryKey(e.target.value)}>
+                                                <select id="summary-select" className={S.SUMMARY_SELECT} value={selectedSummaryKey} onChange={e => setSelectedSummaryKey(e.target.value)}>
                                                     {summaryItems.map(s => <option key={getSummaryKey(s)} value={getSummaryKey(s)}>{formatSummaryDate(s)}</option>)}
                                                 </select>
                                             </div>
-                                            <div className="summary-viewer compact-body">
-                                                <div className="summary-title">{t('consultRecord.summaryTitle')}</div>
+                                            <div className={S.VIEWER}>
+                                                <div className={S.SUMMARY_TITLE}>{t('consultRecord.summaryTitle')}</div>
                                                 {selectedSummarySections.length > 0 ? selectedSummarySections.map(section => (
-                                                    <section key={section.key} className="summary-section">
-                                                        <div className="summary-section-title">{section.label}</div>
-                                                        <div className="summary-section-body markdown-content">
+                                                    <section key={section.key} className={S.SECTION}>
+                                                        <div className={S.SECTION_TITLE}>{section.label}</div>
+                                                        <div className={cn(S.SECTION_BODY, S.MARKDOWN)}>
                                                             <ReactMarkdown>{Array.isArray(section.value) ? section.value.map(item => `- ${item}`).join('\n') : section.value ?? t('consultRecord.none')}</ReactMarkdown>
                                                         </div>
                                                     </section>
-                                                )) : <div className="summary-empty">{t('consultRecord.emptySummary')}</div>}
+                                                )) : <div className={S.SUMMARY_EMPTY}>{t('consultRecord.emptySummary')}</div>}
                                             </div>
                                         </div>
-                                    ) : <div className="panel-item is-empty"><div className="panel-badge">AI</div><p>{t('consultRecord.noSummaryData')}</p></div>
+                                    ) : <div className={cn(S.ITEM, S.ITEM_EMPTY)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.noSummaryData')}</p></div>
                                 )}
                                 {viewMode === 'raw' && (
                                     rawMessages.length > 0 ? rawMessages.map((msg, idx) => {
@@ -225,51 +226,51 @@ const ConsultRecordsPage: React.FC = () => {
                                         return (
                                             <div
                                                 key={`raw_${idx}`}
-                                                className={`chat-row ${isYou ? 'user' : 'ai'}`}
+                                                className={cn(S.CHAT_ROW, isYou && S.CHAT_ROW_USER)}
                                                 role="button"
                                                 tabIndex={0}
                                                 onClick={() => setSelectedMessage(msg)}
                                                 onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedMessage(msg)}
                                             >
-                                                <div className={`panel-badge ${isYou ? 'user-badge' : 'ai-badge'}`}>
+                                                <div className={cn(S.BADGE, isYou ? S.USER_BADGE : S.AI_BADGE)}>
                                                     {isYou ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}
                                                 </div>
-                                                <div className={`chat-bubble ${isYou ? 'user-bubble' : 'ai-bubble'}`}>
+                                                <div className={isYou ? S.USER_BUBBLE : S.AI_BUBBLE}>
                                                     {truncateText(msg.content || t('consultRecord.noContent'))}
                                                 </div>
                                             </div>
                                         );
-                                    }) : <div className="panel-item is-empty"><div className="panel-badge">AI</div><p>{t('consultRecord.noRawMessages')}</p></div>
+                                    }) : <div className={cn(S.ITEM, S.ITEM_EMPTY)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.noRawMessages')}</p></div>
                                 )}
                             </>
                         )}
                     </div>
                 </div>
 
-                <div className="form-actions">
+                <div className={S.FORM_ACTIONS}>
                     {/*<button onClick={handleSummarizeNow} className="btn primary" disabled={loading.action}>{loading.action ? '摘要產生中...' : '立即產生摘要'}</button>*/}
-                    <button onClick={handleDownload} className="btn ghost" disabled={loading.download}>{loading.download ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</button>
+                    <button onClick={handleDownload} className={cn(S.BTN, S.BTN_GHOST)} disabled={loading.download}>{loading.download ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</button>
                 </div>
             </section>
 
             {selectedMessage && (
                 <div
-                    className="modal-overlay"
+                    className={S.MODAL_OVERLAY}
                     onClick={() => setSelectedMessage(null)}
                     role="presentation"
                 >
                     <div
-                        className="modal-content"
+                        className={S.MODAL}
                         onClick={e => e.stopPropagation()}
                         role="dialog"//role屬性是為這個元素賦予明確的語義和功能角色
                         aria-modal="true"
                     >
-                        <button type="button" className="modal-close" aria-label="關閉視窗" onClick={() => setSelectedMessage(null)}>×</button>
-                        <div className={`modal-header ${selectedMessage.message_type === 'text' ? 'is-user' : 'is-ai'}`}>
-                            <div className="modal-avatar">{selectedMessage.message_type === 'text' ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}</div>
-                            <h3 className="modal-title">{selectedMessage.message_type === 'text' ? t('consultRecord.modalUserTitle') : t('consultRecord.modalAiTitle')}</h3>
+                        <button type="button" className={S.MODAL_CLOSE} aria-label="關閉視窗" onClick={() => setSelectedMessage(null)}>×</button>
+                        <div className={S.MODAL_HEADER}>
+                            <div className={cn(S.MODAL_AVATAR, selectedMessage.message_type === 'text' ? S.AVATAR_USER : S.AVATAR_AI)}>{selectedMessage.message_type === 'text' ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}</div>
+                            <h3 className={S.MODAL_TITLE}>{selectedMessage.message_type === 'text' ? t('consultRecord.modalUserTitle') : t('consultRecord.modalAiTitle')}</h3>
                         </div>
-                        <div className="modal-body markdown-content">
+                        <div className={cn(S.MARKDOWN, S.MODAL_BODY)}>
                             <ReactMarkdown>{selectedMessage.content || t('consultRecord.noContent')}</ReactMarkdown>
                         </div>
                     </div>
