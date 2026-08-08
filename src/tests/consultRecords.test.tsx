@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { renderWithToaster } from './testUtils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import liff from '@line/liff'
 
@@ -83,7 +84,7 @@ describe('ConsultRecordsPage測試', () => {
             fetchConsultationMeRaw: vi.fn().mockResolvedValue(mockRawMessages),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         // 使用 findByText 抓取分頁按鈕
         const chatTabButton = await screen.findByText('對話')
@@ -107,7 +108,7 @@ describe('ConsultRecordsPage測試', () => {
             fetchConsultationMeRaw: vi.fn().mockResolvedValue(mockRawMessages),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         const chatTabButton = await screen.findByText('對話')
         fireEvent.click(chatTabButton)
@@ -138,7 +139,7 @@ describe('ConsultRecordsPage測試', () => {
             fetchConsultationMeRaw: vi.fn().mockResolvedValue({ messages: [] }),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         // 驗證錯誤訊息被渲染
         expect(await screen.findByText('伺服器斷線')).toBeInTheDocument()
@@ -159,7 +160,7 @@ describe('ConsultRecordsPage測試', () => {
 
         vi.mocked(liff.isInClient).mockReturnValue(true)
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         const downloadButton = await screen.findByText('下載所有摘要')
         fireEvent.click(downloadButton)
@@ -188,7 +189,7 @@ describe('ConsultRecordsPage測試', () => {
         delete window.location
         window.location = { href: '' } as unknown as Location
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         const downloadButton = await screen.findByText('下載所有摘要')
         fireEvent.click(downloadButton)
@@ -209,7 +210,7 @@ describe('ConsultRecordsPage測試', () => {
             getConsultationSummaryDownloadToken: vi.fn().mockRejectedValue(new Error('下載連結取得失敗')),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         const downloadButton = await screen.findByText('下載所有摘要')
         fireEvent.click(downloadButton)
@@ -242,7 +243,7 @@ describe('ConsultRecordsPage測試', () => {
             getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         // 預設就是摘要分頁，驗證標題欄位有正確顯示
         expect(await screen.findByText('主訴')).toBeInTheDocument()
@@ -271,7 +272,7 @@ describe('ConsultRecordsPage測試', () => {
             getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         expect(await screen.findByText('建議')).toBeInTheDocument()
         expect(screen.getByText('多喝水並多休息')).toBeInTheDocument()
@@ -293,7 +294,7 @@ describe('ConsultRecordsPage測試', () => {
             getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
         })
 
-        render(<ConsultRecordsPage />)
+        renderWithToaster(<ConsultRecordsPage />)
 
         // 預設應顯示第一筆（最新／第一個）摘要內容
         expect(await screen.findByText('第一天的紀錄內容')).toBeInTheDocument()

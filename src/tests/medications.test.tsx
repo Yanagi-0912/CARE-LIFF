@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderWithToaster } from './testUtils';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as medicationApi from '../api/medicationApi';
@@ -62,7 +63,7 @@ describe('MedicationsPage', () => {
   });
 
   const renderPage = () =>
-    render(
+    renderWithToaster(
       <MemoryRouter>
         <MedicationsPage />
       </MemoryRouter>,

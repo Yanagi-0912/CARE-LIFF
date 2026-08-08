@@ -90,7 +90,3 @@ export const RESULT =
   'mx-auto mt-8 max-w-[800px] rounded-md border border-[var(--primary-soft)] bg-[var(--primary-softer)] p-6 text-[1.05rem] text-foreground shadow-card';
 
 /* ── 儲存提示 ── */
-export const TOAST =
-  'animate-in fade-in fixed top-4 left-1/2 z-[100] w-1/2 max-w-[520px] -translate-x-1/2 rounded-md px-4 py-3 text-center font-semibold shadow-pop';
-export const TOAST_SUCCESS = 'bg-success-soft text-success';
-export const TOAST_ERROR = 'bg-destructive-soft text-destructive';

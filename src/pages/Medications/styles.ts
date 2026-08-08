@@ -68,12 +68,6 @@ export const EMPTY_H2 = 'm-0 text-[1.05rem] font-bold text-ink';
 export const EMPTY_P = 'm-0 text-[0.88rem] text-muted-foreground';
 
 /* ── Toast（沿用 rise 上浮淡入；水平置中用 translate 屬性，與動畫的 transform 可並存）── */
-export const TOAST =
-  'animate-rise fixed bottom-[calc(var(--bottom-h)+16px)] left-1/2 z-[1200] -translate-x-1/2 rounded-full px-5 py-[11px] text-[0.9rem] font-semibold text-white shadow-modal';
-export const TOAST_TONE: Record<'success' | 'error', string> = {
-  success: 'bg-success',
-  error: 'bg-destructive',
-};
 
 /* ── Dialog ── */
 export const DIALOG_BACKDROP =

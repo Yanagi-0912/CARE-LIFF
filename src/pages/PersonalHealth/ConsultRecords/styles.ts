@@ -93,10 +93,6 @@ export const TAB_ICON =
 export const FORM_ACTIONS = 'mt-2 flex flex-wrap gap-2.5';
 
 /* ── Toast（硬色碼，不隨主題）── */
-export const TOAST =
-  'animate-in fade-in fixed top-4 left-1/2 z-[100] w-1/2 max-w-[520px] -translate-x-1/2 rounded-xl px-4 py-3 text-center font-semibold shadow-[0_10px_24px_rgba(0,0,0,0.12)]';
-export const TOAST_SUCCESS = 'border border-[#b7e6c7] bg-[#ecfdf3] text-[#166534]';
-export const TOAST_ERROR = 'border border-[#fecaca] bg-[#fef2f2] text-[#991b1b]';
 
 /* ── Modal ── */
 export const MODAL_OVERLAY =

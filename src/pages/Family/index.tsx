@@ -1,25 +1,19 @@
 import { useTranslation } from 'react-i18next';
 import { useLiff } from '../../hooks/useLiff';
-import { useToast } from '../../hooks/useToast';
 import { useFamily } from '../../hooks/useFamily';
 import { MemberCard } from './MemberCard';
 import { InviteButton } from './InviteButton';
-import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import * as S from './styles';
 
 const FamilyPage = () => {
   const { t } = useTranslation();
   const { liffReady } = useLiff();
   const { members, loading, error, refetch } = useFamily();
-  const { toast, showToast } = useToast();
 
   /* ── render ────────────────────────────────────────── */
   return (
     <div className={S.PAGE}>
-      {/* Toast */}
-      {toast && (
-        <div className={cn(S.TOAST, S.TOAST_TONE[toast.type])}>{toast.msg}</div>
-      )}
 
       {/* 標題列 */}
       <header className={S.HEADER}>
@@ -27,10 +21,10 @@ const FamilyPage = () => {
         <InviteButton
           liffReady={liffReady}
           onSuccess={() => {
-            showToast(t('family.inviteSuccess'), 'success');
+            toast.success(t('family.inviteSuccess'));
             refetch();
           }}
-          onError={(msg) => showToast(msg, 'error')}
+          onError={(msg) => toast.error(msg)}
         />
       </header>
 

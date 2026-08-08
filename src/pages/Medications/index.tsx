@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFamily } from '../../hooks/useFamily';
-import { useToast } from '../../hooks/useToast';
 import { getLineUserId } from '../../utils/auth';
 import type {
   MedicationReminder,
@@ -12,6 +11,7 @@ import { ReminderCard } from './ReminderCard';
 import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
 import { useMedications } from './useMedications';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 
@@ -26,7 +26,6 @@ function readSelfUserId(): string | undefined {
 
 const MedicationsPage = () => {
   const { t } = useTranslation();
-  const { toast, showToast } = useToast();
   const { members } = useFamily();
 
   const [selfUserId] = useState(readSelfUserId);
@@ -61,7 +60,7 @@ const MedicationsPage = () => {
     try {
       await update(reminder.id, { enabled: !reminder.enabled });
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('meds.updateFailed'), 'error');
+      toast.error(err instanceof Error ? err.message : t('meds.updateFailed'));
     } finally {
       setTogglingId(null);
     }
@@ -81,27 +80,25 @@ const MedicationsPage = () => {
       end_date: endDate,
     });
     setAdding(false);
-    showToast(t('meds.add.success', { n: created.length }), 'success');
+    toast.success(t('meds.add.success', { n: created.length }));
   };
 
   const handleSave = async (patch: UpdateReminderRequest) => {
     if (!editing) return;
     await update(editing.id, patch);
     setEditing(null);
-    showToast(t('meds.edit.saveSuccess'), 'success');
+    toast.success(t('meds.edit.saveSuccess'));
   };
 
   const handleDelete = async () => {
     if (!editing) return;
     await remove(editing.id);
     setEditing(null);
-    showToast(t('meds.edit.deleteSuccess'), 'success');
+    toast.success(t('meds.edit.deleteSuccess'));
   };
 
   return (
     <div className={S.PAGE}>
-      {toast && <div className={cn(S.TOAST, S.TOAST_TONE[toast.type])}>{toast.msg}</div>}
-
       <header className={S.HEADER}>
         <h1 className={S.HEADER_H1}>{t('meds.title')}</h1>
         <button type="button" className={S.BTN_PRIMARY} onClick={() => setAdding(true)}>

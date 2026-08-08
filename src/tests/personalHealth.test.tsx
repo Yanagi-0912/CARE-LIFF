@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderWithToaster } from './testUtils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import liff from '@line/liff';
 
@@ -85,7 +86,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     // ==========================================
     it('基本資料未選性別時，不能進到下一步', async () => {
         setupApiMocks();
-        render(<PersonalHealthPage />);
+        renderWithToaster(<PersonalHealthPage />);
 
         await waitFor(() => expect(screen.getByLabelText('姓名')).toHaveValue('LINE User'));
         fireEvent.change(screen.getByLabelText('年齡'), { target: { value: '30' } });
@@ -100,7 +101,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     // ==========================================
     it('案例 2：當輸入無效的數值（年齡、身高、體重超出範圍）時，應攔截並顯示錯誤提示', async () => {
         setupApiMocks();
-        render(<PersonalHealthPage />);
+        renderWithToaster(<PersonalHealthPage />);
 
         fireEvent.change(await screen.findByLabelText('姓名'), {
             target: { value: '張小明' },
@@ -139,7 +140,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     it('勾選一般選項（高血壓、糖尿病）直接送出 → payload 的 chronic_history 正確 join', async () => {
         setupApiMocks();
         const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
-        render(<PersonalHealthPage />);
+        renderWithToaster(<PersonalHealthPage />);
         await reachHealthHistoryStep('男');
 
         // 開啟慢性病選單並勾選「高血壓」與「糖尿病」
@@ -169,7 +170,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     it('勾選「其他」並填寫內容 → 送出後包含該自訂文字', async () => {
         setupApiMocks();
         const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
-        render(<PersonalHealthPage />);
+        renderWithToaster(<PersonalHealthPage />);
         await reachHealthHistoryStep('女');
 
         // 勾選一般項目「氣喘」與「其他」
@@ -201,7 +202,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     it('勾選「其他」但沒填內容，也沒勾其他項目 → fallback 存成 "無"', async () => {
         setupApiMocks();
         const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
-        render(<PersonalHealthPage />);
+        renderWithToaster(<PersonalHealthPage />);
         await reachHealthHistoryStep('男');
 
         // 只勾選「其他」，但不填寫文字輸入框
@@ -244,7 +245,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
                 pictureUrl: 'https://line.me/avatar.png'
             });
 
-            render(<PersonalHealthPage />);
+            renderWithToaster(<PersonalHealthPage />);
 
             // 驗證輸入框與標題最終顯示的是資料庫的 "王大錘"
             const nameInput = await screen.findByLabelText('姓名');
@@ -262,7 +263,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
                 pictureUrl: 'https://line.me/avatar.png'
             });
 
-            render(<PersonalHealthPage />);
+            renderWithToaster(<PersonalHealthPage />);
 
             // 驗證輸入框與標題最終後退一步（fallback）採用 LIFF 的 "LINE User"
             const nameInput = await screen.findByLabelText('姓名');

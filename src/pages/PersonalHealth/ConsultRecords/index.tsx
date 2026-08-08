@@ -7,20 +7,12 @@ import {
     getConsultationSummaryDownloadToken,
     buildConsultationSummaryDownloadUrl,
 } from '../../../api/consultationApi';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
 import { useTranslation } from 'react-i18next';
 type SummarySection = { key: string; label: string; value: string | string[] | null };
-type ToastState = { status: 'success' | 'error'; message: string } | null;
-
-function useAutoClose<T>(value: T, setter: (v: null) => void) {
-    useEffect(() => {
-        if (!value) return;
-        const timer = setTimeout(() => setter(null), 3000);
-        return () => clearTimeout(timer);
-    }, [value, setter]);
-}
 
 
 const getSummaryKey = (s: ConsultationSummary) => s?.summary_date ?? '';
@@ -84,13 +76,11 @@ const ConsultRecordsPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
     const [loading, setLoading] = useState({ list: false, action: false, download: false });
     const [summaryError, setSummaryError] = useState<string | null>(null);
-    const [toast, setToast] = useState<ToastState>(null);
     const [selectedMessage, setSelectedMessage] = useState<ConsultationMessage | null>(null);
 
     const selectedSummary = summaryItems.find(item => getSummaryKey(item) === selectedSummaryKey) || summaryItems[0] || null;
     const selectedSummarySections = selectedSummary ? toSummarySections(selectedSummary, t) : [];
 
-    useAutoClose(toast, setToast);
     const truncateText = (text: string) => {
         if (!text)
             return t('consultRecord.noContent');
@@ -145,18 +135,18 @@ const ConsultRecordsPage: React.FC = () => {
     useEffect(() => { loadSummary(); }, []);
 
     const handleDownload = async () => {
-        setLoading(prev => ({ ...prev, download: true })); setToast(null);
+        setLoading(prev => ({ ...prev, download: true }));
         try {
             const tokenResult = await getConsultationSummaryDownloadToken();
             const downloadUrl = buildConsultationSummaryDownloadUrl(tokenResult.downloadToken);
             if (liff.isInClient()) {
                 liff.openWindow({ url: downloadUrl, external: true });
-                setToast({ status: 'success', message: t('consultRecord.downloadOpened') });
+                toast.success(t('consultRecord.downloadOpened'));
             } else {
                 globalThis.location.href = downloadUrl;
             }
         } catch (error) {
-            setToast({ status: 'error', message: error instanceof Error ? error.message : t('consultRecord.downloadFailed') });
+            toast.error(error instanceof Error ? error.message : t('consultRecord.downloadFailed'));
         } finally {
             setLoading(prev => ({ ...prev, download: false }));
         }
@@ -164,8 +154,6 @@ const ConsultRecordsPage: React.FC = () => {
 
     return (
         <div className={S.PAGE}>
-            {toast && <div className={cn(S.TOAST, toast.status === 'success' ? S.TOAST_SUCCESS : S.TOAST_ERROR)}>{toast.message}</div>}
-
             <header className={S.HEADER}>
                 <h2 className={S.HEADER_H2}>{t('consultRecord.title')}</h2>
                 <p className={S.HEADER_P}>{t('consultRecord.description')}</p>

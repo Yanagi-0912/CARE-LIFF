@@ -8,6 +8,7 @@ import {
 } from '../../api/profileApi';
 import liff from '@line/liff';
 import Stepper, { Step } from '../../components/Stepper/Stepper';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 
@@ -115,14 +116,12 @@ const PersonalHealthPage: React.FC = () => {
     const [otherInput, setOtherInput] = useState('');
     const [otherSaved, setOtherSaved] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
-    const [saveMessage, setSaveMessage] = useState('');
+    // 存檔結果改用 Sonner 呈現；此處只留欄位錯誤（下方 effect 負責逾時清除）
     const [fieldErrors, setFieldErrors] = useState<{ age?: string; height?: string; weight?: string }>({});
     const [openDropdown, setOpenDropdown] = useState<'gender' | 'chronic' | null>(null);
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
     const [liffReady, setLiffReady] = useState(false);
-    const [liffError, setLiffError] = useState('');
     const navigate = useNavigate();
     const genderDropdownRef = useRef<HTMLDivElement | null>(null);
     const chronicDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -187,12 +186,14 @@ const PersonalHealthPage: React.FC = () => {
 
     useEffect(() => {
         const initializeUserProfile = async () => {
+            let profileFailed = false;
             try {
                 const data = await getPersonalHealthProfile();
                 handleUserProfileData(data);
             } catch (error: unknown) {
                 console.warn('載入使用者資料失敗:', error);
-                setLiffError(
+                profileFailed = true;
+                toast.error(
                     error instanceof Error
                         ? error.message
                         : t('personalHealth.loadError'),
@@ -200,7 +201,10 @@ const PersonalHealthPage: React.FC = () => {
             }
 
             if (!LIFF_ID) {
-                setLiffError((prev) => prev || t('personalHealth.liffIdMissing'));
+                // 前面已提示過就不再疊一則（原 setLiffError(prev => prev || ...) 的語意）
+                if (!profileFailed) {
+                    toast.error(t('personalHealth.liffIdMissing'));
+                }
                 console.error(t('personalHealth.liffIdMissing'));
             } else {
                 liff
@@ -256,21 +260,18 @@ const PersonalHealthPage: React.FC = () => {
         }
     };
 
+    // 欄位錯誤 3 秒後自動清除（原本綁在 saveStatus 上，改由 fieldErrors 自身驅動）
     useEffect(() => {
-        if (saveStatus === 'idle') {
+        if (Object.keys(fieldErrors).length === 0) {
             return;
         }
-        const timer = window.setTimeout(() => {
-            setSaveStatus('idle');
-            setFieldErrors({});
-        }, 3000);
+        const timer = window.setTimeout(() => setFieldErrors({}), 3000);
         return () => window.clearTimeout(timer);
-    }, [saveStatus]);
+    }, [fieldErrors]);
 
     const handleSave = async () => {
         if (!form.gender) {
-            setSaveMessage(t('personalHealth.genderRequired'));
-            setSaveStatus('error');
+            toast.error(t('personalHealth.genderRequired'));
             throw new Error(t('personalHealth.genderRequired'));
         }
 
@@ -286,8 +287,7 @@ const PersonalHealthPage: React.FC = () => {
 
         if (Object.keys(activeErrors).length > 0) {
             setFieldErrors(activeErrors);
-            setSaveMessage(t('personalHealth.fieldErrorToast'));
-            setSaveStatus('error');
+            toast.error(t('personalHealth.fieldErrorToast'));
             throw new Error(t('personalHealth.fieldErrorToast'));
         }
 
@@ -318,14 +318,12 @@ const PersonalHealthPage: React.FC = () => {
         setIsSaving(true);
         try {
             await upsertPersonalHealthProfile(payload);
-            setSaveMessage(t('personalHealth.saveSuccess'));
-            setSaveStatus('success');
+            toast.success(t('personalHealth.saveSuccess'));
         } catch (error) {
             console.error('儲存失敗（網路或請求中斷）:', error);
-            setSaveMessage(
+            toast.error(
                 error instanceof Error ? error.message : t('personalHealth.networkError'),
             );
-            setSaveStatus('error');
             throw error;
         } finally {
             setIsSaving(false);
@@ -365,7 +363,6 @@ const PersonalHealthPage: React.FC = () => {
 
     return (
         <div className={S.PAGE}>
-            {liffError && <div className={cn(S.TOAST, S.TOAST_ERROR)}>{liffError}</div>}
             <section className={S.BANNER}>
                 <div className={S.AVATAR_WRAP}>
                     {userAvatar ? (
@@ -398,16 +395,6 @@ const PersonalHealthPage: React.FC = () => {
                 </div>
             </section>
 
-            {saveStatus === 'success' && (
-                <div className={cn(S.TOAST, S.TOAST_SUCCESS)}>
-                    {saveMessage || t('personalHealth.saveSuccess')}
-                </div>
-            )}
-            {saveStatus === 'error' && (
-                <div className={cn(S.TOAST, S.TOAST_ERROR)}>
-                    {saveMessage || t('personalHealth.saveError')}
-                </div>
-            )}
             <form
                 id="personalHealthForm"
                 className={cn(S.FORM_CARD, S.FORM_CARD_BARE)}

@@ -6,12 +6,6 @@
 
 export const PAGE = 'mx-auto max-w-[1200px]';
 
-export const TOAST =
-  'animate-in fade-in slide-in-from-top-2.5 fixed top-20 left-1/2 z-[1000] -translate-x-1/2 rounded-md px-6 py-2.5 text-[0.9rem] font-semibold shadow-pop';
-export const TOAST_TONE: Record<'success' | 'error', string> = {
-  success: 'bg-success-soft text-success',
-  error: 'bg-destructive-soft text-destructive',
-};
 
 export const HEADER = 'mb-6 flex items-center justify-between';
 export const HEADER_H2 =
