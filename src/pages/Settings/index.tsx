@@ -17,6 +17,8 @@ interface SettingsState {
   highContrast: boolean;
   notifyReminder: boolean;
   notifyFamily: boolean;
+  voiceReplyEnabled: boolean;
+  voiceRate: 'slow' | 'normal' | 'fast';
 }
 
 const STORAGE_KEY = 'care-settings';
@@ -28,6 +30,8 @@ const defaultSettings: SettingsState = {
   highContrast: true,       // 預設高對比
   notifyReminder: true,
   notifyFamily: true,
+  voiceReplyEnabled: false, // 對齊後端預設值
+  voiceRate: 'normal',      // 對齊後端預設值
 };
 
 /* ────────── 字級對照 ────────── */
@@ -38,10 +42,14 @@ const fontSizeMap = {
 };
 
 /* ────────── 前端欄位（camelCase）對應後端欄位（snake_case） ────────── */
-const toggleFieldMap: Record<'highContrast' | 'notifyReminder' | 'notifyFamily', keyof UpdateUserSettingsPayload> = {
+const toggleFieldMap: Record<
+  'highContrast' | 'notifyReminder' | 'notifyFamily' | 'voiceReplyEnabled',
+  keyof UpdateUserSettingsPayload
+> = {
   highContrast: 'high_contrast',
   notifyReminder: 'notify_reminder',
   notifyFamily: 'notify_family',
+  voiceReplyEnabled: 'voice_reply_enabled',
 };
 
 /* ────────── 樣式（原 index.css 遷移；區塊卡片等重複樣式抽成常數） ────────── */
@@ -90,6 +98,11 @@ const SettingsPage: React.FC = () => {
     large: t('settings.fontSizeLarge'),
     xlarge: t('settings.fontSizeXLarge'),
   };
+  const voiceRateLabelMap = {
+    slow: t('settings.voiceRateSlow'),
+    normal: t('settings.voiceRateNormal'),
+    fast: t('settings.voiceRateFast'),
+  };
   const [settings, setSettings] = useState<SettingsState>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -122,6 +135,8 @@ const SettingsPage: React.FC = () => {
           highContrast: apiSettings.high_contrast,
           notifyReminder: apiSettings.notify_reminder,
           notifyFamily: apiSettings.notify_family,
+          voiceReplyEnabled: apiSettings.voice_reply_enabled,
+          voiceRate: apiSettings.voice_rate,
         }));
 
         // language 存在資料庫的 settings.language 裡，用它來實際切換介面語言，
@@ -159,6 +174,11 @@ const SettingsPage: React.FC = () => {
     setSettings((prev) => ({ ...prev, language }));
     void i18n.changeLanguage(language);
     persistSettings({ language });
+  };
+
+  const handleVoiceRate = (rate: SettingsState['voiceRate']) => {
+    setSettings((prev) => ({ ...prev, voiceRate: rate }));
+    persistSettings({ voice_rate: rate });
   };
 
   const toggle = (key: keyof typeof toggleFieldMap) => {
@@ -284,8 +304,49 @@ const SettingsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── 關於 ── */}
+      {/* ── 語音回覆 ── */}
       <section className={cn(SECTION_CLASS, '[animation-delay:280ms]')}>
+        <h3 className={HEADING_CLASS}>{t('settings.voiceTitle')}</h3>
+        <p className={DESC_CLASS}>{t('settings.voiceDesc')}</p>
+
+        <div className={TOGGLE_ROW_CLASS}>
+          <span className={LABEL_CLASS}>{t('settings.voiceReplyToggle')}</span>
+          <Switch
+            checked={settings.voiceReplyEnabled}
+            onCheckedChange={() => toggle('voiceReplyEnabled')}
+            aria-label="切換語音回覆"
+          />
+        </div>
+
+        {/* 語速三檔互斥，沿用字體大小區塊的 ToggleGroup 模式（aria-label 提供群組說明） */}
+        <div className="mt-3 flex flex-col gap-2.5">
+          <ToggleGroup
+            className="flex gap-2 min-[480px]:gap-2.5"
+            value={[settings.voiceRate]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0] as SettingsState['voiceRate'] | undefined;
+              if (next) handleVoiceRate(next);
+            }}
+            aria-label={t('settings.voiceTitle')}
+          >
+            {(['slow', 'normal', 'fast'] as const).map((rate) => (
+              <ToggleGroupItem
+                key={rate}
+                value={rate}
+                className={cn(
+                  'min-h-12 flex-1 cursor-pointer rounded-md border-[1.5px] border-hair bg-surface-2 px-1 py-3 text-center font-bold text-foreground transition-[border-color,background-color,box-shadow] duration-140 hover:border-line active:scale-[0.96] min-[480px]:px-1.5',
+                  'aria-pressed:border-primary aria-pressed:bg-[var(--primary-soft)] aria-pressed:text-[var(--primary-strong)] aria-pressed:shadow-[0_0_0_3px_var(--primary-softer)]',
+                )}
+              >
+                {voiceRateLabelMap[rate]}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+      </section>
+
+      {/* ── 關於 ── */}
+      <section className={cn(SECTION_CLASS, '[animation-delay:340ms]')}>
         <h3 className={HEADING_CLASS}>{t('settings.aboutTitle')}</h3>
         <div className="flex flex-col gap-2.5">
           <div className="flex justify-between py-1 text-[0.95rem] text-muted-foreground">
