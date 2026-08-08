@@ -34,7 +34,9 @@ export default defineConfig({
     env: {
       VITE_LIFF_ID: 'test-liff-id',
     },
-    // e2e 由 Playwright 跑，vitest 不要抓
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+    // e2e 由 Playwright 跑，vitest 不要抓。
+    // .worktrees：git worktree 是同一個 repo 的另一份簽出，裡面有一模一樣的
+    // 測試檔，不排除會讓每個測試跑兩次，且其 e2e 目錄不符合上面的 'e2e/**' 樣式。
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '**/.worktrees/**'],
   },
 })

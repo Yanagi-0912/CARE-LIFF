@@ -33,3 +33,6 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# git worktree 的簽出位置（本機用，不進版控）
+.worktrees/

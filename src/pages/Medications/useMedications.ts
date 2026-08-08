@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createReminders,
   deleteReminder,
   fetchReminders,
   updateReminder,
 } from '../../api/medicationApi';
+import { queryKeys } from '@/lib/queryClient';
 import type {
   CreateRemindersRequest,
   MedicationReminder,
@@ -32,80 +33,72 @@ function byScheduledTime(a: MedicationReminder, b: MedicationReminder): number {
 /**
  * 用藥提醒資料層 —— 唯一呼叫 medicationApi 的地方。
  * targetUserId 改變時自動重新載入。
+ *
+ * 原本手寫的兩個 ref 已不需要：
+ * - requestIdRef（避免快速切換對象時舊回應覆蓋新資料）→ query key 含
+ *   targetUserId，切換即是另一筆查詢，舊回應不會寫進新的快取。
+ * - remindersRef（樂觀更新的回滾快照）→ 改用 onMutate 取得快照、
+ *   onError 回滾，這正是 mutation 生命週期本來就提供的。
  */
 export function useMedications(targetUserId?: string): UseMedicationsReturn {
-  const [reminders, setReminders] = useState<MedicationReminder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.medications(targetUserId);
 
-  /**
-   * 列表的同步副本。樂觀更新需要在 await 之前就取得可靠的回滾快照，
-   * 而 setState 的 updater 執行時機不保證在下一個 microtask 之前。
-   */
-  const remindersRef = useRef<MedicationReminder[]>([]);
-
-  const commit = useCallback((next: MedicationReminder[]) => {
-    const sorted = [...next].sort(byScheduledTime);
-    remindersRef.current = sorted;
-    setReminders(sorted);
-  }, []);
-
-  /** 只採用最後一次請求的結果，避免快速切換對象時舊回應覆蓋新資料 */
-  const requestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    try {
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => {
       const list = await fetchReminders(targetUserId);
-      if (requestId !== requestIdRef.current) return;
-      commit(list);
-    } catch (err) {
-      if (requestId !== requestIdRef.current) return;
-      commit([]);
-      setError(err instanceof Error ? err.message : '載入用藥提醒失敗');
-    } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
-    }
-  }, [targetUserId, commit]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const create = useCallback(
-    async (req: CreateRemindersRequest) => {
-      const created = await createReminders(req);
-      await load();
-      return created;
+      return [...list].sort(byScheduledTime);
     },
-    [load],
-  );
+  });
 
-  const update = useCallback(
-    async (reminderId: string, patch: UpdateReminderRequest) => {
-      const snapshot = remindersRef.current;
-      commit(snapshot.map((item) => (item.id === reminderId ? { ...item, ...patch } : item)));
+  const createMutation = useMutation({
+    mutationFn: (req: CreateRemindersRequest) => createReminders(req),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
 
-      try {
-        const saved = await updateReminder(reminderId, patch);
-        commit(remindersRef.current.map((item) => (item.id === reminderId ? saved : item)));
-      } catch (err) {
-        commit(snapshot);
-        throw err;
-      }
+  const updateMutation = useMutation({
+    mutationFn: ({ reminderId, patch }: { reminderId: string; patch: UpdateReminderRequest }) =>
+      updateReminder(reminderId, patch),
+    // 樂觀更新：先改畫面，並回傳快照供失敗時回滾
+    onMutate: async ({ reminderId, patch }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const snapshot = queryClient.getQueryData<MedicationReminder[]>(queryKey);
+      queryClient.setQueryData<MedicationReminder[]>(queryKey, (current) =>
+        (current ?? [])
+          .map((item) => (item.id === reminderId ? { ...item, ...patch } : item))
+          .sort(byScheduledTime),
+      );
+      return { snapshot };
     },
-    [commit],
-  );
-
-  const remove = useCallback(
-    async (reminderId: string) => {
-      await deleteReminder(reminderId);
-      commit(remindersRef.current.filter((item) => item.id !== reminderId));
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot) queryClient.setQueryData(queryKey, context.snapshot);
     },
-    [commit],
-  );
+    onSuccess: (saved, { reminderId }) => {
+      queryClient.setQueryData<MedicationReminder[]>(queryKey, (current) =>
+        (current ?? []).map((item) => (item.id === reminderId ? saved : item)).sort(byScheduledTime),
+      );
+    },
+  });
 
-  return { reminders, loading, error, refetch: load, create, update, remove };
+  const removeMutation = useMutation({
+    mutationFn: (reminderId: string) => deleteReminder(reminderId),
+    onSuccess: (_data, reminderId) => {
+      queryClient.setQueryData<MedicationReminder[]>(queryKey, (current) =>
+        (current ?? []).filter((item) => item.id !== reminderId),
+      );
+    },
+  });
+
+  return {
+    reminders: data ?? [],
+    loading: isPending,
+    error: error ? (error instanceof Error ? error.message : '載入用藥提醒失敗') : null,
+    refetch: async () => {
+      await refetch();
+    },
+    create: (req) => createMutation.mutateAsync(req),
+    update: (reminderId, patch) => updateMutation.mutateAsync({ reminderId, patch }).then(() => undefined),
+    remove: (reminderId) => removeMutation.mutateAsync(reminderId).then(() => undefined),
+  };
 }

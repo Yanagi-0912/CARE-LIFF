@@ -18,6 +18,8 @@ import AdminRoute from './components/AdminRoute';
 import Login from './pages/Loginpage';
 import { saveRedirectUrl } from './utils/redirect';
 import { ThemeProvider } from 'next-themes';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import { Toaster } from '@/components/ui/sonner';
 import { LiffAuthProvider, useLiffAuth } from './context/LiffAuthProvider';
 
@@ -117,11 +119,13 @@ function App() {
       enableSystem
       disableTransitionOnChange
     >
-      <Router>
-        <LiffAuthProvider>
-          <AppContent />
-        </LiffAuthProvider>
-      </Router>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <LiffAuthProvider>
+            <AppContent />
+          </LiffAuthProvider>
+        </Router>
+      </QueryClientProvider>
       <Toaster />
     </ThemeProvider>
   );

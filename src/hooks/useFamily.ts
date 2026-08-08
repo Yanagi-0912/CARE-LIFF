@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchFamilyTree } from '../api/familyApi';
+import { queryKeys } from '@/lib/queryClient';
 import type { FamilyMember } from '../types/family';
 
 interface UseFamilyReturn {
@@ -10,27 +11,24 @@ interface UseFamilyReturn {
 }
 
 /**
- * 族譜資料 hook — 掛載時自動載入，並提供 refetch
+ * 族譜資料 hook — 掛載時自動載入，並提供 refetch。
+ *
+ * 對外介面沿用原本的 { members, loading, error, refetch }，
+ * 呼叫端（Family 頁、Medications 的對象清單）不需改動。
  */
 export function useFamily(): UseFamilyReturn {
-  const [members, setMembers] = useState<FamilyMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey: queryKeys.familyTree,
+    queryFn: async () => {
       const res = await fetchFamilyTree();
-      setMembers(res.family_tree.family_members);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '載入族譜失敗');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return res.family_tree.family_members;
+    },
+  });
 
-  useEffect(() => { void load(); }, [load]);
-
-  return { members, loading, error, refetch: load };
+  return {
+    members: data ?? [],
+    loading: isPending,
+    error: error ? (error instanceof Error ? error.message : '載入族譜失敗') : null,
+    refetch,
+  };
 }
