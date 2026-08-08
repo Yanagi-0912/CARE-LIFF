@@ -28,11 +28,7 @@ export const FORM_CARD =
 export const FORM_CARD_BARE = 'border-0 bg-transparent p-0 shadow-none';
 
 export const STEP_INTRO = 'mb-6 border-b border-hair pb-4';
-export const STEP_INTRO_TAG = 'text-[0.78rem] font-[750] tracking-[0.04em] text-[var(--primary-strong)]';
-export const STEP_INTRO_H2 = 'mx-0 mt-1 mb-2 text-[1.45rem] text-ink';
-export const STEP_INTRO_P = 'm-0 leading-[1.55] text-muted-foreground';
 
-export const FORM_TITLE = 'mb-8 text-[2rem] font-extrabold text-ink';
 export const FORM_GROUP =
   'mb-6 flex items-center gap-4 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-2';
 export const LABEL =
@@ -41,7 +37,6 @@ export const LABEL =
 /* ── 輸入框 ── */
 export const INPUT =
   'w-full max-w-[300px] flex-1 rounded-md border-[1.5px] border-hair bg-surface px-3.5 py-[11px] text-base text-ink transition-[border-color,box-shadow] duration-140 placeholder:text-faint focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] focus:outline-none max-[600px]:max-w-[80%]';
-export const INPUT_NUM = 'num';
 export const INPUT_LONG = 'max-w-[500px] max-[600px]:max-w-full';
 export const INPUT_ERROR = 'border-[#ff4d4f]';
 export const FIELD_ERROR_TEXT = 'mt-1 block text-[0.82rem] font-semibold text-[#ff4d4f]';
@@ -56,11 +51,6 @@ export const SELECT_BTN =
   'flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border-[1.5px] border-hair bg-surface px-3.5 py-[11px] text-left text-base text-ink transition-colors duration-140 hover:border-primary';
 export const SELECT_TEXT = 'overflow-hidden text-ellipsis whitespace-nowrap text-ink';
 export const SELECT_CARET = 'text-[0.85rem] text-primary';
-export const SELECT_MENU =
-  'absolute top-[calc(100%+6px)] right-0 left-0 z-10 rounded-md border border-hair bg-surface p-1.5 shadow-pop';
-export const SELECT_ITEM =
-  'w-full cursor-pointer rounded-sm border-0 bg-transparent px-3 py-2.5 text-left text-foreground transition-colors duration-140 hover:bg-surface-2';
-export const SELECT_ITEM_ACTIVE = 'bg-[var(--primary-soft)] font-bold text-[var(--primary-strong)]';
 
 /* ── 自刻多選下拉（病史）── */
 export const MULTI_WRAP = 'relative max-w-[360px] flex-1 max-[600px]:w-full max-[600px]:max-w-full';
@@ -86,7 +76,5 @@ export const BUTTON =
   'mx-auto mt-8 w-full max-w-[300px] cursor-pointer rounded-lg border-0 bg-[linear-gradient(135deg,var(--primary),var(--primary-2))] py-3.5 text-[1.05rem] font-extrabold text-white shadow-[0_8px_20px_-8px_rgba(14,147,132,0.6)] transition-[transform,box-shadow] duration-140 hover:-translate-y-px hover:shadow-[0_12px_26px_-10px_rgba(14,147,132,0.7)] active:scale-98 max-[600px]:w-1/2';
 export const ACTION_ROW =
   'mt-8 flex flex-wrap items-center justify-center gap-4 max-[600px]:w-full max-[600px]:gap-2.5 [&>button]:m-0 [&>button]:w-1/2 [&>button]:max-w-[260px] max-[600px]:[&>button]:w-[45%]';
-export const RESULT =
-  'mx-auto mt-8 max-w-[800px] rounded-md border border-[var(--primary-soft)] bg-[var(--primary-softer)] p-6 text-[1.05rem] text-foreground shadow-card';
 
 /* ── 儲存提示 ── */

@@ -622,6 +622,7 @@ const PersonalHealthPage: React.FC = () => {
                                         />
                                         <button
                                             type="button"
+                                            className={S.OTHER_BTN}
                                             aria-label={t(
                                                 'personalHealth.chronicOtherSaveAria',
                                             )}
