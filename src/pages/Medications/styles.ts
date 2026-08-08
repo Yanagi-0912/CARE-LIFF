@@ -70,8 +70,6 @@ export const EMPTY_P = 'm-0 text-[0.88rem] text-muted-foreground';
 /* ── Toast（沿用 rise 上浮淡入；水平置中用 translate 屬性，與動畫的 transform 可並存）── */
 
 /* ── Dialog ── */
-export const DIALOG_BACKDROP =
-  'fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-[var(--scrim)] p-4';
 export const DIALOG =
   'relative flex max-h-[88vh] w-full max-w-[420px] flex-col gap-3 overflow-y-auto rounded-xl bg-surface px-4 pt-6 pb-4 shadow-modal';
 export const DIALOG_H2 = 'm-0 pr-8 text-[1.2rem] font-extrabold text-ink';

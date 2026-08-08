@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 // 與 KnowledgeReports 共用同一組樣式常數（原本是共用同一份 index.css）
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import * as S from '../KnowledgeReports/styles';
 
 type QueueFilter = 'all' | 'pending' | 'reviewing';
@@ -282,34 +283,29 @@ function AdminKnowledgeReportsPage() {
         )}
       </section>
 
-      {selectedReport && (
-        <div
-          className={S.DIALOG_BACKDROP}
-          role="presentation"
-          onMouseDown={closeDialog}
-        >
-          <section
-            className={S.DIALOG}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-report-dialog-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              className={S.DIALOG_CLOSE}
-              type="button"
-              aria-label={t('adminKnowledgeReports.closeDetail')}
-              onClick={closeDialog}
+      {/* Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建 */}
+      <Dialog open={selectedReport !== null} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent className={S.DIALOG} showCloseButton={false}>
+          {selectedReport && (
+            <>
+              <DialogClose
+                render={
+                  <button
+                    type="button"
+                    className={S.DIALOG_CLOSE}
+                    aria-label={t('adminKnowledgeReports.closeDetail')}
               disabled={actionLoading}
-            >
-              ×
-            </button>
+                  >
+                    ×
+                  </button>
+                }
+              />
             <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[selectedReport.status])}>
               {statusMeta[selectedReport.status].icon}
               {statusMeta[selectedReport.status].label}
             </span>
             <p className={S.DIALOG_ID}>{selectedReport.report_id}</p>
-            <h2 id="admin-report-dialog-title" className={S.DIALOG_H2}>{selectedReport.question}</h2>
+            <DialogTitle className={S.DIALOG_H2}>{selectedReport.question}</DialogTitle>
             <dl className={S.DIALOG_DL}>
               <div className={S.DIALOG_ITEM}>
                 <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.reason')}</dt>
@@ -392,9 +388,10 @@ function AdminKnowledgeReportsPage() {
                   : t('adminKnowledgeReports.approve')}
               </button>
             </div>
-          </section>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

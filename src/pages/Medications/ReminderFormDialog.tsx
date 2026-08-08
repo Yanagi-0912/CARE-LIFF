@@ -8,6 +8,7 @@ import {
 } from '../../types/medication';
 import { todayLocalDateString } from '../../utils/date';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import * as S from './styles';
 
 interface ReminderFormDialogProps {
@@ -65,24 +66,17 @@ export function ReminderFormDialog({
   };
 
   return (
-    <div className={S.DIALOG_BACKDROP} role="presentation" onMouseDown={onClose}>
-      <section
-        className={S.DIALOG}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="med-add-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <button
-          type="button"
-          className={S.DIALOG_CLOSE}
-          aria-label={t('meds.close')}
-          onClick={onClose}
-        >
-          ×
-        </button>
+    // Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建。
+    // showCloseButton={false}：沿用原本的 × 鈕（其 aria-label 為既有無障礙標籤）。
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={S.DIALOG} showCloseButton={false}>
+        <DialogClose
+          render={
+            <button type="button" className={S.DIALOG_CLOSE} aria-label={t('meds.close')}>×</button>
+          }
+        />
 
-        <h2 id="med-add-title" className={S.DIALOG_H2}>{t('meds.add.title')}</h2>
+        <DialogTitle className={S.DIALOG_H2}>{t('meds.add.title')}</DialogTitle>
 
         <p className={S.DIALOG_TARGET}>
           <span>{t('meds.add.targetField')}</span>
@@ -164,7 +158,7 @@ export function ReminderFormDialog({
             {submitting ? t('meds.add.submitting') : t('meds.add.submit')}
           </button>
         </div>
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

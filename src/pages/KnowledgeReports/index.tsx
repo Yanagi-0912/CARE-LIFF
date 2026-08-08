@@ -9,6 +9,7 @@ import {
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import * as S from './styles';
 
 type ReportFilter = 'all' | KnowledgeReportStatus;
@@ -304,33 +305,28 @@ function KnowledgeReportsPage() {
         )}
       </section>
 
-      {selectedReport && (
-        <div
-          className={S.DIALOG_BACKDROP}
-          role="presentation"
-          onMouseDown={() => setSelectedReport(null)}
-        >
-          <section
-            className={S.DIALOG}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="report-dialog-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              className={S.DIALOG_CLOSE}
-              type="button"
-              aria-label={t('knowledgeReports.closeDetail')}
-              onClick={() => setSelectedReport(null)}
-            >
-              ×
-            </button>
+      {/* Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建 */}
+      <Dialog open={selectedReport !== null} onOpenChange={(open) => !open && setSelectedReport(null)}>
+        <DialogContent className={S.DIALOG} showCloseButton={false}>
+          {selectedReport && (
+            <>
+              <DialogClose
+                render={
+                  <button
+                    type="button"
+                    className={S.DIALOG_CLOSE}
+                    aria-label={t('knowledgeReports.closeDetail')}
+                  >
+                    ×
+                  </button>
+                }
+              />
             <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[selectedReport.status])}>
               {statusMeta[selectedReport.status].icon}
               {statusMeta[selectedReport.status].label}
             </span>
             <p className={S.DIALOG_ID}>{selectedReport.id}</p>
-            <h2 id="report-dialog-title" className={S.DIALOG_H2}>{selectedReport.question}</h2>
+            <DialogTitle className={S.DIALOG_H2}>{selectedReport.question}</DialogTitle>
             <dl className={S.DIALOG_DL}>
               <div className={S.DIALOG_ITEM}>
                 <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.type')}</dt>
@@ -351,9 +347,10 @@ function KnowledgeReportsPage() {
                 </div>
               )}
             </dl>
-          </section>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

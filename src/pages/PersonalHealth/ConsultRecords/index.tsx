@@ -8,6 +8,7 @@ import {
     buildConsultationSummaryDownloadUrl,
 } from '../../../api/consultationApi';
 import { toast } from 'sonner';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
@@ -243,29 +244,30 @@ const ConsultRecordsPage: React.FC = () => {
                 </div>
             </section>
 
-            {selectedMessage && (
-                <div
-                    className={S.MODAL_OVERLAY}
-                    onClick={() => setSelectedMessage(null)}
-                    role="presentation"
-                >
-                    <div
-                        className={S.MODAL}
-                        onClick={e => e.stopPropagation()}
-                        role="dialog"//role屬性是為這個元素賦予明確的語義和功能角色
-                        aria-modal="true"
-                    >
-                        <button type="button" className={S.MODAL_CLOSE} aria-label="關閉視窗" onClick={() => setSelectedMessage(null)}>×</button>
-                        <div className={S.MODAL_HEADER}>
-                            <div className={cn(S.MODAL_AVATAR, selectedMessage.message_type === 'text' ? S.AVATAR_USER : S.AVATAR_AI)}>{selectedMessage.message_type === 'text' ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}</div>
-                            <h3 className={S.MODAL_TITLE}>{selectedMessage.message_type === 'text' ? t('consultRecord.modalUserTitle') : t('consultRecord.modalAiTitle')}</h3>
-                        </div>
-                        <div className={cn(S.MARKDOWN, S.MODAL_BODY)}>
-                            <ReactMarkdown>{selectedMessage.content || t('consultRecord.noContent')}</ReactMarkdown>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Dialog 取代原本手刻的遮罩＋div[role=dialog]：
+                焦點鎖定、Escape 關閉、關閉後焦點歸位、背景鎖捲皆由元件提供。
+                showCloseButton={false}：沿用原本的自訂關閉鈕，
+                其 aria-label「關閉視窗」是測試的定位點。 */}
+            <Dialog open={selectedMessage !== null} onOpenChange={(open) => !open && setSelectedMessage(null)}>
+                <DialogContent className={S.MODAL} showCloseButton={false}>
+                    {selectedMessage && (
+                        <>
+                            <DialogClose
+                                render={
+                                    <button type="button" className={S.MODAL_CLOSE} aria-label="關閉視窗">×</button>
+                                }
+                            />
+                            <div className={S.MODAL_HEADER}>
+                                <div className={cn(S.MODAL_AVATAR, selectedMessage.message_type === 'text' ? S.AVATAR_USER : S.AVATAR_AI)}>{selectedMessage.message_type === 'text' ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}</div>
+                                <DialogTitle className={S.MODAL_TITLE}>{selectedMessage.message_type === 'text' ? t('consultRecord.modalUserTitle') : t('consultRecord.modalAiTitle')}</DialogTitle>
+                            </div>
+                            <div className={cn(S.MARKDOWN, S.MODAL_BODY)}>
+                                <ReactMarkdown>{selectedMessage.content || t('consultRecord.noContent')}</ReactMarkdown>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

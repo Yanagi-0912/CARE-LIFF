@@ -142,8 +142,6 @@ export const EMPTY_H3 = 'mt-3 mb-1 text-ink';
 export const EMPTY_P = 'm-0 text-muted-foreground';
 
 /* ── 詳情對話框 ── */
-export const DIALOG_BACKDROP =
-  'animate-in fade-in fixed inset-0 z-[200] grid place-items-center bg-[var(--scrim)] p-4';
 export const DIALOG =
   'relative max-h-[calc(100vh-48px)] w-[min(560px,100%)] overflow-y-auto rounded-xl border border-hair bg-surface p-8 shadow-modal max-[600px]:p-6';
 export const DIALOG_CLOSE =

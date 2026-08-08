@@ -95,10 +95,10 @@ export const FORM_ACTIONS = 'mt-2 flex flex-wrap gap-2.5';
 /* ── Toast（硬色碼，不隨主題）── */
 
 /* ── Modal ── */
-export const MODAL_OVERLAY =
-  'fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(15,23,42,0.55)] p-5 backdrop-blur-[2px]';
+/* Dialog 元件負責遮罩、置中與進場動畫；此處只描述外觀。
+   白底硬色碼刻意保留 —— 內容是手機模擬器的對話，與裝置同一套視覺。 */
 export const MODAL =
-  'animate-in fade-in zoom-in-95 slide-in-from-bottom-2 relative max-h-[80vh] w-full max-w-[480px] overflow-y-auto rounded-2xl bg-white px-6 pt-7 pb-6 shadow-[0_20px_50px_rgba(0,0,0,0.25)] duration-200';
+  'max-h-[80vh] w-full max-w-[480px] gap-0 overflow-y-auto rounded-2xl bg-white px-6 pt-7 pb-6 text-[#374151] shadow-[0_20px_50px_rgba(0,0,0,0.25)]';
 export const MODAL_CLOSE =
   'absolute top-3.5 right-3.5 flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-[#f1f3f5] text-lg leading-none text-[#4b5563] transition-colors duration-150 hover:bg-[#e9ecef] hover:text-[#333]';
 export const MODAL_HEADER = 'mb-[18px] flex items-center gap-3 border-b-[5px] border-[#f0f0f0] pb-4';
