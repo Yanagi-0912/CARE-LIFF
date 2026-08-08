@@ -4,9 +4,19 @@ import { verifyInvite, acceptInvite } from '../../api/familyApi';
 import { isAuthenticated } from '../../utils/auth';
 import { saveRedirectUrl } from '../../utils/redirect';
 import type { VerifyInviteResponse } from '../../types/family';
-import './index.css';
+import { cn } from '@/lib/utils';
 
 type PageState = 'loading' | 'verifying' | 'preview' | 'error' | 'already_member' | 'success';
+
+/* ────────── 樣式（原 index.css 遷移） ────────── */
+// 品牌綠漸層主按鈕：漸層與光暈是此頁的視覺主角，維持手刻樣式
+// 而非硬套 shadcn Button 再整組覆寫
+const BTN_PRIMARY =
+  'cursor-pointer rounded-lg border-0 bg-[linear-gradient(135deg,var(--primary),var(--primary-2))] p-[15px] text-base font-bold text-white shadow-[0_8px_20px_-8px_rgba(14,147,132,0.6)] transition-[transform,box-shadow,opacity] duration-140 hover:-translate-y-[2px] hover:shadow-[0_12px_26px_-10px_rgba(14,147,132,0.7)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+const H1_CLASS = 'm-0 mb-4 text-[1.4rem] font-extrabold text-ink';
+const RESULT_CLASS = 'flex flex-col items-center';
+// 結果狀態圖示：語意色圓形 badge
+const ICON_BADGE = 'mb-6 flex size-16 items-center justify-center rounded-full text-[30px] font-extrabold';
 
 const JoinPage: React.FC = () => {
   const navigate = useNavigate();
@@ -79,57 +89,64 @@ const JoinPage: React.FC = () => {
   };
 
   return (
-    <div className="join-container">
-      <div className="join-card">
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="animate-rise w-full max-w-[400px] rounded-xl border border-hair bg-surface px-6 py-8 text-center shadow-modal">
         {state === 'verifying' || state === 'loading' ? (
-          <div className="status-container">
-            <div className="loader"></div>
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            {/* 旋轉圈：Tailwind 內建 animate-spin */}
+            <div className="size-10 animate-spin rounded-full border-[3px] border-surface-3 border-t-primary"></div>
             <p>正在驗證邀請資訊...</p>
           </div>
         ) : state === 'preview' ? (
-          <div className="preview-content">
-            <div className="inviter-avatar">
+          <div>
+            {/* 邀請人頭像：品牌綠漸層 */}
+            <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-2))] text-[32px] font-extrabold text-white shadow-[0_10px_24px_-8px_rgba(14,147,132,0.55)]">
               {inviteInfo?.inviter_display_name?.charAt(0) || '?'}
             </div>
-            <h1>家族邀請</h1>
-            <p className="invite-text">
-              <span className="inviter-name">{inviteInfo?.inviter_display_name}</span>
+            <h1 className={H1_CLASS}>家族邀請</h1>
+            <p className="mb-8 text-base leading-[1.6] text-muted-foreground">
+              <span className="font-bold text-ink underline decoration-primary underline-offset-4">
+                {inviteInfo?.inviter_display_name}
+              </span>
               {' '}邀請您加入他的家族族譜。
             </p>
-            <div className="actions">
-              <button 
-                className={`btn-primary ${isAccepting ? 'loading' : ''}`}
+            <div className="flex flex-col gap-3">
+              <button
+                className={BTN_PRIMARY}
                 onClick={handleAccept}
                 disabled={isAccepting}
               >
                 {isAccepting ? '加入中...' : '確認加入'}
               </button>
-              <button className="btn-link" onClick={handleCancel}>
+              <button
+                className="cursor-pointer border-0 bg-transparent p-2.5 text-[0.9rem] text-faint transition-colors duration-140 hover:text-muted-foreground"
+                onClick={handleCancel}
+              >
                 取消
               </button>
             </div>
           </div>
         ) : state === 'already_member' ? (
-          <div className="result-content">
-            <div className="icon-info">i</div>
-            <h1>已是成員</h1>
+          <div className={RESULT_CLASS}>
+            <div className={cn(ICON_BADGE, 'bg-[var(--primary-soft)] text-[var(--primary-strong)]')}>i</div>
+            <h1 className={H1_CLASS}>已是成員</h1>
             <p>您已經在此家族成員名單中。</p>
-            <button className="btn-primary" onClick={() => navigate('/family')}>
+            <button className={BTN_PRIMARY} onClick={() => navigate('/family')}>
               前往家族頁面
             </button>
           </div>
         ) : state === 'success' ? (
-          <div className="result-content">
-            <div className="icon-success">✓</div>
-            <h1>加入成功！</h1>
+          <div className={RESULT_CLASS}>
+            <div className={cn(ICON_BADGE, 'bg-success-soft text-success')}>✓</div>
+            <h1 className={H1_CLASS}>加入成功！</h1>
             <p>正在為您導向家族頁面...</p>
           </div>
         ) : (
-          <div className="result-content">
-            <div className="icon-error">×</div>
-            <h1>連結無效</h1>
+          <div className={RESULT_CLASS}>
+            <div className={cn(ICON_BADGE, 'bg-destructive-soft text-destructive')}>×</div>
+            <h1 className={H1_CLASS}>連結無效</h1>
             <p>{error}</p>
-            <button className="btn-primary" onClick={() => navigate('/')}>
+            <button className={BTN_PRIMARY} onClick={() => navigate('/')}>
               回首頁
             </button>
           </div>

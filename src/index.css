@@ -225,53 +225,58 @@
 
 /* ═══════════════════════════════════════════════════════
    CARE 健康管家 — Global base
+
+   元素預設樣式必須放在 @layer base：未分層規則永遠贏過任何 @layer，
+   若不分層，h1–h4 的墨色會蓋掉 utility（如 Home hero 的 text-white），
+   全域 focus 光暈也會蓋掉 Base UI 元件的 focus-visible ring。
+   放進 base 層後：沒有 utility 的元素照用這裡的預設，
+   有 utility 的元素由 utility 決定 —— 這才是預期行為。
+   （* 的 box-sizing 已由 Tailwind preflight 提供，不再重複。）
    ═══════════════════════════════════════════════════════ */
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  html {
+    /* 設定頁的字體大小功能：normal 16 / large 20 / xlarge 24 */
+    font-size: var(--base-font-size, 16px);
+  }
 
-html {
-  /* 設定頁的字體大小功能：normal 16 / large 20 / xlarge 24 */
-  font-size: var(--base-font-size, 16px);
-}
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    /* 頁面頂部的柔和色霧：綠 × 珊瑚，往下淡出到底色 */
+    background:
+      radial-gradient(900px 420px at 8% -8%, var(--wash-a) 0%, transparent 62%),
+      radial-gradient(760px 380px at 96% -4%, var(--wash-b) 0%, transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    transition: color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
+  }
 
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--ink-2);
-  /* 頁面頂部的柔和色霧：綠 × 珊瑚，往下淡出到底色 */
-  background:
-    radial-gradient(900px 420px at 8% -8%, var(--wash-a) 0%, transparent 62%),
-    radial-gradient(760px 380px at 96% -4%, var(--wash-b) 0%, transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
-  transition: color var(--dur-2) var(--ease), background-color var(--dur-2) var(--ease);
-}
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--ink);
+  }
 
-h1,
-h2,
-h3,
-h4 {
-  color: var(--ink);
-}
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
 
-button,
-input,
-select,
-textarea {
-  font-family: inherit;
-}
-
-/* 通用 focus ring */
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--primary-soft), 0 0 0 1.5px var(--primary);
+  /* 通用 focus ring */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--primary-soft), 0 0 0 1.5px var(--primary);
+  }
 }
 
 /* 數字資料對齊 */
