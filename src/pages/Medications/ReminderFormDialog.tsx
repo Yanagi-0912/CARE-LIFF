@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_SLOT_TIMES,
@@ -29,42 +32,54 @@ export function ReminderFormDialog({
 }: ReminderFormDialogProps) {
   const { t } = useTranslation();
 
-  const [selected, setSelected] = useState<MedicationSlotType[]>([]);
-  const [startDate, setStartDate] = useState(todayLocalDateString());
-  const [endDate, setEndDate] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
   const allSlotsUsed = SLOT_TYPES.every((slot) => existingSlots.includes(slot));
 
-  const toggleSlot = (slot: MedicationSlotType) => {
-    setFormError(null);
-    setSelected((prev) =>
-      prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot],
-    );
-  };
+  // 驗證規則集中在 schema。訊息需要 t，故隨語言重建。
+  const schema = useMemo(
+    () =>
+      z
+        .object({
+          slots: z.array(z.enum(SLOT_TYPES)).min(1, t('meds.add.needSlot')),
+          startDate: z.string().min(1),
+          endDate: z.string(),
+        })
+        // YYYY-MM-DD 可直接字串比較，不需解析日期
+        .refine((v) => !v.endDate || v.endDate >= v.startDate, {
+          message: t('meds.add.dateOrderError'),
+          path: ['endDate'],
+        }),
+    [t],
+  );
 
-  const handleSubmit = async () => {
-    if (selected.length === 0) {
-      setFormError(t('meds.add.needSlot'));
-      return;
-    }
-    // YYYY-MM-DD 可直接字串比較，不需解析日期
-    if (endDate && endDate < startDate) {
-      setFormError(t('meds.add.dateOrderError'));
-      return;
-    }
+  type FormValues = z.infer<typeof schema>;
 
-    setFormError(null);
-    setSubmitting(true);
+  const {
+    control,
+    register,
+    handleSubmit,
+    setError,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { slots: [], startDate: todayLocalDateString(), endDate: '' },
+  });
+
+  const startDate = watch('startDate');
+
+  // 送出失敗的訊息掛在 root 上，與欄位錯誤共用同一套顯示機制
+  const formError =
+    errors.root?.message ?? errors.slots?.message ?? errors.endDate?.message ?? null;
+
+  const submit = handleSubmit(async (values) => {
     try {
-      await onSubmit(selected, startDate, endDate || undefined);
+      await onSubmit(values.slots, values.startDate, values.endDate || undefined);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t('meds.updateFailed'));
-    } finally {
-      setSubmitting(false);
+      setError('root', {
+        message: err instanceof Error ? err.message : t('meds.updateFailed'),
+      });
     }
-  };
+  });
 
   return (
     // Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建。
@@ -84,27 +99,41 @@ export function ReminderFormDialog({
           <strong className={S.DIALOG_TARGET_STRONG}>{targetName}</strong>
         </p>
 
-        <fieldset className={S.SLOT_PICKER}>
-          <legend className={S.SLOT_LEGEND}>{t('meds.add.slotsField')}</legend>
-          {SLOT_TYPES.map((slot) => {
-            const taken = existingSlots.includes(slot);
-            return (
-              <label key={slot} className={cn(S.SLOT_OPTION, taken && S.SLOT_TAKEN)}>
-                <input
-                  className={S.SLOT_CHECKBOX}
-                  type="checkbox"
-                  checked={selected.includes(slot)}
-                  disabled={taken || submitting}
-                  onChange={() => toggleSlot(slot)}
-                />
-                <span className={S.SLOT_NAME}>{t(SLOT_LABEL_KEY[slot])}</span>
-                <span className={S.SLOT_TIME}>
-                  {taken ? t('meds.add.slotExists') : DEFAULT_SLOT_TIMES[slot]}
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
+        {/* 複選欄位交給 Controller 管理陣列值 */}
+        <Controller
+          control={control}
+          name="slots"
+          render={({ field }) => (
+            <fieldset className={S.SLOT_PICKER}>
+              <legend className={S.SLOT_LEGEND}>{t('meds.add.slotsField')}</legend>
+              {SLOT_TYPES.map((slot) => {
+                const taken = existingSlots.includes(slot);
+                const checked = field.value.includes(slot);
+                return (
+                  <label key={slot} className={cn(S.SLOT_OPTION, taken && S.SLOT_TAKEN)}>
+                    <input
+                      className={S.SLOT_CHECKBOX}
+                      type="checkbox"
+                      checked={checked}
+                      disabled={taken || isSubmitting}
+                      onChange={() =>
+                        field.onChange(
+                          checked
+                            ? field.value.filter((item) => item !== slot)
+                            : [...field.value, slot],
+                        )
+                      }
+                    />
+                    <span className={S.SLOT_NAME}>{t(SLOT_LABEL_KEY[slot])}</span>
+                    <span className={S.SLOT_TIME}>
+                      {taken ? t('meds.add.slotExists') : DEFAULT_SLOT_TIMES[slot]}
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
+          )}
+        />
 
         {allSlotsUsed && <p className={S.NOTE}>{t('meds.add.allSlotsUsed')}</p>}
 
@@ -113,12 +142,8 @@ export function ReminderFormDialog({
           <input
             className={S.FIELD_INPUT}
             type="date"
-            value={startDate}
-            disabled={submitting}
-            onChange={(event) => {
-              setFormError(null);
-              setStartDate(event.target.value);
-            }}
+            disabled={isSubmitting}
+            {...register('startDate')}
           />
         </label>
 
@@ -127,13 +152,9 @@ export function ReminderFormDialog({
           <input
             className={S.FIELD_INPUT}
             type="date"
-            value={endDate}
             min={startDate}
-            disabled={submitting}
-            onChange={(event) => {
-              setFormError(null);
-              setEndDate(event.target.value);
-            }}
+            disabled={isSubmitting}
+            {...register('endDate')}
           />
           <small className={S.FIELD_HINT}>{t('meds.add.endDateOptional')}</small>
         </label>
@@ -147,16 +168,16 @@ export function ReminderFormDialog({
         )}
 
         <div className={S.ACTIONS}>
-          <Button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
+          <Button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={isSubmitting}>
             {t('meds.cancel')}
           </Button>
           <Button
             type="button"
             className={S.BTN_PRIMARY}
-            onClick={() => void handleSubmit()}
-            disabled={submitting || allSlotsUsed}
+            onClick={() => void submit()}
+            disabled={isSubmitting || allSlotsUsed}
           >
-            {submitting ? t('meds.add.submitting') : t('meds.add.submit')}
+            {isSubmitting ? t('meds.add.submitting') : t('meds.add.submit')}
           </Button>
         </div>
       </DialogContent>
