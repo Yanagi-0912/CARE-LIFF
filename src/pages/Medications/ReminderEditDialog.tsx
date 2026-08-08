@@ -6,6 +6,7 @@ import {
   type UpdateReminderRequest,
 } from '../../types/medication';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import * as S from './styles';
 
 interface ReminderEditDialogProps {
@@ -167,17 +168,17 @@ export function ReminderEditDialog({
         )}
 
         <div className={S.ACTIONS}>
-          <button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
+          <Button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
             {t('meds.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             className={S.BTN_PRIMARY}
             onClick={() => void handleSave()}
             disabled={submitting}
           >
             {submitting ? t('meds.edit.saving') : t('meds.edit.save')}
-          </button>
+          </Button>
         </div>
 
         <div className={S.DANGER_ZONE}>
@@ -185,33 +186,34 @@ export function ReminderEditDialog({
             <>
               <p className={S.DANGER_P} role="alert">{t('meds.edit.deleteConfirm')}</p>
               <div className={S.ACTIONS}>
-                <button
+                <Button
                   type="button"
                   className={S.BTN_GHOST}
                   onClick={() => setConfirmingDelete(false)}
                   disabled={submitting}
                 >
                   {t('meds.edit.deleteConfirmNo')}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   className={S.BTN_DANGER}
                   onClick={() => void handleDelete()}
                   disabled={submitting}
                 >
                   {t('meds.edit.deleteConfirmYes')}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
-            <button
+            <Button
               type="button"
+              variant="ghost"
               className={S.DELETE_LINK}
               onClick={() => setConfirmingDelete(true)}
               disabled={submitting}
             >
               {t('meds.edit.delete')}
-            </button>
+            </Button>
           )}
         </div>
       </DialogContent>

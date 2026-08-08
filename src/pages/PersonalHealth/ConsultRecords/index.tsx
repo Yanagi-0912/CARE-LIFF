@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import * as S from './styles';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
 import { useTranslation } from 'react-i18next';
@@ -177,10 +179,18 @@ const ConsultRecordsPage: React.FC = () => {
                         </div>
 
                     </div>
-                    <div className={S.PANEL_CONTROLS} role="tablist" aria-label={t('consultRecord.title')}>
-                        <button type="button" className={cn(S.TAB, viewMode === 'summary' && S.TAB_ACTIVE)} onClick={() => setViewMode('summary')} aria-pressed={viewMode === 'summary'}>{t('consultRecord.tabSummary')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></button>
-                        <button type="button" className={cn(S.TAB, viewMode === 'raw' && S.TAB_ACTIVE)} onClick={() => setViewMode('raw')} aria-pressed={viewMode === 'raw'}>{t('consultRecord.tabRaw')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg></button>
-                    </div>
+                    <ToggleGroup
+                        className={S.PANEL_CONTROLS}
+                        value={[viewMode]}
+                        onValueChange={(groupValue) => {
+                            const next = groupValue[0] as 'summary' | 'raw' | undefined;
+                            if (next) setViewMode(next);
+                        }}
+                        aria-label={t('consultRecord.title')}
+                    >
+                        <ToggleGroupItem value="summary" className={cn(S.TAB, S.TAB_ACTIVE_VARIANT)}>{t('consultRecord.tabSummary')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></ToggleGroupItem>
+                        <ToggleGroupItem value="raw" className={cn(S.TAB, S.TAB_ACTIVE_VARIANT)}>{t('consultRecord.tabRaw')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg></ToggleGroupItem>
+                    </ToggleGroup>
                     <div className={S.PANEL_LIST}>
                         {loading.list && <div className={cn(S.ITEM, S.ITEM_MUTED)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loading')}</p></div>}
                         {/* summaryError 在設定時就已是「具體訊息 or 通用備援」，此處直接顯示它。
@@ -256,7 +266,7 @@ const ConsultRecordsPage: React.FC = () => {
 
                 <div className={S.FORM_ACTIONS}>
                     {/*<button onClick={handleSummarizeNow} className="btn primary" disabled={loading.action}>{loading.action ? '摘要產生中...' : '立即產生摘要'}</button>*/}
-                    <button onClick={handleDownload} className={cn(S.BTN, S.BTN_GHOST)} disabled={loading.download}>{loading.download ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</button>
+                    <Button type="button" onClick={handleDownload} className={cn(S.BTN, S.BTN_GHOST)} disabled={loading.download}>{loading.download ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</Button>
                 </div>
             </section>
 

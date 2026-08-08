@@ -20,10 +20,10 @@ export const BTN_DANGER =
 /* ── 對象切換 chips ── */
 export const CHIPS_ROW =
   'mb-4 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+/* 選中態以 aria-pressed: 變體表達（見 index.tsx）；
+   hover 覆寫需一併帶上，避免此處的 hover:text-primary 在選中時蓋回綠字。 */
 export const CHIP =
   'shrink-0 cursor-pointer rounded-full border border-line bg-surface px-4 py-2 text-[0.92rem] font-semibold text-muted-foreground transition-all duration-140 hover:border-primary hover:text-primary';
-/* hover 覆寫需一併帶上，避免 CHIP 的 hover:text-primary 在選中時蓋回綠字 */
-export const CHIP_ACTIVE = 'border-primary bg-primary text-white hover:text-white';
 
 /* ── 提醒卡片 ── */
 export const LIST = 'flex flex-col gap-3';

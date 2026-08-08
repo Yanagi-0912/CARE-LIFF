@@ -12,6 +12,8 @@ import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
 import { useMedications } from './useMedications';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 
@@ -101,24 +103,34 @@ const MedicationsPage = () => {
     <div className={S.PAGE}>
       <header className={S.HEADER}>
         <h1 className={S.HEADER_H1}>{t('meds.title')}</h1>
-        <button type="button" className={S.BTN_PRIMARY} onClick={() => setAdding(true)}>
+        <Button type="button" className={S.BTN_PRIMARY} onClick={() => setAdding(true)}>
           ＋{t('meds.addButton')}
-        </button>
+        </Button>
       </header>
 
-      <div className={S.CHIPS_ROW} role="group" aria-label={t('meds.targetLabel')}>
+      {/* 對象切換是互斥的單選，用 ToggleGroup 而非一排各自 aria-pressed 的按鈕：
+          語意正確，且方向鍵可在群組內移動焦點。
+          userId 可能為 undefined（本人），以 'self' 當作群組內的識別值。 */}
+      <ToggleGroup
+        className={S.CHIPS_ROW}
+        value={[selectedUserId ?? 'self']}
+        onValueChange={(groupValue) => {
+          const next = groupValue[0];
+          if (next === undefined) return;
+          setSelectedUserId(next === 'self' ? selfUserId : next);
+        }}
+        aria-label={t('meds.targetLabel')}
+      >
         {targets.map((target) => (
-          <button
+          <ToggleGroupItem
             key={target.userId ?? 'self'}
-            type="button"
-            className={cn(S.CHIP, target.userId === selectedUserId && S.CHIP_ACTIVE)}
-            aria-pressed={target.userId === selectedUserId}
-            onClick={() => setSelectedUserId(target.userId)}
+            value={target.userId ?? 'self'}
+            className={cn(S.CHIP, 'aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white aria-pressed:hover:text-white')}
           >
             {target.name}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
 
       {loading ? (
         <div className={S.EMPTY}>

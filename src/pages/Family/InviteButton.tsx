@@ -3,6 +3,7 @@ import liff from '@line/liff';
 import { createInvite } from '../../api/familyApi';
 import { useTranslation } from 'react-i18next';
 import * as S from './styles';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   liffReady: boolean;
@@ -55,14 +56,15 @@ export function InviteButton({ liffReady, onSuccess, onError }: Props) {
   }, [liffReady, t, onSuccess, onError]);
 
   return (
-    <button
+    <Button
+      type="button"
       id="family-invite-btn"
       className={S.INVITE_BTN}
       onClick={handleInvite}
       disabled={inviting || !liffReady}
     >
       {inviting ? '⏳' : '➕'} {t('family.inviteBtn')}
-    </button>
+    </Button>
   );
 }
 

@@ -9,6 +9,8 @@ import {
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as S from './styles';
@@ -146,10 +148,10 @@ function KnowledgeReportsPage() {
         <section className={S.NOTICE} aria-label={t('knowledgeReports.noticeLabel')}>
           <span className={S.NOTICE_ICON} aria-hidden="true">?</span>
           <p className={S.NOTICE_TEXT}>{t('knowledgeReports.notice')}</p>
-          <button type="button" className={S.NOTICE_BTN} onClick={handleAskInLine}>
+          <Button type="button" className={S.NOTICE_BTN} onClick={handleAskInLine}>
             {t('knowledgeReports.backToLine')}
             <span aria-hidden="true">›</span>
-          </button>
+          </Button>
         </section>
       </div>
 
@@ -186,9 +188,9 @@ function KnowledgeReportsPage() {
               </div>
             </div>
 
-            <button className={S.PRIMARY_BTN} type="button" onClick={handleAskInLine}>
+            <Button className={S.PRIMARY_BTN} type="button" onClick={handleAskInLine}>
               {t('knowledgeReports.askInLine')}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -218,20 +220,27 @@ function KnowledgeReportsPage() {
 
       <section className={S.LIST_SECTION} aria-labelledby="knowledge-list-title">
         <div className={S.LIST_HEADER}>
-          <div className={S.TABS} role="group" aria-label={t('knowledgeReports.filterLabel')}>
+          {/* 篩選是互斥單選 → ToggleGroup（原本是一排各自 aria-pressed 的按鈕） */}
+          <ToggleGroup
+            className={S.TABS}
+            value={[activeFilter]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0] as ReportFilter | undefined;
+              if (next) setActiveFilter(next);
+            }}
+            aria-label={t('knowledgeReports.filterLabel')}
+          >
             {filters.map((filter) => (
-              <button
+              <ToggleGroupItem
                 key={filter.value}
-                type="button"
-                className={cn(S.TAB_BTN, activeFilter === filter.value && S.TAB_ACTIVE)}
-                aria-pressed={activeFilter === filter.value}
-                onClick={() => setActiveFilter(filter.value)}
+                value={filter.value}
+                className={cn(S.TAB_BTN, S.TAB_ACTIVE_VARIANT)}
               >
                 {filter.label}
                 <span>{counts[filter.value]}</span>
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
           <Select defaultValue="newest">
             <SelectTrigger className={S.SORT_SELECT} aria-label={t('knowledgeReports.sortLabel')}>
               {/* 同上：需對應回翻譯標籤，否則會顯示 newest／oldest 原始值 */}

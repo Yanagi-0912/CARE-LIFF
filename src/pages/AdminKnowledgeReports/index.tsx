@@ -10,6 +10,8 @@ import {
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
 // 與 KnowledgeReports 共用同一組樣式常數（原本是共用同一份 index.css）
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -191,20 +193,27 @@ function AdminKnowledgeReportsPage() {
 
       <section className={S.LIST_SECTION} aria-labelledby="admin-knowledge-list-title">
         <div className={S.LIST_HEADER}>
-          <div className={S.TABS} role="group" aria-label={t('adminKnowledgeReports.filterLabel')}>
+          {/* 篩選是互斥單選 → ToggleGroup（原本是一排各自 aria-pressed 的按鈕） */}
+          <ToggleGroup
+            className={S.TABS}
+            value={[activeFilter]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0] as QueueFilter | undefined;
+              if (next) setActiveFilter(next);
+            }}
+            aria-label={t('adminKnowledgeReports.filterLabel')}
+          >
             {filters.map((filter) => (
-              <button
+              <ToggleGroupItem
                 key={filter.value}
-                type="button"
-                className={cn(S.TAB_BTN, activeFilter === filter.value && S.TAB_ACTIVE)}
-                aria-pressed={activeFilter === filter.value}
-                onClick={() => setActiveFilter(filter.value)}
+                value={filter.value}
+                className={cn(S.TAB_BTN, S.TAB_ACTIVE_VARIANT)}
               >
                 {filter.label}
                 <span>{counts[filter.value]}</span>
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         <h2 id="admin-knowledge-list-title" className="sr-only">
@@ -367,26 +376,26 @@ function AdminKnowledgeReportsPage() {
             )}
 
             <div className="mt-6 flex justify-end gap-3">
-              <button
+              <Button
                 type="button"
-                className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-full border border-transparent bg-destructive-soft px-[18px] font-[750] text-destructive disabled:cursor-not-allowed disabled:opacity-65"
+                className="min-h-[42px] rounded-full border border-transparent bg-destructive-soft px-[18px] font-[750] text-destructive hover:bg-destructive-soft/80"
                 onClick={() => void handleAction('reject')}
                 disabled={actionLoading}
               >
                 {actionLoading
                   ? t('adminKnowledgeReports.actionLoading')
                   : t('adminKnowledgeReports.reject')}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-full border-0 bg-ink px-[18px] font-[750] text-white disabled:cursor-not-allowed disabled:opacity-65"
+                className="min-h-[42px] rounded-full border-0 bg-ink px-[18px] font-[750] text-white hover:bg-ink/90"
                 onClick={() => void handleAction('approve')}
                 disabled={actionLoading}
               >
                 {actionLoading
                   ? t('adminKnowledgeReports.actionLoading')
                   : t('adminKnowledgeReports.approve')}
-              </button>
+              </Button>
             </div>
             </>
           )}

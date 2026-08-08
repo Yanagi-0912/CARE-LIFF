@@ -87,8 +87,10 @@ export const TABS =
   'flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 export const TAB_BTN =
   'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-transparent bg-transparent px-3.5 py-2 text-[0.86rem] font-bold text-muted-foreground hover:bg-surface-2 [&>span]:text-[var(--primary-strong)]';
-export const TAB_ACTIVE =
-  'border-[rgba(14,147,132,0.25)] bg-[var(--primary-softer)] text-[var(--primary-strong)]';
+/* 選中態。ToggleGroupItem 會設 aria-pressed，故以變體表達；
+   一併覆寫 hover 底色，避免未選中樣式的 hover:bg-surface-2 蓋掉選中色。 */
+export const TAB_ACTIVE_VARIANT =
+  'aria-pressed:border-[rgba(14,147,132,0.25)] aria-pressed:bg-[var(--primary-softer)] aria-pressed:text-[var(--primary-strong)] aria-pressed:hover:bg-[var(--primary-softer)]';
 export const SORT_SELECT =
   'min-w-[122px] rounded-md border border-hair bg-surface px-3 py-[9px] text-[0.84rem] text-foreground max-[600px]:self-end';
 

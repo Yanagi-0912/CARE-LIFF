@@ -9,6 +9,7 @@ import {
 import { todayLocalDateString } from '../../utils/date';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import * as S from './styles';
 
 interface ReminderFormDialogProps {
@@ -146,17 +147,17 @@ export function ReminderFormDialog({
         )}
 
         <div className={S.ACTIONS}>
-          <button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
+          <Button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
             {t('meds.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             className={S.BTN_PRIMARY}
             onClick={() => void handleSubmit()}
             disabled={submitting || allSlotsUsed}
           >
             {submitting ? t('meds.add.submitting') : t('meds.add.submit')}
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

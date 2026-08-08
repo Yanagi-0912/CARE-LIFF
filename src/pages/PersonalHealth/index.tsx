@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import * as S from './styles';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
@@ -684,12 +685,13 @@ const PersonalHealthPage: React.FC = () => {
                 </Stepper>
             </form>
             <div className={S.ACTION_ROW}>
-                <button
+                <Button
+                    type="button"
                     onClick={() => navigate('/personalhealth/consult')}
                     className={S.BUTTON}
                 >
                     {t('personalHealth.viewConsult')}
-                </button>
+                </Button>
             </div>
         </div>
     );

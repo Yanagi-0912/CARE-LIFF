@@ -86,7 +86,10 @@ export const BTN_GHOST =
    遷移後改為 JSX 內的 inline SVG（TAB_ICON），桌機隱藏、手機顯示。 */
 export const TAB =
   'cursor-pointer bg-[#eef2f7] text-[#334155] max-[600px]:relative max-[600px]:inline-flex max-[600px]:h-7 max-[600px]:items-center max-[600px]:justify-center max-[600px]:overflow-hidden max-[600px]:rounded-[10px] max-[600px]:border-0 max-[600px]:pl-3 max-[600px]:pr-[34px] max-[600px]:text-[13px] max-[600px]:leading-none max-[600px]:text-[#374151]';
-export const TAB_ACTIVE = 'bg-[#2563eb] text-white max-[600px]:text-white';
+/* 選中態。ToggleGroupItem 會設 aria-pressed，故以變體表達。
+   max-[600px] 版需一併覆寫：手機版樣式設了灰字，media 內的規則會蓋過無前綴的白字。 */
+export const TAB_ACTIVE_VARIANT =
+  'aria-pressed:bg-[#2563eb] aria-pressed:text-white max-[600px]:aria-pressed:text-white';
 export const TAB_ICON =
   'pointer-events-none absolute top-1/2 right-3 hidden size-[18px] -translate-y-1/2 max-[600px]:block';
 

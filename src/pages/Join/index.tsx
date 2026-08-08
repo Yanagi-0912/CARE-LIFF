@@ -5,6 +5,7 @@ import { isAuthenticated } from '../../utils/auth';
 import { saveRedirectUrl } from '../../utils/redirect';
 import type { VerifyInviteResponse } from '../../types/family';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type PageState = 'loading' | 'verifying' | 'preview' | 'error' | 'already_member' | 'success';
 
@@ -111,19 +112,22 @@ const JoinPage: React.FC = () => {
               {' '}邀請您加入他的家族族譜。
             </p>
             <div className="flex flex-col gap-3">
-              <button
+              <Button
+                type="button"
                 className={BTN_PRIMARY}
                 onClick={handleAccept}
                 disabled={isAccepting}
               >
                 {isAccepting ? '加入中...' : '確認加入'}
-              </button>
-              <button
-                className="cursor-pointer border-0 bg-transparent p-2.5 text-[0.9rem] text-faint transition-colors duration-140 hover:text-muted-foreground"
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-[0.9rem] text-faint hover:text-muted-foreground"
                 onClick={handleCancel}
               >
                 取消
-              </button>
+              </Button>
             </div>
           </div>
         ) : state === 'already_member' ? (
@@ -131,9 +135,9 @@ const JoinPage: React.FC = () => {
             <div className={cn(ICON_BADGE, 'bg-[var(--primary-soft)] text-[var(--primary-strong)]')}>i</div>
             <h1 className={H1_CLASS}>已是成員</h1>
             <p>您已經在此家族成員名單中。</p>
-            <button className={BTN_PRIMARY} onClick={() => navigate('/family')}>
+            <Button type="button" className={BTN_PRIMARY} onClick={() => navigate('/family')}>
               前往家族頁面
-            </button>
+            </Button>
           </div>
         ) : state === 'success' ? (
           <div className={RESULT_CLASS}>
@@ -146,9 +150,9 @@ const JoinPage: React.FC = () => {
             <div className={cn(ICON_BADGE, 'bg-destructive-soft text-destructive')}>×</div>
             <h1 className={H1_CLASS}>連結無效</h1>
             <p>{error}</p>
-            <button className={BTN_PRIMARY} onClick={() => navigate('/')}>
+            <Button type="button" className={BTN_PRIMARY} onClick={() => navigate('/')}>
               回首頁
-            </button>
+            </Button>
           </div>
         )}
       </div>
