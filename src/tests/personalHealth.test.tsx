@@ -133,8 +133,9 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         fireEvent.change(weightInput, { target: { value: '600' } });
         fireEvent.blur(weightInput);
 
-        expect(screen.getByText((content) => content.includes('身高') && content.includes('300'))).toBeInTheDocument();
-        expect(screen.getByText((content) => content.includes('體重') && content.includes('500'))).toBeInTheDocument();
+        // 驗證改由 resolver 非同步執行，需等待錯誤訊息出現
+        expect(await screen.findByText((content) => content.includes('身高') && content.includes('300'))).toBeInTheDocument();
+        expect(await screen.findByText((content) => content.includes('體重') && content.includes('500'))).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '下一步' })).toBeDisabled();
         expect(api.upsertPersonalHealthProfile).not.toHaveBeenCalled();
     });

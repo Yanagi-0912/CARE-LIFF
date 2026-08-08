@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -47,7 +50,7 @@ interface HealthData {
     age: string;
     chronicDisease: string[];
     majorIllness: string;
-    surgeryHistory?: string;
+    surgeryHistory: string;
 }
 
 const defaultData: HealthData = {
@@ -114,13 +117,56 @@ const validateNumericField = (
 
 const PersonalHealthPage: React.FC = () => {
     const { t } = useTranslation();
-    const [form, setForm] = useState<HealthData>(defaultData);
     const [currentStep, setCurrentStep] = useState(1);
+    // 「其他」的補充輸入與已儲存徽章屬於子輸入的 UI 狀態，不是受驗證的表單值
     const [otherInput, setOtherInput] = useState('');
     const [otherSaved, setOtherSaved] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    // 存檔結果改用 Sonner 呈現；此處只留欄位錯誤（下方 effect 負責逾時清除）
-    const [fieldErrors, setFieldErrors] = useState<{ age?: string; height?: string; weight?: string }>({});
+
+    // 數值欄位的驗證沿用既有的 validateNumericField，包成 zod 的 superRefine，
+    // 訊息與規則完全不變（避免重寫時漂移）。
+    const schema = useMemo(() => {
+        const numeric = (field: NumericFieldName) =>
+            z.string().superRefine((value, ctx) => {
+                const message = validateNumericField(value, field, t);
+                if (message) ctx.addIssue({ code: 'custom', message });
+            });
+        return z.object({
+            name: z.string().trim().min(1),
+            gender: z.string().min(1, t('personalHealth.genderRequired')),
+            age: numeric('age'),
+            height: numeric('height'),
+            weight: numeric('weight'),
+            chronicDisease: z.array(z.string()),
+            majorIllness: z.string(),
+            surgeryHistory: z.string(),
+        });
+    }, [t]);
+
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        reset,
+        getValues,
+        formState: { errors },
+    } = useForm<HealthData>({
+        resolver: zodResolver(schema),
+        defaultValues: defaultData,
+        // blur 時驗證（取代原本的 handleNumericBlur），改動後即時重驗以清除已修正的錯誤。
+        // 原本有個「3 秒後自動清掉欄位錯誤」的 effect——那是從 toast 自動消失沿用來的，
+        // 對驗證錯誤並不合理（錯誤應在修正後才消失），改由 reValidateMode 處理。
+        mode: 'onBlur',
+        reValidateMode: 'onChange',
+    });
+
+    const form = watch();
+    const fieldErrors = {
+        age: errors.age?.message,
+        height: errors.height?.message,
+        weight: errors.weight?.message,
+    };
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
     const [liffReady, setLiffReady] = useState(false);
@@ -131,7 +177,7 @@ const PersonalHealthPage: React.FC = () => {
     ) => {
         if (profile.displayName) {
             setUserName((prev) => prev || profile.displayName.trim());
-            setForm((prev) => ({ ...prev, name: prev.name || profile.displayName }));
+            if (!getValues('name')) setValue('name', profile.displayName);
         }
 
         if (profile.pictureUrl) {
@@ -152,9 +198,10 @@ const PersonalHealthPage: React.FC = () => {
                 ? []
                 : chronicParts;
 
-        setForm((prev) => ({
-            ...prev,
-            name: data.name || prev.name,
+        // reset 而非逐欄 setValue：一次帶入伺服器資料並重設 dirty/error 狀態
+        reset({
+            ...getValues(),
+            name: data.name || getValues('name'),
             gender: data.gender || '',
             height: data.height?.toString() || '',
             weight: data.weight?.toString() || '',
@@ -162,7 +209,7 @@ const PersonalHealthPage: React.FC = () => {
             chronicDisease,
             majorIllness: data.major_illness_history || '',
             surgeryHistory: data.surgery_history || '',
-        }));
+        });
 
         if (data.name) {
             setUserName(data.name);
@@ -214,70 +261,52 @@ const PersonalHealthPage: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        if (name === 'chronicDiseaseOther') {
-            setOtherInput(value);
-            setOtherSaved(false);
-        } else {
-            setForm((prev) => ({ ...prev, [name]: value }));
-        }
-    };
-
-    const handleNumericBlur = (field: NumericFieldName) => {
-        setFieldErrors((prev) => ({
-            ...prev,
-            [field]: validateNumericField(form[field], field, t),
-        }));
+    // 其餘欄位皆由 register 綁定；此處只留「其他」補充輸入
+    const handleOtherChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setOtherInput(e.target.value);
+        setOtherSaved(false);
     };
 
     const handleChronicToggle = (value: string) => {
-        setForm((prev) => {
-            const exists = prev.chronicDisease.includes(value);
-            const next = exists
-                ? prev.chronicDisease.filter((item) => item !== value)
-                : [...prev.chronicDisease, value];
-            return { ...prev, chronicDisease: next };
-        });
-        if (value === OTHER_CHRONIC_VALUE && form.chronicDisease.includes(OTHER_CHRONIC_VALUE)) {
+        const current = getValues('chronicDisease');
+        const exists = current.includes(value);
+        setValue(
+            'chronicDisease',
+            exists ? current.filter((item) => item !== value) : [...current, value],
+            { shouldValidate: true },
+        );
+        // 取消勾選「其他」時一併清掉補充輸入
+        if (value === OTHER_CHRONIC_VALUE && exists) {
             setOtherInput('');
             setOtherSaved(false);
         }
     };
 
-    // 欄位錯誤 3 秒後自動清除（原本綁在 saveStatus 上，改由 fieldErrors 自身驅動）
-    useEffect(() => {
-        if (Object.keys(fieldErrors).length === 0) {
-            return;
-        }
-        const timer = window.setTimeout(() => setFieldErrors({}), 3000);
-        return () => window.clearTimeout(timer);
-    }, [fieldErrors]);
+    // 驗證交給 resolver；handleSubmit 的失敗分支負責提示。
+    // Stepper 的 onFinalStepCompleted 需要「失敗時拋錯」才不會前進，故保留 reject。
+    const handleSave = () =>
+        new Promise<void>((resolve, reject) => {
+            void handleSubmit(
+                async (values) => {
+                    try {
+                        await submitProfile(values);
+                        resolve();
+                    } catch (err) {
+                        reject(err);
+                    }
+                },
+                (validationErrors) => {
+                    toast.error(
+                        validationErrors.gender
+                            ? t('personalHealth.genderRequired')
+                            : t('personalHealth.fieldErrorToast'),
+                    );
+                    reject(new Error(t('personalHealth.fieldErrorToast')));
+                },
+            )();
+        });
 
-    const handleSave = async () => {
-        if (!form.gender) {
-            toast.error(t('personalHealth.genderRequired'));
-            throw new Error(t('personalHealth.genderRequired'));
-        }
-
-        const errors: { age?: string; height?: string; weight?: string } = {
-            age: validateNumericField(form.age, 'age', t),
-            height: validateNumericField(form.height, 'height', t),
-            weight: validateNumericField(form.weight, 'weight', t),
-        };
-
-        const activeErrors = Object.fromEntries(
-            Object.entries(errors).filter(([, message]) => message !== ''),
-        ) as { age?: string; height?: string; weight?: string };
-
-        if (Object.keys(activeErrors).length > 0) {
-            setFieldErrors(activeErrors);
-            toast.error(t('personalHealth.fieldErrorToast'));
-            throw new Error(t('personalHealth.fieldErrorToast'));
-        }
-
-        setFieldErrors({});
-
+    const submitProfile = async (form: HealthData) => {
         const selected = form.chronicDisease.filter((v) => v !== OTHER_CHRONIC_VALUE);
         const otherValue = otherInput.trim();
         let chronicList = selected;
@@ -296,7 +325,7 @@ const PersonalHealthPage: React.FC = () => {
             age: Number(form.age),
             chronic_history: chronicList.join('、'),
             major_illness_history: form.majorIllness.trim() || NONE_VALUE,
-            surgery_history: (form.surgeryHistory || '').trim() || NONE_VALUE,
+            surgery_history: form.surgeryHistory.trim() || NONE_VALUE,
             health_consultations: {},
         };
 
@@ -414,9 +443,7 @@ const PersonalHealthPage: React.FC = () => {
                                 className={S.INPUT}
                                 type="text"
                                 id="name"
-                                name="name"
-                                value={form.name}
-                                onChange={handleChange}
+                                {...register("name")}
                                 placeholder={t('personalHealth.namePlaceholder')}
                                 required
                             />
@@ -432,7 +459,7 @@ const PersonalHealthPage: React.FC = () => {
                             <Select
                                 value={form.gender}
                                 onValueChange={(value) =>
-                                    setForm((prev) => ({ ...prev, gender: value as typeof prev.gender }))
+                                    setValue('gender', value ?? '', { shouldValidate: true })
                                 }
                             >
                                 <SelectTrigger
@@ -468,10 +495,7 @@ const PersonalHealthPage: React.FC = () => {
                                     className={cn(S.INPUT, fieldErrors.age && S.INPUT_ERROR)}
                                     type="number"
                                     id="age"
-                                    name="age"
-                                    value={form.age}
-                                    onChange={handleChange}
-                                    onBlur={() => handleNumericBlur('age')}
+                                    {...register("age")}
                                     placeholder={t('personalHealth.agePlaceholder')}
                                     min="0"
                                     max="130"
@@ -505,10 +529,7 @@ const PersonalHealthPage: React.FC = () => {
                                     className={cn(S.INPUT, fieldErrors.height && S.INPUT_ERROR)}
                                     type="number"
                                     id="height"
-                                    name="height"
-                                    value={form.height}
-                                    onChange={handleChange}
-                                    onBlur={() => handleNumericBlur('height')}
+                                    {...register("height")}
                                     placeholder={t('personalHealth.heightPlaceholder')}
                                     min="30"
                                     max="300"
@@ -530,10 +551,7 @@ const PersonalHealthPage: React.FC = () => {
                                     className={cn(S.INPUT, fieldErrors.weight && S.INPUT_ERROR)}
                                     type="number"
                                     id="weight"
-                                    name="weight"
-                                    value={form.weight}
-                                    onChange={handleChange}
-                                    onBlur={() => handleNumericBlur('weight')}
+                                    {...register("weight")}
                                     placeholder={t('personalHealth.weightPlaceholder')}
                                     min="1"
                                     max="500"
@@ -615,7 +633,7 @@ const PersonalHealthPage: React.FC = () => {
                                             type="text"
                                             name="chronicDiseaseOther"
                                             value={otherInput}
-                                            onChange={handleChange}
+                                            onChange={handleOtherChange}
                                             placeholder={t(
                                                 'personalHealth.chronicOtherPlaceholder',
                                             )}
@@ -660,9 +678,7 @@ const PersonalHealthPage: React.FC = () => {
                             <textarea
                                 className={cn(S.INPUT, S.INPUT_LONG)}
                                 id="majorIllness"
-                                name="majorIllness"
-                                value={form.majorIllness}
-                                onChange={handleChange}
+                                {...register("majorIllness")}
                                 placeholder={t('personalHealth.majorIllnessPlaceholder')}
                                 rows={2}
                             />
@@ -675,9 +691,7 @@ const PersonalHealthPage: React.FC = () => {
                             <textarea
                                 className={cn(S.INPUT, S.INPUT_LONG)}
                                 id="surgeryHistory"
-                                name="surgeryHistory"
-                                value={form.surgeryHistory}
-                                onChange={handleChange}
+                                {...register("surgeryHistory")}
                                 placeholder={t('personalHealth.surgeryHistoryPlaceholder')}
                                 rows={2}
                             />
