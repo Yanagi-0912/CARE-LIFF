@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyInvite, acceptInvite } from '../../api/familyApi';
 import { isAuthenticated } from '../../utils/auth';
 import { saveRedirectUrl } from '../../utils/redirect';
 import type { VerifyInviteResponse } from '../../types/family';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 
-type PageState = 'loading' | 'verifying' | 'preview' | 'error' | 'already_member' | 'success';
+// 'loading' 已由 inviteQuery.isPending 涵蓋（原本是手動先設 loading 再設 verifying）
+type PageState = 'verifying' | 'preview' | 'error' | 'already_member' | 'success';
 
 /* ────────── 樣式（原 index.css 遷移） ────────── */
 // 品牌綠漸層主按鈕：漸層與光暈是此頁的視覺主角，維持手刻樣式
@@ -24,65 +27,72 @@ const JoinPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
 
-  const [state, setState] = useState<PageState>('loading');
-  const [inviteInfo, setInviteInfo] = useState<VerifyInviteResponse | null>(null);
-  const [error, setError] = useState<string>('');
-  const [isAccepting, setIsAccepting] = useState(false);
+  // 接受邀請後的結果由使用者操作決定，其餘狀態皆可由查詢／變更推導
+  const [outcome, setOutcome] = useState<'already_member' | 'success' | null>(null);
+  const [acceptError, setAcceptError] = useState<string>('');
 
+  // 未登入先導向登入頁（保留深連結）
   useEffect(() => {
-    // 1. 檢查是否登入
     if (!isAuthenticated()) {
       saveRedirectUrl(window.location.href);
       navigate('/login', { replace: true });
-      return;
     }
+  }, [navigate]);
 
-    // 2. 檢查是否有邀請碼
-    if (!code) {
-      setState('error');
-      setError('無效的邀請連結');
-      return;
-    }
+  const inviteQuery = useQuery({
+    queryKey: queryKeys.inviteVerification(code ?? ''),
+    queryFn: () => verifyInvite(code as string),
+    enabled: Boolean(code) && isAuthenticated(),
+    // 邀請碼失效是確定性的結果，重試沒有意義且會拖慢錯誤畫面
+    retry: false,
+  });
 
-    // 3. 驗證邀請碼
-    const verify = async () => {
-      try {
-        setState('verifying');
-        const res = await verifyInvite(code);
-        setInviteInfo(res);
-        setState('preview');
-      } catch (err: any) {
-        if (err.message.includes('410') || err.message.includes('失效')) {
-          setError('連結已失效或過期');
-        } else {
-          setError(err.message || '驗證邀請碼失敗');
-        }
-        setState('error');
-      }
-    };
-
-    verify();
-  }, [code, navigate]);
-
-  const handleAccept = async () => {
-    if (!code || isAccepting) return;
-
-    try {
-      setIsAccepting(true);
-      const res = await acceptInvite(code);
+  const acceptMutation = useMutation({
+    mutationFn: () => acceptInvite(code as string),
+    onSuccess: (res) => {
       if (res.status === 'already_member') {
-        setState('already_member');
+        setOutcome('already_member');
       } else {
-        setState('success');
+        setOutcome('success');
         // 成功後 1.5 秒跳轉
         setTimeout(() => navigate('/family'), 1500);
       }
-    } catch (err: any) {
-      setError(err.message || '加入家族失敗');
-      setState('error');
-    } finally {
-      setIsAccepting(false);
-    }
+    },
+    onError: (err: unknown) => {
+      setAcceptError(err instanceof Error ? err.message : '加入家族失敗');
+    },
+  });
+
+  const inviteInfo: VerifyInviteResponse | null = inviteQuery.data ?? null;
+  const isAccepting = acceptMutation.isPending;
+
+  /** 驗證失敗的訊息對應（沿用原本對 410／失效的判斷） */
+  const verifyErrorMessage = (() => {
+    const err = inviteQuery.error;
+    if (!err) return '';
+    const message = err instanceof Error ? err.message : '';
+    if (message.includes('410') || message.includes('失效')) return '連結已失效或過期';
+    return message || '驗證邀請碼失敗';
+  })();
+
+  const error = acceptError || verifyErrorMessage || (!code ? '無效的邀請連結' : '');
+
+  const state: PageState = outcome
+    ? outcome
+    : acceptError
+      ? 'error'
+      : !code
+        ? 'error'
+        : inviteQuery.isError
+          ? 'error'
+          : inviteQuery.isPending
+            ? 'verifying'
+            : 'preview';
+
+  const handleAccept = () => {
+    if (!code || isAccepting) return;
+    setAcceptError('');
+    acceptMutation.mutate();
   };
 
   const handleCancel = () => {
@@ -92,7 +102,7 @@ const JoinPage: React.FC = () => {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="animate-rise w-full max-w-[400px] rounded-xl border border-hair bg-surface px-6 py-8 text-center shadow-modal">
-        {state === 'verifying' || state === 'loading' ? (
+        {state === 'verifying' ? (
           <div className="flex flex-col items-center gap-4 text-muted-foreground">
             {/* 旋轉圈：Tailwind 內建 animate-spin */}
             <div className="size-10 animate-spin rounded-full border-[3px] border-surface-3 border-t-primary"></div>

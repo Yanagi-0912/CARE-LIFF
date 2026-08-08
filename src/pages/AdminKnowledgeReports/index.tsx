@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import {
@@ -10,6 +11,7 @@ import {
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,55 +47,29 @@ function mapReasonLabel(reason: string, t: (key: string) => string): string {
 function AdminKnowledgeReportsPage() {
   const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<QueueFilter>('all');
-  const [rawReports, setRawReports] = useState<KnowledgeReportDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<KnowledgeReportDto | null>(null);
   const [reviewerNote, setReviewerNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const loadReports = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetchAdminKnowledgeReports();
-      setRawReports(response.reports);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('adminKnowledgeReports.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const queryClient = useQueryClient();
+  const {
+    data: rawReports = [],
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.adminKnowledgeReports,
+    queryFn: async () => (await fetchAdminKnowledgeReports()).reports,
+  });
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : t('adminKnowledgeReports.loadError')
+    : null;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function run() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchAdminKnowledgeReports();
-        if (!cancelled) {
-          setRawReports(response.reports);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : t('adminKnowledgeReports.loadError'));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+  // 原本這段抓取邏輯在檔案裡寫了兩份（loadReports 與 effect 內的 run），
+  // 內容完全相同；改用 useQuery 後合而為一，審核完成後以 invalidate 重新載入。
+  const reloadReports = () => queryClient.invalidateQueries({ queryKey: queryKeys.adminKnowledgeReports });
 
   const statusMeta: Record<KnowledgeReportStatus, { label: string; icon: string }> = {
     pending: { label: t('knowledgeReports.status.pending'), icon: '○' },
@@ -142,7 +118,7 @@ function AdminKnowledgeReportsPage() {
         await rejectKnowledgeReport(selectedReport.report_id, body ?? {});
       }
       closeDialog();
-      await loadReports();
+      await reloadReports();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : t('adminKnowledgeReports.actionError'));
     } finally {

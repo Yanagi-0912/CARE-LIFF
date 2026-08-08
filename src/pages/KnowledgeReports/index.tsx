@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import liff from '@line/liff';
 import { useTranslation } from 'react-i18next';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
@@ -9,6 +10,7 @@ import {
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -66,38 +68,19 @@ function KnowledgeReportsPage() {
   const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReport | null>(null);
-  const [rawReports, setRawReports] = useState<KnowledgeReportDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadReports() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchKnowledgeReports();
-        if (!cancelled) {
-          setRawReports(response.reports);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : t('knowledgeReports.loadError'));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadReports();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+  const {
+    data: rawReports = [],
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.knowledgeReports,
+    queryFn: async () => (await fetchKnowledgeReports()).reports,
+  });
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : t('knowledgeReports.loadError')
+    : null;
 
   const reports = useMemo(
     () => rawReports.map((report) => mapReportDto(report, t)),

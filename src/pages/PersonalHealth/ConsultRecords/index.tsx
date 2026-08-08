@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import liff from '@line/liff';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import * as S from './styles';
@@ -74,15 +76,48 @@ function toSummarySections(summary: ConsultationSummary, t: (key: string) => str
 
 const ConsultRecordsPage: React.FC = () => {
     const { t, i18n } = useTranslation(); //用於多語系翻譯
-    const [summaryItems, setSummaryItems] = useState<ConsultationSummary[]>([]);
     const [selectedSummaryKey, setSelectedSummaryKey] = useState<string>('');
-    const [rawMessages, setRawMessages] = useState<ConsultationMessage[]>([]);
     const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
-    const [loading, setLoading] = useState({ list: false, action: false, download: false });
-    const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [downloading, setDownloading] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState<ConsultationMessage | null>(null);
 
-    const selectedSummary = summaryItems.find(item => getSummaryKey(item) === selectedSummaryKey) || summaryItems[0] || null;
+    // 兩筆資料各自獨立查詢（原本用 Promise.allSettled 併發並手動拆解結果）。
+    // 分開之後任一邊失敗不影響另一邊，重試也各自獨立。
+    const summariesQuery = useQuery({
+        queryKey: queryKeys.consultationSummaries,
+        queryFn: getAllSummaries,
+    });
+    const rawQuery = useQuery({
+        queryKey: queryKeys.consultationRaw,
+        queryFn: fetchConsultationMeRaw,
+    });
+
+    const summaryItems = summariesQuery.data ?? [];
+    const rawMessages = rawQuery.data?.messages ?? [];
+    const listLoading = summariesQuery.isPending || rawQuery.isPending;
+    const summaryError = summariesQuery.error
+        ? summariesQuery.error instanceof Error
+            ? summariesQuery.error.message
+            : t('consultRecord.loadSummaryError')
+        : null;
+
+    // 選取的日期改為衍生值：使用者沒選過、或選過的那筆已不在清單裡，就用第一筆。
+    // 原本靠 setSelectedSummaryKey 在載入完成後同步，多一份要維護的狀態。
+    const effectiveSummaryKey =
+        summaryItems.some(item => getSummaryKey(item) === selectedSummaryKey)
+            ? selectedSummaryKey
+            : getSummaryKey(summaryItems[0] ?? ({} as ConsultationSummary));
+
+    // 預設分頁：有摘要就看摘要；摘要載入失敗但有對話紀錄則自動切到對話。
+    useEffect(() => {
+        if (summaryItems.length > 0) {
+            setViewMode('summary');
+        } else if (summariesQuery.isError && rawMessages.length > 0) {
+            setViewMode('raw');
+        }
+    }, [summaryItems.length, summariesQuery.isError, rawMessages.length]);
+
+    const selectedSummary = summaryItems.find(item => getSummaryKey(item) === effectiveSummaryKey) || null;
     const selectedSummarySections = selectedSummary ? toSummarySections(selectedSummary, t) : [];
 
     const truncateText = (text: string) => {
@@ -92,54 +127,12 @@ const ConsultRecordsPage: React.FC = () => {
             return `${text.slice(0, 50)}...`;
         return text;
     };
+
     const formatSummaryDate = (s: ConsultationSummary) =>
         getSummaryKey(s).slice(5, 10).replaceAll('-', '/') || t('consultRecord.unnamedDate');
-    const loadSummary = async (preserveSelection = true) => {
-        setLoading(prev => ({ ...prev, list: true }));
-        setSummaryError(null);
-        try {
-            const [summariesResult, rawResult] = await Promise.allSettled([getAllSummaries(), fetchConsultationMeRaw()]);
-
-            if (summariesResult.status === 'fulfilled') {
-                const summaries = summariesResult.value;
-                setSummaryItems(summaries);
-                setSelectedSummaryKey(prevKey => {
-                    const isPrevKeyValid = preserveSelection && prevKey && summaries.some(i => getSummaryKey(i) === prevKey);
-                    if (isPrevKeyValid) {
-                        return prevKey;
-                    }
-                    return getSummaryKey(summaries[0] || {});
-                });
-
-                if (summaries.length > 0) {
-                    setViewMode('summary');
-                }
-            } else {
-                setSummaryItems([]); setSelectedSummaryKey('');
-                setSummaryError(summariesResult.reason instanceof Error ? summariesResult.reason.message : t('consultRecord.loadSummaryError'));
-            }
-
-            if (rawResult.status === 'fulfilled') {
-                const messages = rawResult.value.messages ?? [];
-                setRawMessages(messages);
-                if (summariesResult.status !== 'fulfilled' && messages.length > 0) {
-                    setViewMode('raw');
-                }
-            } else {
-                setRawMessages([]);
-            }
-        } catch (error) {
-            setSummaryItems([]); setSelectedSummaryKey(''); setRawMessages([]);
-            setSummaryError(error instanceof Error ? error.message : t('consultRecord.loadSummaryError'));
-        } finally {
-            setLoading(prev => ({ ...prev, list: false }));
-        }
-    };
-
-    useEffect(() => { loadSummary(); }, []);
 
     const handleDownload = async () => {
-        setLoading(prev => ({ ...prev, download: true }));
+        setDownloading(true);
         try {
             const tokenResult = await getConsultationSummaryDownloadToken();
             const downloadUrl = buildConsultationSummaryDownloadUrl(tokenResult.downloadToken);
@@ -152,7 +145,7 @@ const ConsultRecordsPage: React.FC = () => {
         } catch (error) {
             toast.error(error instanceof Error ? error.message : t('consultRecord.downloadFailed'));
         } finally {
-            setLoading(prev => ({ ...prev, download: false }));
+            setDownloading(false);
         }
     };
 
@@ -192,11 +185,11 @@ const ConsultRecordsPage: React.FC = () => {
                         <ToggleGroupItem value="raw" className={cn(S.TAB, S.TAB_ACTIVE_VARIANT)}>{t('consultRecord.tabRaw')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg></ToggleGroupItem>
                     </ToggleGroup>
                     <div className={S.PANEL_LIST}>
-                        {loading.list && <div className={cn(S.ITEM, S.ITEM_MUTED)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loading')}</p></div>}
+                        {listLoading && <div className={cn(S.ITEM, S.ITEM_MUTED)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loading')}</p></div>}
                         {/* summaryError 在設定時就已是「具體訊息 or 通用備援」，此處直接顯示它。
                             原本固定渲染通用文字，等於讓那個 state 形同虛設。 */}
-                        {!loading.list && summaryError && <div className={S.ITEM}><div className={cn(S.BADGE, S.BADGE_ERROR)}>AI</div><p>{summaryError}</p></div>}
-                        {!loading.list && (
+                        {!listLoading && summaryError && <div className={S.ITEM}><div className={cn(S.BADGE, S.BADGE_ERROR)}>AI</div><p>{summaryError}</p></div>}
+                        {!listLoading && (
                             <>
                                 {viewMode === 'summary' && (
                                     summaryItems.length > 0 ? (
@@ -204,7 +197,7 @@ const ConsultRecordsPage: React.FC = () => {
                                             <div className={S.COMPACT_HEADER}>
                                                 <label className={S.SUMMARY_LABEL} htmlFor="summary-select">{t('consultRecord.summaryDate')}</label>
                                                 {/*選擇日期的下拉選單*/}
-                                                <Select value={selectedSummaryKey} onValueChange={(value) => setSelectedSummaryKey(value ?? '')}>
+                                                <Select value={effectiveSummaryKey} onValueChange={(value) => setSelectedSummaryKey(value ?? '')}>
                                                     <SelectTrigger id="summary-select" className={S.SUMMARY_SELECT}>
                                                         {/* 值是完整日期字串，顯示要用 formatSummaryDate 縮成 MM/DD */}
                                                         <SelectValue>
@@ -266,7 +259,7 @@ const ConsultRecordsPage: React.FC = () => {
 
                 <div className={S.FORM_ACTIONS}>
                     {/*<button onClick={handleSummarizeNow} className="btn primary" disabled={loading.action}>{loading.action ? '摘要產生中...' : '立即產生摘要'}</button>*/}
-                    <Button type="button" onClick={handleDownload} className={cn(S.BTN, S.BTN_GHOST)} disabled={loading.download}>{loading.download ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</Button>
+                    <Button type="button" onClick={handleDownload} className={cn(S.BTN, S.BTN_GHOST)} disabled={downloading}>{downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</Button>
                 </div>
             </section>
 
