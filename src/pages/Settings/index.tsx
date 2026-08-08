@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import './index.css';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 import type { SupportedLanguage } from '../../i18n/messages';
 import { isSupportedLanguage } from '../../i18n';
 import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
@@ -39,6 +40,23 @@ const toggleFieldMap: Record<'highContrast' | 'notifyReminder' | 'notifyFamily',
   highContrast: 'high_contrast',
   notifyReminder: 'notify_reminder',
   notifyFamily: 'notify_family',
+};
+
+/* ────────── 樣式（原 index.css 遷移；區塊卡片等重複樣式抽成常數） ────────── */
+const SECTION_CLASS =
+  'animate-section-in mb-3 rounded-lg border border-hair bg-surface px-3 py-4 shadow-card min-[480px]:p-4';
+const HEADING_CLASS = 'm-0 mb-1 text-[1.1rem] font-bold text-ink';
+const DESC_CLASS = 'm-0 mb-4 text-[0.88rem] leading-normal text-muted-foreground';
+const LABEL_CLASS = 'text-[0.95rem] font-semibold text-foreground min-[480px]:text-base';
+const TOGGLE_ROW_CLASS =
+  'flex min-h-[52px] items-center justify-between border-b border-hair py-3 last:border-b-0 last:pb-1';
+
+/* 字級按鈕各自以「它代表的字級」顯示（16/20/24px）。
+   完整字串查表，不可用 `font-size-btn-${size}` 拼接（Tailwind 掃描不到）。 */
+const FONT_SIZE_BTN: Record<SettingsState['fontSize'], string> = {
+  normal: 'text-[16px]',
+  large: 'text-[20px]',
+  xlarge: 'text-[24px]',
 };
 
 const languageOptions: Array<{ value: SettingsState['language']; label: string }> = [
@@ -150,38 +168,49 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="settings-page">
-      <h2 className="settings-title">{t('settings.title')}</h2>
+    <div className="mx-auto w-full max-w-[720px] px-3 pt-3 pb-[116px] min-[480px]:p-4 min-[480px]:pb-[120px]">
+      <h2 className="m-0 mb-3 pl-[2px] text-[1.35rem] font-extrabold text-ink min-[480px]:mb-4 min-[480px]:text-[1.6rem]">
+        {t('settings.title')}
+      </h2>
 
       {/* ── 字體大小 ── */}
-      <section className="settings-section">
-        <h3 className="section-heading">{t('settings.fontSizeTitle')}</h3>
-        <p className="section-desc">{t('settings.fontSizeDesc')}</p>
-        <div className="font-size-options">
+      <section className={cn(SECTION_CLASS, '[animation-delay:40ms]')}>
+        <h3 className={HEADING_CLASS}>{t('settings.fontSizeTitle')}</h3>
+        <p className={DESC_CLASS}>{t('settings.fontSizeDesc')}</p>
+        <div className="flex gap-2 min-[480px]:gap-2.5">
           {(['normal', 'large', 'xlarge'] as const).map((size) => (
             <button
               key={size}
-              className={`font-size-btn font-size-btn-${size} ${settings.fontSize === size ? 'active' : ''}`}
+              aria-pressed={settings.fontSize === size}
+              className={cn(
+                'min-h-12 flex-1 cursor-pointer rounded-md border-[1.5px] border-hair bg-surface-2 px-1 py-3 text-center font-bold text-foreground transition-[border-color,background-color,box-shadow] duration-140 hover:border-line active:scale-[0.96] min-[480px]:px-1.5',
+                FONT_SIZE_BTN[size],
+                settings.fontSize === size &&
+                  'border-primary bg-[var(--primary-soft)] text-[var(--primary-strong)] shadow-[0_0_0_3px_var(--primary-softer)]',
+              )}
               onClick={() => handleFontSize(size)}
             >
               {fontSizeLabelMap[size]}
             </button>
           ))}
         </div>
-        <div className="font-preview">
+        {/* 預覽區跟著 --base-font-size 即時縮放 */}
+        <div className="mt-3 rounded-md border-[1.5px] border-dashed border-line bg-surface-2 px-3 py-4 text-center text-[length:var(--base-font-size,20px)] font-semibold leading-relaxed text-foreground">
           <span>{t('settings.preview')}</span>
         </div>
       </section>
 
       {/* ── 語言設定 ── */}
-      <section className="settings-section">
-        <h3 className="section-heading">{t('settings.languageTitle')}</h3>
-        <p className="section-desc">{t('settings.languageDesc')}</p>
-        <div className="select-row">
-          <label htmlFor="language-select" className="toggle-label">{t('settings.displayLanguage')}</label>
+      <section className={cn(SECTION_CLASS, '[animation-delay:100ms]')}>
+        <h3 className={HEADING_CLASS}>{t('settings.languageTitle')}</h3>
+        <p className={DESC_CLASS}>{t('settings.languageDesc')}</p>
+        <div className="flex flex-col gap-2.5">
+          <label htmlFor="language-select" className={LABEL_CLASS}>{t('settings.displayLanguage')}</label>
+          {/* 刻意保留原生 select：手機（LINE webview）會叫出系統選單，
+              對長輩比自訂下拉好用；僅重刻外觀 */}
           <select
             id="language-select"
-            className="settings-select"
+            className="min-h-12 w-full rounded-md border-[1.5px] border-hair bg-surface px-3 py-2.5 text-base font-semibold text-ink transition-[border-color,box-shadow] duration-140 focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] focus:outline-none"
             value={settings.language}
             onChange={(e) => handleLanguage(e.target.value as SettingsState['language'])}
           >
@@ -195,55 +224,57 @@ const SettingsPage: React.FC = () => {
       </section>
 
       {/* ── 高對比模式 ── */}
-      <section className="settings-section">
-        <h3 className="section-heading">{t('settings.highContrastTitle')}</h3>
-        <p className="section-desc">{t('settings.highContrastDesc')}</p>
-        <div className="toggle-row">
-          <span className="toggle-label">{t('settings.highContrastToggle')}</span>
-          <button
-            className={`toggle-switch ${settings.highContrast ? 'on' : ''}`}
-            onClick={() => toggle('highContrast')}
+      <section className={cn(SECTION_CLASS, '[animation-delay:160ms]')}>
+        <h3 className={HEADING_CLASS}>{t('settings.highContrastTitle')}</h3>
+        <p className={DESC_CLASS}>{t('settings.highContrastDesc')}</p>
+        <div className={TOGGLE_ROW_CLASS}>
+          <span className={LABEL_CLASS}>{t('settings.highContrastToggle')}</span>
+          {/* 原手刻 toggle 是普通 button，沒有 role="switch" 與 aria-checked，
+              螢幕閱讀器只會唸「按鈕」；Base UI Switch 兩者皆備，鍵盤操作也內建 */}
+          <Switch
+            checked={settings.highContrast}
+            onCheckedChange={() => toggle('highContrast')}
             aria-label="切換高對比模式"
-          >
-            <span className="toggle-knob" />
-          </button>
+          />
         </div>
       </section>
 
       {/* ── 通知設定 ── */}
-      <section className="settings-section">
-        <h3 className="section-heading">{t('settings.notificationsTitle')}</h3>
-        <p className="section-desc">{t('settings.notificationsDesc')}</p>
+      <section className={cn(SECTION_CLASS, '[animation-delay:220ms]')}>
+        <h3 className={HEADING_CLASS}>{t('settings.notificationsTitle')}</h3>
+        <p className={DESC_CLASS}>{t('settings.notificationsDesc')}</p>
 
-        <div className="toggle-row">
-          <span className="toggle-label">{t('settings.medicationReminder')}</span>
-          <button
-            className={`toggle-switch ${settings.notifyReminder ? 'on' : ''}`}
-            onClick={() => toggle('notifyReminder')}
+        <div className={TOGGLE_ROW_CLASS}>
+          <span className={LABEL_CLASS}>{t('settings.medicationReminder')}</span>
+          <Switch
+            checked={settings.notifyReminder}
+            onCheckedChange={() => toggle('notifyReminder')}
             aria-label="切換用藥提醒"
-          >
-            <span className="toggle-knob" />
-          </button>
+          />
         </div>
 
-        <div className="toggle-row">
-          <span className="toggle-label">{t('settings.familyAlert')}</span>
-          <button
-            className={`toggle-switch ${settings.notifyFamily ? 'on' : ''}`}
-            onClick={() => toggle('notifyFamily')}
+        <div className={TOGGLE_ROW_CLASS}>
+          <span className={LABEL_CLASS}>{t('settings.familyAlert')}</span>
+          <Switch
+            checked={settings.notifyFamily}
+            onCheckedChange={() => toggle('notifyFamily')}
             aria-label="切換家人健康通知"
-          >
-            <span className="toggle-knob" />
-          </button>
+          />
         </div>
       </section>
 
       {/* ── 關於 ── */}
-      <section className="settings-section about-section">
-        <h3 className="section-heading">{t('settings.aboutTitle')}</h3>
-        <div className="about-info">
-          <div className="about-row"><span>{t('settings.version')}</span><strong>1.0.0</strong></div>
-          <div className="about-row"><span>{t('settings.team')}</span><strong>CARE Team</strong></div>
+      <section className={cn(SECTION_CLASS, '[animation-delay:280ms]')}>
+        <h3 className={HEADING_CLASS}>{t('settings.aboutTitle')}</h3>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex justify-between py-1 text-[0.95rem] text-muted-foreground">
+            <span>{t('settings.version')}</span>
+            <strong className="num text-ink">1.0.0</strong>
+          </div>
+          <div className="flex justify-between py-1 text-[0.95rem] text-muted-foreground">
+            <span>{t('settings.team')}</span>
+            <strong className="num text-ink">CARE Team</strong>
+          </div>
         </div>
       </section>
     </div>

@@ -135,6 +135,10 @@
   --animate-hero-text-in: rise 420ms var(--ease-out) both;
   --animate-card-in: card-in 380ms var(--ease-out) both;
 
+  /* 設定頁區塊進場：重用 card-in（原 sectionIn 位移 12px，與 16px 差異
+     肉眼難辨，不為此另立一組 keyframes）。 */
+  --animate-section-in: card-in 340ms var(--ease-out) both;
+
   @keyframes hero-in {
     from {
       opacity: 0;
