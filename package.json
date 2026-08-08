@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@base-ui/react": "^1.7.0",
     "@line/liff": "^2.28.0",
     "@tailwindcss/vite": "^4.3.3",
     "class-variance-authority": "^0.7.1",
@@ -19,7 +20,6 @@
     "i18next": "^26.3.6",
     "lucide-react": "^1.30.0",
     "motion": "^12.42.2",
-    "radix-ui": "^1.6.7",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-i18next": "^17.0.11",

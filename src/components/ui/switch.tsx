@@ -1,5 +1,4 @@
-import * as React from "react"
-import { Switch as SwitchPrimitive } from "radix-ui"
+import { Switch as SwitchPrimitive } from "@base-ui/react/switch"
 
 import { cn } from "@/lib/utils"
 
@@ -7,7 +6,7 @@ function Switch({
   className,
   size = "default",
   ...props
-}: React.ComponentProps<typeof SwitchPrimitive.Root> & {
+}: SwitchPrimitive.Root.Props & {
   size?: "sm" | "default"
 }) {
   return (
@@ -15,20 +14,15 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        // 軌道放大為 48×28（shadcn 預設僅 32×18.4），接近 iOS 原生開關尺寸。
-        // 長輩在 LINE webview 裡多以拇指操作，預設尺寸的誤觸率偏高。
-        "peer group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-7 data-[size=default]:w-12 data-[size=sm]:h-5 data-[size=sm]:w-9 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input dark:data-[state=unchecked]:bg-input/80",
+        "peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 data-[size=default]:h-7 data-[size=default]:w-12 data-[size=sm]:h-5 data-[size=sm]:w-9 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50",
         className
       )}
       {...props}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
-        className={cn(
-          // 滑鈕同步放大以配合軌道：default 24px（軌道 28px，上下各留 2px）、
-          // sm 16px（軌道 20px）。
-          "pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-6 group-data-[size=sm]/switch:size-4 data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0 dark:data-[state=checked]:bg-primary-foreground dark:data-[state=unchecked]:bg-foreground"
-        )}
+        // 滑鈕配合放大的軌道：default 24px（軌道 28px）、sm 16px（軌道 20px）
+        className="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-6 group-data-[size=sm]/switch:size-4 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
       />
     </SwitchPrimitive.Root>
   )
