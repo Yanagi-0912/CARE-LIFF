@@ -10,7 +10,6 @@ import {
 	saveRedirectUrl,
 } from '../../utils/redirect'
 import Heartbeat from '../../components/Heartbeat/Heartbeat'
-import './index.css'
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim()
 
@@ -87,11 +86,15 @@ function LoginPage() {
 	}, [navigate, location.search])
 
 	return (
-		<main className="login-page">
-			<Heartbeat tone="onLight" className="login-ekg" />
-			<h2 className="login-title">登入 CARE</h2>
-			<p className="login-desc">{statusText}</p>
-			{errorText && <p className="login-error">{errorText}</p>}
+		<main className="animate-rise mx-auto mt-14 max-w-[420px] rounded-xl border border-hair bg-surface px-6 py-12 text-center shadow-pop">
+			<Heartbeat tone="onLight" className="mx-auto mb-4 max-w-[220px]" />
+			<h2 className="m-0 text-[1.6rem] font-extrabold text-ink">登入 CARE</h2>
+			<p className="mt-4 mb-6 text-muted-foreground">{statusText}</p>
+			{errorText && (
+				<p className="m-0 rounded-md bg-destructive-soft p-3 text-[0.9rem] font-semibold text-destructive">
+					{errorText}
+				</p>
+			)}
 		</main>
 	)
 }

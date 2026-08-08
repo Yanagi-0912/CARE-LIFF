@@ -59,6 +59,7 @@
   /* ── 狀態 ── */
   --color-destructive: var(--danger);
   --color-destructive-foreground: #ffffff;
+  --color-destructive-soft: var(--danger-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
@@ -117,6 +118,19 @@
   --animate-heartbeat: heartbeat 3.2s var(--ease) infinite;
   --animate-badge-wiggle: badge-wiggle 420ms var(--ease);
   --animate-sidebar-in: sidebar-in 360ms var(--ease-out) both;
+  --animate-rise: rise var(--dur-2) var(--ease-out);
+
+  /* 由下淡入。多處共用（登入頁卡片、諮詢紀錄卡片），故取通用名。 */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   @keyframes sidebar-in {
     from {

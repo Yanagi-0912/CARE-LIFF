@@ -3,7 +3,6 @@ import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
-import './index.css';
 
 function AdminRoute({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -34,7 +33,7 @@ function AdminRoute({ children }: { children: ReactNode }) {
 
   if (state === 'loading') {
     return (
-      <p className="adminRouteLoading" role="status">
+      <p className="mx-auto my-8 text-center text-muted-foreground" role="status">
         {t('adminKnowledgeReports.checkingAccess')}
       </p>
     );
