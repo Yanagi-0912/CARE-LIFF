@@ -193,7 +193,9 @@ const ConsultRecordsPage: React.FC = () => {
                     </div>
                     <div className={S.PANEL_LIST}>
                         {loading.list && <div className={cn(S.ITEM, S.ITEM_MUTED)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loading')}</p></div>}
-                        {!loading.list && summaryError && <div className={S.ITEM}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loadSummaryError')}</p></div>}
+                        {/* summaryError 在設定時就已是「具體訊息 or 通用備援」，此處直接顯示它。
+                            原本固定渲染通用文字，等於讓那個 state 形同虛設。 */}
+                        {!loading.list && summaryError && <div className={S.ITEM}><div className={cn(S.BADGE, S.BADGE_ERROR)}>AI</div><p>{summaryError}</p></div>}
                         {!loading.list && (
                             <>
                                 {viewMode === 'summary' && (

@@ -5,6 +5,7 @@ import liff from '@line/liff'
 // 1. 匯入整包 API 物件，方便後面使用 vi.mocked 存取
 import * as api from '../api/consultationApi'
 import ConsultRecordsPage from '../pages/PersonalHealth/ConsultRecords'
+import i18n from '../i18n'
 
 // 2. 直接在 mock 內部定義 mock 函式，檔案頂端不再需要宣告一堆 const 變數
 vi.mock('../api/consultationApi', () => ({
@@ -48,8 +49,12 @@ function setupApiMocks(overrides: ApiMockOverrides = {}) {
 }
 
 describe('ConsultRecordsPage測試', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         localStorage.clear()
+
+        // 這個檔案原本沒初始化 i18n，畫面渲染出的是 consultRecord.xxx 這類
+        // 原始 key 而非翻譯文字，導致所有以中文字串定位的斷言全部失敗。
+        await i18n.changeLanguage('zh-TW')
 
         // 3. 使用 vi.mocked 幫 API 函式重置紀錄
         vi.mocked(api.getAllSummaries).mockReset()
