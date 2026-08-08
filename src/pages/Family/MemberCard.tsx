@@ -4,15 +4,19 @@ import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
 import { RELATIONSHIP_LABEL } from '../../types/family';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 
 interface Props {
   member: FamilyMember;
+  /** 瀑布式進場延遲（由清單依 index 給值） */
+  delayMs?: number;
 }
 
 /**
  * 成員卡片 — 點擊展開顯示該成員的健康狀況
  */
-export function MemberCard({ member }: Props) {
+export function MemberCard({ member, delayMs = 0 }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [health, setHealth] = useState<HealthProfile | null>(null);
@@ -66,14 +70,15 @@ export function MemberCard({ member }: Props) {
 
   return (
     <div
-      className={`member-card ${expanded ? 'expanded' : ''}`}
+      className={cn(S.CARD, expanded && S.CARD_EXPANDED)}
+      style={{ animationDelay: `${delayMs}ms` }}
       onClick={handleClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') void handleClick(); }}
     >
       {/* 頭像 */}
-      <div className="member-avatar">
+      <div className={S.AVATAR}>
         {member.picture_url ? (
           <img src={member.picture_url} alt={displayName} />
         ) : (
@@ -82,41 +87,41 @@ export function MemberCard({ member }: Props) {
       </div>
 
       {/* LINE 名稱 */}
-      <span className="member-name">{displayName}</span>
+      <span className={S.NAME}>{displayName}</span>
 
       {/* 稱謂 */}
-      <span className={`member-relation ${!member.relationship_type ? 'unset' : ''}`}>
+      <span className={cn(S.RELATION, !member.relationship_type && S.RELATION_UNSET)}>
         {relationLabel}
       </span>
 
       {/* 展開箭頭提示 */}
-      <span className="member-expand-hint">{expanded ? '▲' : '▼'}</span>
+      <span className={cn(S.EXPAND_HINT, expanded && S.EXPAND_HINT_ON)}>{expanded ? '▲' : '▼'}</span>
 
       {/* 展開的健康狀況 */}
       {expanded && (
-        <div className="member-health-detail" onClick={(e) => e.stopPropagation()}>
+        <div className={S.DETAIL} onClick={(e) => e.stopPropagation()}>
           {healthLoading ? (
-            <p className="health-loading">載入健康資料中…</p>
+            <p className={S.STATE_TEXT}>載入健康資料中…</p>
           ) : healthError ? (
-            <p className="health-error">⚠️ {healthError}</p>
+            <p className={S.STATE_ERROR}>⚠️ {healthError}</p>
           ) : hasAnyData ? (
-            <div className="health-fields">
+            <div className={S.FIELDS}>
               {health!.age != null && health!.age !== 0 && (
-                <div className="health-field">
-                  <span className="health-label">年齡</span>
-                  <span className="health-value">{health!.age} 歲</span>
+                <div className={S.FIELD}>
+                  <span className={S.FIELD_LABEL}>年齡</span>
+                  <span className={S.FIELD_VALUE}>{health!.age} 歲</span>
                 </div>
               )}
               {health!.gender && (
-                <div className="health-field">
-                  <span className="health-label">性別</span>
-                  <span className="health-value">{health!.gender === 'unknown' ? '未設定' : health!.gender}</span>
+                <div className={S.FIELD}>
+                  <span className={S.FIELD_LABEL}>性別</span>
+                  <span className={S.FIELD_VALUE}>{health!.gender === 'unknown' ? '未設定' : health!.gender}</span>
                 </div>
               )}
               {((health!.height != null && health!.height !== 1.0) || (health!.weight != null && health!.weight !== 1.0)) && (
-                <div className="health-field">
-                  <span className="health-label">身體指標</span>
-                  <span className="health-value">
+                <div className={S.FIELD}>
+                  <span className={S.FIELD_LABEL}>身體指標</span>
+                  <span className={S.FIELD_VALUE}>
                     {health!.height != null && health!.height !== 1.0 ? `${health!.height} cm` : ''}
                     {health!.height != null && health!.height !== 1.0 && health!.weight != null && health!.weight !== 1.0 ? ' / ' : ''}
                     {health!.weight != null && health!.weight !== 1.0 ? `${health!.weight} kg` : ''}
@@ -124,26 +129,26 @@ export function MemberCard({ member }: Props) {
                 </div>
               )}
               {health!.chronic_history && (
-                <div className="health-field">
-                  <span className="health-label">慢性病史</span>
-                  <span className="health-value">{health!.chronic_history}</span>
+                <div className={S.FIELD}>
+                  <span className={S.FIELD_LABEL}>慢性病史</span>
+                  <span className={S.FIELD_VALUE}>{health!.chronic_history}</span>
                 </div>
               )}
               {health!.major_illness_history && (
-                <div className="health-field">
-                  <span className="health-label">重大疾病</span>
-                  <span className="health-value">{health!.major_illness_history}</span>
+                <div className={S.FIELD}>
+                  <span className={S.FIELD_LABEL}>重大疾病</span>
+                  <span className={S.FIELD_VALUE}>{health!.major_illness_history}</span>
                 </div>
               )}
               {health!.surgery_history && (
-                <div className="health-field">
-                  <span className="health-label">手術記錄</span>
-                  <span className="health-value">{health!.surgery_history}</span>
+                <div className={S.FIELD}>
+                  <span className={S.FIELD_LABEL}>手術記錄</span>
+                  <span className={S.FIELD_VALUE}>{health!.surgery_history}</span>
                 </div>
               )}
             </div>
           ) : (
-            <p className="health-empty">尚無健康資料</p>
+            <p className={S.STATE_TEXT}>尚無健康資料</p>
           )}
         </div>
       )}

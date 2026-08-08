@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import liff from '@line/liff';
 import { createInvite } from '../../api/familyApi';
 import { useTranslation } from 'react-i18next';
+import * as S from './styles';
 
 interface Props {
   liffReady: boolean;
@@ -56,7 +57,7 @@ export function InviteButton({ liffReady, onSuccess, onError }: Props) {
   return (
     <button
       id="family-invite-btn"
-      className="invite-btn"
+      className={S.INVITE_BTN}
       onClick={handleInvite}
       disabled={inviting || !liffReady}
     >
