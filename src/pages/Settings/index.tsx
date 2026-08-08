@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { SupportedLanguage } from '../../i18n/messages';
 import { isSupportedLanguage } from '../../i18n';
 import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
@@ -178,23 +179,33 @@ const SettingsPage: React.FC = () => {
       <section className={cn(SECTION_CLASS, '[animation-delay:40ms]')}>
         <h3 className={HEADING_CLASS}>{t('settings.fontSizeTitle')}</h3>
         <p className={DESC_CLASS}>{t('settings.fontSizeDesc')}</p>
-        <div className="flex gap-2 min-[480px]:gap-2.5">
+        {/* ToggleGroup 取代原本三顆各自帶 aria-pressed 的獨立按鈕：
+            三者互斥，應為一個群組而非三個彼此無關的切換鈕，
+            方向鍵在群組內移動焦點也由元件提供。
+            multiple 預設 false（單選），value 為陣列語意。 */}
+        <ToggleGroup
+          className="flex gap-2 min-[480px]:gap-2.5"
+          value={[settings.fontSize]}
+          onValueChange={(groupValue) => {
+            const next = groupValue[0] as SettingsState['fontSize'] | undefined;
+            if (next) handleFontSize(next);
+          }}
+          aria-label={t('settings.fontSizeTitle')}
+        >
           {(['normal', 'large', 'xlarge'] as const).map((size) => (
-            <button
+            <ToggleGroupItem
               key={size}
-              aria-pressed={settings.fontSize === size}
+              value={size}
               className={cn(
                 'min-h-12 flex-1 cursor-pointer rounded-md border-[1.5px] border-hair bg-surface-2 px-1 py-3 text-center font-bold text-foreground transition-[border-color,background-color,box-shadow] duration-140 hover:border-line active:scale-[0.96] min-[480px]:px-1.5',
                 FONT_SIZE_BTN[size],
-                settings.fontSize === size &&
-                  'border-primary bg-[var(--primary-soft)] text-[var(--primary-strong)] shadow-[0_0_0_3px_var(--primary-softer)]',
+                'aria-pressed:border-primary aria-pressed:bg-[var(--primary-soft)] aria-pressed:text-[var(--primary-strong)] aria-pressed:shadow-[0_0_0_3px_var(--primary-softer)]',
               )}
-              onClick={() => handleFontSize(size)}
             >
               {fontSizeLabelMap[size]}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
         {/* 預覽區跟著 --base-font-size 即時縮放 */}
         <div className="mt-3 rounded-md border-[1.5px] border-dashed border-line bg-surface-2 px-3 py-4 text-center text-[length:var(--base-font-size,20px)] font-semibold leading-relaxed text-foreground">
           <span>{t('settings.preview')}</span>

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication';
 import { formatDateDisplay } from '../../utils/date';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 import * as S from './styles';
 
 interface ReminderCardProps {
@@ -44,22 +45,20 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
         </span>
       </button>
 
-      <button
-        type="button"
-        role="switch"
-        aria-checked={reminder.enabled}
-        className={S.TOGGLE}
-        disabled={busy}
-        onClick={() => onToggle(reminder)}
-        aria-label={t('meds.toggleAria', { slot: slotLabel })}
-      >
-        <span className={S.TOGGLE_TRACK} aria-hidden="true">
-          <span className={S.TOGGLE_THUMB} />
-        </span>
+      {/* 整塊直向區域（84px 寬、含左分隔線）是點擊區，內含開關與狀態文字。
+          Switch 本身負責軌道／滑鈕與 role="switch"＋aria-checked；
+          外層 label 讓點擊文字也能切換，且不需要額外的 button 包裝。 */}
+      <label className={S.TOGGLE}>
+        <Switch
+          checked={reminder.enabled}
+          disabled={busy}
+          onCheckedChange={() => onToggle(reminder)}
+          aria-label={t('meds.toggleAria', { slot: slotLabel })}
+        />
         <span className={S.TOGGLE_TEXT}>
           {reminder.enabled ? t('meds.statusOn') : t('meds.statusOff')}
         </span>
-      </button>
+      </label>
     </article>
   );
 }

@@ -46,17 +46,12 @@ export const TIME = 'num text-[1.35rem] font-extrabold text-ink max-[420px]:text
 export const DATE_RANGE = 'text-[0.82rem] text-muted-foreground';
 export const CHEVRON = 'shrink-0 text-[1.4rem] leading-none text-faint';
 
-/* ── 卡片右側啟用開關（自刻，狀態掛在 aria-checked 上）──
-   維持手刻而非換 Base UI Switch：這顆開關帶有下方文字標籤與
-   整塊直向點擊區（84px 寬、含左分隔線）的複合結構，
-   已有 role="switch" + aria-checked 正確語意；樣式以
-   group-aria-checked 由按鈕狀態驅動。 */
+/* ── 卡片右側啟用開關 ──
+   外層是整塊直向點擊區（84px 寬、含左分隔線），內含 Switch 與狀態文字；
+   軌道與滑鈕由 Switch 元件負責，這裡只描述容器。
+   has-disabled: 讓 Switch 停用時整塊區域一起呈現等待狀態。 */
 export const TOGGLE =
-  'group/toggle flex w-[84px] shrink-0 cursor-pointer flex-col items-center justify-center gap-[5px] border-0 border-l border-hair bg-surface-2 px-2 py-3 disabled:cursor-progress disabled:opacity-60 max-[420px]:w-[68px]';
-export const TOGGLE_TRACK =
-  'relative h-[22px] w-10 rounded-full bg-line transition-colors duration-220 group-aria-checked/toggle:bg-primary';
-export const TOGGLE_THUMB =
-  'absolute top-[3px] left-[3px] size-4 rounded-full bg-white shadow-card transition-transform duration-220 group-aria-checked/toggle:translate-x-[18px]';
+  'flex w-[84px] shrink-0 cursor-pointer flex-col items-center justify-center gap-[5px] border-l border-hair bg-surface-2 px-2 py-3 has-disabled:cursor-progress has-disabled:opacity-60 max-[420px]:w-[68px]';
 export const TOGGLE_TEXT = 'text-[0.72rem] font-semibold text-muted-foreground';
 
 /* ── 空狀態 ── */
