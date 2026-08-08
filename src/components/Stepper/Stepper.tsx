@@ -19,6 +19,7 @@ import {
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 export interface RenderStepIndicatorProps {
   step: number;
@@ -132,7 +133,17 @@ export default function Stepper({
           stepCircleContainerClassName,
         )}
       >
+        {/* 視覺上的步驟列（圓點＋連接線）只有 aria-current，對輔助技術傳達不出
+            「第幾步、共幾步、完成多少」。補一個 sr-only 的 Progress 承擔這個語意，
+            視覺結構維持不變——量測式滑動動畫是這個元件的價值所在，不重寫。 */}
+        <Progress
+          className="sr-only"
+          value={totalSteps > 1 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0}
+          aria-label={`步驟 ${currentStep} / ${totalSteps}`}
+        />
         <div
+          role="group"
+          aria-label={`步驟 ${currentStep} / ${totalSteps}`}
           className={cn('flex w-full items-center px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4', stepContainerClassName)}
         >
           {stepsArray.map((_, index) => {
