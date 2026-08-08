@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,6 +9,8 @@ import {
 import liff from '@line/liff';
 import Stepper, { Step } from '../../components/Stepper/Stepper';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import * as S from './styles';
 
@@ -118,28 +120,10 @@ const PersonalHealthPage: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     // 存檔結果改用 Sonner 呈現；此處只留欄位錯誤（下方 effect 負責逾時清除）
     const [fieldErrors, setFieldErrors] = useState<{ age?: string; height?: string; weight?: string }>({});
-    const [openDropdown, setOpenDropdown] = useState<'gender' | 'chronic' | null>(null);
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
     const [liffReady, setLiffReady] = useState(false);
     const navigate = useNavigate();
-    const genderDropdownRef = useRef<HTMLDivElement | null>(null);
-    const chronicDropdownRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        const handleOutsideClick = (event: MouseEvent) => {
-            const target = event.target as Node;
-            const isClickInsideGender = genderDropdownRef.current?.contains(target);
-            const isClickInsideChronic = chronicDropdownRef.current?.contains(target);
-
-            if (!isClickInsideGender && !isClickInsideChronic) {
-                setOpenDropdown(null);
-            }
-        };
-
-        document.addEventListener('mousedown', handleOutsideClick);
-        return () => document.removeEventListener('mousedown', handleOutsideClick);
-    }, []);
 
     const handleLiffProfile = (
         profile: Awaited<ReturnType<typeof liff.getProfile>>,
@@ -403,10 +387,7 @@ const PersonalHealthPage: React.FC = () => {
             >
                 <Stepper
                     initialStep={1}
-                    onStepChange={(step) => {
-                        setCurrentStep(step);
-                        setOpenDropdown(null);
-                    }}
+                    onStepChange={setCurrentStep}
                     onFinalStepCompleted={handleSave}
                     backButtonText={t('personalHealth.back')}
                     nextButtonText={t('personalHealth.next')}
@@ -444,44 +425,30 @@ const PersonalHealthPage: React.FC = () => {
                             <label className={S.LABEL} htmlFor="gender">
                                 {t('personalHealth.gender')}
                             </label>
-                            <div ref={genderDropdownRef} className={S.SELECT_WRAP}>
-                                <button
+                            {/* 原本是手刻下拉：選項用 <button> 塞進 role="listbox"（語意不合法，
+                                應為 role="option"），且完全沒有鍵盤操作。改用 Select 後
+                                combobox/listbox/option 語意正確，方向鍵、首字跳選、Escape 皆內建。 */}
+                            <Select
+                                value={form.gender}
+                                onValueChange={(value) =>
+                                    setForm((prev) => ({ ...prev, gender: value as typeof prev.gender }))
+                                }
+                            >
+                                <SelectTrigger
                                     id="gender"
-                                    type="button"
-                                    className={S.SELECT_BTN}
-                                    aria-label={t('personalHealth.genderAria', {
-                                        value: genderLabel,
-                                    })}
-                                    aria-haspopup="listbox"
-                                    aria-expanded={openDropdown === 'gender'}
-                                    onClick={() =>
-                                        setOpenDropdown(openDropdown === 'gender' ? null : 'gender')
-                                    }
+                                    className={cn(S.SELECT_WRAP, S.SELECT_BTN)}
+                                    aria-label={t('personalHealth.genderAria', { value: genderLabel })}
                                 >
-                                    <span className={S.SELECT_TEXT}>{genderLabel}</span>
-                                    <span className={S.SELECT_CARET} aria-hidden="true">▼</span>
-                                </button>
-                                {openDropdown === 'gender' && (
-                                    <div className={S.SELECT_MENU} role="listbox">
-                                        {GENDER_OPTIONS.map((option) => (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                className={cn(S.SELECT_ITEM, form.gender === option.value && S.SELECT_ITEM_ACTIVE)}
-                                                onClick={() => {
-                                                    setForm((prev) => ({
-                                                        ...prev,
-                                                        gender: option.value,
-                                                    }));
-                                                    setOpenDropdown(null);
-                                                }}
-                                            >
-                                                {t(option.labelKey)}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                    <SelectValue placeholder={t('personalHealth.genderPlaceholder')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {GENDER_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {t(option.labelKey)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className={S.FORM_GROUP}>
@@ -586,20 +553,15 @@ const PersonalHealthPage: React.FC = () => {
                         <div className={S.FORM_GROUP}>
                             <label className={S.LABEL}>{t('personalHealth.chronic')}</label>
                             <div className={S.HISTORY_CONTROL}>
-                                <div
-                                    ref={chronicDropdownRef}
-                                    className={S.MULTI_WRAP}
-                                >
-                                    <button
-                                        type="button"
-                                        className={S.SELECT_BTN}
-                                        aria-haspopup="listbox"
-                                        aria-expanded={openDropdown === 'chronic'}
-                                        onClick={() =>
-                                            setOpenDropdown(
-                                                openDropdown === 'chronic' ? null : 'chronic',
-                                            )
-                                        }
+                                {/* 多選：shadcn 沒有 multi-select，改用 Popover 承載一組
+                                    role="checkbox" 的選項。原本是 <button> 塞進
+                                    role="listbox"，語意不合法（listbox 的子項應為 option），
+                                    且勾選狀態只用 ✓ 字元表達、螢幕閱讀器讀不到。
+                                    現在狀態由 aria-checked 傳達，✓ 純屬視覺。 */}
+                                <Popover>
+                                    <PopoverTrigger
+                                        className={cn(S.MULTI_WRAP, S.SELECT_BTN)}
+                                        aria-label={t('personalHealth.chronic')}
                                     >
                                         <span className={S.SELECT_TEXT}>
                                             {form.chronicDisease.length > 0
@@ -607,13 +569,9 @@ const PersonalHealthPage: React.FC = () => {
                                                 : t('personalHealth.chronicPlaceholder')}
                                         </span>
                                         <span className={S.SELECT_CARET} aria-hidden="true">▼</span>
-                                    </button>
-                                    {openDropdown === 'chronic' && (
-                                        <div
-                                            className={S.MULTI_MENU}
-                                            role="listbox"
-                                            aria-multiselectable="true"
-                                        >
+                                    </PopoverTrigger>
+                                    <PopoverContent className={S.MULTI_MENU} align="start">
+                                        <div role="group" aria-label={t('personalHealth.chronic')}>
                                             {CHRONIC_OPTIONS.map((option) => {
                                                 const checked = form.chronicDisease.includes(
                                                     option.value,
@@ -622,6 +580,8 @@ const PersonalHealthPage: React.FC = () => {
                                                     <button
                                                         key={option.value}
                                                         type="button"
+                                                        role="checkbox"
+                                                        aria-checked={checked}
                                                         className={cn(S.MULTI_ITEM, checked && S.MULTI_ITEM_ACTIVE)}
                                                         onClick={() =>
                                                             handleChronicToggle(option.value)
@@ -638,8 +598,8 @@ const PersonalHealthPage: React.FC = () => {
                                                 );
                                             })}
                                         </div>
-                                    )}
-                                </div>
+                                    </PopoverContent>
+                                </Popover>
                                 {showOtherInput && (
                                     <div className={S.OTHER_ROW}>
                                         <input

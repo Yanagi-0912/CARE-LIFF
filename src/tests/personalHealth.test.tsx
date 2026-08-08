@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderWithToaster } from './testUtils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import liff from '@line/liff';
@@ -59,8 +60,13 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         fireEvent.change(screen.getByLabelText('年齡'), {
             target: { value: '30' },
         });
-        fireEvent.click(screen.getByRole('button', { name: /請選擇性別/ }));
-        fireEvent.click(screen.getByRole('button', { name: gender }));
+        // 性別已改用 shadcn Select：trigger 為 combobox、選項為 option。
+        // 這裡用 userEvent 而非 fireEvent：Base UI 的彈出層要靠完整的指標事件
+        // 序列才會關閉，只送 click 會選到值卻留著彈出層，而開啟期間整頁被設為
+        // inert（data-base-ui-inert），後續的「下一步」點擊就不會生效。
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('combobox', { name: /性別/ }));
+        await user.click(await screen.findByRole('option', { name: gender }));
         fireEvent.click(screen.getByRole('button', { name: '下一步' }));
         await screen.findByLabelText('身高 (cm)');
     };
@@ -73,7 +79,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             target: { value: '70' },
         });
         fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-        await screen.findByRole('button', { name: /請選擇慢性病史/ });
+        await screen.findByRole('button', { name: /慢性病史/ });
     };
 
     const reachHealthHistoryStep = async (gender: '男' | '女' = '男') => {
@@ -109,10 +115,9 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         const ageInput = screen.getByPlaceholderText('請輸入年齡');
         fireEvent.change(ageInput, { target: { value: '150' } });
         fireEvent.blur(ageInput);
-        const genderButton = screen.getByRole('button', { name: /請選擇性別/i });
-        fireEvent.click(genderButton);
-        const maleOption = await screen.findByRole('button', { name: '男' });
-        fireEvent.click(maleOption);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('combobox', { name: /性別/i }));
+        await user.click(await screen.findByRole('option', { name: '男' }));
 
         expect(await screen.findByText((content) => content.includes('年齡') && content.includes('130'))).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '下一步' })).toBeDisabled();
@@ -144,9 +149,10 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         await reachHealthHistoryStep('男');
 
         // 開啟慢性病選單並勾選「高血壓」與「糖尿病」
-        fireEvent.click(screen.getByRole('button', { name: /請選擇慢性病史/ }));
-        fireEvent.click(screen.getByRole('button', { name: /✓\s*高血壓|高血壓/ }));
-        fireEvent.click(screen.getByRole('button', { name: /✓\s*糖尿病|糖尿病/ }));
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: /慢性病史/ }));
+        await user.click(await screen.findByRole('checkbox', { name: /高血壓/ }));
+        await user.click(await screen.findByRole('checkbox', { name: /糖尿病/ }));
 
         // 送出表單
         fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
@@ -174,9 +180,10 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         await reachHealthHistoryStep('女');
 
         // 勾選一般項目「氣喘」與「其他」
-        fireEvent.click(screen.getByRole('button', { name: /請選擇慢性病史/ }));
-        fireEvent.click(screen.getByRole('button', { name: /✓\s*氣喘|氣喘/ }));
-        fireEvent.click(screen.getByRole('button', { name: /✓\s*其他|其他/ }));
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: /慢性病史/ }));
+        await user.click(await screen.findByRole('checkbox', { name: /氣喘/ }));
+        await user.click(await screen.findByRole('checkbox', { name: /其他/ }));
 
         // 填寫自訂內容並點擊打勾保存
         const otherTextInput = screen.getByPlaceholderText('請輸入其他慢性病');
@@ -206,8 +213,9 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         await reachHealthHistoryStep('男');
 
         // 只勾選「其他」，但不填寫文字輸入框
-        fireEvent.click(screen.getByRole('button', { name: /請選擇慢性病史/ }));
-        fireEvent.click(screen.getByRole('button', { name: /✓\s*其他|其他/ }));
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: /慢性病史/ }));
+        await user.click(await screen.findByRole('checkbox', { name: /其他/ }));
 
         // 送出表單
         fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
