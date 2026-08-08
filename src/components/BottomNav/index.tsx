@@ -2,7 +2,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { HomeIcon, HealthIcon, PillIcon, FamilyIcon, SettingsIcon } from '../icons';
 import GlidingTabs from '../GlidingTabs/GlidingTabs';
-import './index.css';
 
 function BottomNav() {
   const navigate = useNavigate();
@@ -25,8 +24,10 @@ function BottomNav() {
     )?.key ?? '/';
 
   return (
-    <div className="bottom-nav">
+    // 容器不吃點擊（讓出內容捲動區），只有導覽列本身可點；電腦版改用側欄，故隱藏。
+    <div className="pointer-events-none sticky bottom-0 left-0 right-0 z-[100] flex justify-center bg-transparent md:hidden">
       <GlidingTabs
+        className="pointer-events-auto"
         tabs={tabs}
         activeKey={activeKey}
         onChange={(key) => navigate(key)}

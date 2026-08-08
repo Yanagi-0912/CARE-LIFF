@@ -64,6 +64,13 @@
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
 
+  /* ── CARE 特有的文字／表面層級（shadcn 沒有對應語意，另外開名字）── */
+  --color-ink: var(--ink);
+  --color-faint: var(--faint);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
   /* ── 線條與輸入 ── */
   --color-border: var(--line);
   --color-hair: var(--hair);
