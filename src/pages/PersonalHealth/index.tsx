@@ -8,7 +8,8 @@ import {
 } from '../../api/profileApi';
 import liff from '@line/liff';
 import Stepper, { Step } from '../../components/Stepper/Stepper';
-import './index.css';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
 
@@ -363,13 +364,13 @@ const PersonalHealthPage: React.FC = () => {
         values.map((value) => chronicLabelMap[value] ?? value).join('、');
 
     return (
-        <div className="pageContainer">
-            {liffError && <div className="saveToast saveToastError">{liffError}</div>}
-            <section className="profileBanner">
-                <div className="profileAvatarWrap">
+        <div className={S.PAGE}>
+            {liffError && <div className={cn(S.TOAST, S.TOAST_ERROR)}>{liffError}</div>}
+            <section className={S.BANNER}>
+                <div className={S.AVATAR_WRAP}>
                     {userAvatar ? (
                         <img
-                            className="profileAvatar"
+                            className={S.AVATAR}
                             src={userAvatar}
                             alt={
                                 userName
@@ -378,18 +379,18 @@ const PersonalHealthPage: React.FC = () => {
                             }
                         />
                     ) : (
-                        <div className="profileAvatar profileAvatarFallback" aria-hidden="true">
+                        <div className={cn(S.AVATAR, S.AVATAR_FALLBACK)} aria-hidden="true">
                             {userName ? userName.charAt(0) : 'U'}
                         </div>
                     )}
                 </div>
-                <div className="profileBannerText">
-                    <div className="profileBannerLabel">
+                <div className={S.BANNER_TEXT}>
+                    <div className={S.BANNER_LABEL}>
                         {isLoggedIn
                             ? t('personalHealth.loggedIn')
                             : t('personalHealth.loggedOut')}
                     </div>
-                    <div className="formTitle profileBannerTitle">
+                    <div className={S.BANNER_TITLE}>
                         {userName
                             ? t('personalHealth.titleWithName', { name: userName })
                             : t('personalHealth.title')}
@@ -398,18 +399,18 @@ const PersonalHealthPage: React.FC = () => {
             </section>
 
             {saveStatus === 'success' && (
-                <div className="saveToast saveToastSuccess">
+                <div className={cn(S.TOAST, S.TOAST_SUCCESS)}>
                     {saveMessage || t('personalHealth.saveSuccess')}
                 </div>
             )}
             {saveStatus === 'error' && (
-                <div className="saveToast saveToastError">
+                <div className={cn(S.TOAST, S.TOAST_ERROR)}>
                     {saveMessage || t('personalHealth.saveError')}
                 </div>
             )}
             <form
                 id="personalHealthForm"
-                className="formContainer stepperForm"
+                className={cn(S.FORM_CARD, S.FORM_CARD_BARE)}
                 onSubmit={(event) => event.preventDefault()}
                 noValidate
             >
@@ -430,18 +431,18 @@ const PersonalHealthPage: React.FC = () => {
                     aria-label={t('personalHealth.stepperAriaLabel')}
                 >
                     <Step>
-                        <div className="healthStepIntro">
+                        <div className={S.STEP_INTRO}>
                             <span>{t('personalHealth.step1.label')}</span>
                             <h2>{t('personalHealth.step1.title')}</h2>
                             <p>{t('personalHealth.step1.desc')}</p>
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="name">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="name">
                                 {t('personalHealth.name')}
                             </label>
                             <input
-                                className="input"
+                                className={S.INPUT}
                                 type="text"
                                 id="name"
                                 name="name"
@@ -452,15 +453,15 @@ const PersonalHealthPage: React.FC = () => {
                             />
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="gender">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="gender">
                                 {t('personalHealth.gender')}
                             </label>
-                            <div ref={genderDropdownRef} className="singleSelectWrapper">
+                            <div ref={genderDropdownRef} className={S.SELECT_WRAP}>
                                 <button
                                     id="gender"
                                     type="button"
-                                    className="singleSelectButton"
+                                    className={S.SELECT_BTN}
                                     aria-label={t('personalHealth.genderAria', {
                                         value: genderLabel,
                                     })}
@@ -470,18 +471,16 @@ const PersonalHealthPage: React.FC = () => {
                                         setOpenDropdown(openDropdown === 'gender' ? null : 'gender')
                                     }
                                 >
-                                    <span className="singleSelectText">{genderLabel}</span>
-                                    <span className="singleSelectCaret" aria-hidden="true">▼</span>
+                                    <span className={S.SELECT_TEXT}>{genderLabel}</span>
+                                    <span className={S.SELECT_CARET} aria-hidden="true">▼</span>
                                 </button>
                                 {openDropdown === 'gender' && (
-                                    <div className="singleSelectMenu" role="listbox">
+                                    <div className={S.SELECT_MENU} role="listbox">
                                         {GENDER_OPTIONS.map((option) => (
                                             <button
                                                 key={option.value}
                                                 type="button"
-                                                className={`singleSelectItem ${
-                                                    form.gender === option.value ? 'isSelected' : ''
-                                                }`}
+                                                className={cn(S.SELECT_ITEM, form.gender === option.value && S.SELECT_ITEM_ACTIVE)}
                                                 onClick={() => {
                                                     setForm((prev) => ({
                                                         ...prev,
@@ -498,13 +497,13 @@ const PersonalHealthPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="age">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="age">
                                 {t('personalHealth.age')}
                             </label>
-                            <div className="fieldControl">
+                            <div className={S.FIELD_CONTROL}>
                                 <input
-                                    className={`input ${fieldErrors.age ? 'inputHasError' : ''}`}
+                                    className={cn(S.INPUT, fieldErrors.age && S.INPUT_ERROR)}
                                     type="number"
                                     id="age"
                                     name="age"
@@ -518,30 +517,30 @@ const PersonalHealthPage: React.FC = () => {
                                     required
                                 />
                                 {fieldErrors.age && (
-                                    <span className="fieldErrorText">{fieldErrors.age}</span>
+                                    <span className={S.FIELD_ERROR_TEXT}>{fieldErrors.age}</span>
                                 )}
                             </div>
                         </div>
 
                         {!isBasicStepComplete && (
-                            <p className="stepRequirement">{t('personalHealth.basicRequired')}</p>
+                            <p className={S.STEP_REQUIREMENT}>{t('personalHealth.basicRequired')}</p>
                         )}
                     </Step>
 
                     <Step>
-                        <div className="healthStepIntro">
+                        <div className={S.STEP_INTRO}>
                             <span>{t('personalHealth.step2.label')}</span>
                             <h2>{t('personalHealth.step2.title')}</h2>
                             <p>{t('personalHealth.step2.desc')}</p>
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="height">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="height">
                                 {t('personalHealth.height')}
                             </label>
-                            <div className="fieldControl">
+                            <div className={S.FIELD_CONTROL}>
                                 <input
-                                    className={`input ${fieldErrors.height ? 'inputHasError' : ''}`}
+                                    className={cn(S.INPUT, fieldErrors.height && S.INPUT_ERROR)}
                                     type="number"
                                     id="height"
                                     name="height"
@@ -555,18 +554,18 @@ const PersonalHealthPage: React.FC = () => {
                                     required
                                 />
                                 {fieldErrors.height && (
-                                    <span className="fieldErrorText">{fieldErrors.height}</span>
+                                    <span className={S.FIELD_ERROR_TEXT}>{fieldErrors.height}</span>
                                 )}
                             </div>
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="weight">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="weight">
                                 {t('personalHealth.weight')}
                             </label>
-                            <div className="fieldControl">
+                            <div className={S.FIELD_CONTROL}>
                                 <input
-                                    className={`input ${fieldErrors.weight ? 'inputHasError' : ''}`}
+                                    className={cn(S.INPUT, fieldErrors.weight && S.INPUT_ERROR)}
                                     type="number"
                                     id="weight"
                                     name="weight"
@@ -580,33 +579,33 @@ const PersonalHealthPage: React.FC = () => {
                                     required
                                 />
                                 {fieldErrors.weight && (
-                                    <span className="fieldErrorText">{fieldErrors.weight}</span>
+                                    <span className={S.FIELD_ERROR_TEXT}>{fieldErrors.weight}</span>
                                 )}
                             </div>
                         </div>
 
                         {!isBodyStepComplete && (
-                            <p className="stepRequirement">{t('personalHealth.bodyRequired')}</p>
+                            <p className={S.STEP_REQUIREMENT}>{t('personalHealth.bodyRequired')}</p>
                         )}
                     </Step>
 
                     <Step>
-                        <div className="healthStepIntro">
+                        <div className={S.STEP_INTRO}>
                             <span>{t('personalHealth.step3.label')}</span>
                             <h2>{t('personalHealth.step3.title')}</h2>
                             <p>{t('personalHealth.step3.desc')}</p>
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label">{t('personalHealth.chronic')}</label>
-                            <div className="historyControl">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL}>{t('personalHealth.chronic')}</label>
+                            <div className={S.HISTORY_CONTROL}>
                                 <div
                                     ref={chronicDropdownRef}
-                                    className="multiSelectWrapper"
+                                    className={S.MULTI_WRAP}
                                 >
                                     <button
                                         type="button"
-                                        className="multiSelectButton"
+                                        className={S.SELECT_BTN}
                                         aria-haspopup="listbox"
                                         aria-expanded={openDropdown === 'chronic'}
                                         onClick={() =>
@@ -615,16 +614,16 @@ const PersonalHealthPage: React.FC = () => {
                                             )
                                         }
                                     >
-                                        <span className="multiSelectText">
+                                        <span className={S.SELECT_TEXT}>
                                             {form.chronicDisease.length > 0
                                                 ? formatChronicSelection(form.chronicDisease)
                                                 : t('personalHealth.chronicPlaceholder')}
                                         </span>
-                                        <span className="multiSelectCaret" aria-hidden="true">▼</span>
+                                        <span className={S.SELECT_CARET} aria-hidden="true">▼</span>
                                     </button>
                                     {openDropdown === 'chronic' && (
                                         <div
-                                            className="multiSelectMenu"
+                                            className={S.MULTI_MENU}
                                             role="listbox"
                                             aria-multiselectable="true"
                                         >
@@ -636,15 +635,13 @@ const PersonalHealthPage: React.FC = () => {
                                                     <button
                                                         key={option.value}
                                                         type="button"
-                                                        className={`multiSelectItem ${
-                                                            checked ? 'isSelected' : ''
-                                                        }`}
+                                                        className={cn(S.MULTI_ITEM, checked && S.MULTI_ITEM_ACTIVE)}
                                                         onClick={() =>
                                                             handleChronicToggle(option.value)
                                                         }
                                                     >
                                                         <span
-                                                            className="multiSelectCheck"
+                                                            className={S.MULTI_CHECK}
                                                             aria-hidden="true"
                                                         >
                                                             {checked ? '✓' : ''}
@@ -657,9 +654,9 @@ const PersonalHealthPage: React.FC = () => {
                                     )}
                                 </div>
                                 {showOtherInput && (
-                                    <div className="otherInputRow">
+                                    <div className={S.OTHER_ROW}>
                                         <input
-                                            className="input"
+                                            className={S.INPUT}
                                             type="text"
                                             name="chronicDiseaseOther"
                                             value={otherInput}
@@ -691,7 +688,7 @@ const PersonalHealthPage: React.FC = () => {
                                             </svg>
                                         </button>
                                         {otherSaved && (
-                                            <span className="otherSavedBadge">
+                                            <span className={S.OTHER_BADGE}>
                                                 {t('personalHealth.chronicOtherSaved')}
                                             </span>
                                         )}
@@ -700,12 +697,12 @@ const PersonalHealthPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="majorIllness">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="majorIllness">
                                 {t('personalHealth.majorIllness')}
                             </label>
                             <textarea
-                                className="input longInput"
+                                className={cn(S.INPUT, S.INPUT_LONG)}
                                 id="majorIllness"
                                 name="majorIllness"
                                 value={form.majorIllness}
@@ -715,12 +712,12 @@ const PersonalHealthPage: React.FC = () => {
                             />
                         </div>
 
-                        <div className="formGroup">
-                            <label className="label" htmlFor="surgeryHistory">
+                        <div className={S.FORM_GROUP}>
+                            <label className={S.LABEL} htmlFor="surgeryHistory">
                                 {t('personalHealth.surgeryHistory')}
                             </label>
                             <textarea
-                                className="input longInput"
+                                className={cn(S.INPUT, S.INPUT_LONG)}
                                 id="surgeryHistory"
                                 name="surgeryHistory"
                                 value={form.surgeryHistory}
@@ -732,10 +729,10 @@ const PersonalHealthPage: React.FC = () => {
                     </Step>
                 </Stepper>
             </form>
-            <div className="actionRow">
+            <div className={S.ACTION_ROW}>
                 <button
                     onClick={() => navigate('/personalhealth/consult')}
-                    className="button consultButton"
+                    className={S.BUTTON}
                 >
                     {t('personalHealth.viewConsult')}
                 </button>
