@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication';
 import { formatDateDisplay } from '../../utils/date';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 
 interface ReminderCardProps {
   reminder: MedicationReminder;
@@ -23,21 +25,21 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
     : t('meds.dateRangeOpen', { start: formatDateDisplay(reminder.start_date) });
 
   return (
-    <article className={`medCard slot-${reminder.slot_type}${reminder.enabled ? '' : ' isOff'}`}>
+    <article className={cn(S.CARD, !reminder.enabled && S.CARD_OFF)}>
       <button
         type="button"
-        className="medCardMain"
+        className={S.CARD_MAIN}
         onClick={() => onEdit(reminder)}
         aria-label={t('meds.editAria', { slot: slotLabel, time: reminder.scheduled_time })}
       >
-        <span className="medSlotBadge" aria-hidden="true">
+        <span className={cn(S.SLOT_BADGE, S.SLOT_TONE[reminder.slot_type])} aria-hidden="true">
           {slotLabel}
         </span>
-        <span className="medCardInfo">
-          <strong className="medTime">{reminder.scheduled_time}</strong>
-          <span className="medDateRange">{dateRange}</span>
+        <span className={S.CARD_INFO}>
+          <strong className={S.TIME}>{reminder.scheduled_time}</strong>
+          <span className={S.DATE_RANGE}>{dateRange}</span>
         </span>
-        <span className="medChevron" aria-hidden="true">
+        <span className={S.CHEVRON} aria-hidden="true">
           ›
         </span>
       </button>
@@ -46,15 +48,15 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
         type="button"
         role="switch"
         aria-checked={reminder.enabled}
-        className="medToggle"
+        className={S.TOGGLE}
         disabled={busy}
         onClick={() => onToggle(reminder)}
         aria-label={t('meds.toggleAria', { slot: slotLabel })}
       >
-        <span className="medToggleTrack" aria-hidden="true">
-          <span className="medToggleThumb" />
+        <span className={S.TOGGLE_TRACK} aria-hidden="true">
+          <span className={S.TOGGLE_THUMB} />
         </span>
-        <span className="medToggleText">
+        <span className={S.TOGGLE_TEXT}>
           {reminder.enabled ? t('meds.statusOn') : t('meds.statusOff')}
         </span>
       </button>

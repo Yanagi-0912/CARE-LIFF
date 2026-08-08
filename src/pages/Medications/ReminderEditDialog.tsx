@@ -5,6 +5,7 @@ import {
   type MedicationReminder,
   type UpdateReminderRequest,
 } from '../../types/medication';
+import * as S from './styles';
 
 interface ReminderEditDialogProps {
   reminder: MedicationReminder;
@@ -83,9 +84,9 @@ export function ReminderEditDialog({
   };
 
   return (
-    <div className="medDialogBackdrop" role="presentation" onMouseDown={onClose}>
+    <div className={S.DIALOG_BACKDROP} role="presentation" onMouseDown={onClose}>
       <section
-        className="medDialog"
+        className={S.DIALOG}
         role="dialog"
         aria-modal="true"
         aria-labelledby="med-edit-title"
@@ -93,23 +94,24 @@ export function ReminderEditDialog({
       >
         <button
           type="button"
-          className="medDialogClose"
+          className={S.DIALOG_CLOSE}
           aria-label={t('meds.close')}
           onClick={onClose}
         >
           ×
         </button>
 
-        <h2 id="med-edit-title">{t('meds.edit.title')}</h2>
+        <h2 id="med-edit-title" className={S.DIALOG_H2}>{t('meds.edit.title')}</h2>
 
-        <p className="medDialogTarget">
+        <p className={S.DIALOG_TARGET}>
           <span>{t('meds.add.slotsField')}</span>
-          <strong>{slotLabel}</strong>
+          <strong className={S.DIALOG_TARGET_STRONG}>{slotLabel}</strong>
         </p>
 
-        <label className="medField">
-          <span>{t('meds.edit.time')}</span>
+        <label className={S.FIELD}>
+          <span className={S.FIELD_LABEL}>{t('meds.edit.time')}</span>
           <input
+            className={S.FIELD_INPUT}
             type="time"
             value={time}
             disabled={submitting}
@@ -120,9 +122,10 @@ export function ReminderEditDialog({
           />
         </label>
 
-        <label className="medField">
-          <span>{t('meds.edit.startDate')}</span>
+        <label className={S.FIELD}>
+          <span className={S.FIELD_LABEL}>{t('meds.edit.startDate')}</span>
           <input
+            className={S.FIELD_INPUT}
             type="date"
             value={startDate}
             disabled={submitting}
@@ -133,9 +136,10 @@ export function ReminderEditDialog({
           />
         </label>
 
-        <label className="medField">
-          <span>{t('meds.edit.endDate')}</span>
+        <label className={S.FIELD}>
+          <span className={S.FIELD_LABEL}>{t('meds.edit.endDate')}</span>
           <input
+            className={S.FIELD_INPUT}
             type="date"
             value={endDate}
             min={startDate}
@@ -145,11 +149,12 @@ export function ReminderEditDialog({
               setEndDate(event.target.value);
             }}
           />
-          {hadEndDate && <small>{t('meds.edit.endDateNote')}</small>}
+          {hadEndDate && <small className={S.FIELD_HINT}>{t('meds.edit.endDateNote')}</small>}
         </label>
 
-        <label className="medFieldInline">
+        <label className={S.FIELD_INLINE}>
           <input
+            className={S.SLOT_CHECKBOX}
             type="checkbox"
             checked={enabled}
             disabled={submitting}
@@ -162,18 +167,18 @@ export function ReminderEditDialog({
         </label>
 
         {formError && (
-          <p className="medDialogError" role="alert">
+          <p className={S.ERROR} role="alert">
             {formError}
           </p>
         )}
 
-        <div className="medDialogActions">
-          <button type="button" className="medButtonGhost" onClick={onClose} disabled={submitting}>
+        <div className={S.ACTIONS}>
+          <button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
             {t('meds.cancel')}
           </button>
           <button
             type="button"
-            className="medButtonPrimary"
+            className={S.BTN_PRIMARY}
             onClick={() => void handleSave()}
             disabled={submitting}
           >
@@ -181,14 +186,14 @@ export function ReminderEditDialog({
           </button>
         </div>
 
-        <div className="medDangerZone">
+        <div className={S.DANGER_ZONE}>
           {confirmingDelete ? (
             <>
-              <p role="alert">{t('meds.edit.deleteConfirm')}</p>
-              <div className="medDialogActions">
+              <p className={S.DANGER_P} role="alert">{t('meds.edit.deleteConfirm')}</p>
+              <div className={S.ACTIONS}>
                 <button
                   type="button"
-                  className="medButtonGhost"
+                  className={S.BTN_GHOST}
                   onClick={() => setConfirmingDelete(false)}
                   disabled={submitting}
                 >
@@ -196,7 +201,7 @@ export function ReminderEditDialog({
                 </button>
                 <button
                   type="button"
-                  className="medButtonDanger"
+                  className={S.BTN_DANGER}
                   onClick={() => void handleDelete()}
                   disabled={submitting}
                 >
@@ -207,7 +212,7 @@ export function ReminderEditDialog({
           ) : (
             <button
               type="button"
-              className="medDeleteLink"
+              className={S.DELETE_LINK}
               onClick={() => setConfirmingDelete(true)}
               disabled={submitting}
             >

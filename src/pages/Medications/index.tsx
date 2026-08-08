@@ -12,7 +12,8 @@ import { ReminderCard } from './ReminderCard';
 import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
 import { useMedications } from './useMedications';
-import './index.css';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 
 /** 讀取本人 LINE userId；未登入時回 undefined（列表 API 省略參數即為本人） */
 function readSelfUserId(): string | undefined {
@@ -98,22 +99,22 @@ const MedicationsPage = () => {
   };
 
   return (
-    <div className="medsPage">
-      {toast && <div className={`medToast ${toast.type}`}>{toast.msg}</div>}
+    <div className={S.PAGE}>
+      {toast && <div className={cn(S.TOAST, S.TOAST_TONE[toast.type])}>{toast.msg}</div>}
 
-      <header className="medsHeader">
-        <h1>{t('meds.title')}</h1>
-        <button type="button" className="medButtonPrimary" onClick={() => setAdding(true)}>
+      <header className={S.HEADER}>
+        <h1 className={S.HEADER_H1}>{t('meds.title')}</h1>
+        <button type="button" className={S.BTN_PRIMARY} onClick={() => setAdding(true)}>
           ＋{t('meds.addButton')}
         </button>
       </header>
 
-      <div className="medTargetChips" role="group" aria-label={t('meds.targetLabel')}>
+      <div className={S.CHIPS_ROW} role="group" aria-label={t('meds.targetLabel')}>
         {targets.map((target) => (
           <button
             key={target.userId ?? 'self'}
             type="button"
-            className={`medChip${target.userId === selectedUserId ? ' isActive' : ''}`}
+            className={cn(S.CHIP, target.userId === selectedUserId && S.CHIP_ACTIVE)}
             aria-pressed={target.userId === selectedUserId}
             onClick={() => setSelectedUserId(target.userId)}
           >
@@ -123,27 +124,27 @@ const MedicationsPage = () => {
       </div>
 
       {loading ? (
-        <div className="medEmpty">
-          <p>{t('meds.loading')}</p>
+        <div className={S.EMPTY}>
+          <p className={S.EMPTY_P}>{t('meds.loading')}</p>
         </div>
       ) : error ? (
-        <div className="medEmpty">
-          <span className="medEmptyIcon" aria-hidden="true">
+        <div className={S.EMPTY}>
+          <span className={S.EMPTY_ICON} aria-hidden="true">
             !
           </span>
-          <h2>{t('meds.loadError')}</h2>
-          <p>{error}</p>
+          <h2 className={S.EMPTY_H2}>{t('meds.loadError')}</h2>
+          <p className={S.EMPTY_P}>{error}</p>
         </div>
       ) : reminders.length === 0 ? (
-        <div className="medEmpty">
-          <span className="medEmptyIcon" aria-hidden="true">
+        <div className={S.EMPTY}>
+          <span className={S.EMPTY_ICON} aria-hidden="true">
             ○
           </span>
-          <h2>{t('meds.empty', { name: selectedName })}</h2>
-          <p>{t('meds.emptyHint')}</p>
+          <h2 className={S.EMPTY_H2}>{t('meds.empty', { name: selectedName })}</h2>
+          <p className={S.EMPTY_P}>{t('meds.emptyHint')}</p>
         </div>
       ) : (
-        <section className="medList" aria-label={t('meds.listLabel')}>
+        <section className={S.LIST} aria-label={t('meds.listLabel')}>
           {reminders.map((reminder) => (
             <ReminderCard
               key={reminder.id}

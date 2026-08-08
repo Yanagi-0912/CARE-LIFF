@@ -7,6 +7,8 @@ import {
   type MedicationSlotType,
 } from '../../types/medication';
 import { todayLocalDateString } from '../../utils/date';
+import { cn } from '@/lib/utils';
+import * as S from './styles';
 
 interface ReminderFormDialogProps {
   /** 提醒對象名稱，僅顯示用；對象由頁面上方的 chips 決定 */
@@ -63,9 +65,9 @@ export function ReminderFormDialog({
   };
 
   return (
-    <div className="medDialogBackdrop" role="presentation" onMouseDown={onClose}>
+    <div className={S.DIALOG_BACKDROP} role="presentation" onMouseDown={onClose}>
       <section
-        className="medDialog"
+        className={S.DIALOG}
         role="dialog"
         aria-modal="true"
         aria-labelledby="med-add-title"
@@ -73,34 +75,35 @@ export function ReminderFormDialog({
       >
         <button
           type="button"
-          className="medDialogClose"
+          className={S.DIALOG_CLOSE}
           aria-label={t('meds.close')}
           onClick={onClose}
         >
           ×
         </button>
 
-        <h2 id="med-add-title">{t('meds.add.title')}</h2>
+        <h2 id="med-add-title" className={S.DIALOG_H2}>{t('meds.add.title')}</h2>
 
-        <p className="medDialogTarget">
+        <p className={S.DIALOG_TARGET}>
           <span>{t('meds.add.targetField')}</span>
-          <strong>{targetName}</strong>
+          <strong className={S.DIALOG_TARGET_STRONG}>{targetName}</strong>
         </p>
 
-        <fieldset className="medSlotPicker">
-          <legend>{t('meds.add.slotsField')}</legend>
+        <fieldset className={S.SLOT_PICKER}>
+          <legend className={S.SLOT_LEGEND}>{t('meds.add.slotsField')}</legend>
           {SLOT_TYPES.map((slot) => {
             const taken = existingSlots.includes(slot);
             return (
-              <label key={slot} className={`medSlotOption${taken ? ' isTaken' : ''}`}>
+              <label key={slot} className={cn(S.SLOT_OPTION, taken && S.SLOT_TAKEN)}>
                 <input
+                  className={S.SLOT_CHECKBOX}
                   type="checkbox"
                   checked={selected.includes(slot)}
                   disabled={taken || submitting}
                   onChange={() => toggleSlot(slot)}
                 />
-                <span className="medSlotOptionName">{t(SLOT_LABEL_KEY[slot])}</span>
-                <span className="medSlotOptionTime">
+                <span className={S.SLOT_NAME}>{t(SLOT_LABEL_KEY[slot])}</span>
+                <span className={S.SLOT_TIME}>
                   {taken ? t('meds.add.slotExists') : DEFAULT_SLOT_TIMES[slot]}
                 </span>
               </label>
@@ -108,11 +111,12 @@ export function ReminderFormDialog({
           })}
         </fieldset>
 
-        {allSlotsUsed && <p className="medDialogNote">{t('meds.add.allSlotsUsed')}</p>}
+        {allSlotsUsed && <p className={S.NOTE}>{t('meds.add.allSlotsUsed')}</p>}
 
-        <label className="medField">
-          <span>{t('meds.add.startDate')}</span>
+        <label className={S.FIELD}>
+          <span className={S.FIELD_LABEL}>{t('meds.add.startDate')}</span>
           <input
+            className={S.FIELD_INPUT}
             type="date"
             value={startDate}
             disabled={submitting}
@@ -123,9 +127,10 @@ export function ReminderFormDialog({
           />
         </label>
 
-        <label className="medField">
-          <span>{t('meds.add.endDate')}</span>
+        <label className={S.FIELD}>
+          <span className={S.FIELD_LABEL}>{t('meds.add.endDate')}</span>
           <input
+            className={S.FIELD_INPUT}
             type="date"
             value={endDate}
             min={startDate}
@@ -135,24 +140,24 @@ export function ReminderFormDialog({
               setEndDate(event.target.value);
             }}
           />
-          <small>{t('meds.add.endDateOptional')}</small>
+          <small className={S.FIELD_HINT}>{t('meds.add.endDateOptional')}</small>
         </label>
 
-        <p className="medDialogNote">{t('meds.add.timeNote')}</p>
+        <p className={S.NOTE}>{t('meds.add.timeNote')}</p>
 
         {formError && (
-          <p className="medDialogError" role="alert">
+          <p className={S.ERROR} role="alert">
             {formError}
           </p>
         )}
 
-        <div className="medDialogActions">
-          <button type="button" className="medButtonGhost" onClick={onClose} disabled={submitting}>
+        <div className={S.ACTIONS}>
+          <button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={submitting}>
             {t('meds.cancel')}
           </button>
           <button
             type="button"
-            className="medButtonPrimary"
+            className={S.BTN_PRIMARY}
             onClick={() => void handleSubmit()}
             disabled={submitting || allSlotsUsed}
           >
