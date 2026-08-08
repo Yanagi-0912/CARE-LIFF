@@ -102,6 +102,40 @@
   --radius: var(--r-lg);
 }
 
+/* 專案自有的動畫。這裡用一般 @theme（而非 inline）：這是新定義而非對既有
+   token 的參照，Tailwind 會據此產生 animate-heartbeat 等 utility。 */
+@theme {
+  --animate-heartbeat: heartbeat 3.2s var(--ease) infinite;
+  --animate-badge-wiggle: badge-wiggle 420ms var(--ease);
+
+  @keyframes heartbeat {
+    0%,
+    24%,
+    100% {
+      transform: scale(1);
+    }
+    8% {
+      transform: scale(1.22);
+    }
+    16% {
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes badge-wiggle {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+    30% {
+      transform: rotate(-8deg);
+    }
+    65% {
+      transform: rotate(6deg);
+    }
+  }
+}
+
 /* ═══════════════════════════════════════════════════════
    CARE 健康管家 — Global base
    ═══════════════════════════════════════════════════════ */
