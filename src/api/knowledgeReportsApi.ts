@@ -53,7 +53,24 @@ async function parseError(res: Response): Promise<Error> {
   try {
     const data = await res.json();
     if (data.detail) {
-      message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      if (typeof data.detail === 'string') {
+        // 舊形狀：detail 本身就是給人看的字串，向後相容
+        message = data.detail;
+      } else if (
+        typeof data.detail === 'object' &&
+        !Array.isArray(data.detail) &&
+        typeof data.detail.message === 'string'
+      ) {
+        // 新形狀（如 approve 的白名單檢查）：detail 是結構化物件，
+        // 其中 message 才是給人看的中文說明，其餘欄位（code、invalid_urls…）
+        // 是給表單逐一標紅用的機器可讀資訊，不該直接塞給使用者看
+        message = data.detail.message;
+      } else {
+        // detail 是其他物件形狀（如陣列、或物件但沒有字串 message）：
+        // 沒有已知的可讀欄位可取，保留 JSON.stringify 後備，
+        // 讓至少看得到原始內容，而不是完全吞掉錯誤
+        message = JSON.stringify(data.detail);
+      }
     } else if (data.message) {
       message = data.message;
     }
