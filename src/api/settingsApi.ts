@@ -10,6 +10,7 @@ export type ApiUserSettings = {
   notify_reminder: boolean;
   notify_family: boolean;
   voice_reply_enabled: boolean;
+  voice_rate: 'slow' | 'normal' | 'fast';
 };
 
 export type UpdateUserSettingsPayload = Partial<ApiUserSettings>;

@@ -13,6 +13,8 @@ export interface SettingsState {
   highContrast: boolean;
   notifyReminder: boolean;
   notifyFamily: boolean;
+  voiceReplyEnabled: boolean;
+  voiceRate: 'slow' | 'normal' | 'fast';
 }
 
 export const STORAGE_KEY = 'care-settings';
@@ -23,6 +25,8 @@ export const defaultSettings: SettingsState = {
   highContrast: true, // 預設高對比
   notifyReminder: true,
   notifyFamily: true,
+  voiceReplyEnabled: false, // 對齊後端預設值
+  voiceRate: 'normal', // 對齊後端預設值
 };
 
 /** 字級對照：設定頁的三段選項對應的實際 px 值 */
