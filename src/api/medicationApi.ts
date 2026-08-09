@@ -206,31 +206,3 @@ export async function commitPrescriptionDraft(
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
-
-/**
- * 8. 判斷後端是否開啟藥袋掃描功能。
- *
- * 後端刻意不為關閉狀態開一支可查詢的端點——`PRESCRIPTION_SCAN_ENABLED` 關閉時，
- * 三支藥袋端點一律回 404，且不揭露「功能存在只是關閉」（見
- * app/dependencies.py 的 require_prescription_scan_enabled）。這裡借用既有的
- * 「查詢草稿」端點探測：帶一個必然不存在的 draft_id 查詢，開關關閉與開啟時
- * 都會拿到 404，但 body 不同——
- *   關閉：依賴注入在進入業務邏輯前就短路，detail 固定是 FastAPI 預設的
- *         純字串 "Not Found"。
- *   開啟：請求進入 service.get_draft，草稿不存在時 detail 是 "找不到草稿"。
- * 用這個既有的差異判斷開關狀態，不必請後端另外新增端點。
- */
-export async function checkPrescriptionScanEnabled(): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `${BASE_URL}/api/medications/prescription-drafts/__feature_flag_probe__`,
-      { headers: authHeaders() },
-    );
-    if (res.status !== 404) return true;
-    const data = await res.json().catch(() => null);
-    return data?.detail !== 'Not Found';
-  } catch {
-    // 探測請求本身失敗（離線／逾時）時保守隱藏入口，避免顯示一個打不開的功能
-    return false;
-  }
-}

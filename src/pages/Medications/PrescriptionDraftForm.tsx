@@ -9,11 +9,12 @@ import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
 import { commitPrescriptionDraft } from '../../api/medicationApi';
 import { SLOT_LABEL_KEY, SLOT_TYPES, type MedicationSlotType } from '../../types/medication';
-import type {
-  CommitDrugItem,
-  PrescriptionCommitResult,
-  PrescriptionDraft,
-  RecognizedDrug,
+import {
+  FREQUENCY_TO_SLOTS,
+  type CommitDrugItem,
+  type PrescriptionCommitResult,
+  type PrescriptionDraft,
+  type RecognizedDrug,
 } from '../../types/prescription';
 import {
   Dialog,
@@ -145,16 +146,21 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
     control,
     register,
     handleSubmit,
+    getValues,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       targetUserId: defaultTargetId,
+      // 時段勾選狀態要「預先」符合送出後實際會建立的提醒（產品規則：核對畫面
+      // 是使用者唯一看得到「等一下會發生什麼事」的地方），否則 TID 藥品會顯示
+      // 全部未勾選，看起來像不會建立每日三次提醒。PRN／OTHER 在
+      // FREQUENCY_TO_SLOTS 裡本就對應空陣列，這裡不需要另外特判。
       drugs: drugs.map((drug) => ({
         include: true,
         name: drug.name,
-        slots: [],
+        slots: FREQUENCY_TO_SLOTS[drug.frequency_code],
       })),
     },
   });
@@ -175,12 +181,19 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
     }
   });
 
+  // 「一鍵建立」是加速路徑，不是繞過核對的路徑：對象 ToggleGroup 與逐筆欄位
+  // 在按鈕按下前都還是可編輯、可見的（見下方 canOneTapConfirm 區塊），使用者
+  // 完全可能先改選對象或調整某一列再按一鍵建立。所以這裡一律讀 getValues()
+  // 取得當下的表單狀態，走跟手動送出完全相同的 toCommitDrug 映射——絕不能有
+  // 任一欄位繞過表單、直接沿用渲染當下算出的常數（那正是本次要修的重大缺陷：
+  // 使用者在畫面上改了對象，一鍵建立卻沿用了舊的建議值）。
   const handleOneTapConfirm = async () => {
     setOneTapSubmitting(true);
     try {
+      const values = getValues();
       const result = await commitPrescriptionDraft(draft.draft_id, {
-        user_id: defaultTargetId,
-        drugs: drugs.map((drug) => toCommitDrug(drug, { include: true, name: drug.name, slots: [] })),
+        user_id: values.targetUserId,
+        drugs: values.drugs.map((row, index) => toCommitDrug(drugs[index], row)),
       });
       onCommitted(result);
     } catch (err) {

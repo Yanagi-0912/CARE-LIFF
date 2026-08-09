@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithToaster } from './testUtils';
 import * as medicationApi from '../api/medicationApi';
 import { PrescriptionScanError } from '../api/medicationApi';
+import * as settingsApi from '../api/settingsApi';
 import MedicationsPage from '../pages/Medications';
 import { PrescriptionScanDialog } from '../pages/Medications/PrescriptionScanDialog';
 import { PrescriptionDraftForm } from '../pages/Medications/PrescriptionDraftForm';
@@ -20,12 +21,16 @@ vi.mock('../api/medicationApi', async (importOriginal) => {
     createReminders: vi.fn(),
     updateReminder: vi.fn(),
     deleteReminder: vi.fn(),
-    checkPrescriptionScanEnabled: vi.fn(),
     scanPrescription: vi.fn(),
     commitPrescriptionDraft: vi.fn(),
     getPrescriptionDraft: vi.fn(),
   };
 });
+
+// 功能開關現在由 GET /api/profiles/me/settings 提供，不再是 medicationApi 的一部分。
+vi.mock('../api/settingsApi', () => ({
+  getPrescriptionScanEnabled: vi.fn(),
+}));
 
 vi.mock('../hooks/useFamily', () => ({
   useFamily: () => ({
@@ -84,13 +89,25 @@ beforeEach(async () => {
 
 describe('藥袋掃描入口的功能開關', () => {
   it('後端關閉功能時，不顯示掃描入口', async () => {
-    vi.mocked(medicationApi.checkPrescriptionScanEnabled).mockResolvedValue(false);
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(false);
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
 
     renderWithToaster(
       <MemoryRouter>
         <MedicationsPage />
       </MemoryRouter>,
+    );
+
+    // 掃描入口在查詢 pending 時也是隱藏的（預設值就是 false），單靠
+    // 「按鈕不在畫面上」無法證明開關真的被讀成 false——查詢根本還沒解析
+    // 也會是一樣的畫面。所以先確定 getPrescriptionScanEnabled 真的被
+    // 呼叫並且它回傳的 promise 已經 resolve，才代表查詢真正落定，
+    // 接下來的斷言才有意義。
+    await waitFor(() => {
+      expect(settingsApi.getPrescriptionScanEnabled).toHaveBeenCalled();
+    });
+    await expect(vi.mocked(settingsApi.getPrescriptionScanEnabled).mock.results[0]!.value).resolves.toBe(
+      false,
     );
 
     await waitFor(() => {
@@ -100,7 +117,7 @@ describe('藥袋掃描入口的功能開關', () => {
   });
 
   it('後端開啟功能時，顯示掃描入口並可開啟拍照畫面', async () => {
-    vi.mocked(medicationApi.checkPrescriptionScanEnabled).mockResolvedValue(true);
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
 
     renderWithToaster(
@@ -214,6 +231,59 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     );
 
     expect(await screen.findByRole('button', { name: /一鍵建立/ })).toBeInTheDocument();
+  });
+
+  // 這是本輪修正的重大缺陷回歸測試：草稿的 suggested_user_id 只是預設值，
+  // 使用者在 ToggleGroup 上親自改選之後，一鍵建立必須送出使用者選的對象，
+  // 不能沿用渲染當下算出來的建議值——否則就是「使用者明明改選了，App 卻
+  // 悄悄建到別人身上」。斷言的是送出的 payload 本身，不是「有沒有呼叫到」。
+  it('一鍵建立送出的是使用者親自改選後的用藥對象，不是草稿的建議值', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+    });
+    // 建議值指向媽媽；使用者實際要記的是自己的藥
+    const draft = makeDraft({ suggested_user_id: 'U-mom' });
+    const onCommitted = vi.fn();
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={onCommitted} onClose={vi.fn()} />,
+    );
+
+    // 改選為本人
+    fireEvent.click(await screen.findByRole('button', { name: '我自己' }));
+    fireEvent.click(screen.getByRole('button', { name: /一鍵建立/ }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalledWith(
+      draft.draft_id,
+      expect.objectContaining({ user_id: 'U-self' }),
+    );
+  });
+
+  // 對照 src/types/prescription.ts 的 FREQUENCY_TO_SLOTS：TID 對應早／中／晚
+  // 三個時段，畫面上要「預先」顯示這個狀態，讓使用者看得出這顆藥等一下會
+  // 建立三筆提醒，而不是三個空白核取方塊、看起來像什麼都不會建立。
+  it('TID 頻次的藥品渲染時三個時段已預先勾選', async () => {
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'TID', name: '一天三次的藥' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(await screen.findByRole('checkbox', { name: '早' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '中' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '晚' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '睡前' })).not.toBeChecked();
   });
 
   it('PRN 藥品顯示「不會建立定時提醒」的說明', async () => {

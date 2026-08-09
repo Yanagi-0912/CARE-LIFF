@@ -28,7 +28,7 @@ export const queryKeys = {
   /** 家人的健康檔案，展開成員卡片時才會用到 */
   memberProfile: (userId: string) => ['member-profile', userId] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
-  /** 藥袋掃描功能開關探測結果，見 medicationApi.checkPrescriptionScanEnabled */
+  /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
   prescriptionScanEnabled: ['prescription-scan-enabled'] as const,
   knowledgeReports: ['knowledge-reports'] as const,
   /** 佇列篩選改由後端執行，狀態要進 key，否則換頁籤會沿用上一組分頁結果 */

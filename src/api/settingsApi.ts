@@ -38,6 +38,33 @@ export async function getUserSettings(): Promise<ApiUserSettings | null> {
   return body.settings as ApiUserSettings;
 }
 
+/**
+ * 藥袋掃描功能是否開啟。
+ *
+ * 這是全域功能旗標（`PRESCRIPTION_SCAN_ENABLED`），不是使用者可自行調整的
+ * 偏好設定，所以刻意不塞進 ApiUserSettings，獨立成一支函式，與 `settings`
+ * 欄位並列讀取同一支既有、已認證、保證回 200 的端點。取代先前「探測一個
+ * 不存在的 draft_id，比對 404 錯誤訊息字串」的作法——後者依賴後端未受約束
+ * 的錯誤文案，文案一改就可能讓開關偵測全面失準卻沒有任何測試會發現。
+ *
+ * 未登入或請求失敗時保守回傳 false：隱藏入口優先於顯示一個打不開的功能。
+ */
+export async function getPrescriptionScanEnabled(): Promise<boolean> {
+  if (!isAuthenticated()) return false;
+
+  try {
+    const res = await fetchWithAuth(`${BASE_URL}/api/profiles/me/settings`, {
+      method: 'GET',
+    });
+    if (!res.ok) return false;
+
+    const body = await res.json();
+    return Boolean(body.prescription_scan_enabled);
+  } catch {
+    return false;
+  }
+}
+
 /** 部分更新目前登入使用者的介面偏好設定，只會送出實際變更的欄位。 */
 export async function updateUserSettings(
   payload: UpdateUserSettingsPayload,
