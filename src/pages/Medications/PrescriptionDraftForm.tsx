@@ -50,11 +50,13 @@ interface PrescriptionDraftFormProps {
   onClose: () => void;
 }
 
-/** 每一列藥品的表單值，name／slots 是使用者可編輯的部分，其餘欄位直接沿用辨識結果 */
+/** 每一列藥品的表單值，name／slots／durationDays 是使用者可編輯的部分，其餘欄位直接沿用辨識結果 */
 interface DrugFormValue {
   include: boolean;
   name: string;
   slots: MedicationSlotType[];
+  /** 療程天數；null 代表使用者未填（長期用藥，不設結束日） */
+  durationDays: number | null;
 }
 
 /**
@@ -71,6 +73,11 @@ function buildSchema(t: TFunction, drugs: RecognizedDrug[]) {
           include: z.boolean(),
           name: z.string().min(1, t('meds.scan.draft.nameRequired')),
           slots: z.array(z.enum(SLOT_TYPES)),
+          durationDays: z
+            .number({ error: t('meds.scan.draft.durationDaysInvalid') })
+            .int({ message: t('meds.scan.draft.durationDaysInvalid') })
+            .positive({ message: t('meds.scan.draft.durationDaysInvalid') })
+            .nullable(),
         }),
       )
       .superRefine((rows, ctx) => {
@@ -91,18 +98,25 @@ function buildSchema(t: TFunction, drugs: RecognizedDrug[]) {
 type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugItem {
+  // 使用者把藥名改成別的字串之後，掃描當下比對到的許可證字號就不再保證對應
+  // 這個新名字——沿用舊證號等於把一個藥名和另一顆藥的許可證字號存在一起。
+  // 重新比對是下一次掃描的責任，這裡只能清掉，不能悄悄留著舊值。
+  const nameEdited = row.name !== original.name;
   return {
     name: row.name,
     generic_name: original.generic_name ?? undefined,
-    license_number: original.license_number ?? undefined,
+    license_number: nameEdited ? undefined : (original.license_number ?? undefined),
     unit_content: original.unit_content ?? undefined,
     total_quantity: original.total_quantity ?? undefined,
     usage_raw: original.usage_raw ?? undefined,
     frequency_code: original.frequency_code,
     indication: original.indication ?? undefined,
-    // PRN 不論使用者勾了什麼都不帶時段：後端一律忽略、絕不建立提醒；
-    // 其餘頻次若使用者沒有勾任何時段，就不帶 slots，讓後端依頻次代碼自動映射。
-    slots: original.frequency_code === 'PRN' || row.slots.length === 0 ? undefined : row.slots,
+    duration_days: row.durationDays ?? undefined,
+    // PRN 不論使用者勾了什麼都不帶時段：後端一律忽略、絕不建立提醒。
+    // 其餘頻次一律照使用者目前的勾選狀態原樣送出，包含「全部取消勾選」——
+    // 空陣列（使用者明確不要定時提醒）與「沒有覆寫」不是同一件事，
+    // 後端不能因為收到空陣列就退回頻次代碼算出的預設時段。
+    slots: original.frequency_code === 'PRN' ? undefined : row.slots,
     include: row.include,
   };
 }
@@ -161,6 +175,7 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
         include: true,
         name: drug.name,
         slots: FREQUENCY_TO_SLOTS[drug.frequency_code],
+        durationDays: drug.duration_days ?? null,
       })),
     },
   });
@@ -319,6 +334,38 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
                     })}
                   </FieldDescription>
 
+                  {/* 療程天數換算成後端的 end_date，決定這顆藥何時自動停止提醒——
+                      OCR 讀錯天數的後果不再只是顯示錯誤，而是提醒停得太早或太晚，
+                      所以要讓使用者在這裡看得到、改得動，不能只在辨識階段顯示過。 */}
+                  <Controller
+                    control={control}
+                    name={`drugs.${index}.durationDays`}
+                    render={({ field: durationField }) => (
+                      <Field className="mt-3" data-invalid={Boolean(errors.drugs?.[index]?.durationDays)}>
+                        <FieldLabel htmlFor={`drug-${index}-duration`}>
+                          {t('meds.scan.draft.durationDays')}
+                        </FieldLabel>
+                        <Input
+                          id={`drug-${index}-duration`}
+                          type="number"
+                          min={1}
+                          step={1}
+                          inputMode="numeric"
+                          disabled={busy}
+                          aria-invalid={Boolean(errors.drugs?.[index]?.durationDays)}
+                          placeholder={t('meds.scan.draft.durationDaysPlaceholder')}
+                          value={durationField.value ?? ''}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            durationField.onChange(raw === '' ? null : Number(raw));
+                          }}
+                        />
+                        <FieldDescription>{t('meds.scan.draft.durationDaysHint')}</FieldDescription>
+                        <FieldError errors={[errors.drugs?.[index]?.durationDays]} />
+                      </Field>
+                    )}
+                  />
+
                   {isPrn ? (
                     // 產品規則 3：PRN 一律不會出現在任何時段的提醒裡，必須明講原因，
                     // 否則使用者會誤以為 App 漏辨識，自行手動加成定時提醒。
@@ -334,38 +381,55 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
                       control={control}
                       name={`drugs.${index}.slots`}
                       render={({ field: slotsField }) => (
-                        <FieldSet className="mt-3">
-                          <FieldLegend variant="label">
-                            {isOther
-                              ? t('meds.scan.draft.slotsRequiredLabel')
-                              : t('meds.scan.draft.slotsLabel')}
-                          </FieldLegend>
-                          <div className="flex flex-wrap gap-2">
-                            {SLOT_TYPES.map((slot) => {
-                              const checked = slotsField.value.includes(slot);
-                              return (
-                                <FieldLabel key={slot} htmlFor={`drug-${index}-slot-${slot}`}>
-                                  <Field orientation="horizontal">
-                                    <Checkbox
-                                      id={`drug-${index}-slot-${slot}`}
-                                      checked={checked}
-                                      disabled={busy}
-                                      onCheckedChange={() =>
-                                        slotsField.onChange(
-                                          checked
-                                            ? slotsField.value.filter((s) => s !== slot)
-                                            : [...slotsField.value, slot],
-                                        )
-                                      }
-                                    />
-                                    <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
-                                  </Field>
-                                </FieldLabel>
-                              );
-                            })}
-                          </div>
-                          <FieldError errors={[errors.drugs?.[index]?.slots]} />
-                        </FieldSet>
+                        <>
+                          <FieldSet className="mt-3">
+                            <FieldLegend variant="label">
+                              {isOther
+                                ? t('meds.scan.draft.slotsRequiredLabel')
+                                : t('meds.scan.draft.slotsLabel')}
+                            </FieldLegend>
+                            <div className="flex flex-wrap gap-2">
+                              {SLOT_TYPES.map((slot) => {
+                                const checked = slotsField.value.includes(slot);
+                                return (
+                                  <FieldLabel key={slot} htmlFor={`drug-${index}-slot-${slot}`}>
+                                    <Field orientation="horizontal">
+                                      <Checkbox
+                                        id={`drug-${index}-slot-${slot}`}
+                                        checked={checked}
+                                        disabled={busy}
+                                        onCheckedChange={() =>
+                                          slotsField.onChange(
+                                            checked
+                                              ? slotsField.value.filter((s) => s !== slot)
+                                              : [...slotsField.value, slot],
+                                          )
+                                        }
+                                      />
+                                      <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
+                                    </Field>
+                                  </FieldLabel>
+                                );
+                              })}
+                            </div>
+                            <FieldError errors={[errors.drugs?.[index]?.slots]} />
+                          </FieldSet>
+                          {/* 使用者把所有時段都取消勾選之後的結果，和 PRN 完全一樣：
+                              這顆藥會被建立，但不會出現在任何時段的提醒裡。核對畫面是
+                              使用者唯一看得到「等一下會發生什麼事」的地方，沿用 PRN
+                              的說明樣式，不再發明第二套講法。 */}
+                          {slotsField.value.length === 0 && (
+                            <Alert className="mt-3 bg-warning-soft">
+                              <TriangleAlertIcon className="text-warning" />
+                              <AlertTitle className="text-warning">
+                                {t('meds.scan.draft.noSlotsTitle')}
+                              </AlertTitle>
+                              <AlertDescription className="text-warning/90">
+                                {t('meds.scan.draft.noSlotsDesc')}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </>
                       )}
                     />
                   )}

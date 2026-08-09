@@ -91,7 +91,13 @@ export interface CommitDrugItem {
   usage_raw?: string | null;
   frequency_code: PrescriptionFrequencyCode;
   indication?: string | null;
-  /** 使用者覆寫的時段；省略時由後端依頻次代碼自動映射（OTHER 除外，必須指定） */
+  /** 療程天數，換算成後端 Medication.end_date；省略或 null 代表長期用藥，不設結束日 */
+  duration_days?: number | null;
+  /**
+   * 使用者覆寫的時段。省略（undefined）代表沒有覆寫，由後端依頻次代碼自動映射；
+   * 空陣列（[]）代表使用者明確取消勾選所有時段，後端 SHALL NOT 因此退回自動映射的
+   * 預設時段——這顆藥就是要被建立成沒有任何定時提醒。兩者不可互相替代。
+   */
   slots?: MedicationSlotType[];
   /** 使用者取消勾選的項目不會被建立 */
   include: boolean;
@@ -107,4 +113,6 @@ export interface CommitPrescriptionDraftRequest {
 export interface PrescriptionCommitResult {
   medication_ids: string[];
   prn_medication_ids: string[];
+  /** 這次提交實際建立或連結到的提醒規則 id（去重後）。冪等重放時可能為空陣列。 */
+  reminder_ids: string[];
 }

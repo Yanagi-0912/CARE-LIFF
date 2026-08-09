@@ -241,6 +241,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
       medication_ids: ['m-1'],
       prn_medication_ids: [],
+      reminder_ids: ['r-1'],
     });
     // 建議值指向媽媽；使用者實際要記的是自己的藥
     const draft = makeDraft({ suggested_user_id: 'U-mom' });
@@ -333,6 +334,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
       medication_ids: ['m-1'],
       prn_medication_ids: [],
+      reminder_ids: ['r-1'],
     });
     const draft = makeDraft({
       confidence_level: 'medium',
@@ -354,6 +356,213 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
 
     await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
-    expect(onCommitted).toHaveBeenCalledWith({ medication_ids: ['m-1'], prn_medication_ids: [] });
+    expect(onCommitted).toHaveBeenCalledWith({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+    });
+  });
+
+  // 這是本輪修正的重大缺陷回歸測試：核對畫面現在會預先勾選時段，讓使用者
+  // 看得到「等一下會建立什麼」。如果使用者把 QD 藥的「早」取消勾選，
+  // 送出的 slots 必須是空陣列，不能被 toCommitDrug 悄悄改回 undefined
+  // （undefined 代表「沒有覆寫」，後端會退回頻次代碼算出的預設時段，
+  // 等於使用者取消勾選的操作被無聲蓋掉）。
+  it('取消勾選所有時段後仍可送出，slots 送出空陣列，並顯示不會建立提醒的說明', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: [],
+    });
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const morningCheckbox = await screen.findByRole('checkbox', { name: '早' });
+    expect(morningCheckbox).toBeChecked();
+    fireEvent.click(morningCheckbox);
+    expect(morningCheckbox).not.toBeChecked();
+
+    expect(await screen.findByText('目前不會建立定時提醒')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.slots).toEqual([]);
+  });
+
+  // 對照組：從未取消勾選的情況下，不該出現「不會建立提醒」的說明。
+  it('未取消勾選任何時段時，不顯示不會建立提醒的說明', async () => {
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    await screen.findByRole('checkbox', { name: '早' });
+    expect(screen.queryByText('目前不會建立定時提醒')).not.toBeInTheDocument();
+  });
+
+  // 療程天數（duration_days）現在會換算成後端的 end_date，決定這顆藥何時
+  // 自動停止提醒——必須讓使用者在核對畫面看得到辨識結果、也能修正它。
+  it('顯示辨識到的療程天數，且使用者修改後會原樣送出', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+    });
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '安莫西林', duration_days: 5 })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const durationInput = await screen.findByLabelText('療程天數');
+    expect(durationInput).toHaveValue(5);
+
+    fireEvent.change(durationInput, { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.duration_days).toBe(10);
+  });
+
+  // 沒有辨識到療程天數（慢性病長期用藥是常見情形）時，欄位保持空白，
+  // 送出時不帶 duration_days，後端才不會誤設一個結束日。
+  it('沒有辨識到療程天數時欄位留空，送出時不帶 duration_days', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+    });
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克', duration_days: null })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const durationInput = await screen.findByLabelText('療程天數');
+    expect(durationInput).toHaveValue(null);
+
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.duration_days).toBeUndefined();
+  });
+
+  // 藥證庫比對到的許可證字號是對著「掃描當下的藥名」比對出來的。使用者若
+  // 把藥名改成別的字串，繼續沿用舊證號就是把一個名字和另一顆藥的許可證
+  // 字號存在一起——必須清掉，讓下一次掃描才重新比對。
+  it('編輯藥名後，送出時不再帶原本比對到的許可證字號', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+    });
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({
+            frequency_code: 'QD',
+            name: '脈優錠5毫克',
+            license_number: '衛署藥製字第000001號',
+          }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const nameInput = await screen.findByLabelText('藥品名稱');
+    fireEvent.change(nameInput, { target: { value: '改過的藥名' } });
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.name).toBe('改過的藥名');
+    expect(payload.drugs[0]!.license_number).toBeUndefined();
+  });
+
+  // 對照組：藥名沒有被編輯過時，原本比對到的許可證字號要照樣送出，
+  // 不能因為加了「編輯後清空」的規則就連沒編輯的情況也一起清掉。
+  it('未編輯藥名時，原本比對到的許可證字號照樣送出', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+    });
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({
+            frequency_code: 'QD',
+            name: '脈優錠5毫克',
+            license_number: '衛署藥製字第000001號',
+          }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    await screen.findByLabelText('藥品名稱');
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.license_number).toBe('衛署藥製字第000001號');
   });
 });
