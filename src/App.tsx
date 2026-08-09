@@ -1,21 +1,31 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { useEffect } from 'react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
-import Home from './pages/Home';
-import PersonalHealth from './pages/PersonalHealth';
-import Family from './pages/Family';
-import JoinPage from './pages/Join';
-import ConsultRecordsPage from './pages/PersonalHealth/ConsultRecords';
-import KnowledgeReportsPage from './pages/KnowledgeReports';
-import AdminKnowledgeReportsPage from './pages/AdminKnowledgeReports';
-import MedicationsPage from './pages/Medications';
-import NearbyHospitalsPage from './pages/NearbyHospitals';
-import SettingsPage, { applyTheme, STORAGE_KEY, defaultSettings } from './pages/Settings';
-import type { SettingsState } from './pages/Settings';
 import AdminRoute from './components/AdminRoute';
-import Login from './pages/Loginpage';
+import {
+  applyTheme,
+  defaultSettings,
+  STORAGE_KEY,
+  type SettingsState,
+} from '@/lib/settings';
+
+// 各頁改為動態載入：原本 12 個頁面全部打包進單一 JS，使用者只想看首頁
+// 也得先下載並解析全部內容。這對跑在 LINE webview、裝置偏舊的長輩使用者
+// 影響最大——切開後首屏只需載入實際用到的那一頁。
+const Home = lazy(() => import('./pages/Home'));
+const PersonalHealth = lazy(() => import('./pages/PersonalHealth'));
+const Family = lazy(() => import('./pages/Family'));
+const JoinPage = lazy(() => import('./pages/Join'));
+const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultRecords'));
+const KnowledgeReportsPage = lazy(() => import('./pages/KnowledgeReports'));
+const AdminKnowledgeReportsPage = lazy(() => import('./pages/AdminKnowledgeReports'));
+const MedicationsPage = lazy(() => import('./pages/Medications'));
+const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
+const Login = lazy(() => import('./pages/Loginpage'));
 import { saveRedirectUrl } from './utils/redirect';
 import { ThemeProvider } from 'next-themes';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -73,7 +83,13 @@ function AppContent() {
 
         {/* key 綁定路徑：切頁時重新掛載，觸發進場動畫 */}
         <main className="content-area" key={location.pathname}>
-          <Routes>
+          {/* 頁面切分後首次進入某頁需短暫載入。fallback 用與頁面同高的空白區塊
+              而非轉圈動畫：切頁本身很快，閃一下 spinner 反而比留白更晃眼。
+              role="status" 讓螢幕閱讀器知道正在載入。 */}
+          <Suspense
+            fallback={<div className="min-h-[50vh]" role="status" aria-label="載入中" />}
+          >
+            <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/join" element={<JoinPage />} />
 
@@ -96,7 +112,8 @@ function AppContent() {
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
             <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-          </Routes>
+            </Routes>
+          </Suspense>
         </main>
       </div>
 

@@ -4,6 +4,7 @@ import { isAuthenticated, clearAuth } from '../../utils/auth';
 import { HealthIcon, PillIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, KeyIcon, SearchIcon } from '../../components/icons';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
 // 圖示圓底的 tone 配色。必須是完整字串的查表，不能用 `tone-${f.tone}` 拼接：
 // Tailwind 掃描原始碼文字比對 class，拼接出的字串不會出現在檔案裡，規則不會產生。
@@ -112,9 +113,9 @@ const Home = () => {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
         {features.map((f, index) => (
-          <div
+          <Card
             key={f.path}
-            className="group animate-card-in min-h-[118px] overflow-hidden rounded-lg border border-hair bg-surface shadow-card transition-[transform,box-shadow,border-color] duration-220 hover:-translate-y-[3px] hover:border-line hover:shadow-pop"
+            className="group animate-card-in min-h-[118px] gap-0 rounded-lg border border-hair bg-surface py-0 shadow-card ring-0 transition-[transform,box-shadow,border-color] duration-220 hover:-translate-y-[3px] hover:border-line hover:shadow-pop"
             // 瀑布式進場：依序延遲。原 CSS 以 nth-child(1)~(6) 寫死，第 7 張卡
             // 沒延遲、反而最先出現；改用 index 公式讓整排一致。
             style={{ animationDelay: `${60 + index * 70}ms` }}
@@ -143,7 +144,7 @@ const Home = () => {
                 ›
               </span>
             </button>
-          </div>
+          </Card>
         ))}
       </section>
     </div>

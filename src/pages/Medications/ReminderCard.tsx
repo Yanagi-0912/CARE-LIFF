@@ -3,6 +3,7 @@ import { SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication'
 import { formatDateDisplay } from '../../utils/date';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { Card } from '@/components/ui/card';
 import * as S from './styles';
 
 interface ReminderCardProps {
@@ -26,7 +27,7 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
     : t('meds.dateRangeOpen', { start: formatDateDisplay(reminder.start_date) });
 
   return (
-    <article className={cn(S.CARD, !reminder.enabled && S.CARD_OFF)}>
+    <Card className={cn(S.CARD, !reminder.enabled && S.CARD_OFF)}>
       <button
         type="button"
         className={S.CARD_MAIN}
@@ -59,6 +60,6 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
           {reminder.enabled ? t('meds.statusOn') : t('meds.statusOff')}
         </span>
       </label>
-    </article>
+    </Card>
   );
 }

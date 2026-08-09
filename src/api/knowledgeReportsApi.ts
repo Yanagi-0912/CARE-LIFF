@@ -4,6 +4,24 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export type KnowledgeReportStatus = 'pending' | 'reviewing' | 'resolved' | 'rejected';
 export type KnowledgeReportReason = 'outdated' | 'missing' | 'other';
+/** null 代表後端加入此欄位之前寫下的舊紀錄，視同已結束 */
+export type IngestJobStatus = 'running' | 'succeeded' | 'failed';
+
+export interface IngestJobResultDto {
+  url: string;
+  status: string;
+  chunk_count: number;
+  message: string;
+}
+
+export interface IngestJobDto {
+  selected_urls: string[];
+  results: IngestJobResultDto[];
+  error?: string | null;
+  status?: IngestJobStatus | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
 
 export interface KnowledgeReportDto {
   report_id: string;
@@ -15,12 +33,19 @@ export interface KnowledgeReportDto {
   user_source_urls: string[];
   resolution?: string | null;
   reviewer_note?: string | null;
+  ingest_job?: IngestJobDto | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface KnowledgeReportListResponse {
   reports: KnowledgeReportDto[];
+  /** 以下分頁欄位僅 admin 待審列表會回傳 */
+  total?: number | null;
+  limit?: number | null;
+  offset?: number | null;
+  /** 待審佇列各狀態的實際筆數，不受 status 篩選與分頁影響 */
+  status_counts?: Record<string, number> | null;
 }
 
 async function parseError(res: Response): Promise<Error> {
@@ -46,12 +71,24 @@ export async function fetchKnowledgeReports(): Promise<KnowledgeReportListRespon
   return res.json();
 }
 
+export type AdminKnowledgeReportQuery = {
+  status?: KnowledgeReportStatus;
+  limit?: number;
+  offset?: number;
+};
+
 export async function fetchAdminKnowledgeReports(
-  status?: string,
+  query: AdminKnowledgeReportQuery = {},
 ): Promise<KnowledgeReportListResponse> {
   const url = new URL(`${BASE_URL}/api/admin/knowledge-reports`);
-  if (status) {
-    url.searchParams.set('status', status);
+  if (query.status) {
+    url.searchParams.set('status', query.status);
+  }
+  if (query.limit !== undefined) {
+    url.searchParams.set('limit', String(query.limit));
+  }
+  if (query.offset !== undefined) {
+    url.searchParams.set('offset', String(query.offset));
   }
   const res = await fetch(url.toString(), {
     headers: authHeaders(),

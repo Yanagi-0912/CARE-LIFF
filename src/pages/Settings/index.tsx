@@ -9,37 +9,13 @@ import { isSupportedLanguage } from '../../i18n';
 import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
 import type { UpdateUserSettingsPayload } from '../../api/settingsApi';
 import { isAuthenticated } from '../../utils/auth';
+import {
+  applyTheme,
+  defaultSettings,
+  STORAGE_KEY,
+  type SettingsState,
+} from '@/lib/settings';
 
-/* ────────── 型別定義 ────────── */
-interface SettingsState {
-  fontSize: 'normal' | 'large' | 'xlarge';
-  language: SupportedLanguage;
-  highContrast: boolean;
-  notifyReminder: boolean;
-  notifyFamily: boolean;
-  voiceReplyEnabled: boolean;
-  voiceRate: 'slow' | 'normal' | 'fast';
-}
-
-const STORAGE_KEY = 'care-settings';
-
-/* ────────── 預設值 ────────── */
-const defaultSettings: SettingsState = {
-  fontSize: 'large',       // 預設大字
-  language: 'zh-TW',
-  highContrast: true,       // 預設高對比
-  notifyReminder: true,
-  notifyFamily: true,
-  voiceReplyEnabled: false, // 對齊後端預設值
-  voiceRate: 'normal',      // 對齊後端預設值
-};
-
-/* ────────── 字級對照 ────────── */
-const fontSizeMap = {
-  normal: '16px',
-  large: '20px',
-  xlarge: '24px',
-};
 
 /* ────────── 前端欄位（camelCase）對應後端欄位（snake_case） ────────── */
 const toggleFieldMap: Record<
@@ -78,17 +54,6 @@ const languageOptions: Array<{ value: SettingsState['language']; label: string }
   { value: 'ja', label: '日本語' },
 ];
 
-/* ────────── 工具函式：套用主題到 :root ────────── */
-function applyTheme(settings: SettingsState) {
-  const root = document.documentElement;
-  root.style.setProperty('--base-font-size', fontSizeMap[settings.fontSize]);
-
-  if (settings.highContrast) {
-    root.classList.add('high-contrast');
-  } else {
-    root.classList.remove('high-contrast');
-  }
-}
 
 /* ────────── 元件 ────────── */
 const SettingsPage: React.FC = () => {
@@ -365,6 +330,5 @@ const SettingsPage: React.FC = () => {
 
 export default SettingsPage;
 
-/* 匯出工具函式，讓 App 啟動時也能載入設定 */
-export { applyTheme, STORAGE_KEY, defaultSettings };
-export type { SettingsState };
+/* 設定的型別／預設值／套用邏輯已移至 lib/settings，
+   讓本頁能被 code splitting 切出主包（App 啟動時需要那些值）。 */
