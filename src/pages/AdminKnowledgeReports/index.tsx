@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import {
   approveKnowledgeReport,
   fetchAdminKnowledgeReports,
   rejectKnowledgeReport,
+  type IngestJobDto,
   type KnowledgeReportDto,
   type KnowledgeReportReason,
   type KnowledgeReportStatus,
@@ -13,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
 // 與 KnowledgeReports 共用同一組樣式常數（原本是共用同一份 index.css）
@@ -20,6 +22,18 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui
 import * as S from '../KnowledgeReports/styles';
 
 type QueueFilter = 'all' | 'pending' | 'reviewing';
+
+/** 每頁筆數；與後端 limit 上限 200 無關，取一個掃得動的量 */
+const PAGE_SIZE = 50;
+
+/** ingest 是否仍在跑。status 為 null／undefined 的是舊紀錄，視同已結束 */
+function isIngestRunning(job?: IngestJobDto | null): boolean {
+  return job?.status === 'running';
+}
+
+function isIngestFailed(job?: IngestJobDto | null): boolean {
+  return job?.status === 'failed';
+}
 
 const REASON_KEYS: Record<KnowledgeReportReason, string> = {
   outdated: 'knowledgeReports.reason.outdated',
@@ -49,18 +63,68 @@ function AdminKnowledgeReportsPage() {
   const [activeFilter, setActiveFilter] = useState<QueueFilter>('all');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReportDto | null>(null);
   const [reviewerNote, setReviewerNote] = useState('');
+  const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
+  // admin 自行補的來源；使用者回報多半沒附 URL，只靠 user_source_urls 這些回報無法核准
+  const [extraUrls, setExtraUrls] = useState<string[]>([]);
+  const [urlDraft, setUrlDraft] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const {
-    data: rawReports = [],
+    data,
     isPending: loading,
     error: queryError,
-  } = useQuery({
-    queryKey: queryKeys.adminKnowledgeReports,
-    queryFn: async () => (await fetchAdminKnowledgeReports()).reports,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    // 篩選送給後端；client-side 過濾在分頁下只看得到已載入的頁，會讓後面的資料拿不到
+    queryKey: queryKeys.adminKnowledgeReports(activeFilter),
+    queryFn: ({ pageParam }) =>
+      fetchAdminKnowledgeReports({
+        limit: PAGE_SIZE,
+        offset: pageParam,
+        ...(activeFilter === 'all' ? {} : { status: activeFilter }),
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.reports.length, 0);
+      return lastPage.total != null && loaded < lastPage.total ? loaded : undefined;
+    },
+    // ingest 跑在背景，沒有輪詢的話「收錄中」不會自己變成完成／失敗
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((page) =>
+        page.reports.some((report) => isIngestRunning(report.ingest_job)),
+      )
+        ? 5_000
+        : false,
   });
+
+  // offset 分頁在佇列變動時可能重複取到邊界那筆，去重避免重複 key 與重複列
+  const reports = useMemo(() => {
+    const seen = new Set<string>();
+    return (data?.pages.flatMap((page) => page.reports) ?? []).filter((report) => {
+      if (seen.has(report.report_id)) return false;
+      seen.add(report.report_id);
+      return true;
+    });
+  }, [data]);
+
+  /** 符合當前篩選的總筆數；未載入前退回已載入筆數 */
+  const totalCount = data?.pages[0]?.total ?? reports.length;
+
+  // 各狀態筆數一律由後端給，不能拿已載入的頁自己算——那只反映已載入的部分
+  const statusCounts = data?.pages[0]?.status_counts;
+  const counts: Record<QueueFilter, number | undefined> = {
+    pending: statusCounts?.pending,
+    reviewing: statusCounts?.reviewing,
+    all:
+      statusCounts === undefined || statusCounts === null
+        ? undefined
+        : (statusCounts.pending ?? 0) + (statusCounts.reviewing ?? 0),
+  };
+
   const error = queryError
     ? queryError instanceof Error
       ? queryError.message
@@ -68,8 +132,9 @@ function AdminKnowledgeReportsPage() {
     : null;
 
   // 原本這段抓取邏輯在檔案裡寫了兩份（loadReports 與 effect 內的 run），
-  // 內容完全相同；改用 useQuery 後合而為一，審核完成後以 invalidate 重新載入。
-  const reloadReports = () => queryClient.invalidateQueries({ queryKey: queryKeys.adminKnowledgeReports });
+  // 內容完全相同；改用 query 後合而為一，審核完成後以 invalidate 重新載入第一頁。
+  const reloadReports = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.adminKnowledgeReports(activeFilter) });
 
   const statusMeta: Record<KnowledgeReportStatus, { label: string; icon: string }> = {
     pending: { label: t('knowledgeReports.status.pending'), icon: '○' },
@@ -84,38 +149,70 @@ function AdminKnowledgeReportsPage() {
     { value: 'reviewing', label: t('adminKnowledgeReports.filter.reviewing') },
   ];
 
-  const counts = useMemo(() => {
-    const pending = rawReports.filter((r) => r.status === 'pending').length;
-    const reviewing = rawReports.filter((r) => r.status === 'reviewing').length;
-    return {
-      all: rawReports.length,
-      pending,
-      reviewing,
-    };
-  }, [rawReports]);
-
-  const visibleReports =
-    activeFilter === 'all'
-      ? rawReports
-      : rawReports.filter((report) => report.status === activeFilter);
+  const openDialog = (report: KnowledgeReportDto) => {
+    setSelectedReport(report);
+    setReviewerNote('');
+    setActionError(null);
+    setUrlDraft('');
+    // 重試時沿用上次實際送出的 URL（含 admin 補的），否則無來源的回報一重開就選不到東西
+    const previous = report.ingest_job?.selected_urls;
+    if (previous && previous.length > 0) {
+      setExtraUrls(previous.filter((url) => !report.user_source_urls.includes(url)));
+      setSelectedUrls([...previous]);
+      return;
+    }
+    setExtraUrls([]);
+    // 預設全選，維持一鍵核准的手感；要縮小範圍才需要動手取消
+    setSelectedUrls([...report.user_source_urls]);
+  };
 
   const closeDialog = () => {
     setSelectedReport(null);
     setReviewerNote('');
+    setSelectedUrls([]);
+    setExtraUrls([]);
+    setUrlDraft('');
     setActionError(null);
   };
 
+  const toggleUrl = (url: string) => {
+    setSelectedUrls((prev) =>
+      prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
+    );
+  };
+
+  /** 使用者提供的來源加上 admin 補的，同一份勾選清單 */
+  const candidateUrls = useMemo(
+    () => [...(selectedReport?.user_source_urls ?? []), ...extraUrls],
+    [selectedReport, extraUrls],
+  );
+
+  const addUrl = () => {
+    const url = urlDraft.trim();
+    // 白名單由後端把關（is_allowed_url），前端只擋空值與重複
+    if (!url || candidateUrls.includes(url)) return;
+    setExtraUrls((prev) => [...prev, url]);
+    setSelectedUrls((prev) => [...prev, url]);
+    setUrlDraft('');
+  };
+
+  // 後端在 selected_urls 為空時會退回全選，所以「一個都沒選」必須擋在前端
+  const canApprove = selectedReport !== null && selectedUrls.length > 0;
+
   const handleAction = async (action: 'approve' | 'reject') => {
     if (!selectedReport) return;
+    if (action === 'approve' && !canApprove) return;
     setActionLoading(true);
     setActionError(null);
     const note = reviewerNote.trim();
-    const body = note ? { reviewer_note: note } : undefined;
     try {
       if (action === 'approve') {
-        await approveKnowledgeReport(selectedReport.report_id, body ?? {});
+        await approveKnowledgeReport(selectedReport.report_id, {
+          selected_urls: selectedUrls,
+          ...(note ? { reviewer_note: note } : {}),
+        });
       } else {
-        await rejectKnowledgeReport(selectedReport.report_id, body ?? {});
+        await rejectKnowledgeReport(selectedReport.report_id, note ? { reviewer_note: note } : {});
       }
       closeDialog();
       await reloadReports();
@@ -151,15 +248,15 @@ function AdminKnowledgeReportsPage() {
 
             <div className={S.STATS} aria-label={t('adminKnowledgeReports.statsLabel')}>
               <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.all}</strong>
+                <strong className={S.STATS_NUM}>{counts.all ?? 0}</strong>
                 <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.queue')}</span>
               </div>
               <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.pending}</strong>
+                <strong className={S.STATS_NUM}>{counts.pending ?? 0}</strong>
                 <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.pending')}</span>
               </div>
               <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.reviewing}</strong>
+                <strong className={S.STATS_NUM}>{counts.reviewing ?? 0}</strong>
                 <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.reviewing')}</span>
               </div>
             </div>
@@ -186,7 +283,7 @@ function AdminKnowledgeReportsPage() {
                 className={cn(S.TAB_BTN, S.TAB_ACTIVE_VARIANT)}
               >
                 {filter.label}
-                <span>{counts[filter.value]}</span>
+                {counts[filter.value] !== undefined && <span>{counts[filter.value]}</span>}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -206,13 +303,7 @@ function AdminKnowledgeReportsPage() {
             <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.loadError')}</h3>
             <p className={S.EMPTY_P}>{error}</p>
           </div>
-        ) : rawReports.length === 0 ? (
-          <div className={S.EMPTY}>
-            <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
-            <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
-            <p className={S.EMPTY_P}>{t('adminKnowledgeReports.emptyAllDesc')}</p>
-          </div>
-        ) : visibleReports.length === 0 ? (
+        ) : reports.length === 0 ? (
           <div className={S.EMPTY}>
             <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
             <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
@@ -220,16 +311,12 @@ function AdminKnowledgeReportsPage() {
           </div>
         ) : (
           <div className={S.REPORT_LIST}>
-            {visibleReports.map((report) => (
+            {reports.map((report) => (
               <button
                 key={report.report_id}
                 type="button"
                 className={S.REPORT_CARD}
-                onClick={() => {
-                  setSelectedReport(report);
-                  setReviewerNote('');
-                  setActionError(null);
-                }}
+                onClick={() => openDialog(report)}
                 aria-label={t('adminKnowledgeReports.viewReport', { question: report.question })}
               >
                 <span className={cn(S.REPORT_ICON, S.STATUS_TONE_SOFT[report.status])} aria-hidden="true">
@@ -242,6 +329,17 @@ function AdminKnowledgeReportsPage() {
                     <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT[report.status])}>
                       {mapReasonLabel(report.reason, t)}
                     </span>
+                    {/* ingest 進行中／失敗都停在 reviewing，沒有這個標記兩者長得一樣 */}
+                    {isIngestRunning(report.ingest_job) && (
+                      <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT.reviewing)}>
+                        {t('adminKnowledgeReports.ingest.running')}
+                      </span>
+                    )}
+                    {isIngestFailed(report.ingest_job) && (
+                      <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT.rejected)}>
+                        {t('adminKnowledgeReports.ingest.failed')}
+                      </span>
+                    )}
                     <time className={S.META_MUTED}>
                       {t('knowledgeReports.submittedAtValue', {
                         date: formatSubmittedAt(report.created_at),
@@ -264,6 +362,27 @@ function AdminKnowledgeReportsPage() {
                 <span className={S.CHEVRON} aria-hidden="true">›</span>
               </button>
             ))}
+
+            {hasNextPage && (
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <p className="m-0 text-[0.78rem] text-muted-foreground">
+                  {t('adminKnowledgeReports.loadedCount', {
+                    loaded: reports.length,
+                    total: totalCount,
+                  })}
+                </p>
+                <Button
+                  type="button"
+                  className="min-h-[42px] rounded-full border border-hair bg-surface-2 px-[18px] font-[750] text-foreground hover:bg-surface-2/80"
+                  onClick={() => void fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage
+                    ? t('adminKnowledgeReports.loading')
+                    : t('adminKnowledgeReports.loadMore')}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -305,23 +424,77 @@ function AdminKnowledgeReportsPage() {
               <div className={S.DIALOG_ITEM}>
                 <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.sourceUrls')}</dt>
                 <dd className={S.DIALOG_DD}>
-                  {selectedReport.user_source_urls.length === 0 ? (
-                    t('adminKnowledgeReports.noSourceUrls')
+                  {candidateUrls.length === 0 ? (
+                    <p className="mt-0 mb-2">{t('adminKnowledgeReports.noSourceUrls')}</p>
                   ) : (
-                    <ul className="m-0 pl-[1.1rem]">
-                      {selectedReport.user_source_urls.map((url) => (
-                        <li key={url}>
-                          <a
-                            className="break-all text-[var(--primary-strong)]"
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {url}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      <p className="mt-0 mb-2 text-[0.76rem] text-muted-foreground">
+                        {t('adminKnowledgeReports.selectUrlsHint')}
+                      </p>
+                      <ul className="m-0 list-none p-0">
+                        {candidateUrls.map((url) => (
+                          <li key={url} className="mb-2 flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              className="mt-[0.2rem] size-4 shrink-0 accent-[var(--primary-strong)]"
+                              checked={selectedUrls.includes(url)}
+                              onChange={() => toggleUrl(url)}
+                              disabled={actionLoading}
+                              aria-label={t('adminKnowledgeReports.selectUrl', { url })}
+                            />
+                            <a
+                              className="break-all text-[var(--primary-strong)]"
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {url}
+                            </a>
+                            {extraUrls.includes(url) && (
+                              <span className="shrink-0 text-[0.7rem] text-muted-foreground">
+                                {t('adminKnowledgeReports.adminAddedUrl')}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  {/* 使用者回報多半沒附來源，admin 要能自己補上權威網址 */}
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      type="url"
+                      className="min-w-0 flex-1 rounded-md border-hair bg-surface-2 text-foreground"
+                      value={urlDraft}
+                      onChange={(event) => setUrlDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addUrl();
+                        }
+                      }}
+                      placeholder={t('adminKnowledgeReports.addUrlPlaceholder')}
+                      aria-label={t('adminKnowledgeReports.addUrlLabel')}
+                      disabled={actionLoading}
+                    />
+                    <Button
+                      type="button"
+                      className="min-h-[38px] shrink-0 rounded-full border border-hair bg-surface-2 px-4 font-[750] text-foreground hover:bg-surface-2/80"
+                      onClick={addUrl}
+                      disabled={actionLoading || urlDraft.trim().length === 0}
+                    >
+                      {t('adminKnowledgeReports.addUrl')}
+                    </Button>
+                  </div>
+                  <p className="mt-1 mb-0 text-[0.72rem] text-muted-foreground">
+                    {t('adminKnowledgeReports.addUrlHint')}
+                  </p>
+
+                  {selectedUrls.length === 0 && (
+                    <p className="mt-2 mb-0 text-[0.78rem] font-[650] text-destructive">
+                      {t('adminKnowledgeReports.selectUrlsRequired')}
+                    </p>
                   )}
                 </dd>
               </div>
@@ -329,6 +502,38 @@ function AdminKnowledgeReportsPage() {
                 <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.status')}</dt>
                 <dd className={S.DIALOG_DD}>{statusMeta[selectedReport.status].label}</dd>
               </div>
+              {selectedReport.ingest_job?.status && (
+                <div className={S.DIALOG_ITEM}>
+                  <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.ingest')}</dt>
+                  <dd className={S.DIALOG_DD}>
+                    <p className="mt-0 mb-2">
+                      {t(`adminKnowledgeReports.ingest.${selectedReport.ingest_job.status}`)}
+                    </p>
+                    {selectedReport.ingest_job.error && (
+                      <p
+                        className="mt-0 mb-2 break-all font-[650] text-destructive"
+                        role="alert"
+                      >
+                        {selectedReport.ingest_job.error}
+                      </p>
+                    )}
+                    {selectedReport.ingest_job.results.length > 0 && (
+                      <ul className="m-0 pl-[1.1rem]">
+                        {selectedReport.ingest_job.results.map((result) => (
+                          <li key={result.url} className="break-all">
+                            {t('adminKnowledgeReports.ingest.resultLine', {
+                              url: result.url,
+                              status: result.status,
+                              chunks: result.chunk_count,
+                            })}
+                            {result.message ? `：${result.message}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </dd>
+                </div>
+              )}
             </dl>
 
             <label className="mt-6 grid gap-2">
@@ -366,11 +571,13 @@ function AdminKnowledgeReportsPage() {
                 type="button"
                 className="min-h-[42px] rounded-full border-0 bg-ink px-[18px] font-[750] text-white hover:bg-ink/90"
                 onClick={() => void handleAction('approve')}
-                disabled={actionLoading}
+                disabled={actionLoading || !canApprove}
               >
                 {actionLoading
                   ? t('adminKnowledgeReports.actionLoading')
-                  : t('adminKnowledgeReports.approve')}
+                  : isIngestFailed(selectedReport.ingest_job)
+                    ? t('adminKnowledgeReports.retry')
+                    : t('adminKnowledgeReports.approve')}
               </Button>
             </div>
             </>

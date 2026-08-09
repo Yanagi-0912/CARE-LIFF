@@ -27,7 +27,9 @@ export const queryKeys = {
   myProfile: ['my-profile'] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
   knowledgeReports: ['knowledge-reports'] as const,
-  adminKnowledgeReports: ['admin-knowledge-reports'] as const,
+  /** 佇列篩選改由後端執行，狀態要進 key，否則換頁籤會沿用上一組分頁結果 */
+  adminKnowledgeReports: (status?: string) =>
+    ['admin-knowledge-reports', status ?? 'all'] as const,
   consultationSummaries: ['consultation-summaries'] as const,
   consultationRaw: ['consultation-raw'] as const,
   inviteVerification: (code: string) => ['invite-verification', code] as const,
