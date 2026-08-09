@@ -3,6 +3,12 @@ import type {
   MedicationReminder,
   UpdateReminderRequest,
 } from '../types/medication';
+import type {
+  CommitPrescriptionDraftRequest,
+  PrescriptionCommitResult,
+  PrescriptionDraft,
+  PrescriptionScanFailureReason,
+} from '../types/prescription';
 import { authHeaders } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -23,6 +29,70 @@ async function parseError(res: Response): Promise<Error> {
     // ignore parse error
   }
   return new Error(message);
+}
+
+/** 上傳藥袋影像失敗。reason 讓呼叫端能分別給「重拍」「換一張」「稍後再試」三種不同指示。 */
+export class PrescriptionScanError extends Error {
+  reason: PrescriptionScanFailureReason;
+
+  constructor(reason: PrescriptionScanFailureReason, message: string) {
+    super(message);
+    this.name = 'PrescriptionScanError';
+    this.reason = reason;
+  }
+}
+
+const SCAN_FAILURE_REASONS = new Set<string>([
+  'unreadable',
+  'not_prescription',
+  'service_unavailable',
+]);
+
+/**
+ * 解析 /prescription-scan 的失敗回應。
+ *
+ * 413／415 由路由或 ASGI middleware 直接擋下，body 是純字串 detail，沒有
+ * reason 欄位——這裡以狀態碼本身當依據，額外賦予 too_large／unsupported_type
+ * 兩個前端專用的 reason，讓四種情境（含服務性失敗）都能各自呈現對應文案。
+ */
+async function parseScanError(res: Response): Promise<PrescriptionScanError> {
+  let detail: unknown;
+  try {
+    detail = (await res.json()).detail;
+  } catch {
+    detail = undefined;
+  }
+
+  if (res.status === 413) {
+    return new PrescriptionScanError(
+      'too_large',
+      typeof detail === 'string' ? detail : '影像檔案過大，請重新拍攝或壓縮後再試',
+    );
+  }
+  if (res.status === 415) {
+    return new PrescriptionScanError(
+      'unsupported_type',
+      typeof detail === 'string' ? detail : '僅接受影像檔案',
+    );
+  }
+  if (detail && typeof detail === 'object' && 'reason' in detail) {
+    const { reason, message } = detail as { reason: string; message?: string };
+    if (SCAN_FAILURE_REASONS.has(reason)) {
+      return new PrescriptionScanError(
+        reason as PrescriptionScanFailureReason,
+        message || '辨識失敗，請重新拍攝',
+      );
+    }
+  }
+  return new PrescriptionScanError('service_unavailable', '辨識服務暫時無法使用，請稍後再試');
+}
+
+/** 帶認證的 multipart 上傳標頭。authHeaders() 固定帶 application/json，
+ *  瀏覽器組 multipart body 時要自己補 boundary，Content-Type 不能沿用。 */
+function multipartAuthHeaders(): HeadersInit {
+  const headers = { ...(authHeaders() as Record<string, string>) };
+  delete headers['Content-Type'];
+  return headers;
 }
 
 /**
@@ -86,4 +156,81 @@ export async function deleteReminder(reminderId: string): Promise<{ ok: boolean 
   );
   if (!res.ok) throw await parseError(res);
   return res.json();
+}
+
+// ── 藥袋辨識 ──────────────────────────────────────────────────────────
+
+/**
+ * 5. 上傳藥袋影像進行辨識，回傳待使用者核對的草稿。
+ * 影像僅以 multipart 傳輸，欄位名稱需與後端 `file: UploadFile = File(...)` 一致。
+ */
+export async function scanPrescription(file: File): Promise<PrescriptionDraft> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_URL}/api/medications/prescription-scan`, {
+    method: 'POST',
+    headers: multipartAuthHeaders(),
+    body: formData,
+  });
+  if (!res.ok) throw await parseScanError(res);
+  return res.json();
+}
+
+/**
+ * 6. 查詢先前掃描產生的草稿，供核對畫面重新載入時使用。
+ */
+export async function getPrescriptionDraft(draftId: string): Promise<PrescriptionDraft> {
+  const res = await fetch(
+    `${BASE_URL}/api/medications/prescription-drafts/${encodeURIComponent(draftId)}`,
+    { headers: authHeaders() },
+  );
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 7. 使用者核對草稿後提交，依草稿內容建立藥品並關聯至對應時段的提醒。
+ */
+export async function commitPrescriptionDraft(
+  draftId: string,
+  req: CommitPrescriptionDraftRequest,
+): Promise<PrescriptionCommitResult> {
+  const res = await fetch(
+    `${BASE_URL}/api/medications/prescription-drafts/${encodeURIComponent(draftId)}/commit`,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(req),
+    },
+  );
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 8. 判斷後端是否開啟藥袋掃描功能。
+ *
+ * 後端刻意不為關閉狀態開一支可查詢的端點——`PRESCRIPTION_SCAN_ENABLED` 關閉時，
+ * 三支藥袋端點一律回 404，且不揭露「功能存在只是關閉」（見
+ * app/dependencies.py 的 require_prescription_scan_enabled）。這裡借用既有的
+ * 「查詢草稿」端點探測：帶一個必然不存在的 draft_id 查詢，開關關閉與開啟時
+ * 都會拿到 404，但 body 不同——
+ *   關閉：依賴注入在進入業務邏輯前就短路，detail 固定是 FastAPI 預設的
+ *         純字串 "Not Found"。
+ *   開啟：請求進入 service.get_draft，草稿不存在時 detail 是 "找不到草稿"。
+ * 用這個既有的差異判斷開關狀態，不必請後端另外新增端點。
+ */
+export async function checkPrescriptionScanEnabled(): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/api/medications/prescription-drafts/__feature_flag_probe__`,
+      { headers: authHeaders() },
+    );
+    if (res.status !== 404) return true;
+    const data = await res.json().catch(() => null);
+    return data?.detail !== 'Not Found';
+  } catch {
+    // 探測請求本身失敗（離線／逾時）時保守隱藏入口，避免顯示一個打不開的功能
+    return false;
+  }
 }

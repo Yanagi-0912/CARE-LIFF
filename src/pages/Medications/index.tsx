@@ -7,12 +7,16 @@ import type {
   MedicationSlotType,
   UpdateReminderRequest,
 } from '../../types/medication';
+import type { PrescriptionCommitResult, PrescriptionDraft } from '../../types/prescription';
 import { ReminderCard } from './ReminderCard';
 import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
+import { PrescriptionScanDialog } from './PrescriptionScanDialog';
+import { PrescriptionDraftForm } from './PrescriptionDraftForm';
+import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
 import { toast } from 'sonner';
-import { PlusIcon, PillIcon, TriangleAlertIcon } from 'lucide-react';
+import { PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -43,8 +47,11 @@ const MedicationsPage = () => {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MedicationReminder | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [draft, setDraft] = useState<PrescriptionDraft | null>(null);
 
-  const { reminders, loading, error, create, update, remove } = useMedications(selectedUserId);
+  const scanEnabled = usePrescriptionScanEnabled();
+  const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
 
   const targets = useMemo(
     () => [
@@ -107,14 +114,55 @@ const MedicationsPage = () => {
     toast.success(t('meds.edit.deleteSuccess'));
   };
 
+  // 辨識成功只交出草稿，不代表任何藥品或提醒已建立——確認閘門在
+  // PrescriptionDraftForm 裡，使用者仍需核對並提交才會真正寫入。
+  const handleScanned = (scanned: PrescriptionDraft) => {
+    setScanning(false);
+    setDraft(scanned);
+  };
+
+  // 三種失敗原因與使用者直接關閉視窗，都要能落回原本手動建立提醒的路徑。
+  const handleManualFallback = () => {
+    setScanning(false);
+    setAdding(true);
+  };
+
+  const handleCommitted = async (result: PrescriptionCommitResult) => {
+    setDraft(null);
+    await refetch();
+    toast.success(
+      result.prn_medication_ids.length > 0
+        ? t('meds.scan.draft.commitSuccessWithPrn', {
+            n: result.medication_ids.length,
+            prn: result.prn_medication_ids.length,
+          })
+        : t('meds.scan.draft.commitSuccess', { n: result.medication_ids.length }),
+    );
+  };
+
   return (
     <div className="mx-auto max-w-[760px]">
-      <header className="mb-4 flex items-center justify-between gap-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
-        <Button type="button" className="shrink-0 rounded-full" onClick={() => setAdding(true)}>
-          <PlusIcon data-icon="inline-start" />
-          {t('meds.addButton')}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
+              而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。 */}
+          {scanEnabled && (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => setScanning(true)}
+            >
+              <ScanLineIcon data-icon="inline-start" />
+              {t('meds.scan.entry')}
+            </Button>
+          )}
+          <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
+            <PlusIcon data-icon="inline-start" />
+            {t('meds.addButton')}
+          </Button>
+        </div>
       </header>
 
       {/* 對象切換是互斥的單選，用 ToggleGroup 而非一排各自 aria-pressed 的按鈕：
@@ -206,6 +254,22 @@ const MedicationsPage = () => {
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {scanning && (
+        <PrescriptionScanDialog
+          onScanned={handleScanned}
+          onManualFallback={handleManualFallback}
+          onClose={() => setScanning(false)}
+        />
+      )}
+
+      {draft && (
+        <PrescriptionDraftForm
+          draft={draft}
+          onCommitted={(result) => void handleCommitted(result)}
+          onClose={() => setDraft(null)}
         />
       )}
     </div>

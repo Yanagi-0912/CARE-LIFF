@@ -35,6 +35,8 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
         end: formatDateDisplay(reminder.end_date),
       })
     : t('meds.dateRangeOpen', { start: formatDateDisplay(reminder.start_date) });
+  // 藥袋辨識建立的提醒才會關聯到藥品；手動建立的提醒沒有這個欄位，維持原本只顯示時間的樣子
+  const medicationNames = (reminder.medications ?? []).map((med) => med.name).join('、');
 
   return (
     <Item
@@ -60,6 +62,7 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
         <ItemContent>
           <ItemTitle className="num text-2xl font-extrabold">{reminder.scheduled_time}</ItemTitle>
           <ItemDescription>{dateRange}</ItemDescription>
+          {medicationNames && <ItemDescription>{medicationNames}</ItemDescription>}
         </ItemContent>
 
         <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
