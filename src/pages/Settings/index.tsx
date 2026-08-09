@@ -68,6 +68,10 @@ const SettingsPage: React.FC = () => {
     normal: t('settings.voiceRateNormal'),
     fast: t('settings.voiceRateFast'),
   };
+  const voiceGenderLabelMap = {
+    female: t('settings.voiceGenderFemale'),
+    male: t('settings.voiceGenderMale'),
+  };
   const [settings, setSettings] = useState<SettingsState>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -102,6 +106,7 @@ const SettingsPage: React.FC = () => {
           notifyFamily: apiSettings.notify_family,
           voiceReplyEnabled: apiSettings.voice_reply_enabled,
           voiceRate: apiSettings.voice_rate,
+          voiceGender: apiSettings.voice_gender,
         }));
 
         // language 存在資料庫的 settings.language 裡，用它來實際切換介面語言，
@@ -144,6 +149,11 @@ const SettingsPage: React.FC = () => {
   const handleVoiceRate = (rate: SettingsState['voiceRate']) => {
     setSettings((prev) => ({ ...prev, voiceRate: rate }));
     persistSettings({ voice_rate: rate });
+  };
+
+  const handleVoiceGender = (gender: SettingsState['voiceGender']) => {
+    setSettings((prev) => ({ ...prev, voiceGender: gender }));
+    persistSettings({ voice_gender: gender });
   };
 
   const toggle = (key: keyof typeof toggleFieldMap) => {
@@ -283,8 +293,11 @@ const SettingsPage: React.FC = () => {
           />
         </div>
 
-        {/* 語速三檔互斥，沿用字體大小區塊的 ToggleGroup 模式（aria-label 提供群組說明） */}
+        {/* 語速三檔互斥，沿用字體大小區塊的 ToggleGroup 模式；
+            aria-label 改用專屬的「語速」文字（而非區塊標題），避免跟下方音色群組同名，
+            否則螢幕閱讀器使用者無法分辨兩組各是什麼 */}
         <div className="mt-3 flex flex-col gap-2.5">
+          <span className={LABEL_CLASS}>{t('settings.voiceRateLabel')}</span>
           <ToggleGroup
             className="flex gap-2 min-[480px]:gap-2.5"
             value={[settings.voiceRate]}
@@ -292,7 +305,7 @@ const SettingsPage: React.FC = () => {
               const next = groupValue[0] as SettingsState['voiceRate'] | undefined;
               if (next) handleVoiceRate(next);
             }}
-            aria-label={t('settings.voiceTitle')}
+            aria-label={t('settings.voiceRateLabel')}
           >
             {(['slow', 'normal', 'fast'] as const).map((rate) => (
               <ToggleGroupItem
@@ -304,6 +317,34 @@ const SettingsPage: React.FC = () => {
                 )}
               >
                 {voiceRateLabelMap[rate]}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+
+        {/* 音色兩檔（女聲／男聲）互斥，同語速群組的 ToggleGroup 模式；
+            送出給後端的值必須是 female/male，顯示標籤與送出值分離（voiceGenderLabelMap） */}
+        <div className="mt-3 flex flex-col gap-2.5">
+          <span className={LABEL_CLASS}>{t('settings.voiceGenderLabel')}</span>
+          <ToggleGroup
+            className="flex gap-2 min-[480px]:gap-2.5"
+            value={[settings.voiceGender]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0] as SettingsState['voiceGender'] | undefined;
+              if (next) handleVoiceGender(next);
+            }}
+            aria-label={t('settings.voiceGenderLabel')}
+          >
+            {(['female', 'male'] as const).map((gender) => (
+              <ToggleGroupItem
+                key={gender}
+                value={gender}
+                className={cn(
+                  'min-h-12 flex-1 cursor-pointer rounded-md border-[1.5px] border-hair bg-surface-2 px-1 py-3 text-center font-bold text-foreground transition-[border-color,background-color,box-shadow] duration-140 hover:border-line active:scale-[0.96] min-[480px]:px-1.5',
+                  'aria-pressed:border-primary aria-pressed:bg-[var(--primary-soft)] aria-pressed:text-[var(--primary-strong)] aria-pressed:shadow-[0_0_0_3px_var(--primary-softer)]',
+                )}
+              >
+                {voiceGenderLabelMap[gender]}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
