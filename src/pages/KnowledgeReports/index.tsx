@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import liff from '@line/liff';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { CheckIcon, ChevronRightIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import {
   fetchKnowledgeReports,
@@ -9,15 +12,42 @@ import {
   type KnowledgeReportReason,
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
-import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import * as S from './styles';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { ItemGroup } from '@/components/ui/item';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DetailItem,
+  DetailList,
+  KnowledgeHero,
+  KnowledgePage,
+  ReportRow,
+  ReportTag,
+  ReportsEmpty,
+  ReportsLoading,
+  StatsRow,
+  StatusBadge,
+} from './components';
 
 type ReportFilter = 'all' | KnowledgeReportStatus;
+type ReportSort = 'newest' | 'oldest';
 
 interface KnowledgeReport {
   id: string;
@@ -25,6 +55,8 @@ interface KnowledgeReport {
   reason: string;
   status: KnowledgeReportStatus;
   submittedAt: string;
+  /** 排序用的原始時間戳；顯示用的是上面已格式化的 submittedAt */
+  submittedTs: number;
   reviewerNote: string;
   resolution?: string;
 }
@@ -53,12 +85,14 @@ function mapReasonLabel(reason: string, t: (key: string) => string): string {
 }
 
 function mapReportDto(report: KnowledgeReportDto, t: (key: string) => string): KnowledgeReport {
+  const ts = Date.parse(report.created_at);
   return {
     id: report.report_id,
     question: report.question,
     reason: mapReasonLabel(report.reason, t),
     status: report.status,
     submittedAt: formatSubmittedAt(report.created_at),
+    submittedTs: Number.isNaN(ts) ? 0 : ts,
     reviewerNote: report.reviewer_note?.trim() || t('knowledgeReports.noReviewerNote'),
     resolution: report.resolution?.trim() || undefined,
   };
@@ -67,6 +101,7 @@ function mapReportDto(report: KnowledgeReportDto, t: (key: string) => string): K
 function KnowledgeReportsPage() {
   const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
+  const [sort, setSort] = useState<ReportSort>('newest');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReport | null>(null);
   const {
     data: rawReports = [],
@@ -87,11 +122,11 @@ function KnowledgeReportsPage() {
     [rawReports, t],
   );
 
-  const statusMeta: Record<KnowledgeReportStatus, { label: string; icon: string }> = {
-    pending: { label: t('knowledgeReports.status.pending'), icon: '○' },
-    reviewing: { label: t('knowledgeReports.status.reviewing'), icon: '◌' },
-    resolved: { label: t('knowledgeReports.status.resolved'), icon: '✓' },
-    rejected: { label: t('knowledgeReports.status.rejected'), icon: '×' },
+  const statusLabel: Record<KnowledgeReportStatus, string> = {
+    pending: t('knowledgeReports.status.pending'),
+    reviewing: t('knowledgeReports.status.reviewing'),
+    resolved: t('knowledgeReports.status.resolved'),
+    rejected: t('knowledgeReports.status.rejected'),
   };
 
   const filters: Array<{ value: ReportFilter; label: string }> = [
@@ -109,12 +144,25 @@ function KnowledgeReportsPage() {
     rejected: reports.filter((report) => report.status === 'rejected').length,
   };
 
-  const visibleReports =
-    activeFilter === 'all'
-      ? reports
-      : reports.filter((report) => report.status === activeFilter);
+  // 排序在篩選之後、渲染之前做一次。舊版的排序下拉只是個擺設（defaultValue
+  // 沒有接上任何狀態），選了也不會有反應。
+  const visibleReports = useMemo(() => {
+    const filtered =
+      activeFilter === 'all'
+        ? reports
+        : reports.filter((report) => report.status === activeFilter);
+    return [...filtered].sort((a, b) =>
+      sort === 'newest' ? b.submittedTs - a.submittedTs : a.submittedTs - b.submittedTs,
+    );
+  }, [reports, activeFilter, sort]);
 
-  const latestReport = reports[0];
+  const latestReport = useMemo(
+    () => reports.reduce<KnowledgeReport | null>(
+      (latest, report) => (latest === null || report.submittedTs > latest.submittedTs ? report : latest),
+      null,
+    ),
+    [reports],
+  );
 
   const handleAskInLine = () => {
     if (liff.isInClient()) {
@@ -122,114 +170,128 @@ function KnowledgeReportsPage() {
       return;
     }
 
-    window.alert(t('knowledgeReports.lineFallback'));
+    // 舊版用 window.alert：在 LINE webview 外會跳出瀏覽器原生彈窗、阻斷操作，
+    // 且無法本地化樣式。改用 App 已有的 sonner toast。
+    toast.info(t('knowledgeReports.lineFallback'));
   };
 
   return (
-    <div className={S.PAGE}>
-      <div className={S.NOTICE_CARD}>
-        <section className={S.NOTICE} aria-label={t('knowledgeReports.noticeLabel')}>
-          <span className={S.NOTICE_ICON} aria-hidden="true">?</span>
-          <p className={S.NOTICE_TEXT}>{t('knowledgeReports.notice')}</p>
-          <Button type="button" className={S.NOTICE_BTN} onClick={handleAskInLine}>
+    <KnowledgePage>
+      {/* Alert 是 [icon | 內容] 的兩欄 grid。行動鈕必須放進 AlertDescription 裡，
+          直接當 Alert 的第三個子元素會被塞進圖示那一欄並被拉成整列寬。 */}
+      <Alert>
+        <TriangleAlertIcon />
+        <AlertTitle>{t('knowledgeReports.noticeLabel')}</AlertTitle>
+        <AlertDescription className="flex flex-wrap items-center justify-between gap-2 text-foreground">
+          {/* basis 16rem 而非 flex-1：低於這個寬度就讓按鈕換行，
+              不會把說明文字擠成每行三四個字 */}
+          <span className="flex-[1_1_16rem]">{t('knowledgeReports.notice')}</span>
+          <Button type="button" variant="outline" size="sm" onClick={handleAskInLine}>
             {t('knowledgeReports.backToLine')}
-            <span aria-hidden="true">›</span>
+            <ChevronRightIcon data-icon="inline-end" />
           </Button>
-        </section>
-      </div>
+        </AlertDescription>
+      </Alert>
 
-      <section className={S.HERO}>
-        <div className={S.HERO_CARD}>
-          <div className={S.SUMMARY}>
-            <div className={S.AVATAR} aria-hidden="true">{t('knowledgeReports.avatar')}</div>
-            <div className="self-center">
-              <span className={S.EYEBROW}>{t('knowledgeReports.eyebrow')}</span>
-              <h1 className={S.SUMMARY_H1}>
-                <DecryptedText
-                  text={t('knowledgeReports.title')}
-                  speed={34}
-                  sequential
-                  revealDirection="center"
-                  useOriginalCharsOnly
-                  animateOn="view"
-                />
-              </h1>
-            </div>
-
-            <div className={S.STATS} aria-label={t('knowledgeReports.statsLabel')}>
-              <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.all}</strong>
-                <span className={S.STATS_LABEL}>{t('knowledgeReports.stats.total')}</span>
-              </div>
-              <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.reviewing}</strong>
-                <span className={S.STATS_LABEL}>{t('knowledgeReports.stats.reviewing')}</span>
-              </div>
-              <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.resolved}</strong>
-                <span className={S.STATS_LABEL}>{t('knowledgeReports.stats.updated')}</span>
-              </div>
-            </div>
-
-            <Button className={S.PRIMARY_BTN} type="button" onClick={handleAskInLine}>
+      {/* items-stretch（grid 預設）讓兩張卡等高；元件本身不帶 mb-*，
+          間距一律由這層的 gap 控制。 */}
+      <div className="grid gap-4 min-[900px]:grid-cols-2">
+        <KnowledgeHero
+          avatar={t('knowledgeReports.avatar')}
+          eyebrow={t('knowledgeReports.eyebrow')}
+          title={
+            <DecryptedText
+              text={t('knowledgeReports.title')}
+              speed={34}
+              sequential
+              revealDirection="center"
+              useOriginalCharsOnly
+              animateOn="view"
+            />
+          }
+          stats={
+            <StatsRow
+              label={t('knowledgeReports.statsLabel')}
+              items={[
+                { value: counts.all, label: t('knowledgeReports.stats.total') },
+                { value: counts.reviewing, label: t('knowledgeReports.stats.reviewing') },
+                { value: counts.resolved, label: t('knowledgeReports.stats.updated') },
+              ]}
+            />
+          }
+          action={
+            <Button type="button" onClick={handleAskInLine}>
               {t('knowledgeReports.askInLine')}
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {latestReport && (
-          <div className={S.HERO_CARD}>
-            <article className={S.FEATURED} aria-label={t('knowledgeReports.latest')}>
-              <div className={S.GLOW_ONE} />
-              <div className={S.GLOW_TWO} />
-              <div className={S.MEDICAL_MARK} aria-hidden="true">
-                <span className={S.MEDICAL_MARK_PLUS}>+</span>
-              </div>
-              <div className={S.FEATURED_CONTENT}>
-                <span className={S.FEATURED_EYEBROW}>{t('knowledgeReports.latest')}</span>
-                <h2 className={S.FEATURED_H2}>{latestReport.question}</h2>
-                <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[latestReport.status])}>
-                  {statusMeta[latestReport.status].icon}
-                  {statusMeta[latestReport.status].label}
-                </span>
-                <time className={S.FEATURED_TIME}>
-                  {t('knowledgeReports.submittedAtValue', { date: latestReport.submittedAt })}
-                </time>
-              </div>
-            </article>
-          </div>
+          <Card className="h-full" aria-label={t('knowledgeReports.latest')}>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <Badge variant="secondary">{t('knowledgeReports.latest')}</Badge>
+              <StatusBadge
+                status={latestReport.status}
+                label={statusLabel[latestReport.status]}
+                className="shrink-0"
+              />
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col justify-center gap-2">
+              <h2 className="text-2xl leading-snug font-extrabold text-balance">
+                {latestReport.question}
+              </h2>
+              <p className="line-clamp-2 text-sm text-muted-foreground">
+                {latestReport.reviewerNote}
+              </p>
+              <time className="text-sm font-semibold text-muted-foreground">
+                {t('knowledgeReports.submittedAtValue', { date: latestReport.submittedAt })}
+              </time>
+            </CardContent>
+          </Card>
         )}
-      </section>
+      </div>
 
-      <section className={S.LIST_SECTION} aria-labelledby="knowledge-list-title">
-        <div className={S.LIST_HEADER}>
-          {/* 篩選是互斥單選 → ToggleGroup（原本是一排各自 aria-pressed 的按鈕） */}
-          <ToggleGroup
-            className={S.TABS}
-            value={[activeFilter]}
-            onValueChange={(groupValue) => {
-              const next = groupValue[0] as ReportFilter | undefined;
-              if (next) setActiveFilter(next);
-            }}
-            aria-label={t('knowledgeReports.filterLabel')}
+      <section aria-labelledby="knowledge-list-title" className="flex flex-col gap-3">
+        <h2 id="knowledge-list-title" className="sr-only">
+          {t('knowledgeReports.listTitle')}
+        </h2>
+
+        {/* 篩選是互斥單選 → Tabs。舊版用 ToggleGroup 硬撐一排按鈕，
+            窄螢幕時最後一個分類會被切掉在畫面外（沒有可見的捲動提示）。
+            TabsList 這裡吃滿寬、四個分類平分，390px 也放得下。 */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* 窄螢幕讓分類獨佔一行，排序才不會擠在旁邊把最後一個分類蓋掉 */}
+          <Tabs
+            className="w-full min-w-0 min-[640px]:w-auto min-[640px]:flex-1"
+            value={activeFilter}
+            onValueChange={(value) => setActiveFilter(value as ReportFilter)}
           >
-            {filters.map((filter) => (
-              <ToggleGroupItem
-                key={filter.value}
-                value={filter.value}
-                className={cn(S.TAB_BTN, S.TAB_ACTIVE_VARIANT)}
-              >
-                {filter.label}
-                <span>{counts[filter.value]}</span>
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-          <Select defaultValue="newest">
-            <SelectTrigger className={S.SORT_SELECT} aria-label={t('knowledgeReports.sortLabel')}>
-              {/* 同上：需對應回翻譯標籤，否則會顯示 newest／oldest 原始值 */}
+            {/* 分類一律用自然寬度（flex-none）：這個 App 有六種語言，
+                讓它們平分寬度的話較長的語系會被截成「待審…」。
+                放不下時整條橫向捲動，而不是把字切掉。 */}
+            <TabsList
+              className="w-full justify-start overflow-x-auto min-[640px]:w-fit [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label={t('knowledgeReports.filterLabel')}
+            >
+              {filters.map((filter) => (
+                <TabsTrigger key={filter.value} value={filter.value} className="flex-none px-2.5">
+                  {filter.label}
+                  <Badge variant="secondary" className="px-1.5 tabular-nums">
+                    {counts[filter.value]}
+                  </Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          <Select value={sort} onValueChange={(value) => setSort(value as ReportSort)}>
+            <SelectTrigger className="ml-auto shrink-0" aria-label={t('knowledgeReports.sortLabel')}>
+              {/* 需對應回翻譯標籤，否則會顯示 newest／oldest 原始值 */}
               <SelectValue>
                 {(value) =>
-                  value === 'oldest' ? t('knowledgeReports.sort.oldest') : t('knowledgeReports.sort.newest')
+                  value === 'oldest'
+                    ? t('knowledgeReports.sort.oldest')
+                    : t('knowledgeReports.sort.newest')
                 }
               </SelectValue>
             </SelectTrigger>
@@ -240,121 +302,112 @@ function KnowledgeReportsPage() {
           </Select>
         </div>
 
-        <h2 id="knowledge-list-title" className="sr-only">{t('knowledgeReports.listTitle')}</h2>
-
         {loading ? (
-          <div className={S.EMPTY}>
-            <p className={S.EMPTY_P}>{t('knowledgeReports.loading')}</p>
-          </div>
+          <ReportsLoading label={t('knowledgeReports.loading')} />
         ) : error ? (
-          <div className={S.EMPTY}>
-            <span className={S.EMPTY_ICON} aria-hidden="true">!</span>
-            <h3 className={S.EMPTY_H3}>{t('knowledgeReports.loadError')}</h3>
-            <p className={S.EMPTY_P}>{error}</p>
-          </div>
+          <ReportsEmpty
+            icon={<TriangleAlertIcon />}
+            title={t('knowledgeReports.loadError')}
+            description={error}
+          />
         ) : reports.length === 0 ? (
-          <div className={S.EMPTY}>
-            <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
-            <h3 className={S.EMPTY_H3}>{t('knowledgeReports.emptyAllTitle')}</h3>
-            <p className={S.EMPTY_P}>{t('knowledgeReports.emptyAllDesc')}</p>
-          </div>
+          <ReportsEmpty
+            icon={<CheckIcon />}
+            title={t('knowledgeReports.emptyAllTitle')}
+            description={t('knowledgeReports.emptyAllDesc')}
+          />
+        ) : visibleReports.length === 0 ? (
+          <ReportsEmpty
+            icon={<CheckIcon />}
+            title={t('knowledgeReports.emptyTitle')}
+            description={t('knowledgeReports.emptyDesc')}
+          />
         ) : (
-          <>
-            <div className={S.REPORT_LIST}>
-              {visibleReports.map((report) => (
-                <button
-                  key={report.id}
-                  type="button"
-                  className={S.REPORT_CARD}
-                  onClick={() => setSelectedReport(report)}
-                  aria-label={t('knowledgeReports.viewReport', { question: report.question })}
-                >
-                  <span className={cn(S.REPORT_ICON, S.STATUS_TONE_SOFT[report.status])} aria-hidden="true">
-                    {report.status === 'resolved' ? '✓' : report.status === 'rejected' ? '×' : '!'}
-                  </span>
-
-                  <span className={S.REPORT_QUESTION}>
-                    <strong className={S.REPORT_QUESTION_STRONG}>{report.question}</strong>
-                    <span className={S.REPORT_META}>
-                      <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT[report.status])}>{report.reason}</span>
-                      <time className={S.META_MUTED}>
-                        {t('knowledgeReports.submittedAtValue', { date: report.submittedAt })}
-                      </time>
-                    </span>
-                  </span>
-
-                  <span className={S.REPORT_REVIEW}>
-                    <small className={S.META_MUTED}>{t('knowledgeReports.reviewUpdate')}</small>
-                    <span className={S.REPORT_REVIEW_TEXT}>{report.reviewerNote}</span>
-                  </span>
-
-                  <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[report.status], S.CARD_STATUS_POS)}>
-                    {statusMeta[report.status].icon}
-                    {statusMeta[report.status].label}
-                  </span>
-                  <span className={S.CHEVRON} aria-hidden="true">›</span>
-                </button>
-              ))}
-            </div>
-
-            {visibleReports.length === 0 && (
-              <div className={S.EMPTY}>
-                <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
-                <h3 className={S.EMPTY_H3}>{t('knowledgeReports.emptyTitle')}</h3>
-                <p className={S.EMPTY_P}>{t('knowledgeReports.emptyDesc')}</p>
-              </div>
-            )}
-          </>
+          <ItemGroup className="gap-3">
+            {visibleReports.map((report, index) => (
+              <ReportRow
+                key={report.id}
+                index={index}
+                status={report.status}
+                statusLabel={statusLabel[report.status]}
+                question={report.question}
+                ariaLabel={t('knowledgeReports.viewReport', { question: report.question })}
+                tags={<ReportTag status={report.status}>{report.reason}</ReportTag>}
+                submittedAt={t('knowledgeReports.submittedAtValue', {
+                  date: report.submittedAt,
+                })}
+                reviewLabel={t('knowledgeReports.reviewUpdate')}
+                reviewText={report.reviewerNote}
+                onClick={() => setSelectedReport(report)}
+              />
+            ))}
+          </ItemGroup>
         )}
       </section>
 
       {/* Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建 */}
-      <Dialog open={selectedReport !== null} onOpenChange={(open) => !open && setSelectedReport(null)}>
-        <DialogContent className={S.DIALOG} showCloseButton={false}>
+      <Dialog
+        open={selectedReport !== null}
+        onOpenChange={(open) => !open && setSelectedReport(null)}
+      >
+        <DialogContent
+          className="max-h-[calc(100dvh-48px)] overflow-y-auto sm:max-w-[560px]"
+          showCloseButton={false}
+        >
           {selectedReport && (
             <>
+              {/* 內建的關閉鈕 sr-only 文字寫死英文 "Close"，
+                  這個 App 有六種語言，所以自己掛一顆帶 i18n aria-label 的 */}
               <DialogClose
                 render={
-                  <button
+                  <Button
                     type="button"
-                    className={S.DIALOG_CLOSE}
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-4 right-4"
                     aria-label={t('knowledgeReports.closeDetail')}
-                  >
-                    ×
-                  </button>
+                  />
                 }
-              />
-            <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[selectedReport.status])}>
-              {statusMeta[selectedReport.status].icon}
-              {statusMeta[selectedReport.status].label}
-            </span>
-            <p className={S.DIALOG_ID}>{selectedReport.id}</p>
-            <DialogTitle className={S.DIALOG_H2}>{selectedReport.question}</DialogTitle>
-            <dl className={S.DIALOG_DL}>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.type')}</dt>
-                <dd className={S.DIALOG_DD}>{selectedReport.reason}</dd>
-              </div>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.submittedAt')}</dt>
-                <dd className={S.DIALOG_DD}>{selectedReport.submittedAt}</dd>
-              </div>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.progress')}</dt>
-                <dd className={S.DIALOG_DD}>{selectedReport.reviewerNote}</dd>
-              </div>
-              {selectedReport.resolution && (
-                <div className={S.DIALOG_ITEM}>
-                  <dt className={S.DIALOG_DT}>{t('knowledgeReports.detail.result')}</dt>
-                  <dd className={S.DIALOG_DD}>{selectedReport.resolution}</dd>
+              >
+                <XIcon />
+              </DialogClose>
+
+              <DialogHeader>
+                <div className="flex flex-wrap items-center gap-2 pr-8">
+                  <StatusBadge
+                    status={selectedReport.status}
+                    label={statusLabel[selectedReport.status]}
+                  />
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {selectedReport.id}
+                  </span>
                 </div>
-              )}
-            </dl>
+                <DialogTitle className="text-2xl leading-snug text-balance">
+                  {selectedReport.question}
+                </DialogTitle>
+              </DialogHeader>
+
+              <DetailList>
+                <DetailItem term={t('knowledgeReports.detail.type')}>
+                  {selectedReport.reason}
+                </DetailItem>
+                <DetailItem term={t('knowledgeReports.detail.submittedAt')}>
+                  {selectedReport.submittedAt}
+                </DetailItem>
+                <DetailItem term={t('knowledgeReports.detail.progress')}>
+                  {selectedReport.reviewerNote}
+                </DetailItem>
+                {selectedReport.resolution && (
+                  <DetailItem term={t('knowledgeReports.detail.result')}>
+                    {selectedReport.resolution}
+                  </DetailItem>
+                )}
+              </DetailList>
             </>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </KnowledgePage>
   );
 }
 

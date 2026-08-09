@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithToaster } from './testUtils';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -96,7 +96,8 @@ describe('KnowledgeReportsPage', () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /已處理\s*1/ }));
+    // 狀態篩選是 shadcn Tabs（互斥單選），角色為 tab 而非 button
+    fireEvent.click(screen.getByRole('tab', { name: /已處理\s*1/ }));
 
     expect(
       screen.getByRole('button', { name: '查看回報：益生菌什麼時候吃效果最好？' }),

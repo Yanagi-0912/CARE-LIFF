@@ -11,15 +11,38 @@ import {
   type KnowledgeReportReason,
   type KnowledgeReportStatus,
 } from '../../api/knowledgeReportsApi';
-import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
+import { CheckIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ItemGroup } from '@/components/ui/item';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-// 與 KnowledgeReports 共用同一組樣式常數（原本是共用同一份 index.css）
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import * as S from '../KnowledgeReports/styles';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+// 與 KnowledgeReports 共用同一組畫面元件（原本是共用同一份 index.css）
+import {
+  DetailItem,
+  DetailList,
+  KnowledgeHero,
+  KnowledgePage,
+  ReportRow,
+  ReportTag,
+  ReportsEmpty,
+  ReportsLoading,
+  StatsRow,
+  StatusBadge,
+} from '../KnowledgeReports/components';
 
 type QueueFilter = 'all' | 'pending' | 'reviewing';
 
@@ -136,11 +159,11 @@ function AdminKnowledgeReportsPage() {
   const reloadReports = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.adminKnowledgeReports(activeFilter) });
 
-  const statusMeta: Record<KnowledgeReportStatus, { label: string; icon: string }> = {
-    pending: { label: t('knowledgeReports.status.pending'), icon: '○' },
-    reviewing: { label: t('knowledgeReports.status.reviewing'), icon: '◌' },
-    resolved: { label: t('knowledgeReports.status.resolved'), icon: '✓' },
-    rejected: { label: t('knowledgeReports.status.rejected'), icon: '×' },
+  const statusLabel: Record<KnowledgeReportStatus, string> = {
+    pending: t('knowledgeReports.status.pending'),
+    reviewing: t('knowledgeReports.status.reviewing'),
+    resolved: t('knowledgeReports.status.resolved'),
+    rejected: t('knowledgeReports.status.rejected'),
   };
 
   const filters: Array<{ value: QueueFilter; label: string }> = [
@@ -224,148 +247,116 @@ function AdminKnowledgeReportsPage() {
   };
 
   return (
-    <div className={S.PAGE}>
-      {/* 管理版 hero 僅單欄；min-h-0 蓋掉共用卡片的 280px 最小高度 */}
-      <section className={cn(S.HERO, 'grid-cols-1')}>
-        <div className={cn(S.HERO_CARD, 'min-h-0')}>
-          <div className={cn(S.SUMMARY, 'min-h-0')}>
-            <div className={S.AVATAR} aria-hidden="true">
-              {t('adminKnowledgeReports.avatar')}
-            </div>
-            <div className="self-center">
-              <span className={S.EYEBROW}>{t('adminKnowledgeReports.eyebrow')}</span>
-              <h1 className={S.SUMMARY_H1}>
-                <DecryptedText
-                  text={t('adminKnowledgeReports.title')}
-                  speed={34}
-                  sequential
-                  revealDirection="center"
-                  useOriginalCharsOnly
-                  animateOn="view"
-                />
-              </h1>
-            </div>
+    <KnowledgePage>
+      <KnowledgeHero
+        avatar={t('adminKnowledgeReports.avatar')}
+        eyebrow={t('adminKnowledgeReports.eyebrow')}
+        title={
+          <DecryptedText
+            text={t('adminKnowledgeReports.title')}
+            speed={34}
+            sequential
+            revealDirection="center"
+            useOriginalCharsOnly
+            animateOn="view"
+          />
+        }
+        stats={
+          <StatsRow
+            label={t('adminKnowledgeReports.statsLabel')}
+            items={[
+              { value: counts.all ?? 0, label: t('adminKnowledgeReports.stats.queue') },
+              { value: counts.pending ?? 0, label: t('adminKnowledgeReports.stats.pending') },
+              { value: counts.reviewing ?? 0, label: t('adminKnowledgeReports.stats.reviewing') },
+            ]}
+          />
+        }
+      />
 
-            <div className={S.STATS} aria-label={t('adminKnowledgeReports.statsLabel')}>
-              <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.all ?? 0}</strong>
-                <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.queue')}</span>
-              </div>
-              <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.pending ?? 0}</strong>
-                <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.pending')}</span>
-              </div>
-              <div className={S.STATS_ITEM}>
-                <strong className={S.STATS_NUM}>{counts.reviewing ?? 0}</strong>
-                <span className={S.STATS_LABEL}>{t('adminKnowledgeReports.stats.reviewing')}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={S.LIST_SECTION} aria-labelledby="admin-knowledge-list-title">
-        <div className={S.LIST_HEADER}>
-          {/* 篩選是互斥單選 → ToggleGroup（原本是一排各自 aria-pressed 的按鈕） */}
-          <ToggleGroup
-            className={S.TABS}
-            value={[activeFilter]}
-            onValueChange={(groupValue) => {
-              const next = groupValue[0] as QueueFilter | undefined;
-              if (next) setActiveFilter(next);
-            }}
-            aria-label={t('adminKnowledgeReports.filterLabel')}
-          >
-            {filters.map((filter) => (
-              <ToggleGroupItem
-                key={filter.value}
-                value={filter.value}
-                className={cn(S.TAB_BTN, S.TAB_ACTIVE_VARIANT)}
-              >
-                {filter.label}
-                {counts[filter.value] !== undefined && <span>{counts[filter.value]}</span>}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
-
+      <section aria-labelledby="admin-knowledge-list-title" className="flex flex-col gap-3">
         <h2 id="admin-knowledge-list-title" className="sr-only">
           {t('adminKnowledgeReports.listTitle')}
         </h2>
 
-        {loading ? (
-          <div className={S.EMPTY}>
-            <p className={S.EMPTY_P}>{t('adminKnowledgeReports.loading')}</p>
-          </div>
-        ) : error ? (
-          <div className={S.EMPTY}>
-            <span className={S.EMPTY_ICON} aria-hidden="true">!</span>
-            <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.loadError')}</h3>
-            <p className={S.EMPTY_P}>{error}</p>
-          </div>
-        ) : reports.length === 0 ? (
-          <div className={S.EMPTY}>
-            <span className={S.EMPTY_ICON} aria-hidden="true">✓</span>
-            <h3 className={S.EMPTY_H3}>{t('adminKnowledgeReports.emptyAllTitle')}</h3>
-            <p className={S.EMPTY_P}>{t('adminKnowledgeReports.emptyAllDesc')}</p>
-          </div>
-        ) : (
-          <div className={S.REPORT_LIST}>
-            {reports.map((report) => (
-              <button
-                key={report.report_id}
-                type="button"
-                className={S.REPORT_CARD}
-                onClick={() => openDialog(report)}
-                aria-label={t('adminKnowledgeReports.viewReport', { question: report.question })}
-              >
-                <span className={cn(S.REPORT_ICON, S.STATUS_TONE_SOFT[report.status])} aria-hidden="true">
-                  {report.status === 'reviewing' ? '◌' : '!'}
-                </span>
-
-                <span className={S.REPORT_QUESTION}>
-                  <strong className={S.REPORT_QUESTION_STRONG}>{report.question}</strong>
-                  <span className={S.REPORT_META}>
-                    <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT[report.status])}>
-                      {mapReasonLabel(report.reason, t)}
-                    </span>
-                    {/* ingest 進行中／失敗都停在 reviewing，沒有這個標記兩者長得一樣 */}
-                    {isIngestRunning(report.ingest_job) && (
-                      <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT.reviewing)}>
-                        {t('adminKnowledgeReports.ingest.running')}
-                      </span>
-                    )}
-                    {isIngestFailed(report.ingest_job) && (
-                      <span className={cn(S.REASON_TAG, S.STATUS_TONE_SOFT.rejected)}>
-                        {t('adminKnowledgeReports.ingest.failed')}
-                      </span>
-                    )}
-                    <time className={S.META_MUTED}>
-                      {t('knowledgeReports.submittedAtValue', {
-                        date: formatSubmittedAt(report.created_at),
-                      })}
-                    </time>
-                  </span>
-                </span>
-
-                <span className={S.REPORT_REVIEW}>
-                  <small className={S.META_MUTED}>{t('adminKnowledgeReports.userNote')}</small>
-                  <span className={S.REPORT_REVIEW_TEXT}>
-                    {report.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
-                  </span>
-                </span>
-
-                <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[report.status], S.CARD_STATUS_POS)}>
-                  {statusMeta[report.status].icon}
-                  {statusMeta[report.status].label}
-                </span>
-                <span className={S.CHEVRON} aria-hidden="true">›</span>
-              </button>
+        {/* 篩選是互斥單選 → Tabs（與使用者端同一組元件）。
+            舊版用 ToggleGroup 撐一排按鈕，窄螢幕會被切出畫面外。 */}
+        <Tabs
+          value={activeFilter}
+          onValueChange={(value) => setActiveFilter(value as QueueFilter)}
+        >
+          <TabsList
+            className="w-full justify-start overflow-x-auto min-[640px]:w-fit [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label={t('adminKnowledgeReports.filterLabel')}
+          >
+            {filters.map((filter) => (
+              <TabsTrigger key={filter.value} value={filter.value} className="flex-none px-2.5">
+                {filter.label}
+                {counts[filter.value] !== undefined && (
+                  <Badge variant="secondary" className="px-1.5 tabular-nums">
+                    {counts[filter.value]}
+                  </Badge>
+                )}
+              </TabsTrigger>
             ))}
+          </TabsList>
+        </Tabs>
+
+        {loading ? (
+          <ReportsLoading label={t('adminKnowledgeReports.loading')} />
+        ) : error ? (
+          <ReportsEmpty
+            icon={<TriangleAlertIcon />}
+            title={t('adminKnowledgeReports.loadError')}
+            description={error}
+          />
+        ) : reports.length === 0 ? (
+          <ReportsEmpty
+            icon={<CheckIcon />}
+            title={t('adminKnowledgeReports.emptyAllTitle')}
+            description={t('adminKnowledgeReports.emptyAllDesc')}
+          />
+        ) : (
+          <>
+            <ItemGroup className="gap-3">
+              {reports.map((report, index) => (
+                <ReportRow
+                  key={report.report_id}
+                  index={index}
+                  status={report.status}
+                  statusLabel={statusLabel[report.status]}
+                  question={report.question}
+                  ariaLabel={t('adminKnowledgeReports.viewReport', { question: report.question })}
+                  tags={
+                    <>
+                      <ReportTag status={report.status}>
+                        {mapReasonLabel(report.reason, t)}
+                      </ReportTag>
+                      {/* ingest 進行中／失敗都停在 reviewing，沒有這個標記兩者長得一樣 */}
+                      {isIngestRunning(report.ingest_job) && (
+                        <ReportTag status="reviewing">
+                          {t('adminKnowledgeReports.ingest.running')}
+                        </ReportTag>
+                      )}
+                      {isIngestFailed(report.ingest_job) && (
+                        <ReportTag status="rejected">
+                          {t('adminKnowledgeReports.ingest.failed')}
+                        </ReportTag>
+                      )}
+                    </>
+                  }
+                  submittedAt={t('knowledgeReports.submittedAtValue', {
+                    date: formatSubmittedAt(report.created_at),
+                  })}
+                  reviewLabel={t('adminKnowledgeReports.userNote')}
+                  reviewText={report.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
+                  onClick={() => openDialog(report)}
+                />
+              ))}
+            </ItemGroup>
 
             {hasNextPage && (
               <div className="mt-4 flex flex-col items-center gap-2">
-                <p className="m-0 text-[0.78rem] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {t('adminKnowledgeReports.loadedCount', {
                     loaded: reports.length,
                     total: totalCount,
@@ -373,7 +364,7 @@ function AdminKnowledgeReportsPage() {
                 </p>
                 <Button
                   type="button"
-                  className="min-h-[42px] rounded-full border border-hair bg-surface-2 px-[18px] font-[750] text-foreground hover:bg-surface-2/80"
+                  variant="outline"
                   onClick={() => void fetchNextPage()}
                   disabled={isFetchingNextPage}
                 >
@@ -383,67 +374,81 @@ function AdminKnowledgeReportsPage() {
                 </Button>
               </div>
             )}
-          </div>
+          </>
         )}
       </section>
 
       {/* Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建 */}
       <Dialog open={selectedReport !== null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className={S.DIALOG} showCloseButton={false}>
+        <DialogContent
+          className="max-h-[calc(100dvh-48px)] overflow-y-auto sm:max-w-[560px]"
+          showCloseButton={false}
+        >
           {selectedReport && (
             <>
+              {/* 內建的關閉鈕 sr-only 文字寫死英文 "Close"，
+                  這個 App 有六種語言，所以自己掛一顆帶 i18n aria-label 的 */}
               <DialogClose
                 render={
-                  <button
+                  <Button
                     type="button"
-                    className={S.DIALOG_CLOSE}
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-4 right-4"
                     aria-label={t('adminKnowledgeReports.closeDetail')}
-              disabled={actionLoading}
-                  >
-                    ×
-                  </button>
+                    disabled={actionLoading}
+                  />
                 }
-              />
-            <span className={cn(S.STATUS_BADGE, S.STATUS_BADGE_TONE[selectedReport.status])}>
-              {statusMeta[selectedReport.status].icon}
-              {statusMeta[selectedReport.status].label}
-            </span>
-            <p className={S.DIALOG_ID}>{selectedReport.report_id}</p>
-            <DialogTitle className={S.DIALOG_H2}>{selectedReport.question}</DialogTitle>
-            <dl className={S.DIALOG_DL}>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.reason')}</dt>
-                <dd className={S.DIALOG_DD}>{mapReasonLabel(selectedReport.reason, t)}</dd>
-              </div>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.userNote')}</dt>
-                <dd className={S.DIALOG_DD}>
+              >
+                <XIcon />
+              </DialogClose>
+
+              <DialogHeader>
+                <div className="flex flex-wrap items-center gap-2 pr-8">
+                  <StatusBadge
+                    status={selectedReport.status}
+                    label={statusLabel[selectedReport.status]}
+                  />
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {selectedReport.report_id}
+                  </span>
+                </div>
+                <DialogTitle className="text-2xl leading-snug text-balance">
+                  {selectedReport.question}
+                </DialogTitle>
+              </DialogHeader>
+
+              <DetailList>
+                <DetailItem term={t('adminKnowledgeReports.detail.reason')}>
+                  {mapReasonLabel(selectedReport.reason, t)}
+                </DetailItem>
+                <DetailItem term={t('adminKnowledgeReports.detail.userNote')}>
                   {selectedReport.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
-                </dd>
-              </div>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.sourceUrls')}</dt>
-                <dd className={S.DIALOG_DD}>
+                </DetailItem>
+
+                <DetailItem term={t('adminKnowledgeReports.detail.sourceUrls')}>
                   {candidateUrls.length === 0 ? (
-                    <p className="mt-0 mb-2">{t('adminKnowledgeReports.noSourceUrls')}</p>
+                    <p className="mb-2">{t('adminKnowledgeReports.noSourceUrls')}</p>
                   ) : (
                     <>
-                      <p className="mt-0 mb-2 text-[0.76rem] text-muted-foreground">
+                      <p className="mb-2 text-xs text-muted-foreground">
                         {t('adminKnowledgeReports.selectUrlsHint')}
                       </p>
-                      <ul className="m-0 list-none p-0">
+                      <ul className="list-none">
                         {candidateUrls.map((url) => (
+                          // 不用 FieldLabel 綁 htmlFor：連結不該包在 label 裡
+                          // （點文字會變成切換勾選而不是開連結），而且 label 一綁上去
+                          // 就會產生 aria-labelledby，蓋掉 checkbox 自己的 aria-label
                           <li key={url} className="mb-2 flex items-start gap-2">
-                            <input
-                              type="checkbox"
-                              className="mt-[0.2rem] size-4 shrink-0 accent-[var(--primary-strong)]"
+                            <Checkbox
                               checked={selectedUrls.includes(url)}
-                              onChange={() => toggleUrl(url)}
+                              onCheckedChange={() => toggleUrl(url)}
                               disabled={actionLoading}
                               aria-label={t('adminKnowledgeReports.selectUrl', { url })}
+                              className="mt-1"
                             />
                             <a
-                              className="break-all text-[var(--primary-strong)]"
+                              className="break-all text-primary underline-offset-4 hover:underline"
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -451,9 +456,9 @@ function AdminKnowledgeReportsPage() {
                               {url}
                             </a>
                             {extraUrls.includes(url) && (
-                              <span className="shrink-0 text-[0.7rem] text-muted-foreground">
+                              <Badge variant="secondary" className="shrink-0">
                                 {t('adminKnowledgeReports.adminAddedUrl')}
-                              </span>
+                              </Badge>
                             )}
                           </li>
                         ))}
@@ -465,7 +470,7 @@ function AdminKnowledgeReportsPage() {
                   <div className="mt-2 flex gap-2">
                     <Input
                       type="url"
-                      className="min-w-0 flex-1 rounded-md border-hair bg-surface-2 text-foreground"
+                      className="min-w-0 flex-1"
                       value={urlDraft}
                       onChange={(event) => setUrlDraft(event.target.value)}
                       onKeyDown={(event) => {
@@ -480,45 +485,43 @@ function AdminKnowledgeReportsPage() {
                     />
                     <Button
                       type="button"
-                      className="min-h-[38px] shrink-0 rounded-full border border-hair bg-surface-2 px-4 font-[750] text-foreground hover:bg-surface-2/80"
+                      variant="outline"
+                      className="shrink-0"
                       onClick={addUrl}
                       disabled={actionLoading || urlDraft.trim().length === 0}
                     >
                       {t('adminKnowledgeReports.addUrl')}
                     </Button>
                   </div>
-                  <p className="mt-1 mb-0 text-[0.72rem] text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {t('adminKnowledgeReports.addUrlHint')}
                   </p>
 
                   {selectedUrls.length === 0 && (
-                    <p className="mt-2 mb-0 text-[0.78rem] font-[650] text-destructive">
+                    <p className="mt-2 text-sm font-semibold text-destructive">
                       {t('adminKnowledgeReports.selectUrlsRequired')}
                     </p>
                   )}
-                </dd>
-              </div>
-              <div className={S.DIALOG_ITEM}>
-                <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.status')}</dt>
-                <dd className={S.DIALOG_DD}>{statusMeta[selectedReport.status].label}</dd>
-              </div>
-              {selectedReport.ingest_job?.status && (
-                <div className={S.DIALOG_ITEM}>
-                  <dt className={S.DIALOG_DT}>{t('adminKnowledgeReports.detail.ingest')}</dt>
-                  <dd className={S.DIALOG_DD}>
-                    <p className="mt-0 mb-2">
+                </DetailItem>
+
+                <DetailItem term={t('adminKnowledgeReports.detail.status')}>
+                  {statusLabel[selectedReport.status]}
+                </DetailItem>
+
+                {selectedReport.ingest_job?.status && (
+                  <DetailItem term={t('adminKnowledgeReports.detail.ingest')}>
+                    <p className="mb-2">
                       {t(`adminKnowledgeReports.ingest.${selectedReport.ingest_job.status}`)}
                     </p>
                     {selectedReport.ingest_job.error && (
-                      <p
-                        className="mt-0 mb-2 break-all font-[650] text-destructive"
-                        role="alert"
-                      >
-                        {selectedReport.ingest_job.error}
-                      </p>
+                      <Alert variant="destructive" className="mb-2">
+                        <AlertDescription className="break-all">
+                          {selectedReport.ingest_job.error}
+                        </AlertDescription>
+                      </Alert>
                     )}
                     {selectedReport.ingest_job.results.length > 0 && (
-                      <ul className="m-0 pl-[1.1rem]">
+                      <ul className="list-disc pl-5">
                         {selectedReport.ingest_job.results.map((result) => (
                           <li key={result.url} className="break-all">
                             {t('adminKnowledgeReports.ingest.resultLine', {
@@ -531,60 +534,59 @@ function AdminKnowledgeReportsPage() {
                         ))}
                       </ul>
                     )}
-                  </dd>
-                </div>
+                  </DetailItem>
+                )}
+              </DetailList>
+
+              <Field>
+                <FieldLabel htmlFor="reviewer-note">
+                  {t('adminKnowledgeReports.reviewerNoteLabel')}
+                </FieldLabel>
+                <Textarea
+                  id="reviewer-note"
+                  className="resize-y"
+                  value={reviewerNote}
+                  onChange={(event) => setReviewerNote(event.target.value)}
+                  placeholder={t('adminKnowledgeReports.reviewerNotePlaceholder')}
+                  rows={3}
+                  disabled={actionLoading}
+                />
+              </Field>
+
+              {actionError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{actionError}</AlertDescription>
+                </Alert>
               )}
-            </dl>
 
-            <label className="mt-6 grid gap-2">
-              <span className="text-[0.76rem] font-[750] text-muted-foreground">
-                {t('adminKnowledgeReports.reviewerNoteLabel')}
-              </span>
-              <Textarea
-                className="resize-y rounded-md border-hair bg-surface-2 p-3 text-foreground disabled:opacity-70"
-                value={reviewerNote}
-                onChange={(event) => setReviewerNote(event.target.value)}
-                placeholder={t('adminKnowledgeReports.reviewerNotePlaceholder')}
-                rows={3}
-                disabled={actionLoading}
-              />
-            </label>
-
-            {actionError && (
-              <p className="mt-3 mb-0 text-[0.86rem] font-[650] text-destructive" role="alert">
-                {actionError}
-              </p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                type="button"
-                className="min-h-[42px] rounded-full border border-transparent bg-destructive-soft px-[18px] font-[750] text-destructive hover:bg-destructive-soft/80"
-                onClick={() => void handleAction('reject')}
-                disabled={actionLoading}
-              >
-                {actionLoading
-                  ? t('adminKnowledgeReports.actionLoading')
-                  : t('adminKnowledgeReports.reject')}
-              </Button>
-              <Button
-                type="button"
-                className="min-h-[42px] rounded-full border-0 bg-ink px-[18px] font-[750] text-white hover:bg-ink/90"
-                onClick={() => void handleAction('approve')}
-                disabled={actionLoading || !canApprove}
-              >
-                {actionLoading
-                  ? t('adminKnowledgeReports.actionLoading')
-                  : isIngestFailed(selectedReport.ingest_job)
-                    ? t('adminKnowledgeReports.retry')
-                    : t('adminKnowledgeReports.approve')}
-              </Button>
-            </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => void handleAction('reject')}
+                  disabled={actionLoading}
+                >
+                  {actionLoading
+                    ? t('adminKnowledgeReports.actionLoading')
+                    : t('adminKnowledgeReports.reject')}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleAction('approve')}
+                  disabled={actionLoading || !canApprove}
+                >
+                  {actionLoading
+                    ? t('adminKnowledgeReports.actionLoading')
+                    : isIngestFailed(selectedReport.ingest_job)
+                      ? t('adminKnowledgeReports.retry')
+                      : t('adminKnowledgeReports.approve')}
+                </Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </KnowledgePage>
   );
 }
 

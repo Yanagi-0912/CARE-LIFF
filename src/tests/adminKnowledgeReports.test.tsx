@@ -207,7 +207,8 @@ describe('AdminKnowledgeReportsPage', () => {
       });
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /待審核/ }));
+    // 狀態篩選是 shadcn Tabs（互斥單選），角色為 tab 而非 button
+    fireEvent.click(screen.getByRole('tab', { name: /待審核/ }));
 
     // client-side 過濾在分頁下只看得到已載入的頁，篩選必須交給後端
     await waitFor(() => {
