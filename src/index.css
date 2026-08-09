@@ -11,7 +11,7 @@
    為什麼不照 shadcn 官方那樣在 :root 定義 --primary / --muted / --accent：
    CARE 早就用了這三個名字，而且語意不同 ——
      CARE --muted  = 次要「文字」色     shadcn --muted  = 次要「背景」色
-     CARE --accent = 珊瑚橘品牌色        shadcn --accent = hover 底色
+     CARE --accent = 陶橘品牌色          shadcn --accent = hover 底色
    在 :root 覆寫會連帶改掉所有既有 CSS 的顏色。改成全部在 @theme inline 裡
    映射到 utility 名稱，既產生 shadcn 元件需要的 bg-primary / text-muted-foreground，
    又完全不動 tokens.css 的變數。
@@ -37,7 +37,7 @@
   --color-popover: var(--surface);
   --color-popover-foreground: var(--ink);
 
-  /* ── 主色（醫療暖綠）── */
+  /* ── 主色（暖墨綠）── */
   --color-primary: var(--primary);
   --color-primary-foreground: #ffffff;
 
@@ -53,7 +53,8 @@
   --color-accent: var(--primary-soft);
   --color-accent-foreground: var(--primary-strong);
 
-  /* ── 品牌珊瑚橘另外給名字，避免與 shadcn accent 混淆 ── */
+  /* ── 品牌陶橘另外給名字，避免與 shadcn accent 混淆
+     （utility 名沿用 coral，改名只會製造無視覺效果的 churn）── */
   --color-coral: var(--accent);
   --color-coral-strong: var(--accent-strong);
   --color-coral-soft: var(--accent-soft);
@@ -109,17 +110,18 @@
      直接覆寫（見下方），元件端只要 bg-[image:var(--sidebar-wash)]。 */
   --sidebar-wash: radial-gradient(circle at 5% 18%, var(--primary-softer), transparent 32%);
 
-  /* 首頁 Hero 的綠色漸層（同上理由做成變數；深色版彩度降低） */
+  /* 首頁 Hero 的綠色漸層（同上理由做成變數；深色版彩度降低）。
+     不透明度較舊版提高：hero 上的文字是白色，底色夠深才有足夠明度對比。 */
   --hero-bg:
-    radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.28) 0%, transparent 70%),
-    linear-gradient(135deg, rgba(14, 147, 132, 0.76), rgba(45, 181, 162, 0.58));
+    radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.22) 0%, transparent 70%),
+    linear-gradient(135deg, rgba(47, 107, 28, 0.96), rgba(66, 125, 30, 0.86));
 }
 
 .dark {
-  --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(62, 207, 188, 0.08), transparent 32%);
+  --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(165, 215, 100, 0.08), transparent 32%);
   --hero-bg:
     radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.12) 0%, transparent 70%),
-    linear-gradient(135deg, rgba(31, 128, 115, 0.48), rgba(33, 105, 96, 0.26));
+    linear-gradient(135deg, rgba(58, 92, 26, 0.52), rgba(46, 72, 22, 0.30));
 }
 
 /* 專案自有的動畫。這裡用一般 @theme（而非 inline）：這是新定義而非對既有
@@ -248,7 +250,7 @@
     font-size: 1rem;
     line-height: 1.6;
     color: var(--ink-2);
-    /* 頁面頂部的柔和色霧：綠 × 珊瑚，往下淡出到底色 */
+    /* 頁面頂部的柔和色霧：墨綠 × 陶橘，往下淡出到底色 */
     background:
       radial-gradient(900px 420px at 8% -8%, var(--wash-a) 0%, transparent 62%),
       radial-gradient(760px 380px at 96% -4%, var(--wash-b) 0%, transparent 60%),

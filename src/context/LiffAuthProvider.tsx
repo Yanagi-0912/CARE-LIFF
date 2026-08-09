@@ -124,8 +124,8 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
             alignItems: 'center',
             justifyContent: 'center',
             minHeight: '100vh',
-            background: 'var(--bg, #f8fafc)',
-            color: 'var(--ink, #0f172a)',
+            background: 'var(--bg, #faf8f3)',
+            color: 'var(--ink, #1c1a15)',
             fontFamily: 'sans-serif',
           }}
         >
@@ -133,8 +133,8 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
             style={{
               width: '36px',
               height: '36px',
-              border: '3px solid var(--primary-soft, #e2e8f0)',
-              borderTopColor: 'var(--primary, #16a34a)',
+              border: '3px solid var(--primary-soft, #e4efd6)',
+              borderTopColor: 'var(--primary, #2f6b1c)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               marginBottom: '16px',

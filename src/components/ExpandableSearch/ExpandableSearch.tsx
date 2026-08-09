@@ -46,7 +46,7 @@ export default function ExpandableSearch({
           className,
         )}
       >
-        <InputGroupAddon className="p-0 text-[#0b6b60]">
+        <InputGroupAddon className="p-0 text-[var(--primary-strong)]">
           <SearchIcon width={20} height={20} />
         </InputGroupAddon>
         <InputGroupInput
@@ -54,8 +54,8 @@ export default function ExpandableSearch({
           className={cn(
             'ml-2.5 text-[0.95rem] font-[650]',
             'text-transparent caret-transparent placeholder:text-transparent',
-            'group-focus-within:text-[#0b6b60] group-focus-within:caret-auto',
-            'group-focus-within:placeholder:text-[rgba(11,107,96,0.55)]',
+            'group-focus-within:text-[var(--primary-strong)] group-focus-within:caret-auto',
+            'group-focus-within:placeholder:text-[var(--muted)]',
           )}
           type="search"
           value={query}

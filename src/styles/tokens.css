@@ -1,7 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════
    CARE 健康管家 — Design Tokens
-   溫潤醫療綠 × 珊瑚橘點綴 · 柔和卡片 · 長輩友善的大字與高對比支援
+   暖墨綠 × 陶橘點綴 · 柔和卡片 · 長輩友善的大字與高對比支援
    Light (:root) / Dark (html.dark) / High contrast (html.high-contrast)
+
+   ── 配色的高齡視覺依據 ──
+   1. 水晶體黃化會吸收短波長光，老年色覺缺陷絕大多數屬「藍黃型」(tritan)，
+      75 歲約 45%、85 歲以上達 50%。青綠 / 藍紫是最先失守的區域。
+   2. Wijk et al. (1999, Aging Clin Exp Res)：80 歲族群的色彩辨識在
+      「紅、黃區」明顯優於「藍、綠區」。偏好與辨識度是兩回事——
+      綠色受喜愛但不易分辨，故主色保留綠意、色相往黃綠移出藍綠混淆帶。
+   3. Elderly-Centric Chromatics (IJHCI, 2024)：暖色相 + 高明度 + 中飽和度
+      最適合高齡者；對低明度與特定冷色相有明顯排斥。
+      → 面（bg / surface）走暖米白；墨與品牌色則壓深以換取明度對比。
+   4. 色相不可靠，明度對比才可靠。內文目標 WCAG AAA (7:1)，
+      品牌色與狀態色至少 AA (4.5:1)。下方括號為對所在底色的對比值。
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -10,59 +22,63 @@
   /* ── Typography ── */
   --font-sans: 'Plus Jakarta Sans', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, -apple-system, sans-serif;
 
-  /* ── Surface ── */
-  --bg: #f5f7f6;
+  /* ── Surface：暖米白。不用純白，降低高齡者更敏感的螢幕眩光 ── */
+  --bg: #faf8f3;
   --surface: #ffffff;
-  --surface-2: #eef2f0;
-  --surface-3: #e3eae7;
+  --surface-2: #f2ede3;
+  --surface-3: #e7e0d1;
 
-  /* ── Ink ── */
-  --ink: #14201d;
-  --ink-2: #27342f;
-  --muted: #5d6b66;
-  --faint: #8b9793;
+  /* ── Ink：暖黑。冷灰在黃化的水晶體下會偏藍濁 ── */
+  --ink: #1c1a15;                /* 16.2:1 */
+  --ink-2: #33302a;              /* 12.4:1 */
+  --muted: #5a5548;              /*  7.0:1 — AAA */
+  --faint: #736d5e;              /*  4.9:1 — AA */
 
-  /* ── Brand：醫療暖綠 ── */
-  --primary: #0e9384;
-  --primary-2: #2db5a2;          /* 漸層尾端 / hover 輔助 */
-  --primary-strong: #0a7062;
-  --primary-soft: #d9f2ee;
-  --primary-softer: #ecf9f6;
+  /* ── Brand：暖墨綠（黃綠向，避開藍綠混淆帶）── */
+  --primary: #2f6b1c;            /*  6.5:1 on white */
+  --primary-2: #427d1e;          /*  5.0:1 — 漸層尾端 / hover 輔助 */
+  --primary-strong: #1f4a11;     /* 10.4:1 */
+  --primary-soft: #e4efd6;
+  --primary-softer: #f1f7e8;
 
-  /* ── Accent：珊瑚橘（溫暖、行動提示）── */
-  --accent: #ef7757;
-  --accent-strong: #d05a3b;
-  --accent-soft: #fdeae4;
+  /* ── Accent：陶橘（長波長，高齡辨識最穩定的區域）── */
+  --accent: #c2410c;             /*  5.2:1 on white */
+  --accent-strong: #9a3412;
+  --accent-soft: #fdefe6;        /* accent on soft = 4.6:1 */
 
-  /* ── 輔助色（功能卡片、圖示底色）── */
-  --violet: #7568e8;
-  --violet-soft: #edeafd;
-  --amber: #c98a12;
-  --amber-soft: #fbf1dc;
+  /* ── 輔助色（功能卡片、圖示底色）──
+     原 --violet #7568e8 屬藍紫，是 tritan 缺陷最先喪失的色域，
+     改為長波長的莓紫：保留「紫」的語意，但辨識度與對比都可靠得多。 */
+  --violet: #8e2f5f;             /*  7.7:1 on white */
+  --violet-soft: #f7e6ee;        /* violet on soft = 6.4:1 */
+  --amber: #9a5b06;              /*  5.4:1 */
+  --amber-soft: #fbeed5;
 
-  /* ── Status ── */
-  --success: #178a50;
-  --success-soft: #e2f5ea;
-  --danger: #d5473f;
-  --danger-soft: #fdebea;
-  --warning: #b97f10;
-  --warning-soft: #fdf3dd;
+  /* ── Status ──
+     success 與 primary 同屬綠色家族是刻意的：高齡介面的色彩種類愈少愈好，
+     語意由圖示與文字承擔。danger 壓到 7.9:1，與 success 拉開明度差。 */
+  --success: #2f6b1c;            /*  6.5:1 */
+  --success-soft: #e4efd6;
+  --danger: #a01b12;             /*  7.9:1 — AAA */
+  --danger-soft: #fbe6e4;
+  --warning: #8f5304;            /*  6.2:1 */
+  --warning-soft: #fbeed5;
 
-  /* ── Lines ── */
-  --hair: rgba(20, 32, 29, 0.08);
-  --line: rgba(20, 32, 29, 0.16);
+  /* ── Lines：加深（原 0.08 / 0.16 在高齡視力下幾乎消失）── */
+  --hair: rgba(28, 26, 21, 0.12);
+  --line: rgba(28, 26, 21, 0.22);
 
   /* ── 背景暈染（頁面頂部的柔和色霧）── */
-  --wash-a: rgba(14, 147, 132, 0.10);
-  --wash-b: rgba(239, 119, 87, 0.07);
+  --wash-a: rgba(47, 107, 28, 0.09);
+  --wash-b: rgba(194, 65, 12, 0.06);
 
   /* ── Overlay ── */
-  --scrim: rgba(16, 28, 25, 0.42);
+  --scrim: rgba(24, 20, 12, 0.46);
 
-  /* ── Shadows（帶一點綠意的柔影）── */
-  --shadow-1: 0 1px 2px rgba(20, 32, 29, 0.05), 0 1px 6px rgba(20, 32, 29, 0.04);
-  --shadow-2: 0 6px 18px -6px rgba(20, 32, 29, 0.12);
-  --shadow-3: 0 16px 44px -12px rgba(20, 32, 29, 0.20);
+  /* ── Shadows（暖中性柔影）── */
+  --shadow-1: 0 1px 2px rgba(28, 26, 21, 0.06), 0 1px 6px rgba(28, 26, 21, 0.05);
+  --shadow-2: 0 6px 18px -6px rgba(28, 26, 21, 0.14);
+  --shadow-3: 0 16px 44px -12px rgba(28, 26, 21, 0.22);
 
   /* ── Spacing（4px 網格）── */
   --sp-1: 4px;
@@ -93,66 +109,88 @@
   --bottom-h: 72px;
 }
 
-/* ═══════════════ Dark mode ═══════════════ */
+/* ═══════════════ Dark mode ═══════════════
+   深色底下反過來：品牌色取高明度的黃綠，維持 9:1 以上。
+   底色同樣走暖中性，避免冷藍黑在黃化視覺下顯得混濁。 */
 .dark {
   color-scheme: dark;
 
-  --bg: #0f1513;
-  --surface: #171f1c;
-  --surface-2: #1e2925;
-  --surface-3: #26332e;
+  --bg: #14120d;
+  --surface: #1e1b15;
+  --surface-2: #29251d;
+  --surface-3: #353026;
 
-  --ink: #f2f6f4;
-  --ink-2: #dbe4e0;
-  --muted: #9caba5;
-  --faint: #6e7c77;
+  --ink: #f6f3ec;
+  --ink-2: #e3ded2;
+  --muted: #aca596;
+  --faint: #837c6d;
 
-  --primary: #3ecfbc;
-  --primary-2: #66dccb;
-  --primary-strong: #7ce6d6;
-  --primary-soft: rgba(62, 207, 188, 0.16);
-  --primary-softer: rgba(62, 207, 188, 0.09);
+  --primary: #a5d764;            /* 9.8:1 on --surface */
+  --primary-2: #bde383;
+  --primary-strong: #cdeb9f;
+  --primary-soft: rgba(165, 215, 100, 0.18);
+  --primary-softer: rgba(165, 215, 100, 0.10);
 
-  --accent: #ff9578;
-  --accent-strong: #ffb09a;
-  --accent-soft: rgba(255, 149, 120, 0.14);
+  --accent: #ff9764;
+  --accent-strong: #ffb48c;
+  --accent-soft: rgba(255, 151, 100, 0.16);
 
-  --violet: #a89cff;
-  --violet-soft: rgba(168, 156, 255, 0.14);
-  --amber: #e8b04d;
-  --amber-soft: rgba(232, 176, 77, 0.13);
+  --violet: #f08ab5;
+  --violet-soft: rgba(240, 138, 181, 0.16);
+  --amber: #ecb64f;
+  --amber-soft: rgba(236, 182, 79, 0.15);
 
-  --success: #4cc98a;
-  --success-soft: rgba(76, 201, 138, 0.14);
-  --danger: #ff8a80;
-  --danger-soft: rgba(255, 138, 128, 0.13);
-  --warning: #e8c063;
-  --warning-soft: rgba(232, 192, 99, 0.13);
+  --success: #a5d764;
+  --success-soft: rgba(165, 215, 100, 0.16);
+  --danger: #ff8f80;
+  --danger-soft: rgba(255, 143, 128, 0.15);
+  --warning: #ecb64f;
+  --warning-soft: rgba(236, 182, 79, 0.15);
 
-  --hair: rgba(255, 255, 255, 0.09);
-  --line: rgba(255, 255, 255, 0.18);
+  --hair: rgba(255, 252, 244, 0.11);
+  --line: rgba(255, 252, 244, 0.22);
 
-  --wash-a: rgba(62, 207, 188, 0.07);
-  --wash-b: rgba(255, 149, 120, 0.05);
+  --wash-a: rgba(165, 215, 100, 0.07);
+  --wash-b: rgba(255, 151, 100, 0.05);
 
-  --scrim: rgba(0, 0, 0, 0.6);
+  --scrim: rgba(0, 0, 0, 0.62);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-2: 0 6px 18px -6px rgba(0, 0, 0, 0.45);
-  --shadow-3: 0 16px 44px -12px rgba(0, 0, 0, 0.6);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.38);
+  --shadow-2: 0 6px 18px -6px rgba(0, 0, 0, 0.48);
+  --shadow-3: 0 16px 44px -12px rgba(0, 0, 0, 0.62);
 }
 
-/* ═══════════════ 高對比（沿用設定頁的無障礙選項）═══════════════ */
+/* ═══════════════ 高對比（沿用設定頁的無障礙選項）═══════════════
+   除了加深線條，品牌與狀態色也一併換成最深的一階：
+   內文與圖示全面推到 AAA(7:1) 以上，這是高齡低視力最實際的補償手段。 */
 html.high-contrast {
-  --hair: rgba(20, 32, 29, 0.30);
-  --line: rgba(20, 32, 29, 0.48);
-  --muted: #3c4844;
-  --faint: #5d6b66;
+  --hair: rgba(28, 26, 21, 0.34);
+  --line: rgba(28, 26, 21, 0.52);
+  --muted: #3b372d;
+  --faint: #5a5548;
+
+  --primary: #1f4a11;            /* 10.4:1 */
+  --primary-2: #2f6b1c;
+  --accent: #8a2e0a;             /*  8.4:1 */
+  --violet: #6f1f48;             /* 11.0:1 */
+  --amber: #6f4104;              /*  9.4:1 */
+  --success: #1f4a11;
+  --danger: #8a1610;             /* 10.0:1 */
+  --warning: #6f4104;
 }
 
 html.high-contrast.dark {
-  --hair: rgba(255, 255, 255, 0.32);
-  --line: rgba(255, 255, 255, 0.5);
-  --muted: #c7d2cd;
-  --faint: #9caba5;
+  --hair: rgba(255, 252, 244, 0.34);
+  --line: rgba(255, 252, 244, 0.54);
+  --muted: #d2ccbf;
+  --faint: #aca596;
+
+  --primary: #c6e89a;
+  --primary-2: #d8f0b8;
+  --accent: #ffc0a2;
+  --violet: #f8b3cf;
+  --amber: #f5d089;
+  --success: #c6e89a;
+  --danger: #ffb3a8;
+  --warning: #f5d089;
 }

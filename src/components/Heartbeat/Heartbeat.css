@@ -39,7 +39,7 @@
 }
 
 .ekg--onLight .ekg__line {
-  stroke: color-mix(in srgb, var(--primary, #0e9384) 35%, transparent);
+  stroke: color-mix(in srgb, var(--primary, #2f6b1c) 35%, transparent);
 }
 
 .ekg__dot {
@@ -63,10 +63,10 @@
 }
 
 .ekg--onLight .ekg__dot {
-  background: var(--primary, #0e9384);
+  background: var(--primary, #2f6b1c);
   box-shadow:
-    0 0 6px 2px color-mix(in srgb, var(--primary, #0e9384) 75%, transparent),
-    0 0 14px 4px color-mix(in srgb, var(--primary, #0e9384) 40%, transparent);
+    0 0 6px 2px color-mix(in srgb, var(--primary, #2f6b1c) 75%, transparent),
+    0 0 14px 4px color-mix(in srgb, var(--primary, #2f6b1c) 40%, transparent);
 }
 
 @keyframes ekgSweep {
