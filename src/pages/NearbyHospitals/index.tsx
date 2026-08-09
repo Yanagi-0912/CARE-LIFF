@@ -74,7 +74,8 @@ const NearbyHospitalsPage = () => {
       <Card className="bg-primary text-primary-foreground">
         <CardContent>
           <p className="text-xs tracking-wide uppercase opacity-85">{t('nearby.eyebrow')}</p>
-          <h1 className="mt-2 text-[clamp(1.4rem,4vw,1.85rem)] font-bold">
+          {/* text-inherit 的理由同首頁 hero：base 層的 h1 墨色會蓋掉繼承色 */}
+          <h1 className="mt-2 text-[clamp(1.4rem,4vw,1.85rem)] font-bold text-inherit">
             <DecryptedText
               text={t('nearby.title')}
               speed={36}

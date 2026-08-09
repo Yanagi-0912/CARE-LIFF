@@ -72,7 +72,10 @@ const Home = () => {
     <div className="mx-auto max-w-[1200px] p-4">
       <Card className="animate-hero-in mb-6 bg-primary text-primary-foreground">
         <CardContent>
-          <h1 className="text-[1.7rem] font-extrabold tracking-[0.01em] sm:text-[2rem]">
+          {/* text-inherit 不可省：@layer base 的 h1{color:var(--ink)} 是直接規則，
+              永遠贏過從 Card 的 text-primary-foreground 繼承下來的顏色，
+              少了它標題會變成墨色壓在深綠底上（實測 1.6:1）。 */}
+          <h1 className="text-[1.7rem] font-extrabold tracking-[0.01em] text-inherit sm:text-[2rem]">
             <DecryptedText
               text={t('home.title')}
               speed={36}
