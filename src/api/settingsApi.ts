@@ -11,6 +11,7 @@ export type ApiUserSettings = {
   notify_family: boolean;
   voice_reply_enabled: boolean;
   voice_rate: 'slow' | 'normal' | 'fast';
+  voice_gender: 'female' | 'male';
 };
 
 export type UpdateUserSettingsPayload = Partial<ApiUserSettings>;

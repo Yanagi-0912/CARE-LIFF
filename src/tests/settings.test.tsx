@@ -60,8 +60,8 @@ describe('設定頁語音區塊', () => {
   it('語速預設值應為 normal（標準檔按鈕預設為選中狀態）', async () => {
     await renderSettings();
 
-    // 語速群組的 aria-label 為區塊標題「語音回覆」，用它跟字體大小群組的「標準」按鈕區分開來
-    const voiceRateGroup = screen.getByRole('group', { name: '語音回覆' });
+    // 語速群組的 aria-label 為專屬的「語速」文字，跟音色群組的「音色」區分開來
+    const voiceRateGroup = screen.getByRole('group', { name: '語速' });
     expect(within(voiceRateGroup).getByRole('button', { name: '標準' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(voiceRateGroup).getByRole('button', { name: '慢速' })).toHaveAttribute('aria-pressed', 'false');
     expect(within(voiceRateGroup).getByRole('button', { name: '快速' })).toHaveAttribute('aria-pressed', 'false');
@@ -86,7 +86,7 @@ describe('設定頁語音區塊', () => {
   it('選擇語速三檔後，state 與 localStorage 記錄的值須為 slow/normal/fast（非 UI 標籤文字）', async () => {
     await renderSettings();
     const user = userEvent.setup();
-    const voiceRateGroup = screen.getByRole('group', { name: '語音回覆' });
+    const voiceRateGroup = screen.getByRole('group', { name: '語速' });
 
     await user.click(within(voiceRateGroup).getByRole('button', { name: '快速' }));
 
@@ -102,5 +102,44 @@ describe('設定頁語音區塊', () => {
       const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
       expect(saved.voiceRate).toBe('slow');
     });
+  });
+
+  it('音色預設值應為 female（女聲按鈕預設為選中狀態）', async () => {
+    await renderSettings();
+
+    // 音色群組的 aria-label 為專屬的「音色」文字，跟語速群組的「語速」區分開來
+    const voiceGenderGroup = screen.getByRole('group', { name: '音色' });
+    expect(within(voiceGenderGroup).getByRole('button', { name: '女聲' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(voiceGenderGroup).getByRole('button', { name: '男聲' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('選擇男聲後，state 與 localStorage 記錄的值須為 male（非 UI 標籤文字「男聲」），且兩選項互斥', async () => {
+    await renderSettings();
+    const user = userEvent.setup();
+    const voiceGenderGroup = screen.getByRole('group', { name: '音色' });
+
+    await user.click(within(voiceGenderGroup).getByRole('button', { name: '男聲' }));
+
+    expect(within(voiceGenderGroup).getByRole('button', { name: '男聲' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(voiceGenderGroup).getByRole('button', { name: '女聲' })).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+      expect(saved.voiceGender).toBe('male');
+    });
+
+    await user.click(within(voiceGenderGroup).getByRole('button', { name: '女聲' }));
+    expect(within(voiceGenderGroup).getByRole('button', { name: '女聲' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(voiceGenderGroup).getByRole('button', { name: '男聲' })).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+      expect(saved.voiceGender).toBe('female');
+    });
+  });
+
+  it('語速與音色兩個群組須有各自可辨識的無障礙名稱（不可同名）', async () => {
+    await renderSettings();
+
+    expect(screen.getByRole('group', { name: '語速' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '音色' })).toBeInTheDocument();
   });
 });
