@@ -9,7 +9,7 @@ import {
     buildConsultationSummaryDownloadUrl,
 } from '../../../api/consultationApi';
 import { toast } from 'sonner';
-import { FileTextIcon, MessageCircleIcon, XIcon } from 'lucide-react';
+import { ChevronRightIcon, DownloadIcon, FileTextIcon, MessageCircleIcon, XIcon } from 'lucide-react';
 import {
     Dialog,
     DialogClose,
@@ -22,11 +22,18 @@ import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldLabel } from '@/components/ui/field';
+import {
+    Item,
+    ItemContent,
+    ItemDescription,
+    ItemGroup,
+    ItemHeader,
+    ItemMedia,
+    ItemTitle,
+} from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -42,6 +49,9 @@ type SummarySection = { key: string; label: string; value: string | string[] | n
 
 
 const getSummaryKey = (s: ConsultationSummary) => s?.summary_date ?? '';
+
+/** 使用者送出的訊息是 text，其餘（ai_response…）一律視為 AI 回覆 */
+const isUserMessage = (msg: ConsultationMessage) => msg.message_type === 'text';
 
 
 function toSummarySections(summary: ConsultationSummary, t: (key: string) => string): SummarySection[] {
@@ -94,6 +104,25 @@ function toSummarySections(summary: ConsultationSummary, t: (key: string) => str
         });
 }
 
+/** 卡片列的骨架屏，與實際的 Item 同一組元件，外框自然對齊 */
+function RecordSkeleton({ rows, label }: { rows: number; label: string }) {
+    return (
+        <ItemGroup className="gap-3" aria-busy="true" aria-label={label}>
+            {Array.from({ length: rows }, (_, i) => (
+                <Item key={i} variant="outline">
+                    <ItemMedia>
+                        <Skeleton className="size-9 rounded-full" />
+                    </ItemMedia>
+                    <ItemContent>
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-full" />
+                    </ItemContent>
+                </Item>
+            ))}
+        </ItemGroup>
+    );
+}
+
 const ConsultRecordsPage: React.FC = () => {
     const { t } = useTranslation(); //用於多語系翻譯
     const [selectedSummaryKey, setSelectedSummaryKey] = useState<string>('');
@@ -114,7 +143,6 @@ const ConsultRecordsPage: React.FC = () => {
 
     const summaryItems = summariesQuery.data ?? [];
     const rawMessages = rawQuery.data?.messages ?? [];
-    const listLoading = summariesQuery.isPending || rawQuery.isPending;
     const summaryError = summariesQuery.error
         ? summariesQuery.error instanceof Error
             ? summariesQuery.error.message
@@ -148,6 +176,8 @@ const ConsultRecordsPage: React.FC = () => {
         return text;
     };
 
+    // summary_date 可能是純日期，也可能是 ISO 時間字串（2026-07-02T00:00:00Z），
+    // 取第 5~10 個字元就是兩者共通的 MM-DD 段落，不必解析日期
     const formatSummaryDate = (s: ConsultationSummary) =>
         getSummaryKey(s).slice(5, 10).replaceAll('-', '/') || t('consultRecord.unnamedDate');
 
@@ -170,16 +200,16 @@ const ConsultRecordsPage: React.FC = () => {
     };
 
     return (
-        <div className="mx-auto flex w-full max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
-            <header className="mb-4">
+        // 手機優先：內容直接鋪在頁面上，不再包一層 Card。原本「Card 包 Tabs 再包
+        // Card」在 320px 寬會被兩層外框與內距吃掉近 60px，正文只剩十來個字。
+        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4 p-4">
+            <header>
                 <h2 className="text-2xl font-extrabold">{t('consultRecord.title')}</h2>
                 <p className="mt-1 text-muted-foreground">{t('consultRecord.description')}</p>
             </header>
 
-            {/* 原本這裡是一台畫出來的「手機」（深色機身、瀏海、喇叭條，
-                內容全部寫死 hex 色碼、不吃深色模式）。改成一般的 Card +
-                Tabs，內容一樣但配色走 token，也跟其他頁一致。 */}
             <Tabs
+                className="gap-4"
                 value={viewMode}
                 onValueChange={(value) => setViewMode(value as 'summary' | 'raw')}
             >
@@ -194,165 +224,172 @@ const ConsultRecordsPage: React.FC = () => {
                     </TabsTrigger>
                 </TabsList>
 
-                <Card>
-                    <CardContent className="flex flex-col gap-3">
-                        {listLoading && (
-                            <div className="flex flex-col gap-2" aria-busy="true" aria-label={t('consultRecord.loading')}>
-                                <Skeleton className="h-6 w-40" />
-                                <Skeleton className="h-20 w-full" />
-                                <Skeleton className="h-20 w-full" />
-                            </div>
-                        )}
+                {/* 兩個查詢各自獨立，載入與錯誤狀態也分別掛在自己的分頁裡 */}
+                <TabsContent value="summary" className="flex flex-col gap-4">
+                    {summariesQuery.isPending ? (
+                        <RecordSkeleton rows={3} label={t('consultRecord.loading')} />
+                    ) : summaryError ? (
+                        <Alert variant="destructive">
+                            <AlertDescription>{summaryError}</AlertDescription>
+                        </Alert>
+                    ) : summaryItems.length > 0 ? (
+                        <>
+                            {/* 直向 Field：標籤在上、選單滿版。原本是橫向一列，
+                                在窄螢幕上標籤被壓成一字一行、選單還被推出卡片外 */}
+                            <Field>
+                                <FieldLabel htmlFor="summary-select">
+                                    {t('consultRecord.summaryDate')}
+                                </FieldLabel>
+                                <Select
+                                    value={effectiveSummaryKey}
+                                    onValueChange={(value) => setSelectedSummaryKey(value ?? '')}
+                                >
+                                    {/* 手機滿版好按，桌機收窄避免一個日期橫跨整頁 */}
+                                    <SelectTrigger id="summary-select" className="w-full sm:w-56">
+                                        {/* 值是完整日期字串，顯示要用 formatSummaryDate 轉成 YYYY/MM/DD */}
+                                        <SelectValue>
+                                            {(value) => {
+                                                const item = summaryItems.find(s => getSummaryKey(s) === value);
+                                                return item ? formatSummaryDate(item) : String(value ?? '');
+                                            }}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {summaryItems.map(s => (
+                                            <SelectItem key={getSummaryKey(s)} value={getSummaryKey(s)}>
+                                                {formatSummaryDate(s)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
 
-                        {/* summaryError 在設定時就已是「具體訊息 or 通用備援」，此處直接顯示它。
-                            原本固定渲染通用文字，等於讓那個 state 形同虛設。 */}
-                        {!listLoading && summaryError && (
-                            <Alert variant="destructive">
-                                <AlertDescription>{summaryError}</AlertDescription>
-                            </Alert>
-                        )}
+                            {selectedSummarySections.length > 0 ? (
+                                <ItemGroup className="gap-3" aria-label={t('consultRecord.summaryTitle')}>
+                                    {selectedSummarySections.map(section => (
+                                        // ItemHeader 是 basis-full，會自成一列，
+                                        // 標題在上、內容在下，不必自己排 flex-col
+                                        <Item key={section.key} variant="outline">
+                                            <ItemHeader>
+                                                <ItemTitle className="text-base font-bold">
+                                                    {section.label}
+                                                </ItemTitle>
+                                            </ItemHeader>
+                                            <ItemContent className={cn('text-base', MARKDOWN)}>
+                                                <ReactMarkdown>
+                                                    {Array.isArray(section.value)
+                                                        ? section.value.map(item => `- ${item}`).join('\n')
+                                                        : section.value ?? t('consultRecord.none')}
+                                                </ReactMarkdown>
+                                            </ItemContent>
+                                        </Item>
+                                    ))}
+                                </ItemGroup>
+                            ) : (
+                                <Empty className="border border-dashed">
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <FileTextIcon />
+                                        </EmptyMedia>
+                                        <EmptyTitle>{t('consultRecord.emptySummary')}</EmptyTitle>
+                                    </EmptyHeader>
+                                </Empty>
+                            )}
+                        </>
+                    ) : (
+                        <Empty className="border border-dashed">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <FileTextIcon />
+                                </EmptyMedia>
+                                <EmptyTitle>{t('consultRecord.noSummaryData')}</EmptyTitle>
+                                <EmptyDescription>{t('consultRecord.description')}</EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    )}
+                </TabsContent>
 
-                        {!listLoading && (
-                            <>
-                                <TabsContent value="summary" className="flex flex-col gap-3">
-                                    {summaryItems.length > 0 ? (
-                                        <>
-                                            <Field orientation="horizontal" className="items-center">
-                                                <FieldLabel htmlFor="summary-select">
-                                                    {t('consultRecord.summaryDate')}
-                                                </FieldLabel>
-                                                {/*選擇日期的下拉選單*/}
-                                                <Select
-                                                    value={effectiveSummaryKey}
-                                                    onValueChange={(value) => setSelectedSummaryKey(value ?? '')}
-                                                >
-                                                    <SelectTrigger id="summary-select" className="ml-auto min-w-32">
-                                                        {/* 值是完整日期字串，顯示要用 formatSummaryDate 縮成 MM/DD */}
-                                                        <SelectValue>
-                                                            {(value) => {
-                                                                const item = summaryItems.find(s => getSummaryKey(s) === value);
-                                                                return item ? formatSummaryDate(item) : String(value ?? '');
-                                                            }}
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {summaryItems.map(s => (
-                                                            <SelectItem key={getSummaryKey(s)} value={getSummaryKey(s)}>
-                                                                {formatSummaryDate(s)}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </Field>
-
-                                            <h3 className="text-lg font-extrabold">
-                                                {t('consultRecord.summaryTitle')}
-                                            </h3>
-
-                                            {selectedSummarySections.length > 0 ? (
-                                                selectedSummarySections.map(section => (
-                                                    <Card key={section.key} size="sm">
-                                                        <CardContent className="flex flex-col gap-2">
-                                                            <Badge variant="secondary" className="w-fit">
-                                                                {section.label}
-                                                            </Badge>
-                                                            <div className={cn('text-base', MARKDOWN)}>
-                                                                <ReactMarkdown>
-                                                                    {Array.isArray(section.value)
-                                                                        ? section.value.map(item => `- ${item}`).join('\n')
-                                                                        : section.value ?? t('consultRecord.none')}
-                                                                </ReactMarkdown>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                ))
-                                            ) : (
-                                                <Empty className="border border-dashed">
-                                                    <EmptyHeader>
-                                                        <EmptyTitle>{t('consultRecord.emptySummary')}</EmptyTitle>
-                                                    </EmptyHeader>
-                                                </Empty>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <Empty className="border border-dashed">
-                                            <EmptyHeader>
-                                                <EmptyTitle>{t('consultRecord.noSummaryData')}</EmptyTitle>
-                                                <EmptyDescription>{t('consultRecord.description')}</EmptyDescription>
-                                            </EmptyHeader>
-                                        </Empty>
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="raw" className="flex flex-col gap-3">
-                                    {rawMessages.length > 0 ? (
-                                        rawMessages.map((msg, idx) => {
-                                            const isYou = msg.message_type === 'text';
-                                            return (
-                                                <button
-                                                    key={`raw_${idx}`}
-                                                    type="button"
+                <TabsContent value="raw" className="flex flex-col gap-4">
+                    {rawQuery.isPending ? (
+                        <RecordSkeleton rows={4} label={t('consultRecord.loading')} />
+                    ) : rawMessages.length > 0 ? (
+                        // 原本是左右分邊的對話氣泡（max-w-[75%]），在 320px 上一句話
+                        // 要斷成四五行。紀錄用的清單改成一列一則，整列可點開全文。
+                        <ItemGroup className="gap-2" aria-label={t('consultRecord.tabRaw')}>
+                            {rawMessages.map((msg, idx) => {
+                                const isYou = isUserMessage(msg);
+                                return (
+                                    <Item
+                                        key={`raw_${idx}`}
+                                        variant="outline"
+                                        className="cursor-pointer text-left hover:bg-muted/40"
+                                        render={
+                                            <button type="button" onClick={() => setSelectedMessage(msg)} />
+                                        }
+                                    >
+                                        <ItemMedia>
+                                            <Avatar className="size-9">
+                                                <AvatarFallback
                                                     className={cn(
-                                                        'flex cursor-pointer items-start gap-2.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                                                        isYou && 'flex-row-reverse',
+                                                        'text-xs font-bold',
+                                                        isYou
+                                                            ? 'bg-primary text-primary-foreground'
+                                                            : 'bg-secondary text-secondary-foreground',
                                                     )}
-                                                    onClick={() => setSelectedMessage(msg)}
                                                 >
-                                                    <Avatar className="size-8">
-                                                        <AvatarFallback
-                                                            className={cn(
-                                                                'text-xs font-bold',
-                                                                isYou
-                                                                    ? 'bg-primary text-primary-foreground'
-                                                                    : 'bg-secondary text-secondary-foreground',
-                                                            )}
-                                                        >
-                                                            {isYou ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div
-                                                        className={cn(
-                                                            'max-w-[75%] rounded-2xl px-3.5 py-2.5 leading-relaxed',
-                                                            isYou
-                                                                ? 'rounded-tr-sm bg-primary/10 text-foreground'
-                                                                : 'rounded-tl-sm bg-muted text-foreground',
-                                                        )}
-                                                    >
-                                                        {truncateText(msg.content || t('consultRecord.noContent'))}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })
-                                    ) : (
-                                        <Empty className="border border-dashed">
-                                            <EmptyHeader>
-                                                <EmptyTitle>{t('consultRecord.noRawMessages')}</EmptyTitle>
-                                            </EmptyHeader>
-                                        </Empty>
-                                    )}
-                                </TabsContent>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                                                    {isYou ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </ItemMedia>
+                                        <ItemContent>
+                                            <ItemTitle>
+                                                {isYou
+                                                    ? t('consultRecord.modalUserTitle')
+                                                    : t('consultRecord.modalAiTitle')}
+                                            </ItemTitle>
+                                            <ItemDescription>
+                                                {truncateText(msg.content || t('consultRecord.noContent'))}
+                                            </ItemDescription>
+                                        </ItemContent>
+                                        <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
+                                    </Item>
+                                );
+                            })}
+                        </ItemGroup>
+                    ) : (
+                        <Empty className="border border-dashed">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <MessageCircleIcon />
+                                </EmptyMedia>
+                                <EmptyTitle>{t('consultRecord.noRawMessages')}</EmptyTitle>
+                            </EmptyHeader>
+                        </Empty>
+                    )}
+                </TabsContent>
             </Tabs>
 
-            <div className="mt-4 flex flex-wrap gap-2.5">
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleDownload}
-                    disabled={downloading}
-                >
-                    {downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}
-                </Button>
-            </div>
+            {/* 手機滿版、桌機收成內容寬度 */}
+            <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-fit"
+                onClick={handleDownload}
+                disabled={downloading}
+            >
+                <DownloadIcon data-icon="inline-start" />
+                {downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}
+            </Button>
 
             {/* Dialog 取代原本手刻的遮罩＋div[role=dialog]：
                 焦點鎖定、Escape 關閉、關閉後焦點歸位、背景鎖捲皆由元件提供。
                 關閉鈕自己掛：內建那顆的 sr-only 文字寫死英文 "Close"。 */}
             <Dialog open={selectedMessage !== null} onOpenChange={(open) => !open && setSelectedMessage(null)}>
-                <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[480px]" showCloseButton={false}>
+                <DialogContent
+                    // 只讓內文捲動，否則 absolute 定位的關閉鈕會跟著捲走
+                    className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] sm:max-w-[480px]"
+                    showCloseButton={false}
+                >
                     {selectedMessage && (
                         <>
                             <DialogClose
@@ -369,31 +406,29 @@ const ConsultRecordsPage: React.FC = () => {
                                 <XIcon />
                             </DialogClose>
 
-                            <DialogHeader>
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="size-11">
-                                        <AvatarFallback
-                                            className={cn(
-                                                'font-bold',
-                                                selectedMessage.message_type === 'text'
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-secondary text-secondary-foreground',
-                                            )}
-                                        >
-                                            {selectedMessage.message_type === 'text'
-                                                ? t('consultRecord.userBadge')
-                                                : t('consultRecord.aiBadge')}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <DialogTitle className="text-xl font-bold">
-                                        {selectedMessage.message_type === 'text'
-                                            ? t('consultRecord.modalUserTitle')
-                                            : t('consultRecord.modalAiTitle')}
-                                    </DialogTitle>
-                                </div>
+                            <DialogHeader className="flex-row items-center gap-3 pr-10">
+                                <Avatar className="size-11">
+                                    <AvatarFallback
+                                        className={cn(
+                                            'font-bold',
+                                            isUserMessage(selectedMessage)
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'bg-secondary text-secondary-foreground',
+                                        )}
+                                    >
+                                        {isUserMessage(selectedMessage)
+                                            ? t('consultRecord.userBadge')
+                                            : t('consultRecord.aiBadge')}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <DialogTitle className="text-xl font-bold">
+                                    {isUserMessage(selectedMessage)
+                                        ? t('consultRecord.modalUserTitle')
+                                        : t('consultRecord.modalAiTitle')}
+                                </DialogTitle>
                             </DialogHeader>
 
-                            <div className={cn('leading-relaxed [overflow-wrap:anywhere]', MARKDOWN)}>
+                            <div className={cn('overflow-y-auto text-base leading-relaxed [overflow-wrap:anywhere]', MARKDOWN)}>
                                 <ReactMarkdown>{selectedMessage.content || t('consultRecord.noContent')}</ReactMarkdown>
                             </div>
                         </>

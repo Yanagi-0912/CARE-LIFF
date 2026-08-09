@@ -26,6 +26,14 @@
    App 內的選擇，故必須明確覆寫。 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* shadcn 的 Base UI 版元件寫的是 data-horizontal: / data-vertical:，但 Base UI
+   實際輸出的屬性是 data-orientation="horizontal|vertical"。少了這兩行，Tailwind
+   產出的選擇器會是 [data-horizontal]，永遠不命中 —— Tabs 的 flex-col 不會套用，
+   分頁列會跟內容並排（手機上內容被擠成一條）。上游 shadcn 的 base-ui 樣式有帶
+   這兩個變體，這個專案的 index.css 當初漏抄。 */
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+
 @theme inline {
   /* ── 版面 ── */
   --color-background: var(--bg);
