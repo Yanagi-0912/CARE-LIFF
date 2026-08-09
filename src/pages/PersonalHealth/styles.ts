@@ -39,7 +39,6 @@ export const INPUT =
   'w-full max-w-[300px] flex-1 rounded-md border-[1.5px] border-hair bg-surface px-3.5 py-[11px] text-base text-ink transition-[border-color,box-shadow] duration-140 placeholder:text-faint focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] focus:outline-none max-[600px]:max-w-[80%]';
 export const INPUT_LONG = 'max-w-[500px] max-[600px]:max-w-full';
 export const INPUT_ERROR = 'border-[#ff4d4f]';
-export const FIELD_ERROR_TEXT = 'mt-1 block text-[0.82rem] font-semibold text-[#ff4d4f]';
 export const FIELD_CONTROL =
   'flex max-w-[300px] flex-1 flex-col gap-1 max-[600px]:w-full max-[600px]:max-w-full [&_input]:max-w-none [&_textarea]:max-w-none';
 export const STEP_REQUIREMENT =

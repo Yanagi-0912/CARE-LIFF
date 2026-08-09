@@ -63,6 +63,8 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.unit.age': '歲',
     'personalHealth.unit.height': 'cm',
     'personalHealth.unit.weight': 'kg',
+    /* 欄位下方的範圍提示，例如「0–130 歲」 */
+    'personalHealth.rangeHint': '{{min}}–{{max}} {{unit}}',
     'personalHealth.validation.required': '請輸入{{label}}',
     'personalHealth.validation.range':
       '{{label}}，請輸入 {{min}} 到 {{max}} {{unit}} 之間的數字',
@@ -135,6 +137,8 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.unit.age': 'years',
     'personalHealth.unit.height': 'cm',
     'personalHealth.unit.weight': 'kg',
+    /* 欄位下方的範圍提示，例如「0–130 歲」 */
+    'personalHealth.rangeHint': '{{min}}–{{max}} {{unit}}',
     'personalHealth.validation.required': 'Please enter {{label}}',
     'personalHealth.validation.range':
       '{{label}} must be a number between {{min}} and {{max}} {{unit}}',
@@ -208,6 +212,8 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.unit.age': 'tahun',
     'personalHealth.unit.height': 'cm',
     'personalHealth.unit.weight': 'kg',
+    /* 欄位下方的範圍提示，例如「0–130 歲」 */
+    'personalHealth.rangeHint': '{{min}}–{{max}} {{unit}}',
     'personalHealth.validation.required': 'Harap masukkan {{label}}',
     'personalHealth.validation.range':
       '{{label}} harus angka antara {{min}} dan {{max}} {{unit}}',
@@ -284,6 +290,8 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.unit.age': 'tuổi',
     'personalHealth.unit.height': 'cm',
     'personalHealth.unit.weight': 'kg',
+    /* 欄位下方的範圍提示，例如「0–130 歲」 */
+    'personalHealth.rangeHint': '{{min}}–{{max}} {{unit}}',
     'personalHealth.validation.required': 'Vui lòng nhập {{label}}',
     'personalHealth.validation.range':
       '{{label}} phải là số từ {{min}} đến {{max}} {{unit}}',
@@ -358,6 +366,8 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.unit.age': 'ปี',
     'personalHealth.unit.height': 'ซม.',
     'personalHealth.unit.weight': 'กก.',
+    /* 欄位下方的範圍提示，例如「0–130 歲」 */
+    'personalHealth.rangeHint': '{{min}}–{{max}} {{unit}}',
     'personalHealth.validation.required': 'กรุณากรอก{{label}}',
     'personalHealth.validation.range':
       '{{label}} ต้องเป็นตัวเลขระหว่าง {{min}} ถึง {{max}} {{unit}}',
@@ -433,6 +443,8 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.unit.age': '歳',
     'personalHealth.unit.height': 'cm',
     'personalHealth.unit.weight': 'kg',
+    /* 欄位下方的範圍提示，例如「0–130 歲」 */
+    'personalHealth.rangeHint': '{{min}}–{{max}} {{unit}}',
     'personalHealth.validation.required': '{{label}}を入力してください',
     'personalHealth.validation.range':
       '{{label}}は {{min}} から {{max}} {{unit}} の数値で入力してください',

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { HealthField, HealthInput, HealthTextarea } from './HealthFields';
 import * as S from './styles';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
@@ -115,6 +116,18 @@ const validateNumericField = (
     return '';
 };
 
+/** 三個步驟的開場文案結構相同，抽成小元件避免重複三次 */
+function StepIntro({ step }: { step: 1 | 2 | 3 }) {
+    const { t } = useTranslation();
+    return (
+        <div className={S.STEP_INTRO}>
+            <span>{t(`personalHealth.step${step}.label`)}</span>
+            <h2>{t(`personalHealth.step${step}.title`)}</h2>
+            <p>{t(`personalHealth.step${step}.desc`)}</p>
+        </div>
+    );
+}
+
 const PersonalHealthPage: React.FC = () => {
     const { t } = useTranslation();
     const [currentStep, setCurrentStep] = useState(1);
@@ -162,11 +175,6 @@ const PersonalHealthPage: React.FC = () => {
     });
 
     const form = watch();
-    const fieldErrors = {
-        age: errors.age?.message,
-        height: errors.height?.message,
-        weight: errors.weight?.message,
-    };
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
     const [liffReady, setLiffReady] = useState(false);
@@ -429,33 +437,20 @@ const PersonalHealthPage: React.FC = () => {
                     aria-label={t('personalHealth.stepperAriaLabel')}
                 >
                     <Step>
-                        <div className={S.STEP_INTRO}>
-                            <span>{t('personalHealth.step1.label')}</span>
-                            <h2>{t('personalHealth.step1.title')}</h2>
-                            <p>{t('personalHealth.step1.desc')}</p>
-                        </div>
+                        <StepIntro step={1} />
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="name">
-                                {t('personalHealth.name')}
-                            </label>
-                            <input
-                                className={S.INPUT}
-                                type="text"
+                        <HealthField htmlFor="name" label={t('personalHealth.name')}>
+                            <HealthInput
                                 id="name"
-                                {...register("name")}
                                 placeholder={t('personalHealth.namePlaceholder')}
-                                required
+                                register={register('name')}
                             />
-                        </div>
+                        </HealthField>
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="gender">
-                                {t('personalHealth.gender')}
-                            </label>
-                            {/* 原本是手刻下拉：選項用 <button> 塞進 role="listbox"（語意不合法，
-                                應為 role="option"），且完全沒有鍵盤操作。改用 Select 後
-                                combobox/listbox/option 語意正確，方向鍵、首字跳選、Escape 皆內建。 */}
+                        <HealthField htmlFor="gender" label={t('personalHealth.gender')} error={errors.gender}>
+                            {/* 儲存值是中文（'男'/'女'，與既有資料相容），
+                                故 SelectValue 需以函式 child 對應回翻譯標籤，
+                                否則英文介面會顯示「男」而不是 Male。 */}
                             <Select
                                 value={form.gender}
                                 onValueChange={(value) =>
@@ -467,8 +462,6 @@ const PersonalHealthPage: React.FC = () => {
                                     className={cn(S.SELECT_WRAP, S.SELECT_BTN)}
                                     aria-label={t('personalHealth.genderAria', { value: genderLabel })}
                                 >
-                                    {/* 需以函式 child 對應回翻譯標籤：儲存值是中文（'男'/'女'，
-                                        與既有資料相容），切到英文時應顯示 Male/Female 而非原始值 */}
                                     <SelectValue placeholder={t('personalHealth.genderPlaceholder')}>
                                         {(value) => {
                                             const option = GENDER_OPTIONS.find((o) => o.value === value);
@@ -484,29 +477,25 @@ const PersonalHealthPage: React.FC = () => {
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
+                        </HealthField>
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="age">
-                                {t('personalHealth.age')}
-                            </label>
-                            <div className={S.FIELD_CONTROL}>
-                                <input
-                                    className={cn(S.INPUT, fieldErrors.age && S.INPUT_ERROR)}
-                                    type="number"
-                                    id="age"
-                                    {...register("age")}
-                                    placeholder={t('personalHealth.agePlaceholder')}
-                                    min="0"
-                                    max="130"
-                                    step="1"
-                                    required
-                                />
-                                {fieldErrors.age && (
-                                    <span className={S.FIELD_ERROR_TEXT}>{fieldErrors.age}</span>
-                                )}
-                            </div>
-                        </div>
+                        <HealthField
+                            htmlFor="age"
+                            label={t('personalHealth.age')}
+                            hint={t('personalHealth.rangeHint', { min: 0, max: 130, unit: t('personalHealth.unit.age') })}
+                            error={errors.age}
+                        >
+                            <HealthInput
+                                id="age"
+                                type="number"
+                                min="0"
+                                max="130"
+                                step="1"
+                                placeholder={t('personalHealth.agePlaceholder')}
+                                invalid={Boolean(errors.age)}
+                                register={register('age')}
+                            />
+                        </HealthField>
 
                         {!isBasicStepComplete && (
                             <p className={S.STEP_REQUIREMENT}>{t('personalHealth.basicRequired')}</p>
@@ -514,55 +503,43 @@ const PersonalHealthPage: React.FC = () => {
                     </Step>
 
                     <Step>
-                        <div className={S.STEP_INTRO}>
-                            <span>{t('personalHealth.step2.label')}</span>
-                            <h2>{t('personalHealth.step2.title')}</h2>
-                            <p>{t('personalHealth.step2.desc')}</p>
-                        </div>
+                        <StepIntro step={2} />
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="height">
-                                {t('personalHealth.height')}
-                            </label>
-                            <div className={S.FIELD_CONTROL}>
-                                <input
-                                    className={cn(S.INPUT, fieldErrors.height && S.INPUT_ERROR)}
-                                    type="number"
-                                    id="height"
-                                    {...register("height")}
-                                    placeholder={t('personalHealth.heightPlaceholder')}
-                                    min="30"
-                                    max="300"
-                                    step="0.1"
-                                    required
-                                />
-                                {fieldErrors.height && (
-                                    <span className={S.FIELD_ERROR_TEXT}>{fieldErrors.height}</span>
-                                )}
-                            </div>
-                        </div>
+                        <HealthField
+                            htmlFor="height"
+                            label={t('personalHealth.height')}
+                            hint={t('personalHealth.rangeHint', { min: 30, max: 300, unit: t('personalHealth.unit.height') })}
+                            error={errors.height}
+                        >
+                            <HealthInput
+                                id="height"
+                                type="number"
+                                min="30"
+                                max="300"
+                                step="0.1"
+                                placeholder={t('personalHealth.heightPlaceholder')}
+                                invalid={Boolean(errors.height)}
+                                register={register('height')}
+                            />
+                        </HealthField>
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="weight">
-                                {t('personalHealth.weight')}
-                            </label>
-                            <div className={S.FIELD_CONTROL}>
-                                <input
-                                    className={cn(S.INPUT, fieldErrors.weight && S.INPUT_ERROR)}
-                                    type="number"
-                                    id="weight"
-                                    {...register("weight")}
-                                    placeholder={t('personalHealth.weightPlaceholder')}
-                                    min="1"
-                                    max="500"
-                                    step="0.1"
-                                    required
-                                />
-                                {fieldErrors.weight && (
-                                    <span className={S.FIELD_ERROR_TEXT}>{fieldErrors.weight}</span>
-                                )}
-                            </div>
-                        </div>
+                        <HealthField
+                            htmlFor="weight"
+                            label={t('personalHealth.weight')}
+                            hint={t('personalHealth.rangeHint', { min: 1, max: 500, unit: t('personalHealth.unit.weight') })}
+                            error={errors.weight}
+                        >
+                            <HealthInput
+                                id="weight"
+                                type="number"
+                                min="1"
+                                max="500"
+                                step="0.1"
+                                placeholder={t('personalHealth.weightPlaceholder')}
+                                invalid={Boolean(errors.weight)}
+                                register={register('weight')}
+                            />
+                        </HealthField>
 
                         {!isBodyStepComplete && (
                             <p className={S.STEP_REQUIREMENT}>{t('personalHealth.bodyRequired')}</p>
@@ -570,20 +547,12 @@ const PersonalHealthPage: React.FC = () => {
                     </Step>
 
                     <Step>
-                        <div className={S.STEP_INTRO}>
-                            <span>{t('personalHealth.step3.label')}</span>
-                            <h2>{t('personalHealth.step3.title')}</h2>
-                            <p>{t('personalHealth.step3.desc')}</p>
-                        </div>
+                        <StepIntro step={3} />
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL}>{t('personalHealth.chronic')}</label>
+                        <HealthField label={t('personalHealth.chronic')}>
                             <div className={S.HISTORY_CONTROL}>
-                                {/* 多選：shadcn 沒有 multi-select，改用 Popover 承載一組
-                                    role="checkbox" 的選項。原本是 <button> 塞進
-                                    role="listbox"，語意不合法（listbox 的子項應為 option），
-                                    且勾選狀態只用 ✓ 字元表達、螢幕閱讀器讀不到。
-                                    現在狀態由 aria-checked 傳達，✓ 純屬視覺。 */}
+                                {/* 多選：shadcn 沒有 multi-select，以 Popover 承載一組
+                                    role="checkbox" 的選項；狀態由 aria-checked 傳達，✓ 純屬視覺。 */}
                                 <Popover>
                                     <PopoverTrigger
                                         className={cn(S.MULTI_WRAP, S.SELECT_BTN)}
@@ -599,9 +568,7 @@ const PersonalHealthPage: React.FC = () => {
                                     <PopoverContent className={S.MULTI_MENU} align="start">
                                         <div role="group" aria-label={t('personalHealth.chronic')}>
                                             {CHRONIC_OPTIONS.map((option) => {
-                                                const checked = form.chronicDisease.includes(
-                                                    option.value,
-                                                );
+                                                const checked = form.chronicDisease.includes(option.value);
                                                 return (
                                                     <button
                                                         key={option.value}
@@ -609,14 +576,9 @@ const PersonalHealthPage: React.FC = () => {
                                                         role="checkbox"
                                                         aria-checked={checked}
                                                         className={cn(S.MULTI_ITEM, checked && S.MULTI_ITEM_ACTIVE)}
-                                                        onClick={() =>
-                                                            handleChronicToggle(option.value)
-                                                        }
+                                                        onClick={() => handleChronicToggle(option.value)}
                                                     >
-                                                        <span
-                                                            className={S.MULTI_CHECK}
-                                                            aria-hidden="true"
-                                                        >
+                                                        <span className={S.MULTI_CHECK} aria-hidden="true">
                                                             {checked ? '✓' : ''}
                                                         </span>
                                                         <span>{t(option.labelKey)}</span>
@@ -634,19 +596,13 @@ const PersonalHealthPage: React.FC = () => {
                                             name="chronicDiseaseOther"
                                             value={otherInput}
                                             onChange={handleOtherChange}
-                                            placeholder={t(
-                                                'personalHealth.chronicOtherPlaceholder',
-                                            )}
+                                            placeholder={t('personalHealth.chronicOtherPlaceholder')}
                                         />
                                         <button
                                             type="button"
                                             className={S.OTHER_BTN}
-                                            aria-label={t(
-                                                'personalHealth.chronicOtherSaveAria',
-                                            )}
-                                            onClick={() => {
-                                                setOtherSaved(true);
-                                            }}
+                                            aria-label={t('personalHealth.chronicOtherSaveAria')}
+                                            onClick={() => setOtherSaved(true)}
                                             disabled={!otherInput.trim()}
                                         >
                                             <svg
@@ -669,33 +625,23 @@ const PersonalHealthPage: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </HealthField>
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="majorIllness">
-                                {t('personalHealth.majorIllness')}
-                            </label>
-                            <textarea
-                                className={cn(S.INPUT, S.INPUT_LONG)}
+                        <HealthField htmlFor="majorIllness" label={t('personalHealth.majorIllness')}>
+                            <HealthTextarea
                                 id="majorIllness"
-                                {...register("majorIllness")}
                                 placeholder={t('personalHealth.majorIllnessPlaceholder')}
-                                rows={2}
+                                register={register('majorIllness')}
                             />
-                        </div>
+                        </HealthField>
 
-                        <div className={S.FORM_GROUP}>
-                            <label className={S.LABEL} htmlFor="surgeryHistory">
-                                {t('personalHealth.surgeryHistory')}
-                            </label>
-                            <textarea
-                                className={cn(S.INPUT, S.INPUT_LONG)}
+                        <HealthField htmlFor="surgeryHistory" label={t('personalHealth.surgeryHistory')}>
+                            <HealthTextarea
                                 id="surgeryHistory"
-                                {...register("surgeryHistory")}
                                 placeholder={t('personalHealth.surgeryHistoryPlaceholder')}
-                                rows={2}
+                                register={register('surgeryHistory')}
                             />
-                        </div>
+                        </HealthField>
                     </Step>
                 </Stepper>
             </form>
