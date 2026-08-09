@@ -1,12 +1,43 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { MemoryRouter } from 'react-router-dom';
+
 import i18n, { getInitialLanguage } from '../i18n';
 import SettingsPage from '../pages/Settings';
+import { useLiffAuth } from '../context/LiffAuthProvider';
 
+// 登出的實際行為（清 token、liff.logout、標記主動登出）屬於 LiffAuthProvider，
+// 這裡只驗證設定頁有把入口接到 logout() 並導回 /login。
+const mockLogout = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock('../context/LiffAuthProvider', () => ({
+  useLiffAuth: vi.fn(),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
+vi.mocked(useLiffAuth).mockReturnValue({
+  authInitialized: true,
+  isLoggedIn: true,
+  liffError: null,
+  refreshAuth: async () => {},
+  markAuthenticated: () => {},
+  logout: mockLogout,
+});
+
+// 設定頁的登出入口用到 useNavigate，必須包在 Router 裡才能渲染
 async function renderSettings(initialLanguage = 'zh-TW' as const) {
   await i18n.changeLanguage(initialLanguage);
-  return render(<SettingsPage />);
+  return render(
+    <MemoryRouter>
+      <SettingsPage />
+    </MemoryRouter>,
+  );
 }
 
 describe('設定頁語言行為', () => {
@@ -141,5 +172,31 @@ describe('設定頁語音區塊', () => {
 
     expect(screen.getByRole('group', { name: '語速' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: '音色' })).toBeInTheDocument();
+  });
+});
+
+describe('設定頁帳號區塊', () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    mockLogout.mockClear();
+    mockNavigate.mockClear();
+    await i18n.changeLanguage('zh-TW');
+  });
+
+  it('登出入口應出現在設定頁', async () => {
+    await renderSettings();
+
+    expect(screen.getByRole('heading', { name: '帳號' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '登出' })).toBeInTheDocument();
+  });
+
+  it('按下登出後應呼叫 logout() 並導向 /login', async () => {
+    await renderSettings();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: '登出' }));
+
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 });

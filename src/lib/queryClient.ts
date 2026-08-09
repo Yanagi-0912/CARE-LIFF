@@ -25,6 +25,8 @@ export const queryKeys = {
   /** 本人的健康檔案。Sidebar 與 AdminRoute 都靠它判斷管理員身分，
       共用同一個 key 才不會各抓一次。 */
   myProfile: ['my-profile'] as const,
+  /** 家人的健康檔案，展開成員卡片時才會用到 */
+  memberProfile: (userId: string) => ['member-profile', userId] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
   knowledgeReports: ['knowledge-reports'] as const,
   /** 佇列篩選改由後端執行，狀態要進 key，否則換頁籤會沿用上一組分頁結果 */

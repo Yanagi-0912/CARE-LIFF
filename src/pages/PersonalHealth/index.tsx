@@ -10,14 +10,26 @@ import {
     type HealthProfile,
 } from '../../api/profileApi';
 import liff from '@line/liff';
+import { CheckIcon } from 'lucide-react';
 import Stepper, { Step } from '../../components/Stepper/Stepper';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Field,
+    FieldContent,
+    FieldGroup,
+    FieldLabel,
+    FieldLegend,
+    FieldSet,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Button } from '@/components/ui/button';
 import { HealthField, HealthInput, HealthTextarea } from './HealthFields';
-import * as S from './styles';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
 
@@ -120,10 +132,12 @@ const validateNumericField = (
 function StepIntro({ step }: { step: 1 | 2 | 3 }) {
     const { t } = useTranslation();
     return (
-        <div className={S.STEP_INTRO}>
-            <span>{t(`personalHealth.step${step}.label`)}</span>
-            <h2>{t(`personalHealth.step${step}.title`)}</h2>
-            <p>{t(`personalHealth.step${step}.desc`)}</p>
+        <div className="mb-6 border-b pb-4">
+            <span className="text-xs font-semibold tracking-wide text-primary uppercase">
+                {t(`personalHealth.step${step}.label`)}
+            </span>
+            <h2 className="mt-1 text-xl font-extrabold">{t(`personalHealth.step${step}.title`)}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t(`personalHealth.step${step}.desc`)}</p>
         </div>
     );
 }
@@ -384,42 +398,42 @@ const PersonalHealthPage: React.FC = () => {
         values.map((value) => chronicLabelMap[value] ?? value).join('、');
 
     return (
-        <div className={S.PAGE}>
-            <section className={S.BANNER}>
-                <div className={S.AVATAR_WRAP}>
-                    {userAvatar ? (
-                        <img
-                            className={S.AVATAR}
-                            src={userAvatar}
+        <div className="mx-auto flex min-h-screen max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
+            <Item variant="muted" className="mb-4 rounded-2xl">
+                <ItemMedia>
+                    <Avatar className="size-16">
+                        <AvatarImage
+                            src={userAvatar || undefined}
                             alt={
                                 userName
                                     ? t('personalHealth.avatarAlt', { name: userName })
                                     : t('personalHealth.avatarAltFallback')
                             }
                         />
-                    ) : (
-                        <div className={cn(S.AVATAR, S.AVATAR_FALLBACK)} aria-hidden="true">
+                        <AvatarFallback className="text-xl font-extrabold">
                             {userName ? userName.charAt(0) : 'U'}
-                        </div>
-                    )}
-                </div>
-                <div className={S.BANNER_TEXT}>
-                    <div className={S.BANNER_LABEL}>
-                        {isLoggedIn
-                            ? t('personalHealth.loggedIn')
-                            : t('personalHealth.loggedOut')}
-                    </div>
-                    <div className={S.BANNER_TITLE}>
+                        </AvatarFallback>
+                    </Avatar>
+                </ItemMedia>
+                <ItemContent>
+                    <ItemTitle className="text-xl font-extrabold break-words">
                         {userName
                             ? t('personalHealth.titleWithName', { name: userName })
                             : t('personalHealth.title')}
-                    </div>
-                </div>
-            </section>
+                    </ItemTitle>
+                </ItemContent>
+                <ItemActions>
+                    <Badge variant={isLoggedIn ? 'default' : 'outline'}>
+                        {isLoggedIn
+                            ? t('personalHealth.loggedIn')
+                            : t('personalHealth.loggedOut')}
+                    </Badge>
+                </ItemActions>
+            </Item>
 
             <form
                 id="personalHealthForm"
-                className={cn(S.FORM_CARD, S.FORM_CARD_BARE)}
+                className="flex w-full flex-col"
                 onSubmit={(event) => event.preventDefault()}
                 noValidate
             >
@@ -439,217 +453,216 @@ const PersonalHealthPage: React.FC = () => {
                     <Step>
                         <StepIntro step={1} />
 
-                        <HealthField htmlFor="name" label={t('personalHealth.name')}>
-                            <HealthInput
-                                id="name"
-                                placeholder={t('personalHealth.namePlaceholder')}
-                                register={register('name')}
-                            />
-                        </HealthField>
+                        <FieldGroup>
+                            <HealthField htmlFor="name" label={t('personalHealth.name')}>
+                                <HealthInput
+                                    id="name"
+                                    placeholder={t('personalHealth.namePlaceholder')}
+                                    register={register('name')}
+                                />
+                            </HealthField>
 
-                        <HealthField htmlFor="gender" label={t('personalHealth.gender')} error={errors.gender}>
-                            {/* 儲存值是中文（'男'/'女'，與既有資料相容），
-                                故 SelectValue 需以函式 child 對應回翻譯標籤，
-                                否則英文介面會顯示「男」而不是 Male。 */}
-                            <Select
-                                value={form.gender}
-                                onValueChange={(value) =>
-                                    setValue('gender', value ?? '', { shouldValidate: true })
-                                }
-                            >
-                                <SelectTrigger
-                                    id="gender"
-                                    className={cn(S.SELECT_WRAP, S.SELECT_BTN)}
-                                    aria-label={t('personalHealth.genderAria', { value: genderLabel })}
+                            <HealthField htmlFor="gender" label={t('personalHealth.gender')} error={errors.gender}>
+                                {/* 儲存值是中文（'男'/'女'，與既有資料相容），
+                                    故 SelectValue 需以函式 child 對應回翻譯標籤，
+                                    否則英文介面會顯示「男」而不是 Male。 */}
+                                <Select
+                                    value={form.gender}
+                                    onValueChange={(value) =>
+                                        setValue('gender', value ?? '', { shouldValidate: true })
+                                    }
                                 >
-                                    <SelectValue placeholder={t('personalHealth.genderPlaceholder')}>
-                                        {(value) => {
-                                            const option = GENDER_OPTIONS.find((o) => o.value === value);
-                                            return option ? t(option.labelKey) : t('personalHealth.genderPlaceholder');
-                                        }}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {GENDER_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {t(option.labelKey)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </HealthField>
+                                    <SelectTrigger
+                                        id="gender"
+                                        className="w-full"
+                                        aria-label={t('personalHealth.genderAria', { value: genderLabel })}
+                                    >
+                                        <SelectValue placeholder={t('personalHealth.genderPlaceholder')}>
+                                            {(value) => {
+                                                const option = GENDER_OPTIONS.find((o) => o.value === value);
+                                                return option ? t(option.labelKey) : t('personalHealth.genderPlaceholder');
+                                            }}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {GENDER_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {t(option.labelKey)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </HealthField>
 
-                        <HealthField
-                            htmlFor="age"
-                            label={t('personalHealth.age')}
-                            hint={t('personalHealth.rangeHint', { min: 0, max: 130, unit: t('personalHealth.unit.age') })}
-                            error={errors.age}
-                        >
-                            <HealthInput
-                                id="age"
-                                type="number"
-                                min="0"
-                                max="130"
-                                step="1"
-                                placeholder={t('personalHealth.agePlaceholder')}
-                                invalid={Boolean(errors.age)}
-                                register={register('age')}
-                            />
-                        </HealthField>
+                            <HealthField
+                                htmlFor="age"
+                                label={t('personalHealth.age')}
+                                hint={t('personalHealth.rangeHint', { min: 0, max: 130, unit: t('personalHealth.unit.age') })}
+                                error={errors.age}
+                            >
+                                <HealthInput
+                                    id="age"
+                                    type="number"
+                                    min="0"
+                                    max="130"
+                                    step="1"
+                                    placeholder={t('personalHealth.agePlaceholder')}
+                                    invalid={Boolean(errors.age)}
+                                    register={register('age')}
+                                />
+                            </HealthField>
+                        </FieldGroup>
 
                         {!isBasicStepComplete && (
-                            <p className={S.STEP_REQUIREMENT}>{t('personalHealth.basicRequired')}</p>
+                            <Alert className="mt-6">
+                                <AlertDescription>{t('personalHealth.basicRequired')}</AlertDescription>
+                            </Alert>
                         )}
                     </Step>
 
                     <Step>
                         <StepIntro step={2} />
 
-                        <HealthField
-                            htmlFor="height"
-                            label={t('personalHealth.height')}
-                            hint={t('personalHealth.rangeHint', { min: 30, max: 300, unit: t('personalHealth.unit.height') })}
-                            error={errors.height}
-                        >
-                            <HealthInput
-                                id="height"
-                                type="number"
-                                min="30"
-                                max="300"
-                                step="0.1"
-                                placeholder={t('personalHealth.heightPlaceholder')}
-                                invalid={Boolean(errors.height)}
-                                register={register('height')}
-                            />
-                        </HealthField>
+                        <FieldGroup>
+                            <HealthField
+                                htmlFor="height"
+                                label={t('personalHealth.height')}
+                                hint={t('personalHealth.rangeHint', { min: 30, max: 300, unit: t('personalHealth.unit.height') })}
+                                error={errors.height}
+                            >
+                                <HealthInput
+                                    id="height"
+                                    type="number"
+                                    min="30"
+                                    max="300"
+                                    step="0.1"
+                                    placeholder={t('personalHealth.heightPlaceholder')}
+                                    invalid={Boolean(errors.height)}
+                                    register={register('height')}
+                                />
+                            </HealthField>
 
-                        <HealthField
-                            htmlFor="weight"
-                            label={t('personalHealth.weight')}
-                            hint={t('personalHealth.rangeHint', { min: 1, max: 500, unit: t('personalHealth.unit.weight') })}
-                            error={errors.weight}
-                        >
-                            <HealthInput
-                                id="weight"
-                                type="number"
-                                min="1"
-                                max="500"
-                                step="0.1"
-                                placeholder={t('personalHealth.weightPlaceholder')}
-                                invalid={Boolean(errors.weight)}
-                                register={register('weight')}
-                            />
-                        </HealthField>
+                            <HealthField
+                                htmlFor="weight"
+                                label={t('personalHealth.weight')}
+                                hint={t('personalHealth.rangeHint', { min: 1, max: 500, unit: t('personalHealth.unit.weight') })}
+                                error={errors.weight}
+                            >
+                                <HealthInput
+                                    id="weight"
+                                    type="number"
+                                    min="1"
+                                    max="500"
+                                    step="0.1"
+                                    placeholder={t('personalHealth.weightPlaceholder')}
+                                    invalid={Boolean(errors.weight)}
+                                    register={register('weight')}
+                                />
+                            </HealthField>
+                        </FieldGroup>
 
                         {!isBodyStepComplete && (
-                            <p className={S.STEP_REQUIREMENT}>{t('personalHealth.bodyRequired')}</p>
+                            <Alert className="mt-6">
+                                <AlertDescription>{t('personalHealth.bodyRequired')}</AlertDescription>
+                            </Alert>
                         )}
                     </Step>
 
                     <Step>
                         <StepIntro step={3} />
 
-                        <HealthField label={t('personalHealth.chronic')}>
-                            <div className={S.HISTORY_CONTROL}>
-                                {/* 多選：shadcn 沒有 multi-select，以 Popover 承載一組
-                                    role="checkbox" 的選項；狀態由 aria-checked 傳達，✓ 純屬視覺。 */}
-                                <Popover>
-                                    <PopoverTrigger
-                                        className={cn(S.MULTI_WRAP, S.SELECT_BTN)}
-                                        aria-label={t('personalHealth.chronic')}
-                                    >
-                                        <span className={S.SELECT_TEXT}>
-                                            {form.chronicDisease.length > 0
-                                                ? formatChronicSelection(form.chronicDisease)
-                                                : t('personalHealth.chronicPlaceholder')}
-                                        </span>
-                                        <span className={S.SELECT_CARET} aria-hidden="true">▼</span>
-                                    </PopoverTrigger>
-                                    <PopoverContent className={S.MULTI_MENU} align="start">
-                                        <div role="group" aria-label={t('personalHealth.chronic')}>
-                                            {CHRONIC_OPTIONS.map((option) => {
-                                                const checked = form.chronicDisease.includes(option.value);
-                                                return (
-                                                    <button
-                                                        key={option.value}
-                                                        type="button"
-                                                        role="checkbox"
-                                                        aria-checked={checked}
-                                                        className={cn(S.MULTI_ITEM, checked && S.MULTI_ITEM_ACTIVE)}
-                                                        onClick={() => handleChronicToggle(option.value)}
-                                                    >
-                                                        <span className={S.MULTI_CHECK} aria-hidden="true">
-                                                            {checked ? '✓' : ''}
-                                                        </span>
-                                                        <span>{t(option.labelKey)}</span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                        <FieldGroup>
+                            {/* 慢性病是多選。原本藏在 Popover 的下拉選單裡，長輩得先點開
+                                才知道有哪些選項、選完還看不到自己選了什麼；九個選項直接攤成
+                                可勾選的卡片，一次看完也少一次點擊。
+                                卡片外觀用 Field 的 has-data-checked: 變體，不用自己維護選中樣式。 */}
+                            <FieldSet>
+                                <FieldLegend variant="label" className="text-base font-bold">
+                                    {t('personalHealth.chronic')}
+                                </FieldLegend>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {CHRONIC_OPTIONS.map((option) => {
+                                        const id = `chronic-${option.value}`;
+                                        return (
+                                            <Field
+                                                key={option.value}
+                                                orientation="horizontal"
+                                                className="rounded-xl border p-3 transition-colors has-data-checked:border-primary/40 has-data-checked:bg-primary/5"
+                                            >
+                                                <Checkbox
+                                                    id={id}
+                                                    checked={form.chronicDisease.includes(option.value)}
+                                                    onCheckedChange={() => handleChronicToggle(option.value)}
+                                                />
+                                                <FieldLabel htmlFor={id} className="text-base font-normal">
+                                                    {t(option.labelKey)}
+                                                </FieldLabel>
+                                            </Field>
+                                        );
+                                    })}
+                                </div>
+
                                 {showOtherInput && (
-                                    <div className={S.OTHER_ROW}>
-                                        <input
-                                            className={S.INPUT}
-                                            type="text"
-                                            name="chronicDiseaseOther"
-                                            value={otherInput}
-                                            onChange={handleOtherChange}
-                                            placeholder={t('personalHealth.chronicOtherPlaceholder')}
-                                        />
-                                        <button
+                                    <Field orientation="horizontal">
+                                        <FieldContent>
+                                            <Input
+                                                name="chronicDiseaseOther"
+                                                value={otherInput}
+                                                onChange={handleOtherChange}
+                                                placeholder={t('personalHealth.chronicOtherPlaceholder')}
+                                            />
+                                        </FieldContent>
+                                        <Button
                                             type="button"
-                                            className={S.OTHER_BTN}
+                                            variant="outline"
+                                            size="icon"
                                             aria-label={t('personalHealth.chronicOtherSaveAria')}
                                             onClick={() => setOtherSaved(true)}
                                             disabled={!otherInput.trim()}
                                         >
-                                            <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            >
-                                                <polyline points="4 13 9 18 20 7" />
-                                            </svg>
-                                        </button>
+                                            <CheckIcon />
+                                        </Button>
                                         {otherSaved && (
-                                            <span className={S.OTHER_BADGE}>
+                                            <Badge variant="secondary">
                                                 {t('personalHealth.chronicOtherSaved')}
-                                            </span>
+                                            </Badge>
                                         )}
-                                    </div>
+                                    </Field>
                                 )}
-                            </div>
-                        </HealthField>
 
-                        <HealthField htmlFor="majorIllness" label={t('personalHealth.majorIllness')}>
-                            <HealthTextarea
-                                id="majorIllness"
-                                placeholder={t('personalHealth.majorIllnessPlaceholder')}
-                                register={register('majorIllness')}
-                            />
-                        </HealthField>
+                                {form.chronicDisease.length > 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {formatChronicSelection(form.chronicDisease)}
+                                    </p>
+                                )}
+                            </FieldSet>
 
-                        <HealthField htmlFor="surgeryHistory" label={t('personalHealth.surgeryHistory')}>
-                            <HealthTextarea
-                                id="surgeryHistory"
-                                placeholder={t('personalHealth.surgeryHistoryPlaceholder')}
-                                register={register('surgeryHistory')}
-                            />
-                        </HealthField>
+                            <HealthField htmlFor="majorIllness" label={t('personalHealth.majorIllness')}>
+                                <HealthTextarea
+                                    id="majorIllness"
+                                    placeholder={t('personalHealth.majorIllnessPlaceholder')}
+                                    register={register('majorIllness')}
+                                />
+                            </HealthField>
+
+                            <HealthField htmlFor="surgeryHistory" label={t('personalHealth.surgeryHistory')}>
+                                <HealthTextarea
+                                    id="surgeryHistory"
+                                    placeholder={t('personalHealth.surgeryHistoryPlaceholder')}
+                                    register={register('surgeryHistory')}
+                                />
+                            </HealthField>
+                        </FieldGroup>
                     </Step>
                 </Stepper>
             </form>
-            <div className={S.ACTION_ROW}>
+            <div className="mt-8 flex justify-center">
                 <Button
                     type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full max-w-[300px] rounded-full"
                     onClick={() => navigate('/personalhealth/consult')}
-                    className={S.BUTTON}
                 >
                     {t('personalHealth.viewConsult')}
                 </Button>

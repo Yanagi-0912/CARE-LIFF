@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import liff from '@line/liff';
-import { createInvite } from '../../api/familyApi';
 import { useTranslation } from 'react-i18next';
-import * as S from './styles';
+import { UserPlusIcon } from 'lucide-react';
+
+import { createInvite } from '../../api/familyApi';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Props {
   liffReady: boolean;
@@ -12,7 +14,10 @@ interface Props {
 }
 
 /**
- * 邀請按鈕 — 呼叫後端產生邀請連結，透過 shareTargetPicker 分享
+ * 邀請按鈕 — 呼叫後端產生邀請連結，透過 shareTargetPicker 分享。
+ *
+ * onSuccess 只在「真的送出」時觸發：shareTargetPicker 回傳 null 代表
+ * 使用者在選擇器裡按了取消，那不算成功，也不該跳 toast。
  */
 export function InviteButton({ liffReady, onSuccess, onError }: Props) {
   const { t } = useTranslation();
@@ -59,11 +64,12 @@ export function InviteButton({ liffReady, onSuccess, onError }: Props) {
     <Button
       type="button"
       id="family-invite-btn"
-      className={S.INVITE_BTN}
+      className="shrink-0 rounded-full"
       onClick={handleInvite}
       disabled={inviting || !liffReady}
     >
-      {inviting ? '⏳' : '➕'} {t('family.inviteBtn')}
+      {inviting ? <Spinner /> : <UserPlusIcon data-icon="inline-start" />}
+      {t('family.inviteBtn')}
     </Button>
   );
 }

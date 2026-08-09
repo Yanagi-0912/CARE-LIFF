@@ -12,6 +12,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // 長輩友善：置中偏下（避開頂部 header）、停留 5 秒、字級不縮小
       position="bottom-center"
       duration={5000}
+      // 底部導覽列佔 var(--bottom-h)，toast 要往上讓開才不會被蓋住。
+      // 必須走 offset / mobileOffset props：sonner 內部是
+      // style={{ ...style, ...assignOffset(offset, mobileOffset) }}，
+      // 不管有沒有傳 props 都會無條件寫入 --offset-* 與 --mobile-offset-*，
+      // 寫在 style 裡的 --offset-bottom 會被蓋掉。
+      // 又因為 ≤600px 時 sonner 的 CSS 改用 --mobile-offset-bottom 定位，
+      // 只設 offset 在手機上一樣沒有效果，兩個都要給。
+      offset={{ bottom: 'calc(var(--bottom-h) + 16px)' }}
+      mobileOffset={{ bottom: 'calc(var(--bottom-h) + 16px)' }}
       icons={{
         success: (
           <CircleCheckIcon className="size-5" />
@@ -42,8 +51,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--error-text": "var(--danger)",
           "--error-border": "var(--danger)",
           "--border-radius": "var(--radius)",
-          // 手機版底部導覽列佔 var(--bottom-h)，往上讓開避免被蓋住
-          "--offset-bottom": "calc(var(--bottom-h) + 16px)",
         } as React.CSSProperties
       }
       toastOptions={{

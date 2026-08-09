@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithToaster } from './testUtils';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -107,10 +107,12 @@ describe('MedicationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /新增/ }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /早/ })).toBeDisabled();
-    expect(screen.getByRole('checkbox', { name: /晚/ })).toBeDisabled();
-    expect(screen.getByRole('checkbox', { name: /中/ })).toBeEnabled();
-    expect(screen.getByRole('checkbox', { name: /睡前/ })).toBeEnabled();
+    // Base UI 的 Checkbox 是 role="checkbox" 的 span，不是原生 input，
+    // 停用狀態走 aria-disabled 而非 disabled 屬性（讀屏仍會唸出「已停用」）
+    expect(screen.getByRole('checkbox', { name: /早/ })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('checkbox', { name: /晚/ })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('checkbox', { name: /中/ })).not.toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('checkbox', { name: /睡前/ })).not.toHaveAttribute('aria-disabled', 'true');
     expect(screen.getAllByText('已設定')).toHaveLength(2);
   });
 

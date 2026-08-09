@@ -3,6 +3,15 @@ import { saveRedirectUrl } from './redirect';
 /** localStorage keys */
 const TOKEN_KEY = 'CARE_AUTH_TOKEN';
 const USER_ID_KEY = 'CARE_LINE_USER_ID';
+/**
+ * 「使用者主動登出」旗標。用 sessionStorage：只在這個分頁／webview 存活，
+ * 重開就當作全新工作階段，恢復 LIFF 自動登入。
+ *
+ * 沒有這個旗標的話，登出後 LIFF/LINE 那側的 session 仍可能是有效的，
+ * 登入頁與 LiffAuthProvider 一掛載就會自動換發 token 把人登回去，
+ * 使用者看到的就是「按了登出完全沒反應」。
+ */
+const LOGGED_OUT_KEY = 'CARE_LOGGED_OUT';
 
 /** 取得 access token，無則拋錯 */
 export function getAccessToken(): string {
@@ -36,6 +45,21 @@ export function clearAuth(): void {
 /** 檢查是否已登入 */
 export function isAuthenticated(): boolean {
   return !!(localStorage.getItem(TOKEN_KEY) || '').trim();
+}
+
+/** 標記為「使用者主動登出」，阻擋自動重新登入 */
+export function markLoggedOut(): void {
+  sessionStorage.setItem(LOGGED_OUT_KEY, '1');
+}
+
+/** 解除登出旗標（使用者明確表示要再次登入時呼叫） */
+export function clearLoggedOutFlag(): void {
+  sessionStorage.removeItem(LOGGED_OUT_KEY);
+}
+
+/** 是否處於「使用者主動登出」狀態 */
+export function hasLoggedOut(): boolean {
+  return sessionStorage.getItem(LOGGED_OUT_KEY) === '1';
 }
 
 /** 處理 401 Unauthorized 情況：自動清除 token、保存目前路徑，並導向登入頁 */

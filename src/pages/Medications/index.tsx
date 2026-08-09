@@ -12,10 +12,18 @@ import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
 import { useMedications } from './useMedications';
 import { toast } from 'sonner';
+import { PlusIcon, PillIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { ItemGroup } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { cn } from '@/lib/utils';
-import * as S from './styles';
 
 /** 讀取本人 LINE userId；未登入時回 undefined（列表 API 省略參數即為本人） */
 function readSelfUserId(): string | undefined {
@@ -100,11 +108,12 @@ const MedicationsPage = () => {
   };
 
   return (
-    <div className={S.PAGE}>
-      <header className={S.HEADER}>
-        <h1 className={S.HEADER_H1}>{t('meds.title')}</h1>
-        <Button type="button" className={S.BTN_PRIMARY} onClick={() => setAdding(true)}>
-          ＋{t('meds.addButton')}
+    <div className="mx-auto max-w-[760px]">
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
+        <Button type="button" className="shrink-0 rounded-full" onClick={() => setAdding(true)}>
+          <PlusIcon data-icon="inline-start" />
+          {t('meds.addButton')}
         </Button>
       </header>
 
@@ -112,7 +121,8 @@ const MedicationsPage = () => {
           語意正確，且方向鍵可在群組內移動焦點。
           userId 可能為 undefined（本人），以 'self' 當作群組內的識別值。 */}
       <ToggleGroup
-        className={S.CHIPS_ROW}
+        variant="outline"
+        className="mb-4 flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         value={[selectedUserId ?? 'self']}
         onValueChange={(groupValue) => {
           const next = groupValue[0];
@@ -122,10 +132,12 @@ const MedicationsPage = () => {
         aria-label={t('meds.targetLabel')}
       >
         {targets.map((target) => (
+          // Toggle 預設的選中態只是 bg-muted，對長輩來說太淡；
+          // 這裡把選中態拉成 primary 實心，其餘外觀交給 outline 變體
           <ToggleGroupItem
             key={target.userId ?? 'self'}
             value={target.userId ?? 'self'}
-            className={cn(S.CHIP, 'aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white aria-pressed:hover:text-white')}
+            className="shrink-0 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary aria-pressed:hover:text-primary-foreground"
           >
             {target.name}
           </ToggleGroupItem>
@@ -133,27 +145,40 @@ const MedicationsPage = () => {
       </ToggleGroup>
 
       {loading ? (
-        <div className={S.EMPTY}>
-          <p className={S.EMPTY_P}>{t('meds.loading')}</p>
+        <div className="flex flex-col gap-3" aria-busy="true" aria-label={t('meds.loading')}>
+          {[0, 1].map((i) => (
+            <div key={i} className="flex items-center gap-3.5 rounded-2xl border px-4 py-3.5">
+              <Skeleton className="size-11 rounded-xl" />
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+          ))}
         </div>
       ) : error ? (
-        <div className={S.EMPTY}>
-          <span className={S.EMPTY_ICON} aria-hidden="true">
-            !
-          </span>
-          <h2 className={S.EMPTY_H2}>{t('meds.loadError')}</h2>
-          <p className={S.EMPTY_P}>{error}</p>
-        </div>
+        <Empty className="border border-dashed">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <TriangleAlertIcon />
+            </EmptyMedia>
+            <EmptyTitle>{t('meds.loadError')}</EmptyTitle>
+            <EmptyDescription>{error}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : reminders.length === 0 ? (
-        <div className={S.EMPTY}>
-          <span className={S.EMPTY_ICON} aria-hidden="true">
-            ○
-          </span>
-          <h2 className={S.EMPTY_H2}>{t('meds.empty', { name: selectedName })}</h2>
-          <p className={S.EMPTY_P}>{t('meds.emptyHint')}</p>
-        </div>
+        <Empty className="border border-dashed">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <PillIcon />
+            </EmptyMedia>
+            <EmptyTitle>{t('meds.empty', { name: selectedName })}</EmptyTitle>
+            <EmptyDescription>{t('meds.emptyHint')}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <section className={S.LIST} aria-label={t('meds.listLabel')}>
+        <ItemGroup className="gap-3" aria-label={t('meds.listLabel')}>
           {reminders.map((reminder) => (
             <ReminderCard
               key={reminder.id}
@@ -163,7 +188,7 @@ const MedicationsPage = () => {
               onEdit={setEditing}
             />
           ))}
-        </section>
+        </ItemGroup>
       )}
 
       {adding && (

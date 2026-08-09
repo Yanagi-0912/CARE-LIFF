@@ -9,13 +9,33 @@ import {
     buildConsultationSummaryDownloadUrl,
 } from '../../../api/consultationApi';
 import { toast } from 'sonner';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { FileTextIcon, MessageCircleIcon, XIcon } from 'lucide-react';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import * as S from './styles';
+
+/**
+ * ReactMarkdown 產出的 HTML 掛不到 class，只能用後代選擇器統一排版。
+ * 這是唯一留下來的 class 常數 —— 純粹是 markdown 的字級／間距，不是設計樣式。
+ */
+const MARKDOWN =
+    '[&_p]:mb-2 [&_p:last-child]:mb-0 [&_p]:leading-relaxed [&_strong]:font-semibold [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1';
 import type { ConsultationMessage, ConsultationSummary } from '../../../types/consultation';
 import { useTranslation } from 'react-i18next';
 type SummarySection = { key: string; label: string; value: string | string[] | null };
@@ -75,7 +95,7 @@ function toSummarySections(summary: ConsultationSummary, t: (key: string) => str
 }
 
 const ConsultRecordsPage: React.FC = () => {
-    const { t, i18n } = useTranslation(); //用於多語系翻譯
+    const { t } = useTranslation(); //用於多語系翻譯
     const [selectedSummaryKey, setSelectedSummaryKey] = useState<string>('');
     const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
     const [downloading, setDownloading] = useState(false);
@@ -150,48 +170,63 @@ const ConsultRecordsPage: React.FC = () => {
     };
 
     return (
-        <div className={S.PAGE}>
-            <header className={S.HEADER}>
-                <h2 className={S.HEADER_H2}>{t('consultRecord.title')}</h2>
-                <p className={S.HEADER_P}>{t('consultRecord.description')}</p>
+        <div className="mx-auto flex w-full max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
+            <header className="mb-4">
+                <h2 className="text-2xl font-extrabold">{t('consultRecord.title')}</h2>
+                <p className="mt-1 text-muted-foreground">{t('consultRecord.description')}</p>
             </header>
 
-            <section className={S.CARD}>
-                <div className={S.PANEL}>
-                    <div className={S.PANEL_TOP}>
-                        <div className={S.PANEL_TIME}>
-                            {new Date().toLocaleTimeString(i18n.language || 'zh-TW', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
-                        </div>
-                        <div className={S.PANEL_NOTCH}><div className={S.PANEL_DOT} /><div className={S.PANEL_SPEAKER} /><div className={S.PANEL_DOT} /></div>
-                        <div className={S.PANEL_STATUS}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.ICON_PHONE}><path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" /></svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={S.ICON_PHONE}><path fillRule="evenodd" d="M3.75 6.75a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-.037c.856-.174 1.5-.93 1.5-1.838v-2.25c0-.907-.644-1.664-1.5-1.837V9.75a3 3 0 0 0-3-3h-15Zm15 1.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-15a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5h15ZM4.5 9.75a.75.75 0 0 0-.75.75V15c0 .414.336.75.75.75H18a.75.75 0 0 0 .75-.75v-4.5a.75.75 0 0 0-.75-.75H4.5Z" clipRule="evenodd" /></svg>
-                        </div>
+            {/* 原本這裡是一台畫出來的「手機」（深色機身、瀏海、喇叭條，
+                內容全部寫死 hex 色碼、不吃深色模式）。改成一般的 Card +
+                Tabs，內容一樣但配色走 token，也跟其他頁一致。 */}
+            <Tabs
+                value={viewMode}
+                onValueChange={(value) => setViewMode(value as 'summary' | 'raw')}
+            >
+                <TabsList className="w-full" aria-label={t('consultRecord.title')}>
+                    <TabsTrigger value="summary">
+                        <FileTextIcon data-icon="inline-start" />
+                        {t('consultRecord.tabSummary')}
+                    </TabsTrigger>
+                    <TabsTrigger value="raw">
+                        <MessageCircleIcon data-icon="inline-start" />
+                        {t('consultRecord.tabRaw')}
+                    </TabsTrigger>
+                </TabsList>
 
-                    </div>
-                    <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'summary' | 'raw')} className="contents">
-                    <TabsList className={S.PANEL_CONTROLS} aria-label={t('consultRecord.title')}>
-                        <TabsTrigger value="summary" className={cn(S.TAB, S.TAB_ACTIVE_VARIANT)}>{t('consultRecord.tabSummary')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></TabsTrigger>
-                        <TabsTrigger value="raw" className={cn(S.TAB, S.TAB_ACTIVE_VARIANT)}>{t('consultRecord.tabRaw')}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={S.TAB_ICON} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg></TabsTrigger>
-                    </TabsList>
-                    <div className={S.PANEL_LIST}>
-                        {listLoading && <div className={cn(S.ITEM, S.ITEM_MUTED)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.loading')}</p></div>}
+                <Card>
+                    <CardContent className="flex flex-col gap-3">
+                        {listLoading && (
+                            <div className="flex flex-col gap-2" aria-busy="true" aria-label={t('consultRecord.loading')}>
+                                <Skeleton className="h-6 w-40" />
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
+                            </div>
+                        )}
+
                         {/* summaryError 在設定時就已是「具體訊息 or 通用備援」，此處直接顯示它。
                             原本固定渲染通用文字，等於讓那個 state 形同虛設。 */}
-                        {!listLoading && summaryError && <div className={S.ITEM}><div className={cn(S.BADGE, S.BADGE_ERROR)}>AI</div><p>{summaryError}</p></div>}
+                        {!listLoading && summaryError && (
+                            <Alert variant="destructive">
+                                <AlertDescription>{summaryError}</AlertDescription>
+                            </Alert>
+                        )}
+
                         {!listLoading && (
                             <>
-                                <TabsContent value="summary">
-                                    {                                    summaryItems.length > 0 ? (
-                                        <div className={cn(S.ITEM, S.COMPACT)}>
-                                            <div className={S.COMPACT_HEADER}>
-                                                <label className={S.SUMMARY_LABEL} htmlFor="summary-select">{t('consultRecord.summaryDate')}</label>
+                                <TabsContent value="summary" className="flex flex-col gap-3">
+                                    {summaryItems.length > 0 ? (
+                                        <>
+                                            <Field orientation="horizontal" className="items-center">
+                                                <FieldLabel htmlFor="summary-select">
+                                                    {t('consultRecord.summaryDate')}
+                                                </FieldLabel>
                                                 {/*選擇日期的下拉選單*/}
-                                                <Select value={effectiveSummaryKey} onValueChange={(value) => setSelectedSummaryKey(value ?? '')}>
-                                                    <SelectTrigger id="summary-select" className={S.SUMMARY_SELECT}>
+                                                <Select
+                                                    value={effectiveSummaryKey}
+                                                    onValueChange={(value) => setSelectedSummaryKey(value ?? '')}
+                                                >
+                                                    <SelectTrigger id="summary-select" className="ml-auto min-w-32">
                                                         {/* 值是完整日期字串，顯示要用 formatSummaryDate 縮成 MM/DD */}
                                                         <SelectValue>
                                                             {(value) => {
@@ -208,73 +243,157 @@ const ConsultRecordsPage: React.FC = () => {
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                            </div>
-                                            <div className={S.VIEWER}>
-                                                <div className={S.SUMMARY_TITLE}>{t('consultRecord.summaryTitle')}</div>
-                                                {selectedSummarySections.length > 0 ? selectedSummarySections.map(section => (
-                                                    <section key={section.key} className={S.SECTION}>
-                                                        <div className={S.SECTION_TITLE}>{section.label}</div>
-                                                        <div className={cn(S.SECTION_BODY, S.MARKDOWN)}>
-                                                            <ReactMarkdown>{Array.isArray(section.value) ? section.value.map(item => `- ${item}`).join('\n') : section.value ?? t('consultRecord.none')}</ReactMarkdown>
-                                                        </div>
-                                                    </section>
-                                                )) : <div className={S.SUMMARY_EMPTY}>{t('consultRecord.emptySummary')}</div>}
-                                            </div>
-                                        </div>
-                                    ) : <div className={cn(S.ITEM, S.ITEM_EMPTY)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.noSummaryData')}</p></div>}
+                                            </Field>
+
+                                            <h3 className="text-lg font-extrabold">
+                                                {t('consultRecord.summaryTitle')}
+                                            </h3>
+
+                                            {selectedSummarySections.length > 0 ? (
+                                                selectedSummarySections.map(section => (
+                                                    <Card key={section.key} size="sm">
+                                                        <CardContent className="flex flex-col gap-2">
+                                                            <Badge variant="secondary" className="w-fit">
+                                                                {section.label}
+                                                            </Badge>
+                                                            <div className={cn('text-base', MARKDOWN)}>
+                                                                <ReactMarkdown>
+                                                                    {Array.isArray(section.value)
+                                                                        ? section.value.map(item => `- ${item}`).join('\n')
+                                                                        : section.value ?? t('consultRecord.none')}
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                ))
+                                            ) : (
+                                                <Empty className="border border-dashed">
+                                                    <EmptyHeader>
+                                                        <EmptyTitle>{t('consultRecord.emptySummary')}</EmptyTitle>
+                                                    </EmptyHeader>
+                                                </Empty>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <Empty className="border border-dashed">
+                                            <EmptyHeader>
+                                                <EmptyTitle>{t('consultRecord.noSummaryData')}</EmptyTitle>
+                                                <EmptyDescription>{t('consultRecord.description')}</EmptyDescription>
+                                            </EmptyHeader>
+                                        </Empty>
+                                    )}
                                 </TabsContent>
-                                <TabsContent value="raw">
-                                    {                                    rawMessages.length > 0 ? rawMessages.map((msg, idx) => {
-                                        const isYou = msg.message_type === 'text';
-                                        return (
-                                            <div
-                                                key={`raw_${idx}`}
-                                                className={cn(S.CHAT_ROW, isYou && S.CHAT_ROW_USER)}
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={() => setSelectedMessage(msg)}
-                                                onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedMessage(msg)}
-                                            >
-                                                <div className={cn(S.BADGE, isYou ? S.USER_BADGE : S.AI_BADGE)}>
-                                                    {isYou ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}
-                                                </div>
-                                                <div className={isYou ? S.USER_BUBBLE : S.AI_BUBBLE}>
-                                                    {truncateText(msg.content || t('consultRecord.noContent'))}
-                                                </div>
-                                            </div>
-                                        );
-                                    }) : <div className={cn(S.ITEM, S.ITEM_EMPTY)}><div className={S.BADGE}>AI</div><p>{t('consultRecord.noRawMessages')}</p></div>}
+
+                                <TabsContent value="raw" className="flex flex-col gap-3">
+                                    {rawMessages.length > 0 ? (
+                                        rawMessages.map((msg, idx) => {
+                                            const isYou = msg.message_type === 'text';
+                                            return (
+                                                <button
+                                                    key={`raw_${idx}`}
+                                                    type="button"
+                                                    className={cn(
+                                                        'flex cursor-pointer items-start gap-2.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                                                        isYou && 'flex-row-reverse',
+                                                    )}
+                                                    onClick={() => setSelectedMessage(msg)}
+                                                >
+                                                    <Avatar className="size-8">
+                                                        <AvatarFallback
+                                                            className={cn(
+                                                                'text-xs font-bold',
+                                                                isYou
+                                                                    ? 'bg-primary text-primary-foreground'
+                                                                    : 'bg-secondary text-secondary-foreground',
+                                                            )}
+                                                        >
+                                                            {isYou ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div
+                                                        className={cn(
+                                                            'max-w-[75%] rounded-2xl px-3.5 py-2.5 leading-relaxed',
+                                                            isYou
+                                                                ? 'rounded-tr-sm bg-primary/10 text-foreground'
+                                                                : 'rounded-tl-sm bg-muted text-foreground',
+                                                        )}
+                                                    >
+                                                        {truncateText(msg.content || t('consultRecord.noContent'))}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })
+                                    ) : (
+                                        <Empty className="border border-dashed">
+                                            <EmptyHeader>
+                                                <EmptyTitle>{t('consultRecord.noRawMessages')}</EmptyTitle>
+                                            </EmptyHeader>
+                                        </Empty>
+                                    )}
                                 </TabsContent>
                             </>
                         )}
-                    </div>
-                    </Tabs>
-                </div>
+                    </CardContent>
+                </Card>
+            </Tabs>
 
-                <div className={S.FORM_ACTIONS}>
-                    {/*<button onClick={handleSummarizeNow} className="btn primary" disabled={loading.action}>{loading.action ? '摘要產生中...' : '立即產生摘要'}</button>*/}
-                    <Button type="button" onClick={handleDownload} className={cn(S.BTN, S.BTN_GHOST)} disabled={downloading}>{downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}</Button>
-                </div>
-            </section>
+            <div className="mt-4 flex flex-wrap gap-2.5">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDownload}
+                    disabled={downloading}
+                >
+                    {downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}
+                </Button>
+            </div>
 
             {/* Dialog 取代原本手刻的遮罩＋div[role=dialog]：
                 焦點鎖定、Escape 關閉、關閉後焦點歸位、背景鎖捲皆由元件提供。
-                showCloseButton={false}：沿用原本的自訂關閉鈕，
-                其 aria-label「關閉視窗」是測試的定位點。 */}
+                關閉鈕自己掛：內建那顆的 sr-only 文字寫死英文 "Close"。 */}
             <Dialog open={selectedMessage !== null} onOpenChange={(open) => !open && setSelectedMessage(null)}>
-                <DialogContent className={S.MODAL} showCloseButton={false}>
+                <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[480px]" showCloseButton={false}>
                     {selectedMessage && (
                         <>
                             <DialogClose
                                 render={
-                                    <button type="button" className={S.MODAL_CLOSE} aria-label="關閉視窗">×</button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className="absolute top-4 right-4"
+                                        aria-label={t('consultRecord.closeModal')}
+                                    />
                                 }
-                            />
-                            <div className={S.MODAL_HEADER}>
-                                <div className={cn(S.MODAL_AVATAR, selectedMessage.message_type === 'text' ? S.AVATAR_USER : S.AVATAR_AI)}>{selectedMessage.message_type === 'text' ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}</div>
-                                <DialogTitle className={S.MODAL_TITLE}>{selectedMessage.message_type === 'text' ? t('consultRecord.modalUserTitle') : t('consultRecord.modalAiTitle')}</DialogTitle>
-                            </div>
-                            <div className={cn(S.MARKDOWN, S.MODAL_BODY)}>
+                            >
+                                <XIcon />
+                            </DialogClose>
+
+                            <DialogHeader>
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="size-11">
+                                        <AvatarFallback
+                                            className={cn(
+                                                'font-bold',
+                                                selectedMessage.message_type === 'text'
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-secondary text-secondary-foreground',
+                                            )}
+                                        >
+                                            {selectedMessage.message_type === 'text'
+                                                ? t('consultRecord.userBadge')
+                                                : t('consultRecord.aiBadge')}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <DialogTitle className="text-xl font-bold">
+                                        {selectedMessage.message_type === 'text'
+                                            ? t('consultRecord.modalUserTitle')
+                                            : t('consultRecord.modalAiTitle')}
+                                    </DialogTitle>
+                                </div>
+                            </DialogHeader>
+
+                            <div className={cn('leading-relaxed [overflow-wrap:anywhere]', MARKDOWN)}>
                                 <ReactMarkdown>{selectedMessage.content || t('consultRecord.noContent')}</ReactMarkdown>
                             </div>
                         </>

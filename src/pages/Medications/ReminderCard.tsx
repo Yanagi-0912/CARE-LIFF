@@ -1,10 +1,20 @@
 import { useTranslation } from 'react-i18next';
+import { ChevronRightIcon } from 'lucide-react';
+
 import { SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication';
 import { formatDateDisplay } from '../../utils/date';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Card } from '@/components/ui/card';
-import * as S from './styles';
+import { SLOT_TONE } from './slotTone';
 
 interface ReminderCardProps {
   reminder: MedicationReminder;
@@ -27,39 +37,50 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
     : t('meds.dateRangeOpen', { start: formatDateDisplay(reminder.start_date) });
 
   return (
-    <Card className={cn(S.CARD, !reminder.enabled && S.CARD_OFF)}>
+    <Item
+      variant="outline"
+      className={cn('gap-0 p-0 transition-opacity', !reminder.enabled && 'opacity-60')}
+    >
       <button
         type="button"
-        className={S.CARD_MAIN}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 rounded-l-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         onClick={() => onEdit(reminder)}
         aria-label={t('meds.editAria', { slot: slotLabel, time: reminder.scheduled_time })}
       >
-        <span className={cn(S.SLOT_BADGE, S.SLOT_TONE[reminder.slot_type])} aria-hidden="true">
-          {slotLabel}
-        </span>
-        <span className={S.CARD_INFO}>
-          <strong className={S.TIME}>{reminder.scheduled_time}</strong>
-          <span className={S.DATE_RANGE}>{dateRange}</span>
-        </span>
-        <span className={S.CHEVRON} aria-hidden="true">
-          ›
-        </span>
+        <ItemMedia>
+          {/* 時段色票。Badge 的語意色由 SLOT_TONE 查表，四個時段各有自己的色系 */}
+          <Badge
+            variant="secondary"
+            className={cn('size-11 rounded-xl text-sm font-extrabold', SLOT_TONE[reminder.slot_type])}
+          >
+            {slotLabel}
+          </Badge>
+        </ItemMedia>
+
+        <ItemContent>
+          <ItemTitle className="num text-2xl font-extrabold">{reminder.scheduled_time}</ItemTitle>
+          <ItemDescription>{dateRange}</ItemDescription>
+        </ItemContent>
+
+        <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
       </button>
 
-      {/* 整塊直向區域（84px 寬、含左分隔線）是點擊區，內含開關與狀態文字。
+      <Separator orientation="vertical" className="self-stretch" />
+
+      {/* 整塊直向區域是點擊區，內含開關與狀態文字。
           Switch 本身負責軌道／滑鈕與 role="switch"＋aria-checked；
-          外層 label 讓點擊文字也能切換，且不需要額外的 button 包裝。 */}
-      <label className={S.TOGGLE}>
+          外層 label 讓點擊文字也能切換，不需要額外的 button 包裝。 */}
+      <label className="flex w-[84px] shrink-0 cursor-pointer flex-col items-center justify-center gap-1.5 self-stretch px-2 py-3 has-disabled:cursor-progress has-disabled:opacity-60">
         <Switch
           checked={reminder.enabled}
           disabled={busy}
           onCheckedChange={() => onToggle(reminder)}
           aria-label={t('meds.toggleAria', { slot: slotLabel })}
         />
-        <span className={S.TOGGLE_TEXT}>
+        <span className="text-xs font-semibold text-muted-foreground">
           {reminder.enabled ? t('meds.statusOn') : t('meds.statusOff')}
         </span>
       </label>
-    </Card>
+    </Item>
   );
 }

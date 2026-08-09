@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
@@ -8,9 +8,25 @@ import {
   type MedicationReminder,
   type UpdateReminderRequest,
 } from '../../types/medication';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import * as S from './styles';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 
 interface ReminderEditDialogProps {
   reminder: MedicationReminder;
@@ -59,6 +75,7 @@ export function ReminderEditDialog({
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
@@ -116,91 +133,86 @@ export function ReminderEditDialog({
 
   return (
     // Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建。
-    // showCloseButton={false}：沿用原本的 × 鈕（其 aria-label 為既有無障礙標籤）。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={S.DIALOG} showCloseButton={false}>
-        <DialogClose
-          render={
-            <button type="button" className={S.DIALOG_CLOSE} aria-label={t('meds.close')}>×</button>
-          }
-        />
+      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>{t('meds.edit.title')}</DialogTitle>
+          <DialogDescription>
+            {t('meds.add.slotsField')} <strong className="text-foreground">{slotLabel}</strong>
+          </DialogDescription>
+        </DialogHeader>
 
-        <DialogTitle className={S.DIALOG_H2}>{t('meds.edit.title')}</DialogTitle>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
+            <Input id="edit-time" type="time" disabled={busy} {...register('time')} />
+          </Field>
 
-        <p className={S.DIALOG_TARGET}>
-          <span>{t('meds.add.slotsField')}</span>
-          <strong className={S.DIALOG_TARGET_STRONG}>{slotLabel}</strong>
-        </p>
+          <Field>
+            <FieldLabel htmlFor="edit-start">{t('meds.edit.startDate')}</FieldLabel>
+            <Input id="edit-start" type="date" disabled={busy} {...register('startDate')} />
+          </Field>
 
-        <label className={S.FIELD}>
-          <span className={S.FIELD_LABEL}>{t('meds.edit.time')}</span>
-          <input
-            className={S.FIELD_INPUT}
-            type="time"
-            disabled={busy}
-            {...register('time')}
+          <Field>
+            <FieldLabel htmlFor="edit-end">{t('meds.edit.endDate')}</FieldLabel>
+            <Input id="edit-end" type="date" disabled={busy} {...register('endDate')} />
+            {hadEndDate && <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>}
+          </Field>
+
+          {/* Base UI 的 Checkbox 不是原生 input，register 的 onChange 對不上，
+              所以這一欄改由 Controller 接 checked / onCheckedChange */}
+          <Controller
+            control={control}
+            name="enabled"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="edit-enabled"
+                  checked={field.value}
+                  disabled={busy}
+                  onCheckedChange={field.onChange}
+                />
+                <FieldLabel htmlFor="edit-enabled" className="text-base">
+                  {t('meds.edit.enabled')}
+                </FieldLabel>
+              </Field>
+            )}
           />
-        </label>
-
-        <label className={S.FIELD}>
-          <span className={S.FIELD_LABEL}>{t('meds.edit.startDate')}</span>
-          <input
-            className={S.FIELD_INPUT}
-            type="date"
-            disabled={busy}
-            {...register('startDate')}
-          />
-        </label>
-
-        <label className={S.FIELD}>
-          <span className={S.FIELD_LABEL}>{t('meds.edit.endDate')}</span>
-          <input
-            className={S.FIELD_INPUT}
-            type="date"
-            disabled={busy}
-            {...register('endDate')}
-          />
-          {hadEndDate && <small className={S.FIELD_HINT}>{t('meds.edit.endDateNote')}</small>}
-        </label>
-
-        <label className={S.FIELD_INLINE}>
-          <input
-            className={S.SLOT_CHECKBOX}
-            type="checkbox"
-            disabled={busy}
-            {...register('enabled')}
-          />
-          <span>{t('meds.edit.enabled')}</span>
-        </label>
+        </FieldGroup>
 
         {formError && (
-          <p className={S.ERROR} role="alert">
-            {formError}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
         )}
 
-        <div className={S.ACTIONS}>
-          <Button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={busy}>
-            {t('meds.cancel')}
-          </Button>
+        <DialogFooter>
           <Button
             type="button"
-            className={S.BTN_PRIMARY}
-            onClick={() => void submit()}
+            variant="outline"
+            className="flex-1"
+            onClick={onClose}
             disabled={busy}
           >
+            {t('meds.cancel')}
+          </Button>
+          <Button type="button" className="flex-1" onClick={() => void submit()} disabled={busy}>
             {isSubmitting ? t('meds.edit.saving') : t('meds.edit.save')}
           </Button>
-        </div>
+        </DialogFooter>
 
-        <div className={S.DANGER_ZONE}>
+        <Separator />
+
+        <div className="flex flex-col gap-2">
           {confirmingDelete ? (
             <>
-              <p className={S.DANGER_P} role="alert">{t('meds.edit.deleteConfirm')}</p>
-              <div className={S.ACTIONS}>
+              <Alert variant="destructive">
+                <AlertDescription>{t('meds.edit.deleteConfirm')}</AlertDescription>
+              </Alert>
+              <div className="flex gap-2 [&>button]:flex-1">
                 <Button
                   type="button"
-                  className={S.BTN_GHOST}
+                  variant="outline"
                   onClick={() => setConfirmingDelete(false)}
                   disabled={busy}
                 >
@@ -208,7 +220,7 @@ export function ReminderEditDialog({
                 </Button>
                 <Button
                   type="button"
-                  className={S.BTN_DANGER}
+                  variant="destructive"
                   onClick={() => void handleDelete()}
                   disabled={busy}
                 >
@@ -220,7 +232,7 @@ export function ReminderEditDialog({
             <Button
               type="button"
               variant="ghost"
-              className={S.DELETE_LINK}
+              className="self-center text-destructive underline hover:text-destructive"
               onClick={() => setConfirmingDelete(true)}
               disabled={busy}
             >

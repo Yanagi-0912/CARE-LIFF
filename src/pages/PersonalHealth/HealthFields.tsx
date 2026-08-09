@@ -1,21 +1,25 @@
 import type { ReactNode } from 'react';
 import type { FieldError as RHFFieldError, UseFormRegisterReturn } from 'react-hook-form';
 
-import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
-import { cn } from '@/lib/utils';
-import * as S from './styles';
+import {
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldError,
+    FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 /**
  * 這一頁的欄位外殼。
  *
- * 原本每個欄位都手寫 label + control + 錯誤 <span>，重複八次；
- * 錯誤訊息也只是視覺上的紅字，沒有和欄位建立關聯（螢幕閱讀器唸完
- * 標籤後不會提到錯在哪）。改用 Field 之後 aria-describedby 與
- * aria-invalid 由元件自動接線。
+ * 錯誤訊息的 aria-describedby / aria-invalid 由 Field 自動接線，
+ * 不用每個欄位自己手寫紅字 <span>。
  *
- * orientation="horizontal" 對應原本「標籤在左、控制項在右」。
- * 不用 responsive：那個變體靠 @md/field-group 容器查詢，需要外層 FieldGroup；
- * 這裡的窄螢幕換行沿用 FORM_GROUP 既有的 max-[600px] 斷點即可。
+ * orientation="responsive"：窄螢幕標籤在上、控制項在下（LIFF 幾乎都是手機，
+ * 這是主要情形），容器寬到 @md 才變成標籤在左。斷點來自 FieldGroup 的
+ * @container/field-group，所以每個 Step 的欄位都要包在 FieldGroup 裡。
  */
 type HealthFieldProps = {
     /** 對應 control 的 id，Field 會用它接 label */
@@ -29,11 +33,12 @@ type HealthFieldProps = {
 
 export function HealthField({ htmlFor, label, hint, error, children }: HealthFieldProps) {
     return (
-        <Field orientation="horizontal" className={S.FORM_GROUP} data-invalid={error ? true : undefined}>
-            <FieldLabel htmlFor={htmlFor} className={S.LABEL}>
+        <Field orientation="responsive" data-invalid={error ? true : undefined}>
+            {/* responsive 變體在 @md 會把標籤設成 flex-auto，配 max-w 收成固定欄寬 */}
+            <FieldLabel htmlFor={htmlFor} className="text-base font-bold @md/field-group:max-w-40">
                 {label}
             </FieldLabel>
-            <FieldContent className={S.FIELD_CONTROL}>
+            <FieldContent>
                 {children}
                 {hint && <FieldDescription>{hint}</FieldDescription>}
                 <FieldError errors={error ? [error] : undefined} />
@@ -53,12 +58,11 @@ type HealthInputProps = {
 
 export function HealthInput({ id, type = 'text', placeholder, invalid, register, ...rest }: HealthInputProps) {
     return (
-        <input
+        <Input
             id={id}
             type={type}
             placeholder={placeholder}
             aria-invalid={invalid || undefined}
-            className={cn(S.INPUT, invalid && S.INPUT_ERROR)}
             {...rest}
             {...register}
         />
@@ -75,13 +79,5 @@ export function HealthTextarea({
     placeholder?: string;
     register: UseFormRegisterReturn;
 }) {
-    return (
-        <textarea
-            id={id}
-            rows={2}
-            placeholder={placeholder}
-            className={cn(S.INPUT, S.INPUT_LONG)}
-            {...register}
-        />
-    );
+    return <Textarea id={id} rows={2} placeholder={placeholder} {...register} />;
 }

@@ -1,10 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import LineSidebar from '../LineSidebar/LineSidebar';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
 import { queryKeys } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
+import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item';
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -31,34 +32,40 @@ function Sidebar() {
     { path: '/settings', label: t('sidebar.settings') },
   ];
 
-  const activeIndex = items.findIndex((item) => (
-    item.path === '/'
-      ? location.pathname === '/'
-      : location.pathname.startsWith(item.path)
-  ));
+  const isActive = (path: string) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
   return (
     // 僅桌面版顯示（手機用底部導覽）；黏在 header 下方、自身可捲動
-    <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] w-[var(--sidebar-w)] shrink-0 self-start overflow-y-auto border-r border-hair bg-surface bg-[image:var(--sidebar-wash)] px-4 py-8 md:block">
-      <LineSidebar
-        key={`${location.pathname}-${isAdmin ? 'admin' : 'user'}`}
-        items={items.map((item) => item.label)}
-        accentColor="var(--primary)"
-        textColor="var(--muted)"
-        markerColor="var(--line)"
-        proximityRadius={84}
-        maxShift={12}
-        markerLength={34}
-        markerGap={10}
-        tickScale={0.42}
-        itemGap={22}
-        fontSize={0.95}
-        smoothing={90}
-        defaultActive={activeIndex >= 0 ? activeIndex : null}
-        onItemClick={(index) => navigate(items[index].path)}
-        className="animate-sidebar-in"
-        ariaLabel={t('sidebar.mainNavAriaLabel')}
-      />
+    <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] w-[var(--sidebar-w)] shrink-0 self-start overflow-y-auto border-r px-4 py-8 md:block">
+      <ItemGroup className="animate-sidebar-in gap-1" aria-label={t('sidebar.mainNavAriaLabel')}>
+        {items.map((item) => {
+          const active = isActive(item.path);
+          return (
+            <Item
+              key={item.path}
+              size="sm"
+              className={cn(
+                'cursor-pointer transition-colors hover:bg-muted',
+                active && 'bg-primary/10 text-primary hover:bg-primary/10',
+              )}
+              render={
+                <button
+                  type="button"
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => navigate(item.path)}
+                />
+              }
+            >
+              <ItemContent>
+                <ItemTitle className={cn('text-base', active && 'font-bold')}>
+                  {item.label}
+                </ItemTitle>
+              </ItemContent>
+            </Item>
+          );
+        })}
+      </ItemGroup>
     </aside>
   );
 }

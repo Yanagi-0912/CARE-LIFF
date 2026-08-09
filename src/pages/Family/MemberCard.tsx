@@ -1,158 +1,197 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { ChevronDownIcon, TriangleAlertIcon, UserIcon } from 'lucide-react';
+
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
 import { RELATIONSHIP_LABEL } from '../../types/family';
-import { useTranslation } from 'react-i18next';
+import { queryKeys } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-import * as S from './styles';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Props {
   member: FamilyMember;
-  /** 瀑布式進場延遲（由清單依 index 給值） */
-  delayMs?: number;
 }
 
+/** 後端在使用者沒填過資料時會回一組佔位值，這些不算「有資料」 */
+const PLACEHOLDER_HEIGHT = 1.0;
+const PLACEHOLDER_WEIGHT = 1.0;
+
+const hasNumber = (value: number | undefined, placeholder: number) =>
+  value != null && value !== 0 && value !== placeholder;
+
 /**
- * 成員卡片 — 點擊展開顯示該成員的健康狀況
+ * 家人卡片 — 整列是 Collapsible 的 trigger，展開才去要健康資料。
+ *
+ * 健康資料走 React Query 而非 useState：換頁再回來、或同一人在別處也被展開時
+ * 可以命中快取，不用重打 API；重試與錯誤狀態也交給 queryClient 的預設值。
  */
-export function MemberCard({ member, delayMs = 0 }: Props) {
+export function MemberCard({ member }: Props) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-  const [health, setHealth] = useState<HealthProfile | null>(null);
-  const [healthLoading, setHealthLoading] = useState(false);
-  const [healthError, setHealthError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   const displayName = member.display_name || member.user_id.slice(0, 8);
   const relationLabel = member.relationship_type
-    ? (RELATIONSHIP_LABEL[member.relationship_type] || member.relationship_type)
+    ? RELATIONSHIP_LABEL[member.relationship_type] || member.relationship_type
     : t('family.unset');
 
-  const handleClick = useCallback(async () => {
-    const willExpand = !expanded;
-    setExpanded(willExpand);
+  // enabled: open —— 收合狀態不發請求，展開過一次後就一直保留快取
+  const { data: health, isPending, isError } = useQuery({
+    queryKey: queryKeys.memberProfile(member.user_id),
+    queryFn: () => getPersonalHealthProfile(member.user_id),
+    enabled: open,
+  });
 
-    // 第一次展開時才載入健康資料（lazy loading）
-    // 後端應透過 JWT 驗證請求者是否有權限查看該成員資料
-    if (willExpand && !health && !healthLoading) {
-      setHealthLoading(true);
-      setHealthError(null);
-      try {
-        const data = await getPersonalHealthProfile(member.user_id);
-        setHealth(data);
-      } catch (err) {
-        setHealthError(err instanceof Error ? err.message : '無法載入健康資料');
-      } finally {
-        setHealthLoading(false);
-      }
-    }
-  }, [expanded, health, healthLoading, member.user_id]);
-
-  const isDefaultProfile = health && (
-    health.age === 0 &&
-    health.gender === 'unknown' &&
-    health.height === 1.0 &&
-    health.weight === 1.0 &&
-    !health.chronic_history &&
-    !health.major_illness_history &&
-    !health.surgery_history
-  );
-
-  const hasAnyData = health && !isDefaultProfile && (
-    (health.age != null && health.age !== 0) ||
-    (health.gender && health.gender !== 'unknown') ||
-    (health.height != null && health.height !== 1.0) ||
-    (health.weight != null && health.weight !== 1.0) ||
-    health.chronic_history ||
-    health.major_illness_history ||
-    health.surgery_history
-  );
+  const rows = health ? buildRows(health, t) : [];
 
   return (
-    <Card
-      className={cn(S.CARD, expanded && S.CARD_EXPANDED)}
-      style={{ animationDelay: `${delayMs}ms` }}
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') void handleClick(); }}
-    >
-      {/* 頭像 */}
-      <div className={S.AVATAR}>
-        {member.picture_url ? (
-          <img src={member.picture_url} alt={displayName} />
-        ) : (
-          '👤'
+    <Collapsible open={open} onOpenChange={setOpen} role="listitem">
+      <Item
+        variant="outline"
+        className={cn(
+          'flex-col items-stretch gap-0 p-0 transition-colors',
+          open && 'border-primary/40 bg-primary/[0.03]',
         )}
-      </div>
+      >
+        <CollapsibleTrigger
+          className="group/row flex w-full cursor-pointer items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          aria-label={displayName}
+        >
+          <ItemMedia>
+            {/* size-12：長輩友善，比 Avatar 內建的 lg（40px）再大一級 */}
+            <Avatar className="size-12">
+              <AvatarImage src={member.picture_url} alt="" />
+              <AvatarFallback>
+                <UserIcon className="size-5" />
+              </AvatarFallback>
+            </Avatar>
+          </ItemMedia>
 
-      {/* LINE 名稱 */}
-      <span className={S.NAME}>{displayName}</span>
+          <ItemContent>
+            <ItemTitle className="text-base">{displayName}</ItemTitle>
+            <Badge
+              variant={member.relationship_type ? 'secondary' : 'outline'}
+              className="mt-0.5"
+            >
+              {relationLabel}
+            </Badge>
+          </ItemContent>
 
-      {/* 稱謂 */}
-      <span className={cn(S.RELATION, !member.relationship_type && S.RELATION_UNSET)}>
-        {relationLabel}
-      </span>
+          <ChevronDownIcon className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[panel-open]/row:rotate-180" />
+        </CollapsibleTrigger>
 
-      {/* 展開箭頭提示 */}
-      <span className={cn(S.EXPAND_HINT, expanded && S.EXPAND_HINT_ON)}>{expanded ? '▲' : '▼'}</span>
+        <CollapsibleContent className="animate-in fade-in slide-in-from-top-1 duration-200">
+          <Separator />
+          <div className="px-4 py-3.5">
+            <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {t('family.healthTitle')}
+            </p>
 
-      {/* 展開的健康狀況 */}
-      {expanded && (
-        <div className={S.DETAIL} onClick={(e) => e.stopPropagation()}>
-          {healthLoading ? (
-            <p className={S.STATE_TEXT}>載入健康資料中…</p>
-          ) : healthError ? (
-            <p className={S.STATE_ERROR}>⚠️ {healthError}</p>
-          ) : hasAnyData ? (
-            <div className={S.FIELDS}>
-              {health!.age != null && health!.age !== 0 && (
-                <div className={S.FIELD}>
-                  <span className={S.FIELD_LABEL}>年齡</span>
-                  <span className={S.FIELD_VALUE}>{health!.age} 歲</span>
-                </div>
-              )}
-              {health!.gender && (
-                <div className={S.FIELD}>
-                  <span className={S.FIELD_LABEL}>性別</span>
-                  <span className={S.FIELD_VALUE}>{health!.gender === 'unknown' ? '未設定' : health!.gender}</span>
-                </div>
-              )}
-              {((health!.height != null && health!.height !== 1.0) || (health!.weight != null && health!.weight !== 1.0)) && (
-                <div className={S.FIELD}>
-                  <span className={S.FIELD_LABEL}>身體指標</span>
-                  <span className={S.FIELD_VALUE}>
-                    {health!.height != null && health!.height !== 1.0 ? `${health!.height} cm` : ''}
-                    {health!.height != null && health!.height !== 1.0 && health!.weight != null && health!.weight !== 1.0 ? ' / ' : ''}
-                    {health!.weight != null && health!.weight !== 1.0 ? `${health!.weight} kg` : ''}
-                  </span>
-                </div>
-              )}
-              {health!.chronic_history && (
-                <div className={S.FIELD}>
-                  <span className={S.FIELD_LABEL}>慢性病史</span>
-                  <span className={S.FIELD_VALUE}>{health!.chronic_history}</span>
-                </div>
-              )}
-              {health!.major_illness_history && (
-                <div className={S.FIELD}>
-                  <span className={S.FIELD_LABEL}>重大疾病</span>
-                  <span className={S.FIELD_VALUE}>{health!.major_illness_history}</span>
-                </div>
-              )}
-              {health!.surgery_history && (
-                <div className={S.FIELD}>
-                  <span className={S.FIELD_LABEL}>手術記錄</span>
-                  <span className={S.FIELD_VALUE}>{health!.surgery_history}</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className={S.STATE_TEXT}>尚無健康資料</p>
-          )}
-        </div>
-      )}
-    </Card>
+            {isPending ? (
+              <p className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
+                <Spinner />
+                {t('family.healthLoading')}
+              </p>
+            ) : isError ? (
+              <p className="flex items-center gap-2 py-1 text-sm text-destructive">
+                <TriangleAlertIcon className="size-4 shrink-0" />
+                {t('family.healthError')}
+              </p>
+            ) : rows.length === 0 ? (
+              <p className="py-1 text-sm text-muted-foreground">
+                {t('family.healthEmpty')}
+              </p>
+            ) : (
+              <dl className="grid gap-2">
+                {rows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex items-baseline justify-between gap-3"
+                  >
+                    <dt className="shrink-0 text-sm text-muted-foreground">
+                      {row.label}
+                    </dt>
+                    <dd className="num text-right text-sm font-semibold break-words">
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Item>
+    </Collapsible>
   );
+}
+
+/** 把健康檔案攤平成要顯示的列；沒填的欄位直接不產生列，畫面才不會一堆「未設定」 */
+function buildRows(health: HealthProfile, t: (key: string) => string) {
+  const rows: { label: string; value: string }[] = [];
+
+  if (health.age != null && health.age !== 0) {
+    rows.push({
+      label: t('personalHealth.field.age'),
+      value: `${health.age} ${t('personalHealth.unit.age')}`,
+    });
+  }
+
+  if (health.gender && health.gender !== 'unknown') {
+    const genderKey = `personalHealth.gender.${health.gender}`;
+    const translated = t(genderKey);
+    rows.push({
+      label: t('personalHealth.gender'),
+      // 後端可能直接回中文（男／女），查不到 key 時 i18next 會原樣回傳 key
+      value: translated === genderKey ? health.gender : translated,
+    });
+  }
+
+  if (hasNumber(health.height, PLACEHOLDER_HEIGHT)) {
+    rows.push({
+      label: t('personalHealth.field.height'),
+      value: `${health.height} ${t('personalHealth.unit.height')}`,
+    });
+  }
+
+  if (hasNumber(health.weight, PLACEHOLDER_WEIGHT)) {
+    rows.push({
+      label: t('personalHealth.field.weight'),
+      value: `${health.weight} ${t('personalHealth.unit.weight')}`,
+    });
+  }
+
+  if (health.chronic_history) {
+    rows.push({
+      label: t('personalHealth.chronic'),
+      value: health.chronic_history,
+    });
+  }
+
+  if (health.major_illness_history) {
+    rows.push({
+      label: t('personalHealth.majorIllness'),
+      value: health.major_illness_history,
+    });
+  }
+
+  if (health.surgery_history) {
+    rows.push({
+      label: t('personalHealth.surgeryHistory'),
+      value: health.surgery_history,
+    });
+  }
+
+  return rows;
 }

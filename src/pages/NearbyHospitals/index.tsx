@@ -5,6 +5,18 @@ import { fetchNearbyHospitals } from '../../api/medicalApi';
 import type { MedicalFacility } from '../../types/medical';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import ExpandableSearch from '../../components/ExpandableSearch/ExpandableSearch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemTitle,
+} from '@/components/ui/item';
+import { ItemGroup } from '@/components/ui/item';
 
 function formatDistance(meters?: number | null) {
   if (meters == null || Number.isNaN(meters)) return null;
@@ -16,14 +28,6 @@ function mapsUrl(facility: MedicalFacility) {
   const query = encodeURIComponent(facility.address || facility.name);
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
-
-/* ────────── 樣式（原 index.css 遷移） ────────── */
-// 定位失敗／搜尋失敗共用的警示框：danger 以 color-mix 淡出當底與框線
-const ALERT_CLASS =
-  'rounded-[14px] border border-[color-mix(in_srgb,var(--danger,#c44)_28%,transparent)] bg-[color-mix(in_srgb,var(--danger,#c44)_12%,transparent)] px-4 py-3';
-// 座標／清單／空狀態共用的白卡
-const PANEL_CLASS = 'rounded-lg border border-hair bg-surface p-4';
-const PANEL_H2 = 'm-0 mb-2 text-base';
 
 const NearbyHospitalsPage = () => {
   const { t } = useTranslation();
@@ -67,97 +71,116 @@ const NearbyHospitalsPage = () => {
 
   return (
     <div className="mx-auto flex max-w-[720px] flex-col gap-4 p-4">
-      <header className="overflow-hidden rounded-xl bg-[linear-gradient(135deg,var(--primary-strong),var(--primary))] px-6 py-8 text-white">
-        <p className="m-0 mb-2 text-[0.8rem] tracking-[0.06em] uppercase opacity-85">{t('nearby.eyebrow')}</p>
-        {/* 標題沿用全域 h1 墨色（原設計即如此），不套 text-white */}
-        <h1 className="m-0 mb-2 text-[clamp(1.4rem,4vw,1.85rem)] font-bold">
-          <DecryptedText
-            text={t('nearby.title')}
-            speed={36}
-            sequential
-            revealDirection="center"
-            useOriginalCharsOnly
-            animateOn="view"
+      <Card className="bg-primary text-primary-foreground">
+        <CardContent>
+          <p className="text-xs tracking-wide uppercase opacity-85">{t('nearby.eyebrow')}</p>
+          <h1 className="mt-2 text-[clamp(1.4rem,4vw,1.85rem)] font-bold">
+            <DecryptedText
+              text={t('nearby.title')}
+              speed={36}
+              sequential
+              revealDirection="center"
+              useOriginalCharsOnly
+              animateOn="view"
+            />
+          </h1>
+          <p className="mt-2 mb-4 opacity-90">{t('nearby.desc')}</p>
+          <ExpandableSearch
+            placeholder={busy ? t('nearby.searching') : t('nearby.searchButton')}
+            ariaLabel={t('nearby.searchButton')}
+            onSubmitSearch={() => {
+              void handleSearch();
+            }}
+            disabled={busy}
           />
-        </h1>
-        <p className="m-0 mb-4 leading-normal opacity-92">{t('nearby.desc')}</p>
-        <ExpandableSearch
-          placeholder={busy ? t('nearby.searching') : t('nearby.searchButton')}
-          ariaLabel={t('nearby.searchButton')}
-          onSubmitSearch={() => {
-            void handleSearch();
-          }}
-          disabled={busy}
-        />
-        <p className="mt-3 mb-0 text-[0.82rem] leading-[1.45] opacity-82">{t('nearby.privacyNote')}</p>
-      </header>
+          <p className="mt-3 text-xs leading-relaxed opacity-80">{t('nearby.privacyNote')}</p>
+        </CardContent>
+      </Card>
 
       {(errorMessage || permissionHint) && (
-        <div className={ALERT_CLASS} role="alert">
-          {errorMessage && <p className="m-0 leading-normal">{errorMessage}</p>}
-          {permissionHint && <p className="mt-[0.4rem] mb-0 text-[0.9rem] leading-normal opacity-90">{permissionHint}</p>}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>
+            {errorMessage && <p>{errorMessage}</p>}
+            {permissionHint && <p className="opacity-90">{permissionHint}</p>}
+          </AlertDescription>
+        </Alert>
       )}
 
       {position && (
-        <section className={PANEL_CLASS} aria-live="polite">
-          <h2 className={PANEL_H2}>{t('nearby.currentLocation')}</h2>
-          <p className="m-0 leading-normal text-muted-foreground">
-            {t('nearby.coords', {
-              lat: position.latitude.toFixed(5),
-              lng: position.longitude.toFixed(5),
-              accuracy: Math.round(position.accuracy),
-            })}
-          </p>
-        </section>
+        <Card size="sm" aria-live="polite">
+          <CardContent>
+            <h2 className="mb-1 text-base font-bold">{t('nearby.currentLocation')}</h2>
+            <p className="text-muted-foreground">
+              {t('nearby.coords', {
+                lat: position.latitude.toFixed(5),
+                lng: position.longitude.toFixed(5),
+                accuracy: Math.round(position.accuracy),
+              })}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {searchError && (
-        <div className={ALERT_CLASS} role="alert">
-          <p className="m-0 leading-normal">{searchError}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{searchError}</AlertDescription>
+        </Alert>
       )}
 
       {hasSearched && !searching && !searchError && facilities.length === 0 && (
-        <div className={PANEL_CLASS}>
-          <h2 className={PANEL_H2}>{t('nearby.emptyTitle')}</h2>
-          <p className="m-0 leading-normal text-muted-foreground">{t('nearby.emptyDesc')}</p>
-        </div>
+        <Card size="sm">
+          <CardContent>
+            <h2 className="mb-1 text-base font-bold">{t('nearby.emptyTitle')}</h2>
+            <p className="text-muted-foreground">{t('nearby.emptyDesc')}</p>
+          </CardContent>
+        </Card>
       )}
 
       {facilities.length > 0 && (
-        <section className={PANEL_CLASS} aria-label={t('nearby.listTitle')}>
-          <h2 className={PANEL_H2}>{t('nearby.listTitle')}</h2>
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        <section aria-label={t('nearby.listTitle')}>
+          <h2 className="mb-2 text-base font-bold">{t('nearby.listTitle')}</h2>
+          <ItemGroup className="gap-3">
             {facilities.map((facility) => {
               const distance = formatDistance(facility.distance_meters);
               return (
-                <li key={facility.id ?? `${facility.name}-${facility.latitude}`}>
-                  <article className="flex flex-col gap-[0.35rem] rounded-md bg-surface-2 p-3">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="m-0 text-[1.05rem]">{facility.name}</h3>
-                      {distance && <span className="shrink-0 text-[0.85rem] font-[650] text-primary">{distance}</span>}
-                    </div>
-                    <p className="m-0 text-[0.82rem] text-muted-foreground">{facility.type}</p>
-                    <p className="m-0 leading-[1.45]">{facility.address}</p>
+                <Item
+                  key={facility.id ?? `${facility.name}-${facility.latitude}`}
+                  variant="outline"
+                  className="flex-wrap items-start"
+                >
+                  <ItemContent>
+                    <ItemTitle className="text-base">{facility.name}</ItemTitle>
+                    <ItemDescription>{facility.type}</ItemDescription>
+                    <ItemDescription className="text-foreground">
+                      {facility.address}
+                    </ItemDescription>
+                  </ItemContent>
+
+                  {distance && (
+                    <ItemActions>
+                      <Badge variant="secondary">{distance}</Badge>
+                    </ItemActions>
+                  )}
+
+                  <ItemFooter className="justify-start gap-4">
                     {facility.phone && (
-                      <a className="text-[0.92rem] text-primary no-underline" href={`tel:${facility.phone}`}>
+                      <a className="font-semibold text-primary" href={`tel:${facility.phone}`}>
                         {facility.phone}
                       </a>
                     )}
                     <a
-                      className="mt-[0.2rem] text-[0.92rem] font-semibold text-primary no-underline"
+                      className="font-semibold text-primary"
                       href={mapsUrl(facility)}
                       target="_blank"
                       rel="noreferrer"
                     >
                       {t('nearby.openMap')}
                     </a>
-                  </article>
-                </li>
+                  </ItemFooter>
+                </Item>
               );
             })}
-          </ul>
+          </ItemGroup>
         </section>
       )}
     </div>

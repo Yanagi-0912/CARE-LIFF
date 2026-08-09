@@ -48,12 +48,18 @@ describe('Home Page Component', () => {
     expect(screen.getByText('家庭介面')).toBeInTheDocument();
     expect(screen.getByText('知識回報')).toBeInTheDocument();
     expect(screen.getByText('設定頁面')).toBeInTheDocument();
-    expect(screen.getByText('帳號登入')).toBeInTheDocument();
 
     // 檢查描述文字是否符合實際文字
     expect(screen.getByText('健康紀錄與醫院預約')).toBeInTheDocument();
     expect(screen.getByText('管理長輩與家人狀況')).toBeInTheDocument();
     expect(screen.getByText('追蹤人工審核進度')).toBeInTheDocument();
+  });
+
+  it('首頁不應再出現身分驗證卡片（登出已移至設定頁）', () => {
+    renderHome();
+
+    expect(screen.queryByText('帳號登入')).not.toBeInTheDocument();
+    expect(screen.queryByText('帳號登出')).not.toBeInTheDocument();
   });
 
   it('點擊卡片時，應該觸發 navigate 並前往對應的路徑', () => {
@@ -78,10 +84,5 @@ describe('Home Page Component', () => {
     const settingsButton = screen.getByText('設定頁面').closest('button');
     fireEvent.click(settingsButton!);
     expect(mockNavigate).toHaveBeenCalledWith('/settings');
-
-    // 測試點擊「帳號登入」
-    const loginButton = screen.getByText('帳號登入').closest('button');
-    fireEvent.click(loginButton!);
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 });

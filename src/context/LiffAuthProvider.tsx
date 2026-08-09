@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import liff from '@line/liff';
 import { loginWithLiffIdToken } from '../api/authApi';
-import { clearAuth, isAuthenticated } from '../utils/auth';
+import { clearAuth, hasLoggedOut, isAuthenticated, markLoggedOut } from '../utils/auth';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
 
@@ -10,6 +10,8 @@ interface LiffAuthContextType {
   isLoggedIn: boolean;
   liffError: string | null;
   refreshAuth: () => Promise<void>;
+  /** 登入頁換發 token 成功後呼叫，讓全域狀態立刻同步（不必等整頁重載） */
+  markAuthenticated: () => void;
   logout: () => void;
 }
 
@@ -18,6 +20,7 @@ const LiffAuthContext = createContext<LiffAuthContextType>({
   isLoggedIn: false,
   liffError: null,
   refreshAuth: async () => {},
+  markAuthenticated: () => {},
   logout: () => {},
 });
 
@@ -27,6 +30,14 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
   const [liffError, setLiffError] = useState<string | null>(null);
 
   const initAuth = useCallback(async () => {
+    // 使用者主動登出後就不要再自動換發 token，否則等於沒登出
+    if (hasLoggedOut()) {
+      clearAuth();
+      setIsLoggedIn(false);
+      setAuthInitialized(true);
+      return;
+    }
+
     if (!LIFF_ID) {
       // 本地開發無 LIFF ID 時，視原本 localStorage token 狀況決定
       setIsLoggedIn(isAuthenticated());
@@ -74,12 +85,24 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
     void initAuth();
   }, [initAuth]);
 
+  const markAuthenticated = useCallback(() => {
+    setIsLoggedIn(true);
+  }, []);
+
   const logout = useCallback(() => {
+    // 先落地本地狀態，就算下面 LIFF 那段拋錯也已經是登出的
     clearAuth();
-    if (liff.isLoggedIn?.()) {
-      liff.logout();
-    }
+    markLoggedOut();
     setIsLoggedIn(false);
+    try {
+      // liff.init() 沒跑過時（例如未設定 VITE_LIFF_ID）這裡會丟例外，
+      // optional chaining 擋不住，要真的 try/catch
+      if (liff.isLoggedIn()) {
+        liff.logout();
+      }
+    } catch {
+      // LIFF 尚未初始化：本地憑證已清乾淨，忽略即可
+    }
   }, []);
 
   return (
@@ -89,6 +112,7 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
         isLoggedIn,
         liffError,
         refreshAuth: initAuth,
+        markAuthenticated,
         logout,
       }}
     >

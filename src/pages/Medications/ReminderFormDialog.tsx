@@ -11,9 +11,27 @@ import {
 } from '../../types/medication';
 import { todayLocalDateString } from '../../utils/date';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import * as S from './styles';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 
 interface ReminderFormDialogProps {
   /** 提醒對象名稱，僅顯示用；對象由頁面上方的 chips 決定 */
@@ -83,103 +101,115 @@ export function ReminderFormDialog({
 
   return (
     // Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建。
-    // showCloseButton={false}：沿用原本的 × 鈕（其 aria-label 為既有無障礙標籤）。
+    // 關閉鈕用 DialogContent 內建的那顆（原本是自刻的 × 按鈕）。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={S.DIALOG} showCloseButton={false}>
-        <DialogClose
-          render={
-            <button type="button" className={S.DIALOG_CLOSE} aria-label={t('meds.close')}>×</button>
-          }
-        />
+      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>{t('meds.add.title')}</DialogTitle>
+          <DialogDescription>
+            {t('meds.add.targetField')} <strong className="text-foreground">{targetName}</strong>
+          </DialogDescription>
+        </DialogHeader>
 
-        <DialogTitle className={S.DIALOG_H2}>{t('meds.add.title')}</DialogTitle>
-
-        <p className={S.DIALOG_TARGET}>
-          <span>{t('meds.add.targetField')}</span>
-          <strong className={S.DIALOG_TARGET_STRONG}>{targetName}</strong>
-        </p>
-
-        {/* 複選欄位交給 Controller 管理陣列值 */}
-        <Controller
-          control={control}
-          name="slots"
-          render={({ field }) => (
-            <fieldset className={S.SLOT_PICKER}>
-              <legend className={S.SLOT_LEGEND}>{t('meds.add.slotsField')}</legend>
-              {SLOT_TYPES.map((slot) => {
-                const taken = existingSlots.includes(slot);
-                const checked = field.value.includes(slot);
-                return (
-                  <label key={slot} className={cn(S.SLOT_OPTION, taken && S.SLOT_TAKEN)}>
-                    <input
-                      className={S.SLOT_CHECKBOX}
-                      type="checkbox"
-                      checked={checked}
-                      disabled={taken || isSubmitting}
-                      onChange={() =>
-                        field.onChange(
-                          checked
-                            ? field.value.filter((item) => item !== slot)
-                            : [...field.value, slot],
-                        )
-                      }
-                    />
-                    <span className={S.SLOT_NAME}>{t(SLOT_LABEL_KEY[slot])}</span>
-                    <span className={S.SLOT_TIME}>
-                      {taken ? t('meds.add.slotExists') : DEFAULT_SLOT_TIMES[slot]}
-                    </span>
-                  </label>
-                );
-              })}
-            </fieldset>
-          )}
-        />
-
-        {allSlotsUsed && <p className={S.NOTE}>{t('meds.add.allSlotsUsed')}</p>}
-
-        <label className={S.FIELD}>
-          <span className={S.FIELD_LABEL}>{t('meds.add.startDate')}</span>
-          <input
-            className={S.FIELD_INPUT}
-            type="date"
-            disabled={isSubmitting}
-            {...register('startDate')}
+        <FieldGroup>
+          {/* 複選欄位交給 Controller 管理陣列值 */}
+          <Controller
+            control={control}
+            name="slots"
+            render={({ field }) => (
+              <FieldSet>
+                <FieldLegend variant="label">{t('meds.add.slotsField')}</FieldLegend>
+                <div className="flex flex-col gap-2">
+                  {SLOT_TYPES.map((slot) => {
+                    const taken = existingSlots.includes(slot);
+                    const checked = field.value.includes(slot);
+                    return (
+                      <Field
+                        key={slot}
+                        orientation="horizontal"
+                        className={cn(
+                          'rounded-xl border p-3 transition-colors has-data-checked:border-primary has-data-checked:bg-primary/5',
+                          taken && 'opacity-55',
+                        )}
+                      >
+                        <Checkbox
+                          id={`slot-${slot}`}
+                          checked={checked}
+                          disabled={taken || isSubmitting}
+                          onCheckedChange={() =>
+                            field.onChange(
+                              checked
+                                ? field.value.filter((item) => item !== slot)
+                                : [...field.value, slot],
+                            )
+                          }
+                        />
+                        <FieldLabel htmlFor={`slot-${slot}`} className="text-base">
+                          {t(SLOT_LABEL_KEY[slot])}
+                        </FieldLabel>
+                        {taken ? (
+                          <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
+                        ) : (
+                          <span className="num text-sm text-muted-foreground">
+                            {DEFAULT_SLOT_TIMES[slot]}
+                          </span>
+                        )}
+                      </Field>
+                    );
+                  })}
+                </div>
+                {allSlotsUsed && (
+                  <FieldDescription>{t('meds.add.allSlotsUsed')}</FieldDescription>
+                )}
+              </FieldSet>
+            )}
           />
-        </label>
 
-        <label className={S.FIELD}>
-          <span className={S.FIELD_LABEL}>{t('meds.add.endDate')}</span>
-          <input
-            className={S.FIELD_INPUT}
-            type="date"
-            min={startDate}
-            disabled={isSubmitting}
-            {...register('endDate')}
-          />
-          <small className={S.FIELD_HINT}>{t('meds.add.endDateOptional')}</small>
-        </label>
+          <Field>
+            <FieldLabel htmlFor="startDate">{t('meds.add.startDate')}</FieldLabel>
+            <Input id="startDate" type="date" disabled={isSubmitting} {...register('startDate')} />
+          </Field>
 
-        <p className={S.NOTE}>{t('meds.add.timeNote')}</p>
+          <Field>
+            <FieldLabel htmlFor="endDate">{t('meds.add.endDate')}</FieldLabel>
+            <Input
+              id="endDate"
+              type="date"
+              min={startDate}
+              disabled={isSubmitting}
+              {...register('endDate')}
+            />
+            <FieldDescription>{t('meds.add.endDateOptional')}</FieldDescription>
+          </Field>
+
+          <FieldDescription>{t('meds.add.timeNote')}</FieldDescription>
+        </FieldGroup>
 
         {formError && (
-          <p className={S.ERROR} role="alert">
-            {formError}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
         )}
 
-        <div className={S.ACTIONS}>
-          <Button type="button" className={S.BTN_GHOST} onClick={onClose} disabled={isSubmitting}>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
             {t('meds.cancel')}
           </Button>
           <Button
             type="button"
-            className={S.BTN_PRIMARY}
+            className="flex-1"
             onClick={() => void submit()}
             disabled={isSubmitting || allSlotsUsed}
           >
             {isSubmitting ? t('meds.add.submitting') : t('meds.add.submit')}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

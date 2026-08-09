@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithToaster } from './testUtils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,7 +79,8 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             target: { value: '70' },
         });
         fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-        await screen.findByRole('button', { name: /慢性病史/ });
+        // 慢性病選項現在直接攤在頁面上（不再是 Popover），出現任一個勾選框就代表已到第三步
+        await screen.findByRole('checkbox', { name: '高血壓' });
     };
 
     const reachHealthHistoryStep = async (gender: '男' | '女' = '男') => {
@@ -149,9 +150,8 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         renderWithToaster(<PersonalHealthPage />);
         await reachHealthHistoryStep('男');
 
-        // 開啟慢性病選單並勾選「高血壓」與「糖尿病」
+        // 勾選「高血壓」與「糖尿病」
         const user = userEvent.setup();
-        await user.click(screen.getByRole('button', { name: /慢性病史/ }));
         await user.click(await screen.findByRole('checkbox', { name: /高血壓/ }));
         await user.click(await screen.findByRole('checkbox', { name: /糖尿病/ }));
 
@@ -182,7 +182,6 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
 
         // 勾選一般項目「氣喘」與「其他」
         const user = userEvent.setup();
-        await user.click(screen.getByRole('button', { name: /慢性病史/ }));
         await user.click(await screen.findByRole('checkbox', { name: /氣喘/ }));
         await user.click(await screen.findByRole('checkbox', { name: /其他/ }));
 
@@ -215,7 +214,6 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
 
         // 只勾選「其他」，但不填寫文字輸入框
         const user = userEvent.setup();
-        await user.click(screen.getByRole('button', { name: /慢性病史/ }));
         await user.click(await screen.findByRole('checkbox', { name: /其他/ }));
 
         // 送出表單
