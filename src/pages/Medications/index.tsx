@@ -21,7 +21,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { ItemGroup } from '@/components/ui/item';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -121,7 +121,7 @@ const MedicationsPage = () => {
           語意正確，且方向鍵可在群組內移動焦點。
           userId 可能為 undefined（本人），以 'self' 當作群組內的識別值。 */}
       <ToggleGroup
-        variant="outline"
+        variant="primary"
         className="mb-4 flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         value={[selectedUserId ?? 'self']}
         onValueChange={(groupValue) => {
@@ -132,31 +132,31 @@ const MedicationsPage = () => {
         aria-label={t('meds.targetLabel')}
       >
         {targets.map((target) => (
-          // Toggle 預設的選中態只是 bg-muted，對長輩來說太淡；
-          // 這裡把選中態拉成 primary 實心，其餘外觀交給 outline 變體
-          <ToggleGroupItem
-            key={target.userId ?? 'self'}
-            value={target.userId ?? 'self'}
-            className="shrink-0 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary aria-pressed:hover:text-primary-foreground"
-          >
+          <ToggleGroupItem key={target.userId ?? 'self'} value={target.userId ?? 'self'}>
             {target.name}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
 
       {loading ? (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-label={t('meds.loading')}>
+        // 骨架屏用與 ReminderCard 同一組 Item 元件，卡片外框自然對齊，
+        // 不必再手寫一份 rounded/border/padding
+        <ItemGroup className="gap-3" aria-busy="true" aria-label={t('meds.loading')}>
           {[0, 1].map((i) => (
-            <div key={i} className="flex items-center gap-3.5 rounded-2xl border px-4 py-3.5">
-              <Skeleton className="size-11 rounded-xl" />
-              <div className="flex flex-1 flex-col gap-2">
+            <Item key={i} variant="outline">
+              <ItemMedia>
+                <Skeleton className="size-11 rounded-xl" />
+              </ItemMedia>
+              <ItemContent>
                 <Skeleton className="h-6 w-24" />
                 <Skeleton className="h-4 w-40" />
-              </div>
-              <Skeleton className="h-6 w-11 rounded-full" />
-            </div>
+              </ItemContent>
+              <ItemActions>
+                <Skeleton className="h-6 w-11 rounded-full" />
+              </ItemActions>
+            </Item>
           ))}
-        </div>
+        </ItemGroup>
       ) : error ? (
         <Empty className="border border-dashed">
           <EmptyHeader>

@@ -10,7 +10,6 @@ import {
   type MedicationSlotType,
 } from '../../types/medication';
 import { todayLocalDateString } from '../../utils/date';
-import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -26,12 +25,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldLegend,
   FieldSet,
+  FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+
+/** 表單掛在 dialog body 上，送出鈕在 DialogFooter，靠 form 屬性連回來 */
+const FORM_ID = 'add-reminder-form';
 
 interface ReminderFormDialogProps {
   /** 提醒對象名稱，僅顯示用；對象由頁面上方的 chips 決定 */
@@ -85,14 +89,11 @@ export function ReminderFormDialog({
 
   const startDate = watch('startDate');
 
-  // 送出失敗的訊息掛在 root 上，與欄位錯誤共用同一套顯示機制
-  const formError =
-    errors.root?.message ?? errors.slots?.message ?? errors.endDate?.message ?? null;
-
   const submit = handleSubmit(async (values) => {
     try {
       await onSubmit(values.slots, values.startDate, values.endDate || undefined);
     } catch (err) {
+      // 送出失敗掛在 root，與欄位錯誤分開顯示在表單底部
       setError('root', {
         message: err instanceof Error ? err.message : t('meds.updateFailed'),
       });
@@ -100,10 +101,9 @@ export function ReminderFormDialog({
   });
 
   return (
-    // Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建。
-    // 關閉鈕用 DialogContent 內建的那顆（原本是自刻的 × 按鈕）。
+    // Dialog 內建焦點鎖定、Escape、焦點歸位、背景鎖捲，關閉鈕用 DialogContent 內建那顆。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[420px]">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{t('meds.add.title')}</DialogTitle>
           <DialogDescription>
@@ -111,102 +111,95 @@ export function ReminderFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <FieldGroup>
-          {/* 複選欄位交給 Controller 管理陣列值 */}
-          <Controller
-            control={control}
-            name="slots"
-            render={({ field }) => (
-              <FieldSet>
-                <FieldLegend variant="label">{t('meds.add.slotsField')}</FieldLegend>
-                <div className="flex flex-col gap-2">
-                  {SLOT_TYPES.map((slot) => {
-                    const taken = existingSlots.includes(slot);
-                    const checked = field.value.includes(slot);
-                    return (
-                      <Field
-                        key={slot}
-                        orientation="horizontal"
-                        className={cn(
-                          'rounded-xl border p-3 transition-colors has-data-checked:border-primary has-data-checked:bg-primary/5',
-                          taken && 'opacity-55',
-                        )}
-                      >
-                        <Checkbox
-                          id={`slot-${slot}`}
-                          checked={checked}
-                          disabled={taken || isSubmitting}
-                          onCheckedChange={() =>
-                            field.onChange(
-                              checked
-                                ? field.value.filter((item) => item !== slot)
-                                : [...field.value, slot],
-                            )
-                          }
-                        />
-                        <FieldLabel htmlFor={`slot-${slot}`} className="text-base">
-                          {t(SLOT_LABEL_KEY[slot])}
+        {/* 只讓表單本體捲動，標題與底部按鈕（含右上關閉鈕）固定不動 */}
+        <form id={FORM_ID} onSubmit={(e) => void submit(e)} className="overflow-y-auto">
+          <FieldGroup>
+            {/* 複選欄位交給 Controller 管理陣列值 */}
+            <Controller
+              control={control}
+              name="slots"
+              render={({ field }) => (
+                <FieldSet>
+                  <FieldLegend variant="label">{t('meds.add.slotsField')}</FieldLegend>
+                  <FieldDescription>{t('meds.add.timeNote')}</FieldDescription>
+
+                  {/* data-slot=checkbox-group 讓 FieldGroup 自動收成卡片間距 */}
+                  <FieldGroup data-slot="checkbox-group">
+                    {SLOT_TYPES.map((slot) => {
+                      const taken = existingSlots.includes(slot);
+                      const checked = field.value.includes(slot);
+                      return (
+                        // FieldLabel 包住 Field 就會變成可點的選取卡片：
+                        // 圓角、外框、勾選高亮都是 Field 元件內建的。
+                        <FieldLabel key={slot} htmlFor={`slot-${slot}`}>
+                          <Field orientation="horizontal" data-disabled={taken}>
+                            <Checkbox
+                              id={`slot-${slot}`}
+                              checked={checked}
+                              disabled={taken || isSubmitting}
+                              onCheckedChange={() =>
+                                field.onChange(
+                                  checked
+                                    ? field.value.filter((item) => item !== slot)
+                                    : [...field.value, slot],
+                                )
+                              }
+                            />
+                            {/* 標題吃掉剩餘寬度（Field 內建），右側才放時間或「已設定」 */}
+                            <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
+                            {taken ? (
+                              <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
+                            ) : (
+                              <FieldDescription className="num">
+                                {DEFAULT_SLOT_TIMES[slot]}
+                              </FieldDescription>
+                            )}
+                          </Field>
                         </FieldLabel>
-                        {taken ? (
-                          <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
-                        ) : (
-                          <span className="num text-sm text-muted-foreground">
-                            {DEFAULT_SLOT_TIMES[slot]}
-                          </span>
-                        )}
-                      </Field>
-                    );
-                  })}
-                </div>
-                {allSlotsUsed && (
-                  <FieldDescription>{t('meds.add.allSlotsUsed')}</FieldDescription>
-                )}
-              </FieldSet>
-            )}
-          />
+                      );
+                    })}
+                  </FieldGroup>
 
-          <Field>
-            <FieldLabel htmlFor="startDate">{t('meds.add.startDate')}</FieldLabel>
-            <Input id="startDate" type="date" disabled={isSubmitting} {...register('startDate')} />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="endDate">{t('meds.add.endDate')}</FieldLabel>
-            <Input
-              id="endDate"
-              type="date"
-              min={startDate}
-              disabled={isSubmitting}
-              {...register('endDate')}
+                  {allSlotsUsed && (
+                    <FieldDescription>{t('meds.add.allSlotsUsed')}</FieldDescription>
+                  )}
+                  <FieldError errors={[errors.slots]} />
+                </FieldSet>
+              )}
             />
-            <FieldDescription>{t('meds.add.endDateOptional')}</FieldDescription>
-          </Field>
 
-          <FieldDescription>{t('meds.add.timeNote')}</FieldDescription>
-        </FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="startDate">{t('meds.add.startDate')}</FieldLabel>
+              <Input id="startDate" type="date" disabled={isSubmitting} {...register('startDate')} />
+            </Field>
 
-        {formError && (
-          <Alert variant="destructive">
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
+            <Field data-invalid={Boolean(errors.endDate)}>
+              <FieldLabel htmlFor="endDate">{t('meds.add.endDate')}</FieldLabel>
+              <Input
+                id="endDate"
+                type="date"
+                min={startDate}
+                aria-invalid={Boolean(errors.endDate)}
+                disabled={isSubmitting}
+                {...register('endDate')}
+              />
+              <FieldDescription>{t('meds.add.endDateOptional')}</FieldDescription>
+              <FieldError errors={[errors.endDate]} />
+            </Field>
+
+            {errors.root?.message && (
+              <Alert variant="destructive">
+                <AlertDescription>{errors.root.message}</AlertDescription>
+              </Alert>
+            )}
+          </FieldGroup>
+        </form>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             {t('meds.cancel')}
           </Button>
-          <Button
-            type="button"
-            className="flex-1"
-            onClick={() => void submit()}
-            disabled={isSubmitting || allSlotsUsed}
-          >
+          <Button type="submit" form={FORM_ID} disabled={isSubmitting || allSlotsUsed}>
             {isSubmitting ? t('meds.add.submitting') : t('meds.add.submit')}
           </Button>
         </DialogFooter>

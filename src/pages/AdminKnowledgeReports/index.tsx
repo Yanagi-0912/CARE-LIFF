@@ -381,7 +381,9 @@ function AdminKnowledgeReportsPage() {
       {/* Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建 */}
       <Dialog open={selectedReport !== null} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent
-          className="max-h-[calc(100dvh-48px)] overflow-y-auto sm:max-w-[560px]"
+          // 整個 DialogContent 一起捲，會把 absolute 定位的關閉鈕一起捲走；
+          // 改三段式 grid，只有中間內容區可捲，標題與底部按鈕固定
+          className="max-h-[calc(100dvh-48px)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[560px]"
           showCloseButton={false}
         >
           {selectedReport && (
@@ -418,146 +420,149 @@ function AdminKnowledgeReportsPage() {
                 </DialogTitle>
               </DialogHeader>
 
-              <DetailList>
-                <DetailItem term={t('adminKnowledgeReports.detail.reason')}>
-                  {mapReasonLabel(selectedReport.reason, t)}
-                </DetailItem>
-                <DetailItem term={t('adminKnowledgeReports.detail.userNote')}>
-                  {selectedReport.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
-                </DetailItem>
+              {/* 只有這一段可捲，關閉鈕與底部審核按鈕固定在對話框上下 */}
+              <div className="grid gap-6 overflow-y-auto">
+                <DetailList>
+                  <DetailItem term={t('adminKnowledgeReports.detail.reason')}>
+                    {mapReasonLabel(selectedReport.reason, t)}
+                  </DetailItem>
+                  <DetailItem term={t('adminKnowledgeReports.detail.userNote')}>
+                    {selectedReport.user_note?.trim() || t('adminKnowledgeReports.noUserNote')}
+                  </DetailItem>
 
-                <DetailItem term={t('adminKnowledgeReports.detail.sourceUrls')}>
-                  {candidateUrls.length === 0 ? (
-                    <p className="mb-2">{t('adminKnowledgeReports.noSourceUrls')}</p>
-                  ) : (
-                    <>
-                      <p className="mb-2 text-xs text-muted-foreground">
-                        {t('adminKnowledgeReports.selectUrlsHint')}
-                      </p>
-                      <ul className="list-none">
-                        {candidateUrls.map((url) => (
-                          // 不用 FieldLabel 綁 htmlFor：連結不該包在 label 裡
-                          // （點文字會變成切換勾選而不是開連結），而且 label 一綁上去
-                          // 就會產生 aria-labelledby，蓋掉 checkbox 自己的 aria-label
-                          <li key={url} className="mb-2 flex items-start gap-2">
-                            <Checkbox
-                              checked={selectedUrls.includes(url)}
-                              onCheckedChange={() => toggleUrl(url)}
-                              disabled={actionLoading}
-                              aria-label={t('adminKnowledgeReports.selectUrl', { url })}
-                              className="mt-1"
-                            />
-                            <a
-                              className="break-all text-primary underline-offset-4 hover:underline"
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {url}
-                            </a>
-                            {extraUrls.includes(url) && (
-                              <Badge variant="secondary" className="shrink-0">
-                                {t('adminKnowledgeReports.adminAddedUrl')}
-                              </Badge>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-
-                  {/* 使用者回報多半沒附來源，admin 要能自己補上權威網址 */}
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      type="url"
-                      className="min-w-0 flex-1"
-                      value={urlDraft}
-                      onChange={(event) => setUrlDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addUrl();
-                        }
-                      }}
-                      placeholder={t('adminKnowledgeReports.addUrlPlaceholder')}
-                      aria-label={t('adminKnowledgeReports.addUrlLabel')}
-                      disabled={actionLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={addUrl}
-                      disabled={actionLoading || urlDraft.trim().length === 0}
-                    >
-                      {t('adminKnowledgeReports.addUrl')}
-                    </Button>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t('adminKnowledgeReports.addUrlHint')}
-                  </p>
-
-                  {selectedUrls.length === 0 && (
-                    <p className="mt-2 text-sm font-semibold text-destructive">
-                      {t('adminKnowledgeReports.selectUrlsRequired')}
-                    </p>
-                  )}
-                </DetailItem>
-
-                <DetailItem term={t('adminKnowledgeReports.detail.status')}>
-                  {statusLabel[selectedReport.status]}
-                </DetailItem>
-
-                {selectedReport.ingest_job?.status && (
-                  <DetailItem term={t('adminKnowledgeReports.detail.ingest')}>
-                    <p className="mb-2">
-                      {t(`adminKnowledgeReports.ingest.${selectedReport.ingest_job.status}`)}
-                    </p>
-                    {selectedReport.ingest_job.error && (
-                      <Alert variant="destructive" className="mb-2">
-                        <AlertDescription className="break-all">
-                          {selectedReport.ingest_job.error}
-                        </AlertDescription>
-                      </Alert>
+                  <DetailItem term={t('adminKnowledgeReports.detail.sourceUrls')}>
+                    {candidateUrls.length === 0 ? (
+                      <p className="mb-2">{t('adminKnowledgeReports.noSourceUrls')}</p>
+                    ) : (
+                      <>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          {t('adminKnowledgeReports.selectUrlsHint')}
+                        </p>
+                        <ul className="list-none">
+                          {candidateUrls.map((url) => (
+                            // 不用 FieldLabel 綁 htmlFor：連結不該包在 label 裡
+                            // （點文字會變成切換勾選而不是開連結），而且 label 一綁上去
+                            // 就會產生 aria-labelledby，蓋掉 checkbox 自己的 aria-label
+                            <li key={url} className="mb-2 flex items-start gap-2">
+                              <Checkbox
+                                checked={selectedUrls.includes(url)}
+                                onCheckedChange={() => toggleUrl(url)}
+                                disabled={actionLoading}
+                                aria-label={t('adminKnowledgeReports.selectUrl', { url })}
+                                className="mt-1"
+                              />
+                              <a
+                                className="break-all text-primary underline-offset-4 hover:underline"
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {url}
+                              </a>
+                              {extraUrls.includes(url) && (
+                                <Badge variant="secondary" className="shrink-0">
+                                  {t('adminKnowledgeReports.adminAddedUrl')}
+                                </Badge>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
                     )}
-                    {selectedReport.ingest_job.results.length > 0 && (
-                      <ul className="list-disc pl-5">
-                        {selectedReport.ingest_job.results.map((result) => (
-                          <li key={result.url} className="break-all">
-                            {t('adminKnowledgeReports.ingest.resultLine', {
-                              url: result.url,
-                              status: result.status,
-                              chunks: result.chunk_count,
-                            })}
-                            {result.message ? `：${result.message}` : ''}
-                          </li>
-                        ))}
-                      </ul>
+
+                    {/* 使用者回報多半沒附來源，admin 要能自己補上權威網址 */}
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        type="url"
+                        className="min-w-0 flex-1"
+                        value={urlDraft}
+                        onChange={(event) => setUrlDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            addUrl();
+                          }
+                        }}
+                        placeholder={t('adminKnowledgeReports.addUrlPlaceholder')}
+                        aria-label={t('adminKnowledgeReports.addUrlLabel')}
+                        disabled={actionLoading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={addUrl}
+                        disabled={actionLoading || urlDraft.trim().length === 0}
+                      >
+                        {t('adminKnowledgeReports.addUrl')}
+                      </Button>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t('adminKnowledgeReports.addUrlHint')}
+                    </p>
+
+                    {selectedUrls.length === 0 && (
+                      <p className="mt-2 text-sm font-semibold text-destructive">
+                        {t('adminKnowledgeReports.selectUrlsRequired')}
+                      </p>
                     )}
                   </DetailItem>
+
+                  <DetailItem term={t('adminKnowledgeReports.detail.status')}>
+                    {statusLabel[selectedReport.status]}
+                  </DetailItem>
+
+                  {selectedReport.ingest_job?.status && (
+                    <DetailItem term={t('adminKnowledgeReports.detail.ingest')}>
+                      <p className="mb-2">
+                        {t(`adminKnowledgeReports.ingest.${selectedReport.ingest_job.status}`)}
+                      </p>
+                      {selectedReport.ingest_job.error && (
+                        <Alert variant="destructive" className="mb-2">
+                          <AlertDescription className="break-all">
+                            {selectedReport.ingest_job.error}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      {selectedReport.ingest_job.results.length > 0 && (
+                        <ul className="list-disc pl-5">
+                          {selectedReport.ingest_job.results.map((result) => (
+                            <li key={result.url} className="break-all">
+                              {t('adminKnowledgeReports.ingest.resultLine', {
+                                url: result.url,
+                                status: result.status,
+                                chunks: result.chunk_count,
+                              })}
+                              {result.message ? `：${result.message}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </DetailItem>
+                  )}
+                </DetailList>
+
+                <Field>
+                  <FieldLabel htmlFor="reviewer-note">
+                    {t('adminKnowledgeReports.reviewerNoteLabel')}
+                  </FieldLabel>
+                  <Textarea
+                    id="reviewer-note"
+                    className="resize-y"
+                    value={reviewerNote}
+                    onChange={(event) => setReviewerNote(event.target.value)}
+                    placeholder={t('adminKnowledgeReports.reviewerNotePlaceholder')}
+                    rows={3}
+                    disabled={actionLoading}
+                  />
+                </Field>
+
+                {actionError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{actionError}</AlertDescription>
+                  </Alert>
                 )}
-              </DetailList>
-
-              <Field>
-                <FieldLabel htmlFor="reviewer-note">
-                  {t('adminKnowledgeReports.reviewerNoteLabel')}
-                </FieldLabel>
-                <Textarea
-                  id="reviewer-note"
-                  className="resize-y"
-                  value={reviewerNote}
-                  onChange={(event) => setReviewerNote(event.target.value)}
-                  placeholder={t('adminKnowledgeReports.reviewerNotePlaceholder')}
-                  rows={3}
-                  disabled={actionLoading}
-                />
-              </Field>
-
-              {actionError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{actionError}</AlertDescription>
-                </Alert>
-              )}
+              </div>
 
               <DialogFooter>
                 <Button

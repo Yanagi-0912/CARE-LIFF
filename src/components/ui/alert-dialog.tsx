@@ -27,6 +27,9 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
+      // Base UI 預設不畫「巢狀」對話框的遮罩；確認框常疊在 Dialog 上方，
+      // 少了遮罩會跟下層表單糊在一起，所以一律強制渲染。
+      forceRender
       className={cn(
         "fixed inset-0 isolate z-50 bg-black/80 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className

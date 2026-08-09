@@ -16,7 +16,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { ItemGroup } from '@/components/ui/item';
+import { Item, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const FamilyPage = () => {
@@ -53,20 +53,21 @@ const FamilyPage = () => {
       </header>
 
       {loading ? (
-        <div className="flex flex-col gap-3" aria-busy="true">
+        // 骨架屏用與 MemberCard 同一組 Item 元件，卡片外框自然對齊，
+        // 不必再手寫一份 rounded/border/padding
+        <ItemGroup className="gap-3" aria-busy="true">
           {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3.5 rounded-2xl border border-border px-4 py-3.5"
-            >
-              <Skeleton className="size-12 rounded-full" />
-              <div className="flex flex-1 flex-col gap-2">
+            <Item key={i} variant="outline">
+              <ItemMedia>
+                <Skeleton className="size-12 rounded-full" />
+              </ItemMedia>
+              <ItemContent>
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-5 w-16 rounded-4xl" />
-              </div>
-            </div>
+              </ItemContent>
+            </Item>
           ))}
-        </div>
+        </ItemGroup>
       ) : error ? (
         <Empty className="border border-dashed">
           <EmptyHeader>

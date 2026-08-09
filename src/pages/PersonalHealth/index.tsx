@@ -25,6 +25,7 @@ import {
     FieldLabel,
     FieldLegend,
     FieldSet,
+    FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
@@ -584,20 +585,20 @@ const PersonalHealthPage: React.FC = () => {
                                     {CHRONIC_OPTIONS.map((option) => {
                                         const id = `chronic-${option.value}`;
                                         return (
-                                            <Field
-                                                key={option.value}
-                                                orientation="horizontal"
-                                                className="rounded-xl border p-3 transition-colors has-data-checked:border-primary/40 has-data-checked:bg-primary/5"
-                                            >
-                                                <Checkbox
-                                                    id={id}
-                                                    checked={form.chronicDisease.includes(option.value)}
-                                                    onCheckedChange={() => handleChronicToggle(option.value)}
-                                                />
-                                                <FieldLabel htmlFor={id} className="text-base font-normal">
-                                                    {t(option.labelKey)}
-                                                </FieldLabel>
-                                            </Field>
+                                            // FieldLabel 包住 Field 就是官方的可點選取卡片：
+                                            // 圓角、外框、勾選高亮都由元件提供，整張卡片可點
+                                            <FieldLabel key={option.value} htmlFor={id}>
+                                                <Field orientation="horizontal">
+                                                    <Checkbox
+                                                        id={id}
+                                                        checked={form.chronicDisease.includes(option.value)}
+                                                        onCheckedChange={() => handleChronicToggle(option.value)}
+                                                    />
+                                                    <FieldTitle className="text-base font-normal">
+                                                        {t(option.labelKey)}
+                                                    </FieldTitle>
+                                                </Field>
+                                            </FieldLabel>
                                         );
                                     })}
                                 </div>

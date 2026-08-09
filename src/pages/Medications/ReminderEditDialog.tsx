@@ -16,17 +16,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
+  FieldContent,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
+  FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
+
+/** 表單掛在 dialog body 上，儲存鈕在 DialogFooter，靠 form 屬性連回來 */
+const FORM_ID = 'edit-reminder-form';
 
 interface ReminderEditDialogProps {
   reminder: MedicationReminder;
@@ -42,9 +58,6 @@ export function ReminderEditDialog({
   onClose,
 }: ReminderEditDialogProps) {
   const { t } = useTranslation();
-
-  // 刪除確認仍是 UI 狀態，不屬於表單值
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const slotLabel = t(SLOT_LABEL_KEY[reminder.slot_type]);
   const hadEndDate = Boolean(reminder.end_date);
@@ -78,6 +91,7 @@ export function ReminderEditDialog({
     control,
     handleSubmit,
     setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -89,8 +103,7 @@ export function ReminderEditDialog({
     },
   });
 
-  const formError =
-    errors.root?.message ?? errors.time?.message ?? errors.endDate?.message ?? null;
+  const startDate = watch('startDate');
 
   const submit = handleSubmit(async (values) => {
     // 只送出真正變動的欄位
@@ -115,15 +128,17 @@ export function ReminderEditDialog({
   });
 
   const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const handleDelete = async () => {
     setDeleting(true);
     try {
       await onDelete();
     } catch (err) {
+      // 失敗時收掉確認框，錯誤訊息顯示在下層的編輯表單裡
+      setConfirmOpen(false);
       setError('root', {
         message: err instanceof Error ? err.message : t('meds.updateFailed'),
       });
-      setConfirmingDelete(false);
     } finally {
       setDeleting(false);
     }
@@ -132,9 +147,9 @@ export function ReminderEditDialog({
   const busy = isSubmitting || deleting;
 
   return (
-    // Dialog 取代手刻遮罩：焦點鎖定、Escape、焦點歸位、背景鎖捲皆內建。
+    // Dialog 內建焦點鎖定、Escape、焦點歸位、背景鎖捲，關閉鈕用 DialogContent 內建那顆。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-[420px]">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{t('meds.edit.title')}</DialogTitle>
           <DialogDescription>
@@ -142,104 +157,109 @@ export function ReminderEditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
-            <Input id="edit-time" type="time" disabled={busy} {...register('time')} />
-          </Field>
+        {/* 只讓表單本體捲動，標題與底部按鈕（含右上關閉鈕）固定不動 */}
+        <form id={FORM_ID} onSubmit={(e) => void submit(e)} className="overflow-y-auto">
+          <FieldGroup>
+            <Field data-invalid={Boolean(errors.time)}>
+              <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
+              <Input
+                id="edit-time"
+                type="time"
+                aria-invalid={Boolean(errors.time)}
+                disabled={busy}
+                {...register('time')}
+              />
+              <FieldError errors={[errors.time]} />
+            </Field>
 
-          <Field>
-            <FieldLabel htmlFor="edit-start">{t('meds.edit.startDate')}</FieldLabel>
-            <Input id="edit-start" type="date" disabled={busy} {...register('startDate')} />
-          </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-start">{t('meds.edit.startDate')}</FieldLabel>
+              <Input id="edit-start" type="date" disabled={busy} {...register('startDate')} />
+            </Field>
 
-          <Field>
-            <FieldLabel htmlFor="edit-end">{t('meds.edit.endDate')}</FieldLabel>
-            <Input id="edit-end" type="date" disabled={busy} {...register('endDate')} />
-            {hadEndDate && <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>}
-          </Field>
+            <Field data-invalid={Boolean(errors.endDate)}>
+              <FieldLabel htmlFor="edit-end">{t('meds.edit.endDate')}</FieldLabel>
+              <Input
+                id="edit-end"
+                type="date"
+                min={startDate}
+                aria-invalid={Boolean(errors.endDate)}
+                disabled={busy}
+                {...register('endDate')}
+              />
+              {hadEndDate && <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>}
+              <FieldError errors={[errors.endDate]} />
+            </Field>
 
-          {/* Base UI 的 Checkbox 不是原生 input，register 的 onChange 對不上，
-              所以這一欄改由 Controller 接 checked / onCheckedChange */}
-          <Controller
-            control={control}
-            name="enabled"
-            render={({ field }) => (
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="edit-enabled"
-                  checked={field.value}
-                  disabled={busy}
-                  onCheckedChange={field.onChange}
-                />
-                <FieldLabel htmlFor="edit-enabled" className="text-base">
-                  {t('meds.edit.enabled')}
+            {/* Base UI 的 Checkbox 不是原生 input，register 的 onChange 對不上，
+                所以這一欄改由 Controller 接 checked / onCheckedChange */}
+            <Controller
+              control={control}
+              name="enabled"
+              render={({ field }) => (
+                // FieldLabel 包住 Field 就會變成可點的選取卡片，勾選高亮是元件內建的
+                <FieldLabel htmlFor="edit-enabled">
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id="edit-enabled"
+                      checked={field.value}
+                      disabled={busy}
+                      onCheckedChange={field.onChange}
+                    />
+                    <FieldContent>
+                      <FieldTitle>{t('meds.edit.enabled')}</FieldTitle>
+                      <FieldDescription>
+                        {field.value ? t('meds.statusOn') : t('meds.statusOff')}
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
                 </FieldLabel>
-              </Field>
-            )}
-          />
-        </FieldGroup>
+              )}
+            />
 
-        {formError && (
-          <Alert variant="destructive">
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
+            {errors.root?.message && (
+              <Alert variant="destructive">
+                <AlertDescription>{errors.root.message}</AlertDescription>
+              </Alert>
+            )}
+          </FieldGroup>
+        </form>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={onClose}
-            disabled={busy}
-          >
+          {/* 刪除確認交給 AlertDialog（原本是自刻的 confirmingDelete 分支） */}
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogTrigger
+              render={<Button variant="destructive" disabled={busy} className="sm:mr-auto" />}
+            >
+              {t('meds.edit.delete')}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('meds.edit.delete')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('meds.edit.deleteConfirm')}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={busy}>
+                  {t('meds.edit.deleteConfirmNo')}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => void handleDelete()}
+                >
+                  {t('meds.edit.deleteConfirmYes')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
             {t('meds.cancel')}
           </Button>
-          <Button type="button" className="flex-1" onClick={() => void submit()} disabled={busy}>
+          <Button type="submit" form={FORM_ID} disabled={busy}>
             {isSubmitting ? t('meds.edit.saving') : t('meds.edit.save')}
           </Button>
         </DialogFooter>
-
-        <Separator />
-
-        <div className="flex flex-col gap-2">
-          {confirmingDelete ? (
-            <>
-              <Alert variant="destructive">
-                <AlertDescription>{t('meds.edit.deleteConfirm')}</AlertDescription>
-              </Alert>
-              <div className="flex gap-2 [&>button]:flex-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setConfirmingDelete(false)}
-                  disabled={busy}
-                >
-                  {t('meds.edit.deleteConfirmNo')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => void handleDelete()}
-                  disabled={busy}
-                >
-                  {t('meds.edit.deleteConfirmYes')}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className="self-center text-destructive underline hover:text-destructive"
-              onClick={() => setConfirmingDelete(true)}
-              disabled={busy}
-            >
-              {t('meds.edit.delete')}
-            </Button>
-          )}
-        </div>
       </DialogContent>
     </Dialog>
   );

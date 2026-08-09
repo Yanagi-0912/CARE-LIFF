@@ -54,10 +54,9 @@ const FONT_SIZE_BTN: Record<SettingsState['fontSize'], string> = {
    這行只是視覺提示，所以用 span 而非 label（沒有可綁定的單一控制項）。 */
 const GROUP_LABEL = 'text-[0.95rem] font-semibold text-foreground min-[480px]:text-base';
 
-/* 互斥切換鈕（字級、語速、音色）的共用外觀。Toggle 預設的選中態只是 bg-muted，
-   對長輩來說太淡，這裡把它拉成 primary 底 + 外圈。 */
-const SEGMENT_ITEM =
-  'h-12 flex-1 font-bold aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary aria-pressed:hover:bg-primary/10';
+/* 互斥切換鈕（字級、語速、音色）的共用尺寸。選中態由 Toggle 的 primary
+   變體負責（原本是這裡自己抄一串 aria-pressed:），這裡只剩版面。 */
+const SEGMENT_ITEM = 'h-12 flex-1 font-bold';
 
 /** 設定區塊：標題 + 說明 + 內容 */
 function SettingSection({
@@ -236,7 +235,7 @@ const SettingsPage: React.FC = () => {
             方向鍵在群組內移動焦點也由元件提供。
             multiple 預設 false（單選），value 為陣列語意。 */}
         <ToggleGroup
-          variant="outline"
+          variant="primary"
           className="w-full"
           value={[settings.fontSize]}
           onValueChange={(groupValue) => {
@@ -358,7 +357,7 @@ const SettingsPage: React.FC = () => {
         <div className="mt-3 flex flex-col gap-2.5">
           <span className={GROUP_LABEL}>{t('settings.voiceRateLabel')}</span>
           <ToggleGroup
-            variant="outline"
+            variant="primary"
             className="w-full"
             value={[settings.voiceRate]}
             onValueChange={(groupValue) => {
@@ -380,7 +379,7 @@ const SettingsPage: React.FC = () => {
         <div className="mt-3 flex flex-col gap-2.5">
           <span className={GROUP_LABEL}>{t('settings.voiceGenderLabel')}</span>
           <ToggleGroup
-            variant="outline"
+            variant="primary"
             className="w-full"
             value={[settings.voiceGender]}
             onValueChange={(groupValue) => {
