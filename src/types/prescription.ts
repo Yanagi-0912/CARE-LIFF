@@ -90,6 +90,13 @@ export interface CommitDrugItem {
   total_quantity?: number | null;
   usage_raw?: string | null;
   frequency_code: PrescriptionFrequencyCode;
+  /**
+   * 服用時機。與辨識結果一樣原樣帶出，不在前端重算——後端只在頻次代碼
+   * 隱含「一日單一劑量」（目前僅 QD）且值為 `bedtime` 時，用它把預設時段
+   * 由 `morning` 改為 `bedtime`；其餘 timing 值不影響時段映射。省略此欄位
+   * 會讓後端無從得知辨識出的服用時機，因此即使 slots 有覆寫也一併帶上。
+   */
+  timing?: DrugTiming;
   indication?: string | null;
   /** 療程天數，換算成後端 Medication.end_date；省略或 null 代表長期用藥，不設結束日 */
   duration_days?: number | null;
