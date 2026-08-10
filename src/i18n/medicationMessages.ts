@@ -107,15 +107,21 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.durationDaysInvalid': '請輸入大於 0 的整數天數，或留空',
     'meds.scan.draft.prnTitle': '這項藥不會建立定時提醒',
     'meds.scan.draft.prnDesc': '因為這是「需要時才吃」的藥，定時提醒反而會讓人誤以為要固定服用，請依身體狀況需要時再服用。',
+    'meds.scan.draft.noReminderLabel': '這個藥不用定時提醒我',
     'meds.scan.draft.noSlotsTitle': '目前不會建立定時提醒',
-    'meds.scan.draft.noSlotsDesc': '您已取消勾選所有時段，這項藥仍會建立，但不會有任何定時提醒。如需提醒，請至少勾選一個時段。',
+    'meds.scan.draft.noSlotsDesc': '這項藥仍會建立，但不會有任何定時提醒。如需提醒，請至少勾選一個服藥時段。',
     'meds.scan.draft.slotsLabel': '服藥時段',
     'meds.scan.draft.slotsRequiredLabel': '服藥時段（無法自動判斷，請手動選擇）',
     'meds.scan.draft.slotsRequired': '這項藥的用法無法自動判斷時段，請至少選擇一個服藥時段',
+    'meds.scan.draft.slotListSeparator': '、',
+    'meds.scan.draft.reactivateTitle': '送出後會重新開啟已關閉的提醒',
+    'meds.scan.draft.reactivateDesc': '「{{slots}}」目前是關閉的，確認送出後會重新開啟。',
+    'meds.scan.draft.reactivateOthersNote': '這個時段原本設定的其他藥品提醒也會一併恢復發送。',
     'meds.scan.draft.confirming': '送出中…',
     'meds.scan.draft.submit': '確認並送出',
     'meds.scan.draft.commitSuccess': '已建立 {{n}} 項藥品與對應提醒',
-    'meds.scan.draft.commitSuccessWithPrn': '已建立 {{n}} 項藥品，其中 {{prn}} 項為需要時服用，不會建立定時提醒',
+    'meds.scan.draft.commitSuccessWithNoReminder': '已建立 {{n}} 項藥品，其中 {{noReminder}} 項不會有定時提醒',
+    'meds.scan.draft.commitReactivatedNote': '「{{slots}}」的提醒已重新開啟。',
   },
 
   en: {
@@ -227,18 +233,26 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.prnTitle': 'No scheduled reminder will be created for this medication',
     'meds.scan.draft.prnDesc':
       'This is an as-needed medication. A scheduled reminder would make it seem like it should be taken on a fixed schedule — take it only when needed.',
+    'meds.scan.draft.noReminderLabel': 'No scheduled reminder for this medication',
     'meds.scan.draft.noSlotsTitle': 'No scheduled reminder will be created right now',
     'meds.scan.draft.noSlotsDesc':
-      'You unchecked every dosing time. This medication will still be created, but with no scheduled reminder. Check at least one time if you want a reminder.',
+      'This medication will still be created, but with no scheduled reminder. Check at least one dosing time if you want a reminder.',
     'meds.scan.draft.slotsLabel': 'Dosing times',
     'meds.scan.draft.slotsRequiredLabel': 'Dosing times (could not be determined automatically — please choose)',
     'meds.scan.draft.slotsRequired':
       'The dosing time for this medication could not be determined automatically. Please choose at least one.',
+    'meds.scan.draft.slotListSeparator': ', ',
+    'meds.scan.draft.reactivateTitle': 'Submitting will turn a currently-off reminder back on',
+    'meds.scan.draft.reactivateDesc':
+      'The {{slots}} reminder is currently off. Submitting will turn it back on.',
+    'meds.scan.draft.reactivateOthersNote':
+      'Other medications already scheduled for that time will also start reminding again.',
     'meds.scan.draft.confirming': 'Submitting…',
     'meds.scan.draft.submit': 'Confirm and submit',
     'meds.scan.draft.commitSuccess': 'Created {{n}} medication(s) and reminder(s)',
-    'meds.scan.draft.commitSuccessWithPrn':
-      'Created {{n}} medication(s); {{prn}} are as-needed and have no scheduled reminder',
+    'meds.scan.draft.commitSuccessWithNoReminder':
+      'Created {{n}} medication(s); {{noReminder}} have no scheduled reminder',
+    'meds.scan.draft.commitReactivatedNote': 'The {{slots}} reminder is back on.',
   },
 
   id: {
@@ -349,18 +363,26 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.prnTitle': 'Tidak ada pengingat terjadwal untuk obat ini',
     'meds.scan.draft.prnDesc':
       'Ini obat yang diminum bila perlu. Pengingat terjadwal akan membuatnya seolah harus diminum rutin — minum hanya saat diperlukan.',
+    'meds.scan.draft.noReminderLabel': 'Obat ini tidak perlu pengingat terjadwal',
     'meds.scan.draft.noSlotsTitle': 'Saat ini tidak ada pengingat terjadwal yang akan dibuat',
     'meds.scan.draft.noSlotsDesc':
-      'Anda membatalkan centang semua waktu minum obat. Obat ini tetap akan dibuat, tetapi tanpa pengingat terjadwal. Centang minimal satu waktu jika ingin pengingat.',
+      'Obat ini tetap akan dibuat, tetapi tanpa pengingat terjadwal. Centang minimal satu waktu minum obat jika ingin pengingat.',
     'meds.scan.draft.slotsLabel': 'Waktu minum obat',
     'meds.scan.draft.slotsRequiredLabel': 'Waktu minum obat (tidak dapat ditentukan otomatis — silakan pilih)',
     'meds.scan.draft.slotsRequired':
       'Waktu minum obat ini tidak dapat ditentukan otomatis. Silakan pilih setidaknya satu.',
+    'meds.scan.draft.slotListSeparator': ', ',
+    'meds.scan.draft.reactivateTitle': 'Mengirim akan mengaktifkan kembali pengingat yang sedang nonaktif',
+    'meds.scan.draft.reactivateDesc':
+      'Pengingat {{slots}} saat ini nonaktif. Mengirim akan mengaktifkannya kembali.',
+    'meds.scan.draft.reactivateOthersNote':
+      'Obat lain yang sudah dijadwalkan pada waktu itu juga akan mulai diingatkan lagi.',
     'meds.scan.draft.confirming': 'Mengirim…',
     'meds.scan.draft.submit': 'Konfirmasi dan kirim',
     'meds.scan.draft.commitSuccess': '{{n}} obat dan pengingat berhasil dibuat',
-    'meds.scan.draft.commitSuccessWithPrn':
-      '{{n}} obat berhasil dibuat; {{prn}} di antaranya diminum bila perlu dan tidak memiliki pengingat terjadwal',
+    'meds.scan.draft.commitSuccessWithNoReminder':
+      '{{n}} obat berhasil dibuat; {{noReminder}} di antaranya tidak memiliki pengingat terjadwal',
+    'meds.scan.draft.commitReactivatedNote': 'Pengingat {{slots}} sudah aktif kembali.',
   },
 
   vi: {
@@ -470,17 +492,24 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.prnTitle': 'Thuốc này sẽ không có lời nhắc theo giờ',
     'meds.scan.draft.prnDesc':
       'Đây là thuốc dùng khi cần. Lời nhắc theo giờ sẽ khiến người dùng tưởng nhầm là phải uống đều đặn — chỉ uống khi cần thiết.',
+    'meds.scan.draft.noReminderLabel': 'Thuốc này không cần lời nhắc theo giờ',
     'meds.scan.draft.noSlotsTitle': 'Hiện tại sẽ không có lời nhắc theo giờ nào được tạo',
     'meds.scan.draft.noSlotsDesc':
-      'Bạn đã bỏ chọn tất cả giờ uống thuốc. Thuốc này vẫn sẽ được tạo, nhưng không có lời nhắc theo giờ. Hãy chọn ít nhất một giờ nếu muốn có lời nhắc.',
+      'Thuốc này vẫn sẽ được tạo, nhưng không có lời nhắc theo giờ. Hãy chọn ít nhất một giờ uống thuốc nếu muốn có lời nhắc.',
     'meds.scan.draft.slotsLabel': 'Giờ uống thuốc',
     'meds.scan.draft.slotsRequiredLabel': 'Giờ uống thuốc (không thể tự xác định — vui lòng chọn)',
     'meds.scan.draft.slotsRequired': 'Không thể tự xác định giờ uống thuốc này. Vui lòng chọn ít nhất một giờ.',
+    'meds.scan.draft.slotListSeparator': ', ',
+    'meds.scan.draft.reactivateTitle': 'Gửi sẽ bật lại lời nhắc hiện đang tắt',
+    'meds.scan.draft.reactivateDesc': 'Lời nhắc {{slots}} hiện đang tắt. Gửi sẽ bật lại lời nhắc đó.',
+    'meds.scan.draft.reactivateOthersNote':
+      'Các thuốc khác đã được đặt vào giờ đó cũng sẽ được nhắc lại.',
     'meds.scan.draft.confirming': 'Đang gửi…',
     'meds.scan.draft.submit': 'Xác nhận và gửi',
     'meds.scan.draft.commitSuccess': 'Đã tạo {{n}} loại thuốc và lời nhắc',
-    'meds.scan.draft.commitSuccessWithPrn':
-      'Đã tạo {{n}} loại thuốc; trong đó {{prn}} loại dùng khi cần và không có lời nhắc theo giờ',
+    'meds.scan.draft.commitSuccessWithNoReminder':
+      'Đã tạo {{n}} loại thuốc; trong đó {{noReminder}} loại không có lời nhắc theo giờ',
+    'meds.scan.draft.commitReactivatedNote': 'Lời nhắc {{slots}} đã được bật lại.',
   },
 
   th: {
@@ -588,17 +617,23 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.prnTitle': 'ยานี้จะไม่มีการเตือนตามเวลา',
     'meds.scan.draft.prnDesc':
       'ยานี้ใช้เมื่อจำเป็นเท่านั้น การเตือนตามเวลาจะทำให้เข้าใจผิดว่าต้องกินเป็นประจำ กรุณากินเมื่อจำเป็นเท่านั้น',
+    'meds.scan.draft.noReminderLabel': 'ยานี้ไม่ต้องการการเตือนตามเวลา',
     'meds.scan.draft.noSlotsTitle': 'ขณะนี้จะยังไม่มีการเตือนตามเวลา',
     'meds.scan.draft.noSlotsDesc':
-      'คุณได้ยกเลิกการเลือกทุกช่วงเวลาแล้ว ยานี้จะยังถูกสร้างขึ้น แต่จะไม่มีการเตือนตามเวลาใด ๆ หากต้องการการเตือน กรุณาเลือกอย่างน้อยหนึ่งช่วงเวลา',
+      'ยานี้จะยังถูกสร้างขึ้น แต่จะไม่มีการเตือนตามเวลาใด ๆ หากต้องการการเตือน กรุณาเลือกอย่างน้อยหนึ่งช่วงเวลากินยา',
     'meds.scan.draft.slotsLabel': 'ช่วงเวลากินยา',
     'meds.scan.draft.slotsRequiredLabel': 'ช่วงเวลากินยา (ระบบระบุอัตโนมัติไม่ได้ กรุณาเลือกเอง)',
     'meds.scan.draft.slotsRequired': 'ระบบไม่สามารถระบุช่วงเวลากินยานี้โดยอัตโนมัติได้ กรุณาเลือกอย่างน้อยหนึ่งช่วง',
+    'meds.scan.draft.slotListSeparator': ', ',
+    'meds.scan.draft.reactivateTitle': 'การส่งจะเปิดการเตือนที่ปิดอยู่ในขณะนี้กลับมาอีกครั้ง',
+    'meds.scan.draft.reactivateDesc': 'การเตือนช่วง{{slots}}ขณะนี้ปิดอยู่ การส่งจะเปิดกลับมาอีกครั้ง',
+    'meds.scan.draft.reactivateOthersNote': 'ยาอื่นที่ตั้งไว้ในช่วงเวลานั้นอยู่แล้วจะเริ่มเตือนอีกครั้งด้วย',
     'meds.scan.draft.confirming': 'กำลังส่ง…',
     'meds.scan.draft.submit': 'ยืนยันและส่ง',
     'meds.scan.draft.commitSuccess': 'สร้างยา {{n}} รายการและการเตือนแล้ว',
-    'meds.scan.draft.commitSuccessWithPrn':
-      'สร้างยา {{n}} รายการแล้ว โดย {{prn}} รายการใช้เมื่อจำเป็นและไม่มีการเตือนตามเวลา',
+    'meds.scan.draft.commitSuccessWithNoReminder':
+      'สร้างยา {{n}} รายการแล้ว โดย {{noReminder}} รายการไม่มีการเตือนตามเวลา',
+    'meds.scan.draft.commitReactivatedNote': 'เปิดการเตือนช่วง{{slots}}กลับมาอีกครั้งแล้ว',
   },
 
   ja: {
@@ -707,16 +742,23 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.prnTitle': 'この薬には定時リマインダーは作成されません',
     'meds.scan.draft.prnDesc':
       'これは頓服薬（必要なときに服用する薬）です。定時リマインダーを設定すると定期的に服用すべきだと誤解される恐れがあります。必要なときのみ服用してください。',
+    'meds.scan.draft.noReminderLabel': 'この薬には定時リマインダーは不要',
     'meds.scan.draft.noSlotsTitle': '現時点では定時リマインダーは作成されません',
     'meds.scan.draft.noSlotsDesc':
-      'すべての服薬時間のチェックを外しました。この薬は作成されますが、定時リマインダーは作成されません。リマインダーが必要な場合は、少なくとも1つの時間を選択してください。',
+      'この薬は作成されますが、定時リマインダーは作成されません。リマインダーが必要な場合は、少なくとも1つの服薬時間を選択してください。',
     'meds.scan.draft.slotsLabel': '服薬時間',
     'meds.scan.draft.slotsRequiredLabel': '服薬時間（自動判定できません。選択してください）',
     'meds.scan.draft.slotsRequired': 'この薬の服薬時間は自動判定できません。少なくとも1つ選択してください。',
+    'meds.scan.draft.slotListSeparator': '、',
+    'meds.scan.draft.reactivateTitle': '送信すると、現在オフになっているリマインダーが再度オンになります',
+    'meds.scan.draft.reactivateDesc': '「{{slots}}」のリマインダーは現在オフです。送信すると再度オンになります。',
+    'meds.scan.draft.reactivateOthersNote':
+      'その時間帯にすでに設定されている他の薬のリマインダーも再開されます。',
     'meds.scan.draft.confirming': '送信中…',
     'meds.scan.draft.submit': '確認して送信',
     'meds.scan.draft.commitSuccess': '{{n}} 件の薬とリマインダーを作成しました',
-    'meds.scan.draft.commitSuccessWithPrn':
-      '{{n}} 件の薬を作成しました（うち {{prn}} 件は頓服薬のため定時リマインダーなし）',
+    'meds.scan.draft.commitSuccessWithNoReminder':
+      '{{n}} 件の薬を作成しました（うち {{noReminder}} 件は定時リマインダーなし）',
+    'meds.scan.draft.commitReactivatedNote': '「{{slots}}」のリマインダーを再度オンにしました。',
   },
 };

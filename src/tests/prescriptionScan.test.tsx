@@ -9,6 +9,7 @@ import MedicationsPage from '../pages/Medications';
 import { PrescriptionScanDialog } from '../pages/Medications/PrescriptionScanDialog';
 import { PrescriptionDraftForm } from '../pages/Medications/PrescriptionDraftForm';
 import type { PrescriptionDraft, RecognizedDrug } from '../types/prescription';
+import type { MedicationReminder } from '../types/medication';
 import i18n from '../i18n';
 
 // PrescriptionScanError 是真正的 class（保留 actual），其餘 API 一律換成可控制的 mock，
@@ -80,10 +81,27 @@ function makeDraft(overrides: Partial<PrescriptionDraft> = {}): PrescriptionDraf
   };
 }
 
+function makeExistingReminder(overrides: Partial<MedicationReminder> = {}): MedicationReminder {
+  return {
+    id: 'r-existing',
+    creator_user_id: 'U-self',
+    user_id: 'U-self',
+    slot_type: 'morning',
+    scheduled_time: '08:00',
+    start_date: '2026-06-01',
+    end_date: null,
+    enabled: true,
+    created_at: '2026-06-01T00:00:00.000Z',
+    updated_at: '2026-06-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 beforeEach(async () => {
   vi.clearAllMocks();
   localStorage.setItem('CARE_AUTH_TOKEN', 'test-token');
   localStorage.setItem('CARE_LINE_USER_ID', 'U-self');
+  vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
   await i18n.changeLanguage('zh-TW');
 });
 
@@ -242,6 +260,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: ['r-1'],
+      reactivated_slots: [],
     });
     // 建議值指向媽媽；使用者實際要記的是自己的藥
     const draft = makeDraft({ suggested_user_id: 'U-mom' });
@@ -335,6 +354,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: ['r-1'],
+      reactivated_slots: [],
     });
     const draft = makeDraft({
       confidence_level: 'medium',
@@ -356,11 +376,15 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
 
     await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
-    expect(onCommitted).toHaveBeenCalledWith({
-      medication_ids: ['m-1'],
-      prn_medication_ids: [],
-      reminder_ids: ['r-1'],
-    });
+    expect(onCommitted).toHaveBeenCalledWith(
+      {
+        medication_ids: ['m-1'],
+        prn_medication_ids: [],
+        reminder_ids: ['r-1'],
+        reactivated_slots: [],
+      },
+      { totalCount: 1, noReminderCount: 0 },
+    );
   });
 
   // 這是本輪修正的重大缺陷回歸測試：核對畫面現在會預先勾選時段，讓使用者
@@ -373,6 +397,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: [],
+      reactivated_slots: [],
     });
     const draft = makeDraft({
       confidence_level: 'medium',
@@ -431,6 +456,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: ['r-1'],
+      reactivated_slots: [],
     });
     const draft = makeDraft({
       confidence_level: 'medium',
@@ -465,6 +491,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: ['r-1'],
+      reactivated_slots: [],
     });
     const draft = makeDraft({
       confidence_level: 'medium',
@@ -499,6 +526,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: ['r-1'],
+      reactivated_slots: [],
     });
     const draft = makeDraft({
       recognition: {
@@ -537,6 +565,7 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
       medication_ids: ['m-1'],
       prn_medication_ids: [],
       reminder_ids: ['r-1'],
+      reactivated_slots: [],
     });
     const draft = makeDraft({
       recognition: {
@@ -564,5 +593,306 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
     const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
     expect(payload.drugs[0]!.license_number).toBe('衛署藥製字第000001號');
+  });
+});
+
+describe('PrescriptionDraftForm：「這個藥不用定時提醒我」（Fix 2）', () => {
+  // 這是本輪修正的重大缺陷回歸測試：修正前 toCommitDrug 對非 PRN 藥品一律
+  // 送出陣列，OTHER 頻次的預設就是空陣列，後端因此永遠分不出「使用者決定
+  // 不要提醒」與「使用者還沒選時段」。這個核取方塊讓意圖變成前端明確送出
+  // 的訊號：勾選送空陣列（後端接受，不建立提醒），不勾選則 OTHER 沒選時段
+  // 時送 undefined，讓後端的 SlotsRequiredError 擋下。
+  it('OTHER 頻次勾選後可直接送出，不再需要先選時段，slots 送出空陣列', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: [],
+      reactivated_slots: [],
+    });
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'OTHER', name: '每週一三五各一顆的藥', name_confidence: 'high' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: '這個藥不用定時提醒我' }));
+    // 勾選後不再顯示時段選擇欄位，也不會被必填時段的錯誤擋下
+    expect(screen.queryByRole('checkbox', { name: '早' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    expect(
+      screen.queryByText('這項藥的用法無法自動判斷時段，請至少選擇一個服藥時段'),
+    ).not.toBeInTheDocument();
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.slots).toEqual([]);
+  });
+
+  // 對照組：勾選前，OTHER 頻次沒選時段一樣被擋下——這個核取方塊是「另一種
+  // 明確表態的方式」，不是繞過必填規則的後門。
+  it('OTHER 頻次未勾選、也未選時段時仍會被擋下送出', async () => {
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'OTHER', name: '每週一三五各一顆的藥', name_confidence: 'high' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
+
+    expect(
+      await screen.findByText('這項藥的用法無法自動判斷時段，請至少選擇一個服藥時段'),
+    ).toBeInTheDocument();
+    expect(medicationApi.commitPrescriptionDraft).not.toHaveBeenCalled();
+  });
+
+  it('一般頻次（QD）勾選後同樣送出空陣列，不受該頻次預設時段影響', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: [],
+      reactivated_slots: [],
+    });
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    // QD 預設已勾選「早」，勾選「不用定時提醒」後改送空陣列
+    await screen.findByRole('checkbox', { name: '早' });
+    fireEvent.click(screen.getByRole('checkbox', { name: '這個藥不用定時提醒我' }));
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.slots).toEqual([]);
+  });
+});
+
+describe('PrescriptionDraftForm：送出前揭露重新開啟提醒（Fix 1）', () => {
+  // 這是本輪修正的 CRITICAL 缺陷回歸測試：find_or_create_reminder 改成
+  // 命中既有規則就重新開啟它（而不是另外插入第二筆），核對畫面必須在
+  // 使用者按下送出「之前」就讓他知道這件事，否則等於是靜默恢復一則
+  // 他當初主動關掉的提醒。
+  it('目前選定對象在該時段的提醒已停用時，送出前顯示重新開啟的警示', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([
+      makeExistingReminder({ slot_type: 'morning', enabled: false }),
+    ]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(await screen.findByText('送出後會重新開啟已關閉的提醒')).toBeInTheDocument();
+    expect(screen.getByText('「早」目前是關閉的，確認送出後會重新開啟。')).toBeInTheDocument();
+  });
+
+  it('該時段原本還掛著其他藥時，警示會多提醒一句其他藥也會恢復', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([
+      makeExistingReminder({
+        slot_type: 'morning',
+        enabled: false,
+        medications: [
+          {
+            id: 'm-old',
+            user_id: 'U-self',
+            created_by_user_id: 'U-self',
+            name: '舊藥',
+            generic_name: null,
+            license_number: null,
+            unit_content: null,
+            total_quantity: null,
+            usage_raw: null,
+            frequency_code: 'QD',
+            indication: null,
+            source: 'manual',
+            start_date: '2026-06-01',
+            end_date: null,
+            enabled: true,
+            created_at: '2026-06-01T00:00:00.000Z',
+            updated_at: '2026-06-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    ]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(
+      await screen.findByText('這個時段原本設定的其他藥品提醒也會一併恢復發送。', { exact: false }),
+    ).toBeInTheDocument();
+  });
+
+  it('該時段的提醒本來就是啟用中時，不顯示重新開啟的警示', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([
+      makeExistingReminder({ slot_type: 'morning', enabled: true }),
+    ]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    await screen.findByRole('checkbox', { name: '早' });
+    expect(screen.queryByText('送出後會重新開啟已關閉的提醒')).not.toBeInTheDocument();
+  });
+
+  it('該時段根本沒有既有提醒時，不顯示重新開啟的警示', async () => {
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    await screen.findByRole('checkbox', { name: '早' });
+    expect(screen.queryByText('送出後會重新開啟已關閉的提醒')).not.toBeInTheDocument();
+  });
+});
+
+describe('MedicationsPage：送出後的 toast 反映實際發生的事（Fix 3）', () => {
+  // 這是本輪修正的重大缺陷回歸測試：修正前 toast 只看 prn_medication_ids，
+  // 使用者剛在核對畫面被告知「這項藥不會建立定時提醒」（勾選了「這個藥
+  // 不用定時提醒我」，不是 PRN），送出後卻看到「已建立 1 項藥品與對應
+  // 提醒」，前後矛盾。
+  it('使用者勾選「這個藥不用定時提醒我」（非 PRN）時，toast 仍會提到這件事', async () => {
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+    vi.mocked(medicationApi.scanPrescription).mockResolvedValue(draft);
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: [],
+      reactivated_slots: [],
+    });
+
+    renderWithToaster(
+      <MemoryRouter>
+        <MedicationsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /掃描藥袋/ }));
+    const fileInput = screen.getByLabelText('拍照或選擇照片', { selector: 'input' });
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
+    });
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: '這個藥不用定時提醒我' }));
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    expect(await screen.findByText('已建立 1 項藥品，其中 1 項不會有定時提醒')).toBeInTheDocument();
+  });
+
+  it('這次提交重新開啟了一個時段時，toast 也會提到這件事', async () => {
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '脈優錠5毫克' })],
+        multiple_bags_suspected: false,
+      },
+    });
+    vi.mocked(medicationApi.scanPrescription).mockResolvedValue(draft);
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: ['morning'],
+    });
+
+    renderWithToaster(
+      <MemoryRouter>
+        <MedicationsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /掃描藥袋/ }));
+    const fileInput = screen.getByLabelText('拍照或選擇照片', { selector: 'input' });
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    expect(
+      await screen.findByText('已建立 1 項藥品與對應提醒 「早」的提醒已重新開啟。'),
+    ).toBeInTheDocument();
   });
 });

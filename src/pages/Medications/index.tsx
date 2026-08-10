@@ -15,6 +15,7 @@ import { PrescriptionScanDialog } from './PrescriptionScanDialog';
 import { PrescriptionDraftForm } from './PrescriptionDraftForm';
 import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
+import { buildCommitSummary } from './commitSummary';
 import { toast } from 'sonner';
 import { PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -127,17 +128,18 @@ const MedicationsPage = () => {
     setAdding(true);
   };
 
-  const handleCommitted = async (result: PrescriptionCommitResult) => {
+  // 送出後的訊息要反映「這次到底發生了什麼」，不能只看 prn_medication_ids——
+  // 使用者也可能在核對畫面主動勾了「這個藥不用定時提醒我」，或這次提交
+  // 重新開啟了某個原本已關閉的時段（見 PrescriptionDraftForm 送出前的
+  // 警示）。totalCount／noReminderCount 由表單在送出當下算出並隨
+  // onCommitted 一起帶回來，reactivated_slots 則是後端的權威回報。
+  const handleCommitted = async (
+    result: PrescriptionCommitResult,
+    facts: { totalCount: number; noReminderCount: number },
+  ) => {
     setDraft(null);
     await refetch();
-    toast.success(
-      result.prn_medication_ids.length > 0
-        ? t('meds.scan.draft.commitSuccessWithPrn', {
-            n: result.medication_ids.length,
-            prn: result.prn_medication_ids.length,
-          })
-        : t('meds.scan.draft.commitSuccess', { n: result.medication_ids.length }),
-    );
+    toast.success(buildCommitSummary(t, { result, ...facts }));
   };
 
   return (
@@ -268,7 +270,7 @@ const MedicationsPage = () => {
       {draft && (
         <PrescriptionDraftForm
           draft={draft}
-          onCommitted={(result) => void handleCommitted(result)}
+          onCommitted={(result, facts) => void handleCommitted(result, facts)}
           onClose={() => setDraft(null)}
         />
       )}

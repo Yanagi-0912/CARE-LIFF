@@ -115,4 +115,11 @@ export interface PrescriptionCommitResult {
   prn_medication_ids: string[];
   /** 這次提交實際建立或連結到的提醒規則 id（去重後）。冪等重放時可能為空陣列。 */
   reminder_ids: string[];
+  /**
+   * 這次提交把哪些時段從「停用／已過期／還沒到開始日」重新變回可排程狀態。
+   * 命中一筆原本關閉的規則時，掛在它底下、使用者當初就是要停掉的其他藥
+   * 也會連帶恢復收到提醒——核對畫面要在送出前用這個事實先揭露一次，
+   * 送出後的訊息也要如實反映，不能只字未提。冪等重放時可能為空陣列。
+   */
+  reactivated_slots: MedicationSlotType[];
 }

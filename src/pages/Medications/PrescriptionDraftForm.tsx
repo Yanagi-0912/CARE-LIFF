@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,9 @@ import {
   type PrescriptionDraft,
   type RecognizedDrug,
 } from '../../types/prescription';
+import { useMedications } from './useMedications';
+import { isReminderSchedulable } from './reminderSchedule';
+import { todayLocalDateString } from '../../utils/date';
 import {
   Dialog,
   DialogContent,
@@ -44,25 +47,56 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const FORM_ID = 'prescription-draft-form';
 
+/** 這次提交實際建立了什麼——onCommitted 之外額外附上，讓呼叫端（index.tsx）
+ * 組出送出後的訊息時，不必只靠 PrescriptionCommitResult 反推使用者的意圖
+ * （見 commitSummary.ts：哪些藥沒有提醒，是送出當下的表單狀態才知道的事）。 */
+interface CommitSummaryFacts {
+  totalCount: number;
+  noReminderCount: number;
+}
+
 interface PrescriptionDraftFormProps {
   draft: PrescriptionDraft;
-  onCommitted: (result: PrescriptionCommitResult) => void;
+  onCommitted: (result: PrescriptionCommitResult, facts: CommitSummaryFacts) => void;
   onClose: () => void;
 }
 
-/** 每一列藥品的表單值，name／slots／durationDays 是使用者可編輯的部分，其餘欄位直接沿用辨識結果 */
+/** 每一列藥品的表單值，name／slots／durationDays／noReminder 是使用者可編輯的部分，其餘欄位直接沿用辨識結果 */
 interface DrugFormValue {
   include: boolean;
   name: string;
   slots: MedicationSlotType[];
   /** 療程天數；null 代表使用者未填（長期用藥，不設結束日） */
   durationDays: number | null;
+  /** 使用者主動勾選「這個藥不用定時提醒我」。與「把每個時段都取消勾選」
+   * 是同一個結果（不建立任何提醒），但對 OTHER 頻次的藥而言意義不同：
+   * OTHER 的時段預設就是空的，沒有勾選任何時段可能只是「還沒選」，不是
+   * 「決定了不要」；這個欄位讓兩者不再混淆（見 toCommitDrug）。 */
+  noReminder: boolean;
+}
+
+/** 計算這次提交建立的藥品裡，有幾項最終沒有連結任何提醒——
+ * PRN、與使用者主動勾選「不用定時提醒」的藥品皆計入。 */
+function countNoReminder(rows: DrugFormValue[], drugs: RecognizedDrug[]): number {
+  return rows.reduce((count, row, index) => {
+    if (!row.include) return count;
+    const original = drugs[index];
+    if (!original) return count;
+    if (original.frequency_code === 'PRN') return count + 1;
+    if (row.noReminder) return count + 1;
+    if (row.slots.length === 0) return count + 1;
+    return count;
+  }, 0);
 }
 
 /**
- * 驗證規則集中在這裡：OTHER 頻次的藥若被勾選要建立，就必須指定至少一個時段，
- * 否則後端會以 400 SlotsRequiredError 拒絕——這條規則要在表單層擋下，
- * 讓使用者在畫面上直接看到欄位錯誤，而不是送出後才收到一則伺服器錯誤。
+ * 驗證規則集中在這裡：OTHER 頻次的藥若被勾選要建立、也沒有勾選「這個藥
+ * 不用定時提醒我」，就必須指定至少一個時段，否則後端會以 400
+ * SlotsRequiredError 拒絕——這條規則要在表單層擋下，讓使用者在畫面上
+ * 直接看到欄位錯誤，而不是送出後才收到一則伺服器錯誤。
+ *
+ * 勾選了「不用定時提醒」則不受此限：那是使用者已經做出的明確決定，
+ * 不是「還沒選時段」。
  */
 function buildSchema(t: TFunction, drugs: RecognizedDrug[]) {
   return z.object({
@@ -78,12 +112,13 @@ function buildSchema(t: TFunction, drugs: RecognizedDrug[]) {
             .int({ message: t('meds.scan.draft.durationDaysInvalid') })
             .positive({ message: t('meds.scan.draft.durationDaysInvalid') })
             .nullable(),
+          noReminder: z.boolean(),
         }),
       )
       .superRefine((rows, ctx) => {
         rows.forEach((row, index) => {
           const isOther = drugs[index]?.frequency_code === 'OTHER';
-          if (row.include && isOther && row.slots.length === 0) {
+          if (row.include && isOther && !row.noReminder && row.slots.length === 0) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: t('meds.scan.draft.slotsRequired'),
@@ -102,6 +137,31 @@ function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugI
   // 這個新名字——沿用舊證號等於把一個藥名和另一顆藥的許可證字號存在一起。
   // 重新比對是下一次掃描的責任，這裡只能清掉，不能悄悄留著舊值。
   const nameEdited = row.name !== original.name;
+  const isOther = original.frequency_code === 'OTHER';
+
+  // slots 有三種可能的值，彼此不可互相替代：
+  // - PRN：不論使用者勾了什麼都不帶時段，後端一律忽略、絕不建立提醒。
+  // - 使用者勾選「這個藥不用定時提醒我」：明確表達不要任何提醒，送出
+  //   空陣列——後端 SHALL NOT 因為收到空陣列就退回頻次代碼算出的預設
+  //   時段。這與「把每個時段都取消勾選」結果相同，是同一件事的兩種
+  //   操作方式（見核對畫面的說明文字，兩者共用同一套文案）。
+  // - OTHER 頻次、沒有勾選上面那個選項、也沒有勾選任何時段：這是
+  //   「還沒決定」，不是「決定了不要」——送出 undefined（不是空陣列），
+  //   讓後端的 SlotsRequiredError 擋下。實務上這個分支會被上面的 zod
+  //   規則先擋下、送不到這裡，這裡的判斷只是不讓「還沒決定」被誤判成
+  //   使用者已經表達了不要提醒。
+  // - 其餘情況：原樣送出使用者目前的勾選狀態。
+  let slots: CommitDrugItem['slots'];
+  if (original.frequency_code === 'PRN') {
+    slots = undefined;
+  } else if (row.noReminder) {
+    slots = [];
+  } else if (isOther && row.slots.length === 0) {
+    slots = undefined;
+  } else {
+    slots = row.slots;
+  }
+
   return {
     name: row.name,
     generic_name: original.generic_name ?? undefined,
@@ -112,11 +172,7 @@ function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugI
     frequency_code: original.frequency_code,
     indication: original.indication ?? undefined,
     duration_days: row.durationDays ?? undefined,
-    // PRN 不論使用者勾了什麼都不帶時段：後端一律忽略、絕不建立提醒。
-    // 其餘頻次一律照使用者目前的勾選狀態原樣送出，包含「全部取消勾選」——
-    // 空陣列（使用者明確不要定時提醒）與「沒有覆寫」不是同一件事，
-    // 後端不能因為收到空陣列就退回頻次代碼算出的預設時段。
-    slots: original.frequency_code === 'PRN' ? undefined : row.slots,
+    slots,
     include: row.include,
   };
 }
@@ -176,6 +232,7 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
         name: drug.name,
         slots: FREQUENCY_TO_SLOTS[drug.frequency_code],
         durationDays: drug.duration_days ?? null,
+        noReminder: false,
       })),
     },
   });
@@ -184,13 +241,54 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
 
   const [oneTapSubmitting, setOneTapSubmitting] = useState(false);
 
+  // ── 提前揭露：送出後會不會重新開啟目前已關閉的提醒 ─────────────────
+  //
+  // find_or_create_reminder 命中一筆原本不可排程的規則（使用者手動關掉、
+  // 療程已過期、或 start_date 還沒到）時，會直接把它改回可排程，連帶恢復
+  // 掛在它底下、使用者當初就是要停掉的其他藥。這件事不能等使用者按下
+  // 送出才知道——核對畫面是使用者唯一看得到「等一下會發生什麼事」的
+  // 地方，要在這裡用目前選定對象的既有提醒資料先算一次估計值。
+  const watchedTargetUserId = useWatch({ control, name: 'targetUserId' });
+  const watchedDrugRows = useWatch({ control, name: 'drugs' });
+  const { reminders: targetReminders } = useMedications(watchedTargetUserId || undefined);
+
+  const reminderBySlot = useMemo(() => {
+    const map = new Map<MedicationSlotType, (typeof targetReminders)[number]>();
+    targetReminders.forEach((reminder) => map.set(reminder.slot_type, reminder));
+    return map;
+  }, [targetReminders]);
+
+  const slotsToReactivate = useMemo(() => {
+    const today = todayLocalDateString();
+    const needed = new Set<MedicationSlotType>();
+    (watchedDrugRows ?? []).forEach((row, index) => {
+      if (!row.include || row.noReminder) return;
+      const original = drugs[index];
+      if (!original || original.frequency_code === 'PRN') return;
+      const effectiveSlots =
+        original.frequency_code === 'OTHER' && row.slots.length === 0 ? [] : row.slots;
+      effectiveSlots.forEach((slot) => {
+        const reminder = reminderBySlot.get(slot);
+        if (reminder && !isReminderSchedulable(reminder, today)) needed.add(slot);
+      });
+    });
+    return SLOT_TYPES.filter((slot) => needed.has(slot));
+  }, [watchedDrugRows, drugs, reminderBySlot]);
+
+  const reactivatingSlotsHaveOtherMedications = slotsToReactivate.some(
+    (slot) => (reminderBySlot.get(slot)?.medications?.length ?? 0) > 0,
+  );
+
   const submit = handleSubmit(async (values) => {
     try {
       const result = await commitPrescriptionDraft(draft.draft_id, {
         user_id: values.targetUserId,
         drugs: values.drugs.map((row, index) => toCommitDrug(drugs[index], row)),
       });
-      onCommitted(result);
+      onCommitted(result, {
+        totalCount: result.medication_ids.length,
+        noReminderCount: countNoReminder(values.drugs, drugs),
+      });
     } catch (err) {
       setError('root', { message: err instanceof Error ? err.message : t('meds.updateFailed') });
     }
@@ -210,7 +308,10 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
         user_id: values.targetUserId,
         drugs: values.drugs.map((row, index) => toCommitDrug(drugs[index], row)),
       });
-      onCommitted(result);
+      onCommitted(result, {
+        totalCount: result.medication_ids.length,
+        noReminderCount: countNoReminder(values.drugs, drugs),
+      });
     } catch (err) {
       setError('root', { message: err instanceof Error ? err.message : t('meds.updateFailed') });
     } finally {
@@ -270,6 +371,25 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
               )}
             />
 
+            {/* 提前揭露：送出後會把哪些目前已關閉的時段重新開啟，以及那個時段
+                原本是否還掛著其他藥——使用者要在按下送出「之前」就知道這件事，
+                而不是事後才在提醒列表發現多了一則自己沒印象重新開啟的提醒。 */}
+            {slotsToReactivate.length > 0 && (
+              <Alert className="bg-warning-soft">
+                <TriangleAlertIcon className="text-warning" />
+                <AlertTitle className="text-warning">{t('meds.scan.draft.reactivateTitle')}</AlertTitle>
+                <AlertDescription className="text-warning/90">
+                  {t('meds.scan.draft.reactivateDesc', {
+                    slots: slotsToReactivate
+                      .map((slot) => t(SLOT_LABEL_KEY[slot]))
+                      .join(t('meds.scan.draft.slotListSeparator')),
+                  })}
+                  {reactivatingSlotsHaveOtherMedications &&
+                    ` ${t('meds.scan.draft.reactivateOthersNote')}`}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {canOneTapConfirm && (
               <>
                 <Button
@@ -290,6 +410,8 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
               const isPrn = original.frequency_code === 'PRN';
               const isOther = original.frequency_code === 'OTHER';
               const nameUnverified = original.name_confidence === 'low';
+              const rowNoReminder = watchedDrugRows?.[index]?.noReminder ?? false;
+              const rowSlotsEmpty = (watchedDrugRows?.[index]?.slots?.length ?? 0) === 0;
 
               return (
                 <div
@@ -377,61 +499,85 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <Controller
-                      control={control}
-                      name={`drugs.${index}.slots`}
-                      render={({ field: slotsField }) => (
-                        <>
-                          <FieldSet className="mt-3">
-                            <FieldLegend variant="label">
-                              {isOther
-                                ? t('meds.scan.draft.slotsRequiredLabel')
-                                : t('meds.scan.draft.slotsLabel')}
-                            </FieldLegend>
-                            <div className="flex flex-wrap gap-2">
-                              {SLOT_TYPES.map((slot) => {
-                                const checked = slotsField.value.includes(slot);
-                                return (
-                                  <FieldLabel key={slot} htmlFor={`drug-${index}-slot-${slot}`}>
-                                    <Field orientation="horizontal">
-                                      <Checkbox
-                                        id={`drug-${index}-slot-${slot}`}
-                                        checked={checked}
-                                        disabled={busy}
-                                        onCheckedChange={() =>
-                                          slotsField.onChange(
-                                            checked
-                                              ? slotsField.value.filter((s) => s !== slot)
-                                              : [...slotsField.value, slot],
-                                          )
-                                        }
-                                      />
-                                      <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
-                                    </Field>
-                                  </FieldLabel>
-                                );
-                              })}
-                            </div>
-                            <FieldError errors={[errors.drugs?.[index]?.slots]} />
-                          </FieldSet>
-                          {/* 使用者把所有時段都取消勾選之後的結果，和 PRN 完全一樣：
-                              這顆藥會被建立，但不會出現在任何時段的提醒裡。核對畫面是
-                              使用者唯一看得到「等一下會發生什麼事」的地方，沿用 PRN
-                              的說明樣式，不再發明第二套講法。 */}
-                          {slotsField.value.length === 0 && (
-                            <Alert className="mt-3 bg-warning-soft">
-                              <TriangleAlertIcon className="text-warning" />
-                              <AlertTitle className="text-warning">
-                                {t('meds.scan.draft.noSlotsTitle')}
-                              </AlertTitle>
-                              <AlertDescription className="text-warning/90">
-                                {t('meds.scan.draft.noSlotsDesc')}
-                              </AlertDescription>
-                            </Alert>
+                    <>
+                      {/* 產品規則（本輪修正 Fix 2）：明確表達「這個藥不用定時提醒我」，
+                          而不是仰賴使用者自己想到要把每個時段都取消勾選。勾選後這顆藥
+                          會送出空陣列（等同已明確表態），與 PRN 是同一種結果，共用同一套
+                          說明文案；後端 SlotsRequiredError 因此只在 OTHER 頻次「既沒勾選
+                          這裡、也沒選任何時段」時才會被觸發到——那才是「還沒決定」。 */}
+                      <Controller
+                        control={control}
+                        name={`drugs.${index}.noReminder`}
+                        render={({ field: noReminderField }) => (
+                          <label className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                            <Checkbox
+                              checked={noReminderField.value}
+                              disabled={busy}
+                              onCheckedChange={(checked) => noReminderField.onChange(checked === true)}
+                            />
+                            {t('meds.scan.draft.noReminderLabel')}
+                          </label>
+                        )}
+                      />
+
+                      {!rowNoReminder && (
+                        <Controller
+                          control={control}
+                          name={`drugs.${index}.slots`}
+                          render={({ field: slotsField }) => (
+                            <FieldSet className="mt-3">
+                              <FieldLegend variant="label">
+                                {isOther
+                                  ? t('meds.scan.draft.slotsRequiredLabel')
+                                  : t('meds.scan.draft.slotsLabel')}
+                              </FieldLegend>
+                              <div className="flex flex-wrap gap-2">
+                                {SLOT_TYPES.map((slot) => {
+                                  const checked = slotsField.value.includes(slot);
+                                  return (
+                                    <FieldLabel key={slot} htmlFor={`drug-${index}-slot-${slot}`}>
+                                      <Field orientation="horizontal">
+                                        <Checkbox
+                                          id={`drug-${index}-slot-${slot}`}
+                                          checked={checked}
+                                          disabled={busy}
+                                          onCheckedChange={() =>
+                                            slotsField.onChange(
+                                              checked
+                                                ? slotsField.value.filter((s) => s !== slot)
+                                                : [...slotsField.value, slot],
+                                            )
+                                          }
+                                        />
+                                        <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
+                                      </Field>
+                                    </FieldLabel>
+                                  );
+                                })}
+                              </div>
+                              <FieldError errors={[errors.drugs?.[index]?.slots]} />
+                            </FieldSet>
                           )}
-                        </>
+                        />
                       )}
-                    />
+
+                      {/* 「不用定時提醒」勾選、與非 OTHER 頻次把每個時段都取消勾選，
+                          是同一件事的兩種操作方式，共用同一套說明文案。OTHER 頻次
+                          還沒勾選任何時段、也沒勾選上面那個選項時是「還沒決定」，
+                          不是「決定了不要」，此時只由上方的必填欄位錯誤提示，
+                          不重複顯示這則說明，避免兩則訊息互相矛盾。 */}
+                      {(rowNoReminder || (!isOther && rowSlotsEmpty)) && (
+                        <Alert className="mt-3 bg-warning-soft">
+                          <TriangleAlertIcon className="text-warning" />
+                          <AlertTitle className="text-warning">
+                            {t('meds.scan.draft.noSlotsTitle')}
+                          </AlertTitle>
+                          <AlertDescription className="text-warning/90">
+                            {t('meds.scan.draft.noSlotsDesc')}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </>
                   )}
                 </div>
               );
