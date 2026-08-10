@@ -518,6 +518,75 @@ describe('PrescriptionDraftForm：信心度分級與安全規則', () => {
     expect(payload.drugs[0]!.duration_days).toBeUndefined();
   });
 
+  // 這是本輪修正的回歸測試：timing 過去被辨識、被顯示，卻在提交時整個
+  // 遺失——後端因此永遠不知道這顆藥的服用時機，QD 藥一律排到早上，即使
+  // 藥袋明確標示睡前服用。toCommitDrug 現在必須把 timing 原樣帶上。
+  it('送出時帶上辨識到的服用時機（timing）', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({
+            frequency_code: 'QD',
+            name: '冠脂妥膜衣錠10毫克',
+            timing: 'bedtime',
+          }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    await screen.findByRole('checkbox', { name: '睡前' });
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.timing).toBe('bedtime');
+  });
+
+  // 真實藥袋案例（冠脂妥膜衣錠，QD＋睡前服用）：核對畫面預先勾選的時段
+  // 必須反映後端實際會建立的提醒——QD 加上 timing 為 bedtime 時，預先
+  // 勾選的是「睡前」，不是頻次代碼單獨映射出的「早」。
+  it('QD 且辨識出睡前服用時，預先勾選睡前而非早上', async () => {
+    const draft = makeDraft({
+      confidence_level: 'medium',
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({
+            frequency_code: 'QD',
+            name: '冠脂妥膜衣錠10毫克',
+            timing: 'bedtime',
+          }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const bedtimeCheckbox = await screen.findByRole('checkbox', { name: '睡前' });
+    expect(bedtimeCheckbox).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '早' })).not.toBeChecked();
+  });
+
   // 藥證庫比對到的許可證字號是對著「掃描當下的藥名」比對出來的。使用者若
   // 把藥名改成別的字串，繼續沿用舊證號就是把一個名字和另一顆藥的許可證
   // 字號存在一起——必須清掉，讓下一次掃描才重新比對。

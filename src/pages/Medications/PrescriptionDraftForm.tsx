@@ -75,6 +75,21 @@ interface DrugFormValue {
   noReminder: boolean;
 }
 
+/**
+ * 核對畫面「預先勾選」的時段，必須與後端 `_resolve_slots` 實際會建立的
+ * 提醒一致，否則使用者在畫面上看到的預覽（勾選狀態）會跟送出後真正發生
+ * 的事不同——而且這裡算出的結果會原樣送出當成使用者的覆寫（見
+ * toCommitDrug 對 slots 三種來源的說明），並非單純預覽用途，算錯會直接
+ * 蓋掉後端的預設值。與後端同步的唯一例外：QD 且 timing 為 bedtime 時，
+ * 預設時段是 `bedtime` 而不是 FREQUENCY_TO_SLOTS 給的 `morning`。
+ */
+function resolveDefaultSlots(drug: RecognizedDrug): MedicationSlotType[] {
+  if (drug.frequency_code === 'QD' && drug.timing === 'bedtime') {
+    return ['bedtime'];
+  }
+  return FREQUENCY_TO_SLOTS[drug.frequency_code];
+}
+
 /** 計算這次提交建立的藥品裡，有幾項最終沒有連結任何提醒——
  * PRN、與使用者主動勾選「不用定時提醒」的藥品皆計入。 */
 function countNoReminder(rows: DrugFormValue[], drugs: RecognizedDrug[]): number {
@@ -170,6 +185,9 @@ function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugI
     total_quantity: original.total_quantity ?? undefined,
     usage_raw: original.usage_raw ?? undefined,
     frequency_code: original.frequency_code,
+    // 原樣帶出辨識到的服用時機，讓後端能在 QD＋睡前時把預設時段訂為
+    // bedtime；不隨 nameEdited 清空——藥名編輯不影響服用時機的判讀依據。
+    timing: original.timing ?? undefined,
     indication: original.indication ?? undefined,
     duration_days: row.durationDays ?? undefined,
     slots,
@@ -226,11 +244,13 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
       // 時段勾選狀態要「預先」符合送出後實際會建立的提醒（產品規則：核對畫面
       // 是使用者唯一看得到「等一下會發生什麼事」的地方），否則 TID 藥品會顯示
       // 全部未勾選，看起來像不會建立每日三次提醒。PRN／OTHER 在
-      // FREQUENCY_TO_SLOTS 裡本就對應空陣列，這裡不需要另外特判。
+      // FREQUENCY_TO_SLOTS 裡本就對應空陣列，這裡不需要另外特判；
+      // QD 加上 timing 為 bedtime 則由 resolveDefaultSlots 覆寫為 bedtime，
+      // 與後端 _resolve_slots 的預設值保持一致。
       drugs: drugs.map((drug) => ({
         include: true,
         name: drug.name,
-        slots: FREQUENCY_TO_SLOTS[drug.frequency_code],
+        slots: resolveDefaultSlots(drug),
         durationDays: drug.duration_days ?? null,
         noReminder: false,
       })),
