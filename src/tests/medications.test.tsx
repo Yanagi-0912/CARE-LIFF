@@ -14,6 +14,11 @@ vi.mock('../api/medicationApi', () => ({
   deleteReminder: vi.fn(),
 }));
 
+// 這份既有測試不驗證藥袋掃描入口，開關固定回傳 false（不顯示掃描入口）
+vi.mock('../api/settingsApi', () => ({
+  getPrescriptionScanEnabled: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock('../hooks/useFamily', () => ({
   useFamily: () => ({
     members: [{ user_id: 'U-mom', relationship_type: 'parent', display_name: '媽' }],

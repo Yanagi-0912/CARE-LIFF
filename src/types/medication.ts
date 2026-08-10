@@ -28,7 +28,30 @@ export const DEFAULT_SLOT_TIMES: Record<MedicationSlotType, string> = {
   bedtime: '21:30',
 };
 
-/** 一筆用藥提醒設定（對應後端 MedicationReminder） */
+/** 一種藥（對應後端 Medication）。藥袋辨識建立的藥會多帶 usage_raw／license_number 等欄位。 */
+export interface Medication {
+  id: string;
+  user_id: string;
+  created_by_user_id: string;
+  name: string;
+  generic_name: string | null;
+  license_number: string | null;
+  unit_content: string | null;
+  total_quantity: number | null;
+  /** 藥袋上的用法原文，手動建立的藥品沒有這個值 */
+  usage_raw: string | null;
+  frequency_code: string;
+  /** 適應症僅供本人與族譜成員於 LIFF 內查看，後端保證不會出現在推播訊息中 */
+  indication: string | null;
+  source: 'manual' | 'prescription_ocr';
+  start_date: string;
+  end_date: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 一筆用藥提醒設定（對應後端 MedicationReminderWithMedications） */
 export interface MedicationReminder {
   id: string;
   /** 開立提醒者（家屬）的 LINE userId */
@@ -45,6 +68,8 @@ export interface MedicationReminder {
   enabled: boolean;
   created_at: string;
   updated_at: string;
+  /** 由 medication_ids 解析出的藥品清單；GET /reminders 才會附上，舊資料或其他端點可能沒有這個欄位 */
+  medications?: Medication[];
 }
 
 /** POST /api/medications/reminders 請求 */
