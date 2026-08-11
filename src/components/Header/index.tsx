@@ -25,7 +25,10 @@ function Header() {
   const themeLabel = isDark ? t('header.themeToggleToLight') : t('header.themeToggleToDark');
 
   return (
-    <header className="sticky top-0 z-[100] flex min-h-[var(--header-h)] items-center border-b bg-background px-3 sm:px-4">
+    // z-40 必須低於浮層層級（dialog／alert-dialog／select／popover／sheet 都是 z-50）。
+    // 之前是 z-[100]，這根 sticky bar 會畫在 modal 上面把 dialog 標題與關閉鈕蓋掉，
+    // 遮罩也蓋不到它 —— 症狀一眼可辨：開 dialog 時背景變暗但 header 沒變暗。
+    <header className="sticky top-0 z-40 flex min-h-[var(--header-h)] items-center border-b bg-background px-3 sm:px-4">
       <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-2.5 sm:gap-4">
         {/* 左側 Logo */}
         <div className="group flex shrink-0 items-center gap-2.5">

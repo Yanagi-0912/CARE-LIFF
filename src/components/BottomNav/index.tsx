@@ -25,7 +25,10 @@ function BottomNav() {
 
   return (
     // 容器不吃點擊（讓出內容捲動區），只有導覽列本身可點；電腦版改用側欄，故隱藏。
-    <div className="pointer-events-none sticky bottom-0 left-0 right-0 z-[100] flex justify-center bg-transparent md:hidden">
+    // z-40 必須低於浮層層級（dialog／alert-dialog／select／popover／sheet 都是 z-50）。
+    // 之前是 z-[100]，導覽列會畫在 modal 上面把 dialog 最下面那顆按鈕蓋掉（例如編輯
+    // 提醒的「削除」），使用者看到的是「元件太大、東西被切掉」，其實是被蓋住。
+    <div className="pointer-events-none sticky bottom-0 left-0 right-0 z-40 flex justify-center bg-transparent md:hidden">
       <GlidingTabs
         className="pointer-events-auto"
         tabs={tabs}
