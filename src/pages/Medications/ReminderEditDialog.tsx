@@ -40,6 +40,7 @@ import {
   FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 /** 表單掛在 dialog body 上，儲存鈕在 DialogFooter，靠 form 屬性連回來 */
 const FORM_ID = 'edit-reminder-form';
@@ -157,73 +158,80 @@ export function ReminderEditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* 只讓表單本體捲動，標題與底部按鈕（含右上關閉鈕）固定不動 */}
-        <form id={FORM_ID} onSubmit={(e) => void submit(e)} className="overflow-y-auto">
-          <FieldGroup>
-            <Field data-invalid={Boolean(errors.time)}>
-              <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
-              <Input
-                id="edit-time"
-                type="time"
-                aria-invalid={Boolean(errors.time)}
-                disabled={busy}
-                {...register('time')}
+        {/* 只讓表單本體捲動，標題與底部按鈕（含右上關閉鈕）固定不動。
+            捲動交給 ScrollArea：它的 scrollbar 是覆蓋式的、不佔 layout 寬度，
+            也不會像 overflow-y-auto 那樣把 overflow-x 一併算成 auto
+            （CSS Overflow 規範：兩軸只要一軸非 visible，另一軸的 visible 就變 auto），
+            那會讓任何 1px 的橫向溢出變成裁切邊緣＋長出水平 scrollbar。
+            新增提醒 dialog 已驗證過同一模式，這裡保持一致。 */}
+        <ScrollArea>
+          <form id={FORM_ID} onSubmit={(e) => void submit(e)}>
+            <FieldGroup>
+              <Field data-invalid={Boolean(errors.time)}>
+                <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
+                <Input
+                  id="edit-time"
+                  type="time"
+                  aria-invalid={Boolean(errors.time)}
+                  disabled={busy}
+                  {...register('time')}
+                />
+                <FieldError errors={[errors.time]} />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="edit-start">{t('meds.edit.startDate')}</FieldLabel>
+                <Input id="edit-start" type="date" disabled={busy} {...register('startDate')} />
+              </Field>
+
+              <Field data-invalid={Boolean(errors.endDate)}>
+                <FieldLabel htmlFor="edit-end">{t('meds.edit.endDate')}</FieldLabel>
+                <Input
+                  id="edit-end"
+                  type="date"
+                  min={startDate}
+                  aria-invalid={Boolean(errors.endDate)}
+                  disabled={busy}
+                  {...register('endDate')}
+                />
+                {hadEndDate && <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>}
+                <FieldError errors={[errors.endDate]} />
+              </Field>
+
+              {/* Base UI 的 Checkbox 不是原生 input，register 的 onChange 對不上，
+                  所以這一欄改由 Controller 接 checked / onCheckedChange */}
+              <Controller
+                control={control}
+                name="enabled"
+                render={({ field }) => (
+                  // FieldLabel 包住 Field 就會變成可點的選取卡片，勾選高亮是元件內建的
+                  <FieldLabel htmlFor="edit-enabled">
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id="edit-enabled"
+                        checked={field.value}
+                        disabled={busy}
+                        onCheckedChange={field.onChange}
+                      />
+                      <FieldContent>
+                        <FieldTitle>{t('meds.edit.enabled')}</FieldTitle>
+                        <FieldDescription>
+                          {field.value ? t('meds.statusOn') : t('meds.statusOff')}
+                        </FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  </FieldLabel>
+                )}
               />
-              <FieldError errors={[errors.time]} />
-            </Field>
 
-            <Field>
-              <FieldLabel htmlFor="edit-start">{t('meds.edit.startDate')}</FieldLabel>
-              <Input id="edit-start" type="date" disabled={busy} {...register('startDate')} />
-            </Field>
-
-            <Field data-invalid={Boolean(errors.endDate)}>
-              <FieldLabel htmlFor="edit-end">{t('meds.edit.endDate')}</FieldLabel>
-              <Input
-                id="edit-end"
-                type="date"
-                min={startDate}
-                aria-invalid={Boolean(errors.endDate)}
-                disabled={busy}
-                {...register('endDate')}
-              />
-              {hadEndDate && <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>}
-              <FieldError errors={[errors.endDate]} />
-            </Field>
-
-            {/* Base UI 的 Checkbox 不是原生 input，register 的 onChange 對不上，
-                所以這一欄改由 Controller 接 checked / onCheckedChange */}
-            <Controller
-              control={control}
-              name="enabled"
-              render={({ field }) => (
-                // FieldLabel 包住 Field 就會變成可點的選取卡片，勾選高亮是元件內建的
-                <FieldLabel htmlFor="edit-enabled">
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="edit-enabled"
-                      checked={field.value}
-                      disabled={busy}
-                      onCheckedChange={field.onChange}
-                    />
-                    <FieldContent>
-                      <FieldTitle>{t('meds.edit.enabled')}</FieldTitle>
-                      <FieldDescription>
-                        {field.value ? t('meds.statusOn') : t('meds.statusOff')}
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                </FieldLabel>
+              {errors.root?.message && (
+                <Alert variant="destructive">
+                  <AlertDescription>{errors.root.message}</AlertDescription>
+                </Alert>
               )}
-            />
-
-            {errors.root?.message && (
-              <Alert variant="destructive">
-                <AlertDescription>{errors.root.message}</AlertDescription>
-              </Alert>
-            )}
-          </FieldGroup>
-        </form>
+            </FieldGroup>
+          </form>
+        </ScrollArea>
 
         <DialogFooter>
           {/* 刪除確認交給 AlertDialog（原本是自刻的 confirmingDelete 分支） */}
