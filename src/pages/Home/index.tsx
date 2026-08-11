@@ -70,7 +70,7 @@ const Home = () => {
 
   return (
     <div className="mx-auto max-w-[1200px] p-4">
-      <Card className="animate-hero-in mb-6 bg-primary text-primary-foreground">
+      <Card className="animate-in fade-in slide-in-from-bottom-3 zoom-in-95 fill-mode-both duration-500 mb-6 bg-primary text-primary-foreground">
         <CardContent>
           {/* text-inherit 不可省：@layer base 的 h1{color:var(--ink)} 是直接規則，
               永遠贏過從 Card 的 text-primary-foreground 繼承下來的顏色，
@@ -94,7 +94,7 @@ const Home = () => {
           <Item
             key={f.path}
             variant="outline"
-            className="animate-card-in cursor-pointer transition-colors hover:bg-muted/40"
+            className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 cursor-pointer transition-colors hover:bg-muted/40"
             // 瀑布式進場：依序延遲。原 CSS 以 nth-child(1)~(6) 寫死，第 7 張卡
             // 沒延遲、反而最先出現；改用 index 公式讓整排一致。
             style={{ animationDelay: `${60 + index * 70}ms` }}

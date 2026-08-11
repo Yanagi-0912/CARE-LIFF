@@ -82,7 +82,12 @@ function AppContent() {
         {!isStandalonePage && <Sidebar />}
 
         {/* key 綁定路徑：切頁時重新掛載，觸發進場動畫 */}
-        <main className="content-area" key={location.pathname}>
+        {/* key 讓路由切換時重新掛載，進場動畫才會重播（原本動畫寫在
+            index.css 的 .content-area，已改用 tw-animate-css 的 utility）*/}
+        <main
+          className="content-area animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
+          key={location.pathname}
+        >
           {/* 頁面切分後首次進入某頁需短暫載入。fallback 用與頁面同高的空白區塊
               而非轉圈動畫：切頁本身很快，閃一下 spinner 反而比留白更晃眼。
               role="status" 讓螢幕閱讀器知道正在載入。 */}

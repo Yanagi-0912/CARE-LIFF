@@ -135,79 +135,15 @@
 }
 
 /* 專案自有的動畫。這裡用一般 @theme（而非 inline）：這是新定義而非對既有
-   token 的參照，Tailwind 會據此產生 animate-heartbeat 等 utility。 */
+   token 的參照，Tailwind 會據此產生 animate-heartbeat 等 utility。
+
+   只留下 tw-animate-css 無法表達的兩個（無限脈動、旋轉抖動）。原本的
+   hero-in／card-in／rise／sidebar-in／pageIn 都是「淡入＋位移」，已改由
+   使用端直接掛 animate-in fade-in slide-in-from-* 等 utility——那是 shadcn
+   自己元件用的同一套。hero-shine 與 hero-text-in 全專案無使用點，一併刪除。 */
 @theme {
   --animate-heartbeat: heartbeat 3.2s var(--ease) infinite;
   --animate-badge-wiggle: badge-wiggle 420ms var(--ease);
-  --animate-sidebar-in: sidebar-in 360ms var(--ease-out) both;
-  --animate-rise: rise var(--dur-2) var(--ease-out);
-
-  /* 首頁進場動畫。hero-text-in 重用 rise 的 keyframes（同樣是 8px 上浮淡入），
-     只是拉長時間；card-in 的位移較大（16px），另立 keyframes。 */
-  --animate-hero-in: hero-in 420ms var(--ease-out) both;
-  --animate-hero-shine: hero-shine 5.5s var(--ease) infinite;
-  --animate-hero-text-in: rise 420ms var(--ease-out) both;
-  --animate-card-in: card-in 380ms var(--ease-out) both;
-
-  /* 設定頁區塊進場：重用 card-in（原 sectionIn 位移 12px，與 16px 差異
-     肉眼難辨，不為此另立一組 keyframes）。 */
-  --animate-section-in: card-in 340ms var(--ease-out) both;
-
-  @keyframes hero-in {
-    from {
-      opacity: 0;
-      transform: translateY(14px) scale(0.985);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  /* Hero 上緣流光：緩慢左右漂移的高光（55% 前停在畫面外，形成間歇感） */
-  @keyframes hero-shine {
-    0%,
-    55% {
-      left: -35%;
-    }
-    100% {
-      left: 130%;
-    }
-  }
-
-  @keyframes card-in {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* 由下淡入。多處共用（登入頁卡片、諮詢紀錄卡片），故取通用名。 */
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes sidebar-in {
-    from {
-      opacity: 0;
-      transform: translateX(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
 
   @keyframes heartbeat {
     0%,
@@ -317,23 +253,12 @@
   padding: var(--sp-5);
   min-width: 0;
   padding-bottom: calc(var(--bottom-h) + 20px);
-  /* 路由切換進場動畫（App.tsx 以 key 重新掛載觸發）*/
-  animation: pageIn 320ms var(--ease-out) both;
+  /* 路由切換進場動畫已移到 App.tsx 的 className（tw-animate-css utility），
+     觸發方式不變：仍靠 <main> 的 key={location.pathname} 重新掛載。 */
 }
 
-@keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 尊重使用者的減少動態偏好 */
+/* 尊重使用者的減少動態偏好。tw-animate-css 產出的也是 CSS animation，
+   所以這個全域區塊一併涵蓋，元件端不需要各自處理 reduced-motion。 */
 @media (prefers-reduced-motion: reduce) {
 
   *,

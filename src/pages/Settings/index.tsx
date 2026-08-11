@@ -71,7 +71,10 @@ function SettingSection({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="animate-section-in mb-3" style={{ animationDelay: `${delayMs}ms` }}>
+    <Card
+      className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 mb-3"
+      style={{ animationDelay: `${delayMs}ms` }}
+    >
       <CardHeader>
         {/* 用 h3 而非 CardTitle：CardTitle 渲染的是 div，這裡需要真的標題語意 */}
         <h3 className="text-lg font-bold">{title}</h3>

@@ -102,7 +102,7 @@ const JoinPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="animate-rise w-full max-w-[400px]">
+      <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300 w-full max-w-[400px]">
         <CardContent>
           {state === 'verifying' ? (
             <Empty>

@@ -1,6 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
 import { CheckIcon, ChevronRightIcon, ClockIcon, LoaderIcon, XIcon } from 'lucide-react';
-import { motion } from 'motion/react';
 
 import type { KnowledgeReportStatus } from '../../api/knowledgeReportsApi';
 import { cn } from '@/lib/utils';
@@ -195,13 +194,15 @@ export function ReportRow({
       variant="outline"
       className="cursor-pointer text-left transition-colors hover:bg-muted/40"
       render={
-        <motion.button
+        <button
           type="button"
           onClick={onClick}
           aria-label={ariaLabel}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: Math.min(index, 6) * 0.04, ease: 'easeOut' }}
+          // 進場動畫改用 tw-animate-css 的 utility（shadcn 自己的元件也是用這套）。
+          // 錯開的延遲走 inline style：用 index 拼出來的 delay-* 類名 Tailwind
+          // 掃不到，產不出規則。同一頁的 Settings 區塊也是這個做法。
+          className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
+          style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
         />
       }
     >

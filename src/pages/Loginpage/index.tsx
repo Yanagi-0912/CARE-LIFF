@@ -123,7 +123,7 @@ function LoginPage() {
 	}
 
 	return (
-		<Card className="animate-rise mx-auto mt-14 max-w-[420px]">
+		<Card className="animate-in fade-in slide-in-from-bottom-2 duration-300 mx-auto mt-14 max-w-[420px]">
 			<CardContent className="flex flex-col gap-4 text-center">
 				<Heartbeat tone="onLight" className="mx-auto max-w-[220px]" />
 				<h2 className="text-2xl font-extrabold">登入 CARE</h2>

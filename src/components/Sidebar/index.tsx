@@ -38,7 +38,10 @@ function Sidebar() {
   return (
     // 僅桌面版顯示（手機用底部導覽）；黏在 header 下方、自身可捲動
     <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] w-[var(--sidebar-w)] shrink-0 self-start overflow-y-auto border-r px-4 py-8 md:block">
-      <ItemGroup className="animate-sidebar-in gap-1" aria-label={t('sidebar.mainNavAriaLabel')}>
+      <ItemGroup
+        className="animate-in fade-in slide-in-from-left-2 fill-mode-both duration-300 gap-1"
+        aria-label={t('sidebar.mainNavAriaLabel')}
+      >
         {items.map((item) => {
           const active = isActive(item.path);
           return (
