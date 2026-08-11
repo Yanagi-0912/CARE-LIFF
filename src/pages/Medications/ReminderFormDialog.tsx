@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -33,6 +34,7 @@ import {
   FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 /** 表單掛在 dialog body 上，送出鈕在 DialogFooter，靠 form 屬性連回來 */
 const FORM_ID = 'add-reminder-form';
@@ -111,89 +113,100 @@ export function ReminderFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* 只讓表單本體捲動，標題與底部按鈕（含右上關閉鈕）固定不動 */}
-        <form id={FORM_ID} onSubmit={(e) => void submit(e)} className="overflow-y-auto">
-          <FieldGroup>
-            {/* 複選欄位交給 Controller 管理陣列值 */}
-            <Controller
-              control={control}
-              name="slots"
-              render={({ field }) => (
-                <FieldSet>
-                  <FieldLegend variant="label">{t('meds.add.slotsField')}</FieldLegend>
-                  <FieldDescription>{t('meds.add.timeNote')}</FieldDescription>
+        {/* 只讓表單本體捲動，標題與底部按鈕（含右上關閉鈕）固定不動。
+            捲動交給 ScrollArea：它的 scrollbar 是覆蓋式的、不佔 layout 寬度，
+            也不會像 overflow-y-auto 那樣把 overflow-x 一併算成 auto
+            （CSS Overflow 規範：兩軸只要一軸非 visible，另一軸的 visible 就變 auto），
+            那會讓任何 1px 的橫向溢出變成裁切右緣＋長出水平 scrollbar。 */}
+        <ScrollArea>
+          <form id={FORM_ID} onSubmit={(e) => void submit(e)}>
+            <FieldGroup>
+              {/* 複選欄位交給 Controller 管理陣列值 */}
+              <Controller
+                control={control}
+                name="slots"
+                render={({ field }) => (
+                  <FieldSet>
+                    <FieldLegend variant="label">{t('meds.add.slotsField')}</FieldLegend>
+                    <FieldDescription>{t('meds.add.timeNote')}</FieldDescription>
 
-                  {/* data-slot=checkbox-group 讓 FieldGroup 自動收成卡片間距 */}
-                  <FieldGroup data-slot="checkbox-group">
-                    {SLOT_TYPES.map((slot) => {
-                      const taken = existingSlots.includes(slot);
-                      const checked = field.value.includes(slot);
-                      return (
-                        // FieldLabel 包住 Field 就會變成可點的選取卡片：
-                        // 圓角、外框、勾選高亮都是 Field 元件內建的。
-                        <FieldLabel key={slot} htmlFor={`slot-${slot}`}>
-                          <Field orientation="horizontal" data-disabled={taken}>
-                            <Checkbox
-                              id={`slot-${slot}`}
-                              checked={checked}
-                              disabled={taken || isSubmitting}
-                              onCheckedChange={() =>
-                                field.onChange(
-                                  checked
-                                    ? field.value.filter((item) => item !== slot)
-                                    : [...field.value, slot],
-                                )
-                              }
-                            />
-                            {/* 標題吃掉剩餘寬度（Field 內建），右側才放時間或「已設定」 */}
-                            <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
-                            {taken ? (
-                              <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
-                            ) : (
-                              <FieldDescription className="num">
-                                {DEFAULT_SLOT_TIMES[slot]}
-                              </FieldDescription>
-                            )}
-                          </Field>
-                        </FieldLabel>
-                      );
-                    })}
-                  </FieldGroup>
+                    {/* data-slot=checkbox-group 讓 FieldGroup 自動收成卡片間距 */}
+                    <FieldGroup data-slot="checkbox-group">
+                      {SLOT_TYPES.map((slot) => {
+                        const taken = existingSlots.includes(slot);
+                        const checked = field.value.includes(slot);
+                        return (
+                          // FieldLabel 包住 Field 就會變成可點的選取卡片：
+                          // 圓角、外框、勾選高亮都是 Field 元件內建的。
+                          <FieldLabel key={slot} htmlFor={`slot-${slot}`}>
+                            <Field orientation="horizontal" data-disabled={taken}>
+                              <Checkbox
+                                id={`slot-${slot}`}
+                                checked={checked}
+                                disabled={taken || isSubmitting}
+                                onCheckedChange={() =>
+                                  field.onChange(
+                                    checked
+                                      ? field.value.filter((item) => item !== slot)
+                                      : [...field.value, slot],
+                                  )
+                                }
+                              />
+                              {/* 時間／「已設定」疊在時段名稱下方，不與名稱爭同一列寬度。
+                                  原本三者並排時，Badge 帶 shrink-0 whitespace-nowrap
+                                  （見 ui/badge.tsx）是不能壓縮的地板，字級設到
+                                  large／xlarge 就會把整列撐出容器、右緣被裁掉。 */}
+                              <FieldContent>
+                                <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
+                                {taken ? (
+                                  <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
+                                ) : (
+                                  <FieldDescription className="num">
+                                    {DEFAULT_SLOT_TIMES[slot]}
+                                  </FieldDescription>
+                                )}
+                              </FieldContent>
+                            </Field>
+                          </FieldLabel>
+                        );
+                      })}
+                    </FieldGroup>
 
-                  {allSlotsUsed && (
-                    <FieldDescription>{t('meds.add.allSlotsUsed')}</FieldDescription>
-                  )}
-                  <FieldError errors={[errors.slots]} />
-                </FieldSet>
-              )}
-            />
-
-            <Field>
-              <FieldLabel htmlFor="startDate">{t('meds.add.startDate')}</FieldLabel>
-              <Input id="startDate" type="date" disabled={isSubmitting} {...register('startDate')} />
-            </Field>
-
-            <Field data-invalid={Boolean(errors.endDate)}>
-              <FieldLabel htmlFor="endDate">{t('meds.add.endDate')}</FieldLabel>
-              <Input
-                id="endDate"
-                type="date"
-                min={startDate}
-                aria-invalid={Boolean(errors.endDate)}
-                disabled={isSubmitting}
-                {...register('endDate')}
+                    {allSlotsUsed && (
+                      <FieldDescription>{t('meds.add.allSlotsUsed')}</FieldDescription>
+                    )}
+                    <FieldError errors={[errors.slots]} />
+                  </FieldSet>
+                )}
               />
-              <FieldDescription>{t('meds.add.endDateOptional')}</FieldDescription>
-              <FieldError errors={[errors.endDate]} />
-            </Field>
 
-            {errors.root?.message && (
-              <Alert variant="destructive">
-                <AlertDescription>{errors.root.message}</AlertDescription>
-              </Alert>
-            )}
-          </FieldGroup>
-        </form>
+              <Field>
+                <FieldLabel htmlFor="startDate">{t('meds.add.startDate')}</FieldLabel>
+                <Input id="startDate" type="date" disabled={isSubmitting} {...register('startDate')} />
+              </Field>
+
+              <Field data-invalid={Boolean(errors.endDate)}>
+                <FieldLabel htmlFor="endDate">{t('meds.add.endDate')}</FieldLabel>
+                <Input
+                  id="endDate"
+                  type="date"
+                  min={startDate}
+                  aria-invalid={Boolean(errors.endDate)}
+                  disabled={isSubmitting}
+                  {...register('endDate')}
+                />
+                <FieldDescription>{t('meds.add.endDateOptional')}</FieldDescription>
+                <FieldError errors={[errors.endDate]} />
+              </Field>
+
+              {errors.root?.message && (
+                <Alert variant="destructive">
+                  <AlertDescription>{errors.root.message}</AlertDescription>
+                </Alert>
+              )}
+            </FieldGroup>
+          </form>
+        </ScrollArea>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
