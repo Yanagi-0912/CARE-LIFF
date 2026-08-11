@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 import liff from '@line/liff';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { CheckIcon, ChevronRightIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
 
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
+import { ReportFormDialog } from './ReportFormDialog';
 import {
   fetchKnowledgeReports,
   type KnowledgeReportDto,
@@ -59,6 +61,9 @@ interface KnowledgeReport {
   submittedTs: number;
   reviewerNote: string;
   resolution?: string;
+  /** 使用者自己填的來源網址與說明；自動建立的回報通常為空 */
+  sourceUrls: string[];
+  userNote?: string;
 }
 
 const REASON_KEYS: Record<KnowledgeReportReason, string> = {
@@ -95,14 +100,28 @@ function mapReportDto(report: KnowledgeReportDto, t: (key: string) => string): K
     submittedTs: Number.isNaN(ts) ? 0 : ts,
     reviewerNote: report.reviewer_note?.trim() || t('knowledgeReports.noReviewerNote'),
     resolution: report.resolution?.trim() || undefined,
+    sourceUrls: report.user_source_urls ?? [],
+    userNote: report.user_note?.trim() || undefined,
   };
 }
 
 function KnowledgeReportsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
   const [sort, setSort] = useState<ReportSort>('newest');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReport | null>(null);
+  // /knowledge-reports/new 渲染的是同一個頁面元件，只是掛載時自動開表單。
+  // 這樣 Rich Menu 或 LINE 訊息能直接把使用者送進表單，又不必複製一份頁面。
+  const [formOpen, setFormOpen] = useState(location.pathname.endsWith('/new'));
+
+  const handleFormOpenChange = (open: boolean) => {
+    setFormOpen(open);
+    if (!open && location.pathname.endsWith('/new')) {
+      navigate('/knowledge-reports', { replace: true });
+    }
+  };
   const {
     data: rawReports = [],
     isPending: loading,
@@ -220,11 +239,18 @@ function KnowledgeReportsPage() {
             />
           }
           action={
-            <Button type="button" onClick={handleAskInLine}>
-              {t('knowledgeReports.askInLine')}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => handleFormOpenChange(true)}>
+                {t('knowledgeReports.form.open')}
+              </Button>
+              <Button type="button" variant="outline" onClick={handleAskInLine}>
+                {t('knowledgeReports.askInLine')}
+              </Button>
+            </div>
           }
         />
+
+        <ReportFormDialog open={formOpen} onOpenChange={handleFormOpenChange} />
 
         {latestReport && (
           <Card className="h-full" aria-label={t('knowledgeReports.latest')}>
@@ -394,6 +420,33 @@ function KnowledgeReportsPage() {
                 <DetailItem term={t('knowledgeReports.detail.submittedAt')}>
                   {selectedReport.submittedAt}
                 </DetailItem>
+                {selectedReport.sourceUrls.length > 0 && (
+                  <DetailItem term={t('knowledgeReports.detail.sourceUrls')}>
+                    <ul className="flex flex-col gap-1">
+                      {selectedReport.sourceUrls.map((sourceUrl) => (
+                        <li key={sourceUrl}>
+                          <a
+                            href={sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="break-all underline"
+                          >
+                            {sourceUrl}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </DetailItem>
+                )}
+                {/* 手動回報的 question 與 user_note 內容相同（design.md 決策 2
+                    的已知代價），相同時只顯示一次，避免同一段文字上下相鄰
+                    出現兩遍。日後表單若加第三欄，兩者自然分岔。 */}
+                {selectedReport.userNote &&
+                  selectedReport.userNote !== selectedReport.question && (
+                    <DetailItem term={t('knowledgeReports.detail.userNote')}>
+                      {selectedReport.userNote}
+                    </DetailItem>
+                  )}
                 <DetailItem term={t('knowledgeReports.detail.progress')}>
                   {selectedReport.reviewerNote}
                 </DetailItem>

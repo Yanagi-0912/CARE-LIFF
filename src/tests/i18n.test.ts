@@ -39,6 +39,40 @@ describe('多語系初始化邏輯', () => {
     expect(i18n.t('knowledgeReports.sample.question2')).not.toContain('高血壓');
   });
 
+  it('回報表單與白名單錯誤文案六語齊備，不會退回中文', async () => {
+    // 漏補語言時 i18n 會靜默退回 zh-TW 而不報錯，所以只能逐一核對。
+    // 後端的錯誤 message 只有 zh-TW／en，這也是表單改依 code 自組文案的原因。
+    const keys = [
+      'knowledgeReports.form.open',
+      'knowledgeReports.form.urlLabel',
+      'knowledgeReports.form.urlHint',
+      'knowledgeReports.form.noteLabel',
+      'knowledgeReports.form.submit',
+      'knowledgeReports.form.error.urlNotAllowed',
+      'knowledgeReports.form.error.urlDomainNotAllowed',
+      'knowledgeReports.form.error.urlInvalid',
+      'knowledgeReports.form.error.quotaExceeded',
+      'knowledgeReports.detail.sourceUrls',
+      'knowledgeReports.detail.userNote',
+    ];
+
+    await i18n.changeLanguage('zh-TW');
+    const zhValues = new Set(keys.map((key) => i18n.t(key)));
+
+    // 日文與中文共用漢字，逐字比對才有意義：只要與 zh-TW 完全相同就是漏補
+    for (const lang of ['en', 'id', 'vi', 'th', 'ja']) {
+      await i18n.changeLanguage(lang);
+      for (const key of keys) {
+        const value = i18n.t(key);
+        expect(value, `${lang} / ${key} 未翻譯`).not.toBe(key);
+        expect(zhValues.has(value), `${lang} / ${key} 退回了 zh-TW`).toBe(false);
+      }
+    }
+
+    await i18n.changeLanguage('vi');
+    expect(i18n.t('knowledgeReports.form.error.quotaExceeded', { limit: 10 })).toContain('10');
+  });
+
   it('個人健康頁文案支援英文與越南文', async () => {
     await i18n.changeLanguage('en');
     expect(i18n.t('personalHealth.step1.title')).toBe('Basic info');

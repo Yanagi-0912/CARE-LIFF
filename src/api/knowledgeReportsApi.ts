@@ -4,6 +4,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export type KnowledgeReportStatus = 'pending' | 'reviewing' | 'resolved' | 'rejected';
 export type KnowledgeReportReason = 'outdated' | 'missing' | 'other';
+export type KnowledgeReportSource = 'manual' | 'agent_tool' | 'web_fallback';
 /** null 代表後端加入此欄位之前寫下的舊紀錄，視同已結束 */
 export type IngestJobStatus = 'running' | 'succeeded' | 'failed';
 
@@ -34,6 +35,8 @@ export interface KnowledgeReportDto {
   resolution?: string | null;
   reviewer_note?: string | null;
   ingest_job?: IngestJobDto | null;
+  /** null 代表 source 欄位加入前寫下的舊紀錄，視為非手動 */
+  source?: KnowledgeReportSource | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,6 +88,76 @@ export async function fetchKnowledgeReports(): Promise<KnowledgeReportListRespon
     headers: authHeaders(),
   });
   if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+export type CreateKnowledgeReportBody = {
+  question: string;
+  reason: KnowledgeReportReason;
+  user_note: string;
+  user_source_urls: string[];
+};
+
+export type InvalidUrl = {
+  url: string;
+  /** malformed：網址本身有問題；not_allowed：網域不在白名單。兩者的補救動作不同 */
+  reason: 'malformed' | 'not_allowed';
+};
+
+export type KnowledgeReportErrorCode =
+  | 'url_not_allowed'
+  | 'quota_exceeded'
+  | 'generic';
+
+/**
+ * 建立回報失敗時丟出的錯誤。
+ *
+ * 刻意不沿用 parseError：那會把後端的 message 直接顯示，而後端文案只有
+ * zh-TW／en 兩語（見 app/i18n/messages.py 的註記）。表單依 code 與逐筆
+ * reason 自己組六語文案，才能讓越南語使用者看到越南語。
+ */
+export class KnowledgeReportRequestError extends Error {
+  code: KnowledgeReportErrorCode;
+  invalidUrls: InvalidUrl[];
+  limit?: number;
+
+  constructor(code: KnowledgeReportErrorCode, invalidUrls: InvalidUrl[] = [], limit?: number) {
+    super(code);
+    this.name = 'KnowledgeReportRequestError';
+    this.code = code;
+    this.invalidUrls = invalidUrls;
+    this.limit = limit;
+  }
+}
+
+async function parseCreateError(res: Response): Promise<KnowledgeReportRequestError> {
+  try {
+    const data = await res.json();
+    const detail = data?.detail;
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      if (detail.code === 'url_not_allowed') {
+        const invalid = Array.isArray(detail.invalid_urls) ? detail.invalid_urls : [];
+        return new KnowledgeReportRequestError('url_not_allowed', invalid);
+      }
+      if (detail.code === 'quota_exceeded') {
+        return new KnowledgeReportRequestError('quota_exceeded', [], detail.limit);
+      }
+    }
+  } catch {
+    // 落到 generic
+  }
+  return new KnowledgeReportRequestError('generic');
+}
+
+export async function createKnowledgeReport(
+  body: CreateKnowledgeReportBody,
+): Promise<{ report_id: string }> {
+  const res = await fetch(`${BASE_URL}/api/knowledge-reports`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw await parseCreateError(res);
   return res.json();
 }
 

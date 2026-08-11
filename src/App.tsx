@@ -104,6 +104,9 @@ function AppContent() {
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
             <Route path="/medications" element={<ProtectedRoute><MedicationsPage /></ProtectedRoute>} />
             <Route path="/knowledge-reports" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
+            {/* 深連結：渲染同一個頁面元件，掛載時自動開啟回報表單。獨立頁面會
+                讓 LIFF webview 導頁重掛整個頁面、重打 API，長輩裝置上明顯卡頓 */}
+            <Route path="/knowledge-reports/new" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
             <Route
               path="/admin/knowledge-reports"
               element={(
