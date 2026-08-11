@@ -98,7 +98,7 @@ export default function GlidingTabs({
               'relative z-[1] flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5',
               'rounded-full border-0 bg-transparent px-2.5 py-2 transition-colors',
               GLIDE,
-              isActive ? 'text-white' : 'text-faint',
+              isActive ? 'text-primary-foreground' : 'text-faint',
             )}
             aria-current={isActive ? 'page' : undefined}
             onClick={() => handleClick(tab.key, i)}

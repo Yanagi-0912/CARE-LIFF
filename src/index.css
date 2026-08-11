@@ -47,7 +47,9 @@
 
   /* ── 主色（暖墨綠）── */
   --color-primary: var(--primary);
-  --color-primary-foreground: #ffffff;
+  /* 不可寫死 #ffffff：深色模式的 --primary 是亮綠，白字會完全讀不到。
+     交由 tokens.css 隨主題翻轉（淺色→白、深色→暗墨）。 */
+  --color-primary-foreground: var(--primary-foreground);
 
   /* ── 次要：用 CARE 的淺色面當底 ── */
   --color-secondary: var(--surface-2);
@@ -126,7 +128,7 @@
 }
 
 .dark {
-  --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(165, 215, 100, 0.08), transparent 32%);
+  --sidebar-wash: radial-gradient(circle at 5% 18%, rgba(168, 201, 127, 0.08), transparent 32%);
   --hero-bg:
     radial-gradient(420px 180px at 92% -20%, rgba(255, 255, 255, 0.12) 0%, transparent 70%),
     linear-gradient(135deg, rgba(58, 92, 26, 0.52), rgba(46, 72, 22, 0.30));

@@ -362,7 +362,7 @@ function StepIndicator({
       animate={{ scale: status === 'active' ? 1.08 : 1 }}
       transition={{ duration: reduceMotion ? 0 : 0.2 }}
     >
-      <span className="flex size-[34px] items-center justify-center rounded-full border-2 border-line bg-surface-2 font-bold text-muted-foreground transition-colors group-data-[status=active]:border-primary group-data-[status=active]:bg-primary group-data-[status=active]:text-white group-data-[status=complete]:border-primary group-data-[status=complete]:bg-primary group-data-[status=complete]:text-white motion-reduce:transition-none">
+      <span className="flex size-[34px] items-center justify-center rounded-full border-2 border-line bg-surface-2 font-bold text-muted-foreground transition-colors group-data-[status=active]:border-primary group-data-[status=active]:bg-primary group-data-[status=active]:text-primary-foreground group-data-[status=complete]:border-primary group-data-[status=complete]:bg-primary group-data-[status=complete]:text-primary-foreground motion-reduce:transition-none">
         {status === 'complete' ? (
           <CheckIcon className="size-[17px]" />
         ) : status === 'active' ? (
