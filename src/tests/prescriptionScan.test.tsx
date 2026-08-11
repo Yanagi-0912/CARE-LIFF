@@ -925,6 +925,25 @@ describe('MedicationsPage：送出後的 toast 反映實際發生的事（Fix 3�
     expect(await screen.findByText('已建立 1 項藥品，其中 1 項不會有定時提醒')).toBeInTheDocument();
   });
 
+  // 迴歸防護：capture="environment" 會讓手機直接開相機並跳過檔案選擇器，
+  // 使用者就選不到相簿裡既有的照片——與按鈕文案「拍照或選擇照片」矛盾。
+  it('檔案輸入不帶 capture，才選得到相簿裡既有的照片', async () => {
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+
+    renderWithToaster(
+      <MemoryRouter>
+        <MedicationsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /掃描藥袋/ }));
+    const fileInput = screen.getByLabelText('拍照或選擇照片', { selector: 'input' });
+
+    expect(fileInput.getAttribute('accept')).toBe('image/*');
+    expect(fileInput.hasAttribute('capture')).toBe(false);
+  });
+
   it('這次提交重新開啟了一個時段時，toast 也會提到這件事', async () => {
     vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);

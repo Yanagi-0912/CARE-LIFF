@@ -89,12 +89,16 @@ export function PrescriptionScanDialog({
           <DialogDescription>{t('meds.scan.desc')}</DialogDescription>
         </DialogHeader>
 
-        {/* 隱藏的原生檔案輸入：accept+capture 讓手機直接開相機，不必先進相簿選 */}
+        {/* 隱藏的原生檔案輸入。
+            這裡不能加 capture="environment"：那會讓手機直接叫出相機並完全跳過
+            檔案選擇器，使用者選不到相簿裡的既有照片——與按鈕文案（六個語言都是
+            「拍照或選擇照片」）互相矛盾。只給 accept="image/*" 時，iOS 會出現
+            「照片圖庫／拍照／選擇檔案」、Android 會同時給相機與圖庫，才符合文案。
+            這也是實際需要的：藥袋照片常常是先拍好的，或由家人傳過來。 */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="sr-only"
           aria-label={t('meds.scan.captureButton')}
           onChange={handleInputChange}
