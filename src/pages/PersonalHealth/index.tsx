@@ -448,7 +448,9 @@ const PersonalHealthPage: React.FC = () => {
                         isSaving ? t('personalHealth.saving') : t('personalHealth.save')
                     }
                     nextButtonProps={{ disabled: !canContinue || isSaving }}
-                    disableStepIndicators
+                    stepLabel={(current, total) =>
+                        t('personalHealth.stepProgress', { current, total })
+                    }
                     aria-label={t('personalHealth.stepperAriaLabel')}
                 >
                     <Step>
