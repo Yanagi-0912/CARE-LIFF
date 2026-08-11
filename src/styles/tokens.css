@@ -36,6 +36,9 @@
 
   /* ── Brand：暖墨綠（黃綠向，避開藍綠混淆帶）── */
   --primary: #2f6b1c;            /*  6.5:1 on white */
+  /* 疊在 --primary 上的文字色。必須隨主題翻轉：淺色下 --primary 是深綠故用白，
+     深色下 --primary 是亮綠，再用白就成了白配淺綠（實測 1.4:1，完全不可讀）。 */
+  --primary-foreground: #ffffff; /*  6.5:1 on --primary */
   --primary-2: #427d1e;          /*  5.0:1 — 漸層尾端 / hover 輔助 */
   --primary-strong: #1f4a11;     /* 10.4:1 */
   --primary-soft: #e4efd6;
@@ -110,8 +113,25 @@
 }
 
 /* ═══════════════ Dark mode ═══════════════
-   深色底下反過來：品牌色取高明度的黃綠，維持 9:1 以上。
-   底色同樣走暖中性，避免冷藍黑在黃化視覺下顯得混濁。 */
+   深色底下反過來：品牌色取高明度的黃綠，維持 7:1 以上。
+   底色同樣走暖中性，避免冷藍黑在黃化視覺下顯得混濁。
+
+   ── 極性與高齡視覺 ──
+   Piepenbrock, Mayr, Mund & Buchner (2013, Ergonomics)：正極性（淺底深字）
+   對年輕與年長者皆有優勢，機制是淺底亮度高使瞳孔縮小、視網膜成像更銳利。
+   故 defaultTheme 維持 light（見 App.tsx）。但該優勢在老年人身上較不顯著——
+   老化眼球的眩光與眼內散射增加，白內障者的亮背景反而成為眩光源。
+   While & Sarvghad (IEEE VIS 2024, n=134，其中 66 人 60 歲以上) 進一步發現
+   兩年齡層間無顯著差異，且個體差異大於年齡差異、偏好常不等於實際表現。
+   結論：深色不是誰取代誰，而是必須保留的個人化選項。
+
+   ── 深色的取值原則 ──
+   不用純黑底 / 純白字：極端對比在暗底上會產生 halation（亮字糊開），
+   散光與眼內散射者尤其明顯，而這正是高齡族群的特徵。
+   同理，彩度過高的亮色在暗底上更容易暈開，故各色相較淺色版本降彩度。
+   註：halation 屬設計實務共識（如 NN/g），非高齡對照實驗結論，
+   證據強度低於上述兩篇；因此僅降彩度，不犧牲明度對比——
+   高齡者的對比敏感度本就下降，一味壓低對比會是淨損失。 */
 .dark {
   color-scheme: dark;
 
@@ -120,38 +140,39 @@
   --surface-2: #29251d;
   --surface-3: #353026;
 
-  --ink: #f6f3ec;
-  --ink-2: #e3ded2;
+  --ink: #f6f3ec;                /* 15.5:1 on --surface */
+  --ink-2: #e3ded2;              /* 12.8:1 */
   --muted: #aca596;
   --faint: #837c6d;
 
-  --primary: #a5d764;            /* 9.8:1 on --surface */
-  --primary-2: #bde383;
-  --primary-strong: #cdeb9f;
-  --primary-soft: rgba(165, 215, 100, 0.18);
-  --primary-softer: rgba(165, 215, 100, 0.10);
+  --primary: #a8c97f;            /*  9.2:1 — 較 #a5d764 降彩度，減少暈開 */
+  --primary-foreground: #14120d; /* 10.1:1 on --primary */
+  --primary-2: #bdd89b;
+  --primary-strong: #d0e5b5;
+  --primary-soft: rgba(168, 201, 127, 0.18);
+  --primary-softer: rgba(168, 201, 127, 0.10);
 
-  --accent: #ff9764;
-  --accent-strong: #ffb48c;
-  --accent-soft: rgba(255, 151, 100, 0.16);
+  --accent: #eda37c;             /*  8.3:1 */
+  --accent-strong: #f5bfa3;
+  --accent-soft: rgba(237, 163, 124, 0.16);
 
-  --violet: #f08ab5;
-  --violet-soft: rgba(240, 138, 181, 0.16);
-  --amber: #ecb64f;
-  --amber-soft: rgba(236, 182, 79, 0.15);
+  --violet: #e29ab5;             /*  7.8:1 */
+  --violet-soft: rgba(226, 154, 181, 0.16);
+  --amber: #dfba76;              /*  9.3:1 */
+  --amber-soft: rgba(223, 186, 118, 0.15);
 
-  --success: #a5d764;
-  --success-soft: rgba(165, 215, 100, 0.16);
-  --danger: #ff8f80;
-  --danger-soft: rgba(255, 143, 128, 0.15);
-  --warning: #ecb64f;
-  --warning-soft: rgba(236, 182, 79, 0.15);
+  --success: #a8c97f;            /*  9.2:1 */
+  --success-soft: rgba(168, 201, 127, 0.16);
+  --danger: #f09a8e;             /*  8.0:1 */
+  --danger-soft: rgba(240, 154, 142, 0.15);
+  --warning: #dfba76;            /*  9.3:1 */
+  --warning-soft: rgba(223, 186, 118, 0.15);
 
   --hair: rgba(255, 252, 244, 0.11);
   --line: rgba(255, 252, 244, 0.22);
 
-  --wash-a: rgba(165, 215, 100, 0.07);
-  --wash-b: rgba(255, 151, 100, 0.05);
+  --wash-a: rgba(168, 201, 127, 0.07);
+  --wash-b: rgba(237, 163, 124, 0.05);
 
   --scrim: rgba(0, 0, 0, 0.62);
 
@@ -170,6 +191,7 @@ html.high-contrast {
   --faint: #5a5548;
 
   --primary: #1f4a11;            /* 10.4:1 */
+  --primary-foreground: #ffffff; /* 10.4:1 on --primary */
   --primary-2: #2f6b1c;
   --accent: #8a2e0a;             /*  8.4:1 */
   --violet: #6f1f48;             /* 11.0:1 */
@@ -186,6 +208,7 @@ html.high-contrast.dark {
   --faint: #aca596;
 
   --primary: #c6e89a;
+  --primary-foreground: #14120d; /* 13.7:1 on --primary */
   --primary-2: #d8f0b8;
   --accent: #ffc0a2;
   --violet: #f8b3cf;
