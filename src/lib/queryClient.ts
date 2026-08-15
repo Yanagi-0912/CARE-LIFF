@@ -34,7 +34,10 @@ export const queryKeys = {
   /** 佇列篩選改由後端執行，狀態要進 key，否則換頁籤會沿用上一組分頁結果 */
   adminKnowledgeReports: (status?: string) =>
     ['admin-knowledge-reports', status ?? 'all'] as const,
-  consultationSummaries: ['consultation-summaries'] as const,
-  consultationRaw: ['consultation-raw'] as const,
+  /** 諮詢紀錄。userId 省略＝本人；帶家人的 id 時要各自成一筆快取，
+      否則切換查看對象會沿用上一個人的資料。 */
+  consultationSummaries: (userId?: string) =>
+    ['consultation-summaries', userId ?? 'self'] as const,
+  consultationRaw: (userId?: string) => ['consultation-raw', userId ?? 'self'] as const,
   inviteVerification: (code: string) => ['invite-verification', code] as const,
 };

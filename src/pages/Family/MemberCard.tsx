@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronDownIcon, TriangleAlertIcon, UserIcon } from 'lucide-react';
+import {
+  ChevronDownIcon,
+  MessageCircleIcon,
+  TriangleAlertIcon,
+  UserIcon,
+} from 'lucide-react';
 
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
@@ -12,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
@@ -40,6 +47,7 @@ const hasNumber = (value: number | undefined, placeholder: number) =>
  */
 export function MemberCard({ member }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const displayName = member.display_name || member.user_id.slice(0, 8);
@@ -130,6 +138,20 @@ export function MemberCard({ member }: Props) {
                 ))}
               </dl>
             )}
+
+            {/* 查看諮詢紀錄按鈕 */}
+            <Button
+              variant="outline"
+              className="mt-3 w-full"
+              onClick={() =>
+                navigate(
+                  `/personalhealth/consult?user=${encodeURIComponent(member.user_id)}`,
+                )
+              }
+            >
+              <MessageCircleIcon data-icon="inline-start" />
+              {t('family.viewConsult')}
+            </Button>
           </div>
         </CollapsibleContent>
       </Item>
@@ -148,13 +170,12 @@ function buildRows(health: HealthProfile, t: (key: string) => string) {
     });
   }
 
+  // 後端存的是與 i18n key 最後一段同名的 code，所以直接拼得出 key。
+  // 'unknown' 是建帳號時的預設值，代表還沒填，不產生列。
   if (health.gender && health.gender !== 'unknown') {
-    const genderKey = `personalHealth.gender.${health.gender}`;
-    const translated = t(genderKey);
     rows.push({
       label: t('personalHealth.gender'),
-      // 後端可能直接回中文（男／女），查不到 key 時 i18next 會原樣回傳 key
-      value: translated === genderKey ? health.gender : translated,
+      value: t(`personalHealth.gender.${health.gender}`),
     });
   }
 
@@ -172,10 +193,16 @@ function buildRows(health: HealthProfile, t: (key: string) => string) {
     });
   }
 
-  if (health.chronic_history) {
+  // 固定選項是 code，翻成看的人的語言；自訂病名是使用者打的字，原文照用。
+  // 兩者分開存，所以這裡不需要判斷哪一項是哪一種，接起來就好。
+  const chronic = [
+    ...(health.chronic_diseases ?? []).map((code) => t(`personalHealth.chronic.${code}`)),
+    ...(health.chronic_custom ?? []),
+  ];
+  if (chronic.length > 0) {
     rows.push({
       label: t('personalHealth.chronic'),
-      value: health.chronic_history,
+      value: chronic.join(t('personalHealth.listSeparator')),
     });
   }
 

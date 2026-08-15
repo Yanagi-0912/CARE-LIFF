@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import liff from '@line/liff';
 import ReactMarkdown from 'react-markdown';
 import {
-    getAllSummaries,
-    fetchConsultationMeRaw,
     getConsultationSummaryDownloadToken,
     buildConsultationSummaryDownloadUrl,
 } from '../../../api/consultationApi';
+import { useConsultRecords } from './useConsultRecords';
+import { useFamily } from '../../../hooks/useFamily';
+import { getLineUserId } from '../../../utils/auth';
 import { toast } from 'sonner';
-import { ChevronRightIcon, DownloadIcon, FileTextIcon, MessageCircleIcon, XIcon } from 'lucide-react';
+import {
+    ArrowLeftIcon,
+    ChevronRightIcon,
+    DownloadIcon,
+    FileTextIcon,
+    MessageCircleIcon,
+    XIcon,
+} from 'lucide-react';
 import {
     Dialog,
     DialogClose,
@@ -19,7 +27,6 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { queryKeys } from '@/lib/queryClient';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -36,6 +43,7 @@ import {
 } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 /**
  * ReactMarkdown 產出的 HTML 掛不到 class，只能用後代選擇器統一排版。
@@ -123,6 +131,15 @@ function RecordSkeleton({ rows, label }: { rows: number; label: string }) {
     );
 }
 
+/** 讀取本人 LINE userId；未登入時回 undefined（省略即代表本人） */
+function readSelfUserId(): string | undefined {
+    try {
+        return getLineUserId();
+    } catch {
+        return undefined;
+    }
+}
+
 const ConsultRecordsPage: React.FC = () => {
     const { t } = useTranslation(); //用於多語系翻譯
     const [selectedSummaryKey, setSelectedSummaryKey] = useState<string>('');
@@ -130,22 +147,55 @@ const ConsultRecordsPage: React.FC = () => {
     const [downloading, setDownloading] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState<ConsultationMessage | null>(null);
 
-    // 兩筆資料各自獨立查詢（原本用 Promise.allSettled 併發並手動拆解結果）。
-    // 分開之後任一邊失敗不影響另一邊，重試也各自獨立。
-    const summariesQuery = useQuery({
-        queryKey: queryKeys.consultationSummaries,
-        queryFn: getAllSummaries,
-    });
-    const rawQuery = useQuery({
-        queryKey: queryKeys.consultationRaw,
-        queryFn: fetchConsultationMeRaw,
-    });
+    // 查看對象放在網址而非 state：家庭頁的成員卡片可直接深連結過來，
+    // 使用者也能把這一頁的連結留在瀏覽記錄裡再回來。
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [selfUserId] = useState(readSelfUserId);
+    const { members } = useFamily();
+    const navigate = useNavigate();
 
-    const summaryItems = summariesQuery.data ?? [];
-    const rawMessages = rawQuery.data?.messages ?? [];
-    const summaryError = summariesQuery.error
-        ? summariesQuery.error instanceof Error
-            ? summariesQuery.error.message
+    const requestedUserId = searchParams.get('user')?.trim() || '';
+    // 沒帶參數、或參數指向自己，都視為看本人：targetUserId 為 undefined 時 API 走 /me/
+    const targetUserId =
+        requestedUserId && requestedUserId !== selfUserId ? requestedUserId : undefined;
+    const isViewingFamily = targetUserId !== undefined;
+
+    const targets = [
+        { userId: undefined as string | undefined, name: t('consultRecord.self') },
+        ...members.map((member) => ({
+            userId: member.user_id as string | undefined,
+            name: member.display_name || t('family.unset'),
+        })),
+    ];
+
+    // 網址帶的 id 可能已不在族譜內（例如連結是舊的），此時退回顯示 id 前 8 碼
+    const targetName =
+        targets.find((target) => target.userId === targetUserId)?.name ??
+        targetUserId?.slice(0, 8) ??
+        t('consultRecord.self');
+
+    const handleTargetChange = (next: string) => {
+        const params = new URLSearchParams(searchParams);
+        if (next === 'self') {
+            params.delete('user');
+        } else {
+            params.set('user', next);
+        }
+        // replace：切換對象不該在返回鍵上堆出一長串歷史
+        setSearchParams(params, { replace: true });
+    };
+    //useConsultRecords是
+    const {
+        summaries: summaryItems,
+        summariesPending,
+        summariesError,
+        rawMessages,
+        rawPending,
+    } = useConsultRecords(targetUserId);
+
+    const summaryError = summariesError
+        ? summariesError instanceof Error
+            ? summariesError.message
             : t('consultRecord.loadSummaryError')
         : null;
 
@@ -160,13 +210,20 @@ const ConsultRecordsPage: React.FC = () => {
     useEffect(() => {
         if (summaryItems.length > 0) {
             setViewMode('summary');
-        } else if (summariesQuery.isError && rawMessages.length > 0) {
+        } else if (summaryError !== null && rawMessages.length > 0) {
             setViewMode('raw');
         }
-    }, [summaryItems.length, summariesQuery.isError, rawMessages.length]);
+    }, [summaryItems.length, summaryError, rawMessages.length]);
 
     const selectedSummary = summaryItems.find(item => getSummaryKey(item) === effectiveSummaryKey) || null;
     const selectedSummarySections = selectedSummary ? toSummarySections(selectedSummary, t) : [];
+
+    // 看家人的紀錄時，「你的訊息／你」語意剛好相反，換成對方的名字。
+    // 徽章只有一格寬，取名字首字，與家庭頁頭像的處理一致。
+    const senderTitle = isViewingFamily
+        ? t('consultRecord.modalMemberTitle', { name: targetName })
+        : t('consultRecord.modalUserTitle');
+    const senderBadge = isViewingFamily ? targetName.charAt(0) : t('consultRecord.userBadge');
 
     const truncateText = (text: string) => {
         if (!text)
@@ -204,9 +261,34 @@ const ConsultRecordsPage: React.FC = () => {
         // Card」在 320px 寬會被兩層外框與內距吃掉近 60px，正文只剩十來個字。
         <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4 p-4">
             <header>
-                <h2 className="text-2xl font-extrabold">{t('consultRecord.title')}</h2>
+                <h2 className="text-2xl font-extrabold">
+                    {isViewingFamily
+                        ? t('consultRecord.titleForMember', { name: targetName })
+                        : t('consultRecord.title')}
+                </h2>
                 <p className="mt-1 text-muted-foreground">{t('consultRecord.description')}</p>
             </header>
+
+            {/* 沒有家人畫面與原本完全一樣 */}
+            {members.length > 0 && (
+                <ToggleGroup
+                    variant="primary"
+                    className="flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    value={[targetUserId ?? 'self']}
+                    onValueChange={(groupValue) => {
+                        const next = groupValue[0];
+                        if (next === undefined) return;
+                        handleTargetChange(next);
+                    }}
+                    aria-label={t('consultRecord.targetLabel')}
+                >
+                    {targets.map((target) => (
+                        <ToggleGroupItem key={target.userId ?? 'self'} value={target.userId ?? 'self'}>
+                            {target.name}
+                        </ToggleGroupItem>
+                    ))}
+                </ToggleGroup>
+            )}
 
             <Tabs
                 className="gap-4"
@@ -226,7 +308,7 @@ const ConsultRecordsPage: React.FC = () => {
 
                 {/* 兩個查詢各自獨立，載入與錯誤狀態也分別掛在自己的分頁裡 */}
                 <TabsContent value="summary" className="flex flex-col gap-4">
-                    {summariesQuery.isPending ? (
+                    {summariesPending ? (
                         <RecordSkeleton rows={3} label={t('consultRecord.loading')} />
                     ) : summaryError ? (
                         <Alert variant="destructive">
@@ -310,7 +392,7 @@ const ConsultRecordsPage: React.FC = () => {
                 </TabsContent>
 
                 <TabsContent value="raw" className="flex flex-col gap-4">
-                    {rawQuery.isPending ? (
+                    {rawPending ? (
                         <RecordSkeleton rows={4} label={t('consultRecord.loading')} />
                     ) : rawMessages.length > 0 ? (
                         // 原本是左右分邊的對話氣泡（max-w-[75%]），在 320px 上一句話
@@ -337,15 +419,13 @@ const ConsultRecordsPage: React.FC = () => {
                                                             : 'bg-secondary text-secondary-foreground',
                                                     )}
                                                 >
-                                                    {isYou ? t('consultRecord.userBadge') : t('consultRecord.aiBadge')}
+                                                    {isYou ? senderBadge : t('consultRecord.aiBadge')}
                                                 </AvatarFallback>
                                             </Avatar>
                                         </ItemMedia>
                                         <ItemContent>
                                             <ItemTitle>
-                                                {isYou
-                                                    ? t('consultRecord.modalUserTitle')
-                                                    : t('consultRecord.modalAiTitle')}
+                                                {isYou ? senderTitle : t('consultRecord.modalAiTitle')}
                                             </ItemTitle>
                                             <ItemDescription>
                                                 {truncateText(msg.content || t('consultRecord.noContent'))}
@@ -369,17 +449,36 @@ const ConsultRecordsPage: React.FC = () => {
                 </TabsContent>
             </Tabs>
 
-            {/* 手機滿版、桌機收成內容寬度 */}
-            <Button
-                type="button"
-                variant="outline"
-                className="w-full sm:w-fit"
-                onClick={handleDownload}
-                disabled={downloading}
-            >
-                <DownloadIcon data-icon="inline-start" />
-                {downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}
-            </Button>
+            {/* 手機滿版、桌機收成內容寬度。
+                下載端點是本人限定（後端只認 downloadToken 裡的 user id），
+                查看家人時直接不顯示，而不是留一顆按下去必定失敗的按鈕。 */}
+            <div className="flex flex-col gap-2 sm:flex-row">
+                {!isViewingFamily && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full sm:w-fit"
+                        onClick={handleDownload}
+                        disabled={downloading}
+                    >
+                        <DownloadIcon data-icon="inline-start" />
+                        {downloading ? t('consultRecord.downloading') : t('consultRecord.downloadAll')}
+                    </Button>
+                )}
+
+                {/* 與個人健康頁底部的「查看諮詢紀錄」互為往返。
+                    用 navigate 指定路徑而非 navigate(-1)：從家庭頁深連結進來時
+                    上一頁是家庭頁，按「返回個人健康資料」卻跳回家庭頁會很怪。 */}
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-fit"
+                    onClick={() => navigate('/personalhealth')}
+                >
+                    <ArrowLeftIcon data-icon="inline-start" />
+                    {t('consultRecord.backToHealth')}
+                </Button>
+            </div>
 
             {/* Dialog 取代原本手刻的遮罩＋div[role=dialog]：
                 焦點鎖定、Escape 關閉、關閉後焦點歸位、背景鎖捲皆由元件提供。
@@ -417,13 +516,13 @@ const ConsultRecordsPage: React.FC = () => {
                                         )}
                                     >
                                         {isUserMessage(selectedMessage)
-                                            ? t('consultRecord.userBadge')
+                                            ? senderBadge
                                             : t('consultRecord.aiBadge')}
                                     </AvatarFallback>
                                 </Avatar>
                                 <DialogTitle className="text-xl font-bold">
                                     {isUserMessage(selectedMessage)
-                                        ? t('consultRecord.modalUserTitle')
+                                        ? senderTitle
                                         : t('consultRecord.modalAiTitle')}
                                 </DialogTitle>
                             </DialogHeader>

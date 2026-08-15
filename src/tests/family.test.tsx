@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useSearchParams } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithToaster } from './testUtils';
@@ -47,6 +48,27 @@ const mom: FamilyMember = {
   display_name: '媽媽',
 };
 
+/** 諮詢頁的替身：只把網址上的查看對象印出來，用來驗證導向的目標 */
+function ConsultProbe() {
+  const [params] = useSearchParams();
+  return <div data-testid="consult-probe">{params.get('user')}</div>;
+}
+
+/**
+ * 成員卡片的「查看諮詢紀錄」用 useNavigate，必須有 Router context。
+ * 掛真的 Routes 而非 mock useNavigate：這樣連查詢字串有沒有正確帶上都驗得到。
+ */
+function renderPage() {
+  return renderWithToaster(
+    <MemoryRouter initialEntries={['/family']}>
+      <Routes>
+        <Route path="/family" element={<FamilyPage />} />
+        <Route path="/personalhealth/consult" element={<ConsultProbe />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 describe('FamilyPage', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -57,7 +79,7 @@ describe('FamilyPage', () => {
   });
 
   it('有成員時列出成員與稱謂，並顯示人數', () => {
-    renderWithToaster(<FamilyPage />);
+    renderPage();
 
     expect(screen.getByText('媽媽')).toBeInTheDocument();
     expect(screen.getByText('父/母')).toBeInTheDocument();
@@ -66,7 +88,7 @@ describe('FamilyPage', () => {
 
   it('沒有成員時顯示空狀態，邀請按鈕就在空狀態卡片裡', () => {
     familyState.members = [];
-    renderWithToaster(<FamilyPage />);
+    renderPage();
 
     expect(screen.getByText('還沒有家庭成員')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /加入家人/ })).toBeInTheDocument();
@@ -75,7 +97,7 @@ describe('FamilyPage', () => {
   it('載入失敗時顯示錯誤訊息與重新載入按鈕', () => {
     familyState.members = [];
     familyState.error = '載入族譜失敗';
-    renderWithToaster(<FamilyPage />);
+    renderPage();
 
     expect(screen.getByText('載入失敗')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '重新載入' }));
@@ -88,10 +110,12 @@ describe('FamilyPage', () => {
       // 後端在沒填時回的佔位值，不該顯示成一列
       height: 1.0,
       weight: 1.0,
-      chronic_history: '高血壓',
+      gender: 'male',
+      chronic_diseases: ['hypertension'],
+      chronic_custom: ['痛風'],
     });
 
-    renderWithToaster(<FamilyPage />);
+    renderPage();
     expect(profileApi.getPersonalHealthProfile).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
@@ -100,14 +124,49 @@ describe('FamilyPage', () => {
       expect(screen.getByText('68 歲')).toBeInTheDocument();
     });
     expect(profileApi.getPersonalHealthProfile).toHaveBeenCalledWith('U-mom');
-    expect(screen.getByText('高血壓')).toBeInTheDocument();
+    expect(screen.getByText('男')).toBeInTheDocument();
+    // 固定選項翻成中文，自訂病名原文照用
+    expect(screen.getByText('高血壓、痛風')).toBeInTheDocument();
     expect(screen.queryByText(/1 cm/)).not.toBeInTheDocument();
+  });
+
+  // 這個測試就是這整件事的起點：家庭頁把後端的儲存值原樣印出來，
+  // 於是泰文使用者看家人的性別與慢性病看到的全是中文。
+  it('切換語言後，家人的性別與固定選項慢性病要跟著翻譯', async () => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({
+      gender: 'female',
+      chronic_diseases: ['hypertension', 'diabetes'],
+      chronic_custom: ['痛風'],
+    });
+
+    await i18n.changeLanguage('en');
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Female')).toBeInTheDocument();
+    });
+    // 連接符也跟著語言走，英文用逗號而不是頓號
+    expect(screen.getByText('Hypertension, Diabetes, 痛風')).toBeInTheDocument();
+    // 自訂病名是使用者自己打的字，任何語言下都不該被翻譯或消失
+    expect(screen.queryByText(/personalHealth\./)).not.toBeInTheDocument();
+
+    // 已經 render 過了，換語言會觸發重繪，要包在 act 裡
+    await act(async () => {
+      await i18n.changeLanguage('th');
+    });
+    expect(screen.getByText('หญิง')).toBeInTheDocument();
+    expect(screen.getByText('ความดันโลหิตสูง, เบาหวาน, 痛風')).toBeInTheDocument();
+
+    await act(async () => {
+      await i18n.changeLanguage('zh-TW');
+    });
   });
 
   it('健康資料整組是空的時候顯示提示，而不是空白區塊', async () => {
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
 
-    renderWithToaster(<FamilyPage />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
 
     await waitFor(() => {
@@ -121,7 +180,7 @@ describe('FamilyPage', () => {
       expires_at: '2026-12-31T00:00:00.000Z',
     });
 
-    renderWithToaster(<FamilyPage />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
 
     await waitFor(() => {
@@ -130,5 +189,19 @@ describe('FamilyPage', () => {
       ).toBeInTheDocument();
     });
     expect(screen.queryByText('邀請已送出')).not.toBeInTheDocument();
+  });
+
+  it('展開後有「查看諮詢紀錄」，點了會帶著該成員的 id 導向諮詢頁', async () => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
+
+    renderPage();
+    // 收合時看不到，避免收合列上出現 button 巢狀 button
+    expect(screen.queryByText('查看諮詢紀錄')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /查看諮詢紀錄/ }));
+
+    expect(await screen.findByTestId('consult-probe')).toHaveTextContent('U-mom');
   });
 });

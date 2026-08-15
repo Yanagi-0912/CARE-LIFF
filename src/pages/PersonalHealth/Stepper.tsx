@@ -48,7 +48,6 @@ export default function Stepper({
   );
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const isCompleted = currentStep > totalSteps;
   const isLastStep = currentStep === totalSteps;
 
   const updateStep = (newStep: number) => {
@@ -70,7 +69,10 @@ export default function Stepper({
     setIsCompleting(true);
     try {
       await onFinalStepCompleted();
-      setCurrentStep(totalSteps + 1);
+      // 完成後停在最後一步，不再把 currentStep 推過 totalSteps。
+      // 原本會推到 totalSteps + 1，讓底下整段內容連同按鈕一起不渲染，
+      // 卡片就只剩一條 100% 的進度條（使用者看到的是「畫面縮成一條綠線」）。
+      // 這個元件沒有完成畫面可顯示，成功與否由呼叫端的 toast 告知即可。
     } catch {
       // 儲存失敗時由呼叫端顯示訊息，並停留在最後一步方便重試。
     } finally {
@@ -89,13 +91,9 @@ export default function Stepper({
     ...nextButtonRest
   } = nextButtonProps;
 
-  // 完成後補到 100%，否則「第 N 步」對應 N/總數（第 1 步就有進度，符合直覺）
-  const progressValue = isCompleted
-    ? 100
-    : totalSteps > 0
-      ? (currentStep / totalSteps) * 100
-      : 0;
-  const progressText = stepLabel?.(Math.min(currentStep, totalSteps), totalSteps);
+  // 「第 N 步」對應 N/總數（第 1 步就有進度，符合直覺；最後一步即 100%）
+  const progressValue = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+  const progressText = stepLabel?.(currentStep, totalSteps);
 
   return (
     <div {...rest} className={cn('flex w-full flex-col', className)}>
@@ -108,50 +106,43 @@ export default function Stepper({
           <Progress value={progressValue} aria-label={progressText} />
         </div>
 
-        {!isCompleted && (
-          <>
-            {/* key 讓步驟切換時重新掛載，進場動畫才會重播。
-                動畫用 tw-animate-css 的 utility（shadcn 自己的元件也是用這套）；
-                prefers-reduced-motion 由 index.css 的全域區塊統一處理。 */}
-            <div
-              key={currentStep}
-              className="animate-in fade-in slide-in-from-bottom-2 duration-300"
-            >
-              {stepsArray[currentStep - 1]}
-            </div>
+        <div
+          key={currentStep}
+          className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+        >
+          {stepsArray[currentStep - 1]}
+        </div>
 
-            <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-              <div
-                className={cn(
-                  'mt-4 flex gap-3',
-                  currentStep !== 1 ? 'justify-between' : 'justify-end',
-                )}
+        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+          <div
+            className={cn(
+              'mt-4 flex gap-3',
+              currentStep !== 1 ? 'justify-between' : 'justify-end',
+            )}
+          >
+            {currentStep !== 1 && (
+              <Button
+                {...backButtonRest}
+                type="button"
+                variant="outline"
+                onClick={handleBack}
+                disabled={backButtonDisabled || isCompleting}
+                className={cn('min-w-[108px] rounded-full font-bold', backButtonClassName)}
               >
-                {currentStep !== 1 && (
-                  <Button
-                    {...backButtonRest}
-                    type="button"
-                    variant="outline"
-                    onClick={handleBack}
-                    disabled={backButtonDisabled || isCompleting}
-                    className={cn('min-w-[108px] rounded-full font-bold', backButtonClassName)}
-                  >
-                    {backButtonText}
-                  </Button>
-                )}
-                <Button
-                  {...nextButtonRest}
-                  type="button"
-                  onClick={isLastStep ? handleComplete : handleNext}
-                  disabled={nextButtonDisabled || isCompleting}
-                  className={cn('min-w-[108px] rounded-full font-bold', nextButtonClassName)}
-                >
-                  {isLastStep ? completeButtonText : nextButtonText}
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+                {backButtonText}
+              </Button>
+            )}
+            <Button
+              {...nextButtonRest}
+              type="button"
+              onClick={isLastStep ? handleComplete : handleNext}
+              disabled={nextButtonDisabled || isCompleting}
+              className={cn('min-w-[108px] rounded-full font-bold', nextButtonClassName)}
+            >
+              {isLastStep ? completeButtonText : nextButtonText}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
