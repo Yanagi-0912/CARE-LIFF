@@ -145,7 +145,6 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.resetNarrowing': '重新選擇顏色／形狀',
     'meds.scan.draft.appearance.returnToNarrowing': '改用顏色／形狀重新篩選',
     'meds.scan.draft.appearance.sizeLabel': '外觀尺寸：{{value}}',
-    'meds.scan.draft.appearance.parenthetical': '（{{text}}）',
     'meds.scan.draft.appearance.nameEditedNote':
       '您修改了藥名，原本比對到的證號與藥丸照片已一併清除；如需要，請重新掃描藥袋。',
     'meds.scan.draft.commitDiscardedLicenseNote':
@@ -302,7 +301,6 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.resetNarrowing': 'Choose colour / shape again',
     'meds.scan.draft.appearance.returnToNarrowing': 'Filter by colour / shape again',
     'meds.scan.draft.appearance.sizeLabel': 'Size: {{value}}',
-    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'You changed the medication name, so the matched licence number and pill photo have been cleared. Re-scan the bag if you need them.',
     'meds.scan.draft.commitDiscardedLicenseNote':
@@ -458,7 +456,6 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.resetNarrowing': 'Pilih ulang warna/bentuk',
     'meds.scan.draft.appearance.returnToNarrowing': 'Saring lagi berdasarkan warna/bentuk',
     'meds.scan.draft.appearance.sizeLabel': 'Ukuran: {{value}}',
-    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'Anda mengubah nama obat, sehingga nomor izin edar dan foto pil yang cocok sebelumnya telah dihapus. Pindai ulang kantong obat jika diperlukan.',
     'meds.scan.draft.commitDiscardedLicenseNote':
@@ -611,7 +608,6 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.resetNarrowing': 'Chọn lại màu sắc/hình dạng',
     'meds.scan.draft.appearance.returnToNarrowing': 'Lọc lại theo màu sắc/hình dạng',
     'meds.scan.draft.appearance.sizeLabel': 'Kích thước: {{value}}',
-    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'Bạn đã đổi tên thuốc nên số đăng ký và ảnh viên thuốc khớp trước đó đã bị xoá. Vui lòng quét lại túi thuốc nếu cần.',
     'meds.scan.draft.commitDiscardedLicenseNote':
@@ -759,7 +755,6 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.resetNarrowing': 'เลือกสี/รูปทรงใหม่',
     'meds.scan.draft.appearance.returnToNarrowing': 'กรองใหม่ตามสีหรือรูปทรง',
     'meds.scan.draft.appearance.sizeLabel': 'ขนาด: {{value}}',
-    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'คุณแก้ไขชื่อยา ทะเบียนยาและรูปเม็ดยาที่ตรงกันก่อนหน้านี้จึงถูกล้างแล้ว หากต้องการ กรุณาสแกนถุงยาใหม่',
     'meds.scan.draft.commitDiscardedLicenseNote':
@@ -910,7 +905,6 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.resetNarrowing': '色／形をもう一度選び直す',
     'meds.scan.draft.appearance.returnToNarrowing': '色／形でもう一度絞り込む',
     'meds.scan.draft.appearance.sizeLabel': 'サイズ：{{value}}',
-    'meds.scan.draft.appearance.parenthetical': '（{{text}}）',
     'meds.scan.draft.appearance.nameEditedNote':
       '薬品名を変更したため、以前一致していた許可番号と錠剤の写真は消去されました。必要であれば薬袋を再スキャンしてください。',
     'meds.scan.draft.commitDiscardedLicenseNote':
