@@ -1,4 +1,5 @@
 import type { DrugCandidate } from '../../types/prescription';
+import { appearanceValueMatches, splitAppearanceValues } from './appearanceValues';
 
 /**
  * 一次呈現候選照片的上限。
@@ -25,17 +26,27 @@ export type CandidateNarrowingResult =
   /** 用盡顏色與形狀仍無法收窄到上限內：不顯示照片，退回純文字 */
   | { stage: 'too-many' };
 
-/** 取候選集合中某外觀欄位的相異非空值，作為下一步詢問的選項。
- *  空字串代表外觀資料集沒收錄這個候選的該欄位，不能當成一個可選的答案。 */
+/**
+ * 取候選集合中某外觀欄位的相異值，作為下一步詢問的選項。
+ *
+ * 空字串（外觀資料集沒收錄這個候選的該欄位）不能當成一個可選的答案——
+ * 但也不代表這個候選會被排除，見 narrowCandidates 篩選時用的
+ * appearanceValueMatches（C2：未知視為「還不能排除」，只是不貢獻選項）。
+ *
+ * 混色等多值欄位（例如「紅;;;白」）要先拆開才能當成選項：使用者看到的
+ * 是「紅」與「白」兩個各自能點的按鈕，而不是原始資料格式的「紅;;;白」
+ * 整串字面（C3）。
+ */
 function distinctValues(candidates: DrugCandidate[], key: 'color' | 'shape'): string[] {
   const seen = new Set<string>();
   const values: string[] = [];
   candidates.forEach((candidate) => {
-    const value = candidate[key];
-    if (value && !seen.has(value)) {
-      seen.add(value);
-      values.push(value);
-    }
+    splitAppearanceValues(candidate[key]).forEach((value) => {
+      if (!seen.has(value)) {
+        seen.add(value);
+        values.push(value);
+      }
+    });
   });
   return values;
 }
@@ -57,8 +68,13 @@ export function narrowCandidates(
 ): CandidateNarrowingResult {
   if (candidates.length <= limit) return { stage: 'pick', candidates };
 
+  // C2＋C3：appearanceValueMatches 讓「沒記錄顏色」視為未知（留在集合裡，
+  // 不是被篩掉），也讓「紅;;;白」這種混色候選在使用者答「紅」或「白」
+  // 任一個時都算符合——全庫只有不到一成的藥證記錄顏色，用嚴格字面比對
+  // 會讓大多數候選在使用者一回答就整批消失，介面卻宣稱「已收窄到這幾
+  // 種」，等於用一句謊言換來一個看似可信的短清單。
   const byColor = filters.color
-    ? candidates.filter((candidate) => candidate.color === filters.color)
+    ? candidates.filter((candidate) => appearanceValueMatches(candidate.color, filters.color!))
     : candidates;
 
   if (!filters.color) {
@@ -70,7 +86,7 @@ export function narrowCandidates(
   if (byColor.length <= limit) return { stage: 'pick', candidates: byColor };
 
   const byShape = filters.shape
-    ? byColor.filter((candidate) => candidate.shape === filters.shape)
+    ? byColor.filter((candidate) => appearanceValueMatches(candidate.shape, filters.shape!))
     : byColor;
 
   if (!filters.shape) {

@@ -16,28 +16,40 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { SLOT_TONE } from './slotTone';
 import { PillThumbnail } from './PillThumbnail';
-import { useDrugAppearanceImageUrl } from './useDrugAppearanceImageUrl';
-import { formatAppearancePrimary } from './appearanceText';
+import { formatAppearanceMarks, formatAppearancePrimary } from './appearanceText';
 
 /**
- * 單一藥品的外觀呈現列：縮圖＋藥名＋外觀摘要。
+ * 單一藥品的外觀呈現列：縮圖＋藥名＋外觀摘要（含刻痕／標註）。
  *
- * 縮圖網址不是後端直接給的（Medication 沒有 thumbnail_url 欄位，見
- * types/medication.ts 的註解），而是依證號現算——藥品清單／提醒卡片正是
- * spec「藥品清單與提醒卡片依證號呈現照片與外觀描述」要求的兩個介面之一。
- * 沒有證號或算不出圖的藥品，這裡就只剩下名稱＋外觀文字（若有），與辨識
- * 建立前的樣子一致，不會出現空的圖片區塊。
+ * 縮圖網址由後端在讀取當下就地解析（MedicationService.
+ * get_user_reminders_with_medications 用 resolve_drug_appearance_image_url，
+ * 與 DrugCandidate.thumbnail_url 走同一條規則），前端只負責顯示，不再自行
+ * 用證號重算雜湊路徑——只有後端知道那個檔案是否真的存在，前端猜的 URL
+ * 在縮圖覆蓋率只有一成左右的情況下多數會 404，留下一次瞬間的空圖片框與
+ * 一次浪費的請求。
+ *
+ * 刻痕／標註（I2）在這裡也要顯示：這張卡片是「照片缺席時的降級」最常
+ * 發生的地方（多數藥品沒有落地的縮圖），而 mark_one 等欄位正是縮圖在
+ * 160px 看不清楚標記時的文字補償，不能因為卡片本來只顯示 primary 摘要
+ * 就被漏掉。
  */
 function MedicationAppearanceRow({ medication }: { medication: Medication }) {
-  const imageUrl = useDrugAppearanceImageUrl(medication.license_number);
-  const appearanceText = formatAppearancePrimary(medication);
+  const { t } = useTranslation();
+  const separator = t('meds.scan.draft.slotListSeparator');
+  const primary = formatAppearancePrimary(medication, separator);
+  const marks = formatAppearanceMarks(medication, separator);
+  const appearanceText = [primary, marks].filter(Boolean).join(separator);
 
   return (
     <div className="flex items-center gap-2">
-      <PillThumbnail src={imageUrl} alt={medication.name} className="size-7 rounded-md" />
+      <PillThumbnail src={medication.thumbnail_url} alt={medication.name} className="size-7 rounded-md" />
       <ItemDescription className="truncate">
         {medication.name}
-        {appearanceText && <span className="text-xs">（{appearanceText}）</span>}
+        {appearanceText && (
+          <span className="text-xs">
+            {t('meds.scan.draft.appearance.parenthetical', { text: appearanceText })}
+          </span>
+        )}
       </ItemDescription>
     </div>
   );

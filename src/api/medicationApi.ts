@@ -11,10 +11,7 @@ import type {
 } from '../types/prescription';
 import { authHeaders } from '../utils/auth';
 
-// 匯出供 utils/drugAppearanceImage.ts 共用同一個後端網域——藥丸縮圖的對外
-// 靜態路徑掛在同一個後端（PUBLIC_BASE_URL 與這裡的 API 網域是同一台主機），
-// 不應該各自維護一份預設值，否則兩處環境變數沒同步設定時會悄悄失聯。
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 /**
  * 輔助函式：解析錯誤訊息

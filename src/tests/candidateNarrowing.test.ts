@@ -104,4 +104,48 @@ describe('narrowCandidates（純邏輯：候選過多時以外觀屬性漸進收
       candidates,
     });
   });
+
+  // C2：全庫只有 6,095/66,478 筆藥證記錄顏色，多候選集合裡佔多數的是
+  // 「沒記錄顏色」的候選，不是「記錄成別的顏色」——依顏色篩選時這些候選
+  // 要留在集合裡，不能被當成「不符合」排除掉。
+  it('依顏色篩選時，缺少顏色資料的候選視為未知，不會被排除（C2）', () => {
+    const white = many(2, '白色', '圓形', 'W');
+    const unknown = many(2, '', '圓形', 'U');
+    const candidates = [...white, ...unknown];
+
+    const result = narrowCandidates(candidates, { color: '白色', shape: null }, 5);
+
+    expect(result).toEqual({ stage: 'pick', candidates: [...white, ...unknown] });
+  });
+
+  it('候選顏色與形狀皆缺席時，兩者都問不出分歧，且不會被誤篩掉（C2）', () => {
+    const candidates = many(8, '', '', 'U');
+    const result = narrowCandidates(candidates, { color: null, shape: null }, 5);
+    // 8 筆全部保留（沒有一筆因為「沒有值」被當成不符合而丟掉），只是
+    // 顏色與形狀都問不出分歧，最終落到 too-many。
+    expect(result).toEqual({ stage: 'too-many' });
+  });
+
+  // C3：食藥署原始資料的混色欄位以 ';;;' 分隔多個值（如「紅;;;白」）。
+  it('候選顏色含多值分隔符時，選項各自獨立列出，且任一值相符即算符合（C3）', () => {
+    const mixed = candidate({ license_number: 'MIX', color: '紅;;;白', shape: '圓形' });
+    const pureWhite = candidate({ license_number: 'W1', color: '白', shape: '圓形' });
+    const filler = many(4, '藍', '圓形', 'F');
+    const candidates = [mixed, pureWhite, ...filler];
+
+    const askResult = narrowCandidates(candidates, { color: null, shape: null }, 5);
+    expect(askResult).toEqual({ stage: 'ask-color', options: ['紅', '白', '藍'] });
+
+    const pickedWhite = narrowCandidates(candidates, { color: '白', shape: null }, 5);
+    expect(pickedWhite.stage).toBe('pick');
+    if (pickedWhite.stage === 'pick') {
+      expect(pickedWhite.candidates.map((c) => c.license_number)).toEqual(['MIX', 'W1']);
+    }
+
+    const pickedRed = narrowCandidates(candidates, { color: '紅', shape: null }, 5);
+    expect(pickedRed.stage).toBe('pick');
+    if (pickedRed.stage === 'pick') {
+      expect(pickedRed.candidates.map((c) => c.license_number)).toEqual(['MIX']);
+    }
+  });
 });

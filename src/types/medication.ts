@@ -53,8 +53,16 @@ export interface Medication {
   /** 標註一，例如「PBF 436」。160px 縮圖看不清楚，因此以文字欄位獨立呈現 */
   mark_one: string;
   mark_two: string;
-  /** 外觀尺寸的原文描述 */
+  /** 外觀尺寸的原文描述（食藥署資料集的裸數字，無單位——呈現面不臆測單位） */
   size: string;
+  /**
+   * 藥丸縮圖的對外 URL。由後端在讀取當下就地解析（見
+   * MedicationService.get_user_reminders_with_medications），不是資料庫裡
+   * 存的值，也不是前端算出來的——只有後端知道證號對應的縮圖檔案是否真的
+   * 落地，前端用證號自行推算 URL 只會在多數沒有縮圖的情況下猜出一個會
+   * 404 的網址。查無縮圖或證號未確定時為 null，呈現面安全退回純文字。
+   */
+  thumbnail_url: string | null;
   unit_content: string | null;
   total_quantity: number | null;
   /** 藥袋上的用法原文，手動建立的藥品沒有這個值 */

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithToaster } from './testUtils';
@@ -73,7 +73,10 @@ function makeCandidate(overrides: Partial<DrugCandidate> = {}): DrugCandidate {
     score_line: '',
     mark_one: 'PBF 436',
     mark_two: '',
-    size: '8mm',
+    // 真實資料集的外觀尺寸是裸數字、沒有單位（見 appearanceText.ts 的
+    // formatAppearanceSize 說明）；夾具用 '8mm' 會讓「不臆測單位」這條
+    // 規則測不出來，過去就是這樣漏放行的。
+    size: '8',
     thumbnail_url: 'https://cdn.example.com/drug-appearance/sample.jpg',
     ...overrides,
   };
@@ -93,6 +96,9 @@ function makeMedication(overrides: Partial<Medication> = {}): Medication {
     mark_one: '',
     mark_two: '',
     size: '',
+    // 縮圖網址由後端就地解析（見 MedicationService.get_user_reminders_with_
+    // medications），不是前端算的，測試需要縮圖時直接覆寫這個欄位即可。
+    thumbnail_url: null,
     unit_content: null,
     total_quantity: null,
     usage_raw: null,
@@ -838,9 +844,13 @@ describe('PrescriptionDraftForm：候選消歧（7.2, 7.3, 7.6）', () => {
     );
 
     expect(await screen.findByText('已確認')).toBeInTheDocument();
-    expect(screen.getByText('白色 圓形 8mm')).toBeInTheDocument();
-    // 唯一候選不是「挑選」，畫面上不應該出現可點的候選按鈕
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    // 顏色與形狀用（可設定的）分隔符接起來，不含尺寸——尺寸沒有已知單位，
+    // 獨立帶標籤呈現，見 formatAppearanceSize 與下方 sizeLabel 的斷言。
+    expect(screen.getByText('白色、圓形')).toBeInTheDocument();
+    expect(screen.getByText('外觀尺寸：8')).toBeInTheDocument();
+    expect(screen.getByText('刻痕／標示：PBF 436')).toBeInTheDocument();
+    // 唯一候選不是「挑選」，畫面上不應該出現可點的候選清單
+    expect(screen.queryByTestId('candidate-list')).not.toBeInTheDocument();
   });
 
   // 7.2：候選多於一張且未超過呈現上限時，逐筆呈現縮圖與外觀描述；挑選後
@@ -886,7 +896,7 @@ describe('PrescriptionDraftForm：候選消歧（7.2, 7.3, 7.6）', () => {
 
     expect(await screen.findByText('普拿疼膜衣錠500毫克')).toBeInTheDocument();
     expect(screen.getByText('普拿疼速效膜衣錠')).toBeInTheDocument();
-    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(within(screen.getByTestId('candidate-list')).getAllByRole('button')).toHaveLength(2);
 
     fireEvent.click(screen.getByText('普拿疼速效膜衣錠').closest('button')!);
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
@@ -1058,7 +1068,7 @@ describe('PrescriptionDraftForm：候選過多時以外觀屬性漸進收窄（7
     fireEvent.click(screen.getByRole('button', { name: '白色' }));
 
     expect(await screen.findByText('W候選0')).toBeInTheDocument();
-    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    expect(within(screen.getByTestId('candidate-list')).getAllByRole('button')).toHaveLength(4);
   });
 
   it('顏色收窄後仍超過上限時，接著詢問形狀；兩步驟收窄後才呈現照片', async () => {
@@ -1094,7 +1104,7 @@ describe('PrescriptionDraftForm：候選過多時以外觀屬性漸進收窄（7
     fireEvent.click(screen.getByRole('button', { name: '圓形' }));
 
     expect(await screen.findByText('WR候選0')).toBeInTheDocument();
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect(within(screen.getByTestId('candidate-list')).getAllByRole('button')).toHaveLength(3);
   });
 
   it('顏色與形狀都無法進一步收窄、候選仍超過上限時，退回純文字、不顯示任何照片', async () => {
@@ -1119,7 +1129,7 @@ describe('PrescriptionDraftForm：候選過多時以外觀屬性漸進收窄（7
       ),
     ).toBeInTheDocument();
     expect(screen.queryAllByRole('img')).toHaveLength(0);
-    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(screen.queryByTestId('candidate-list')).not.toBeInTheDocument();
     expect(screen.queryByText('M候選0')).not.toBeInTheDocument();
   });
 
@@ -1155,6 +1165,131 @@ describe('PrescriptionDraftForm：候選過多時以外觀屬性漸進收窄（7
         '這個藥名的候選太多，且無法用顏色或形狀進一步縮小範圍，這次不提供藥丸照片可供選擇，不影響這項藥品的建立。',
       ),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.license_number).toBeUndefined();
+  });
+});
+
+describe('PrescriptionDraftForm：挑選必須隨篩選失效而清空（C1 回歸測試）', () => {
+  function buildCandidates(
+    specs: Array<{ color: string; shape: string; count: number; prefix: string }>,
+  ): DrugCandidate[] {
+    return specs.flatMap(({ color, shape, count, prefix }) =>
+      Array.from({ length: count }, (_, i) =>
+        makeCandidate({
+          license_number: `${prefix}-${i}`,
+          name_zh: `${prefix}候選${i}`,
+          color,
+          shape,
+        }),
+      ),
+    );
+  }
+
+  // 候選是在某個顏色／形狀篩選之下才呈現出來的——使用者在那個篩選底下
+  // 挑了一張，接著又放棄那個篩選（重新篩選或直接略過），代表他挑的那張
+  // 已經不再是畫面上任何看得到的東西。若送出時仍帶著那個舊證號，等於
+  // 「螢幕說不會顯示照片，實際卻用一個使用者已經放棄的篩選底下選出的
+  // 證號建立藥品、掛上照片」——這正是本能力要避免的錯誤（貼錯照片比不
+  // 貼危險）。
+  it('在篩選下挑選候選後，重新篩選、略過後送出，證號不得殘留（重新篩選 → 略過）', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+    const candidates = buildCandidates([
+      { color: '白色', shape: '圓形', count: 3, prefix: 'WR' },
+      { color: '白色', shape: '橢圓形', count: 3, prefix: 'WO' },
+      { color: '粉紅色', shape: '圓形', count: 3, prefix: 'PR' },
+      { color: '粉紅色', shape: '橢圓形', count: 3, prefix: 'PO' },
+    ]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ name: '感冒液', license_number: null, candidates })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    // 12 → 選白色 → 6 → 選圓形 → 3（WR-0/1/2），挑選 WR-0
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+    fireEvent.click(await screen.findByRole('button', { name: '圓形' }));
+    fireEvent.click((await screen.findByText('WR候選0')).closest('button')!);
+
+    // 放棄這個篩選：重新篩選（回到問顏色）
+    fireEvent.click(await screen.findByRole('button', { name: '重新選擇顏色／形狀' }));
+    expect(
+      await screen.findByText('這個藥名對應到 12 種可能的藥品，請問藥丸是什麼顏色？'),
+    ).toBeInTheDocument();
+
+    // 再略過，直接退回純文字——畫面明講「這次不提供藥丸照片可供選擇」
+    fireEvent.click(screen.getByRole('button', { name: '看不出來，略過' }));
+    expect(
+      await screen.findByText(
+        '這個藥名的候選太多，且無法用顏色或形狀進一步縮小範圍，這次不提供藥丸照片可供選擇，不影響這項藥品的建立。',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    // 畫面已經說了「不提供照片」，送出的證號絕不能是放棄篩選前選過的 WR-0。
+    expect(payload.drugs[0]!.license_number).toBeUndefined();
+  });
+
+  // 對照情境：挑選後不放棄整個篩選，而是直接改選另一個顏色——舊的挑選一樣
+  // 是在已經不存在的候選集合下選出的，同樣必須被清空。
+  it('挑選候選後改選另一個屬性值時，先前的挑選必須清空', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+    const candidates = buildCandidates([
+      { color: '白色', shape: '圓形', count: 3, prefix: 'WR' },
+      { color: '白色', shape: '橢圓形', count: 3, prefix: 'WO' },
+      { color: '粉紅色', shape: '圓形', count: 3, prefix: 'PR' },
+      { color: '粉紅色', shape: '橢圓形', count: 3, prefix: 'PO' },
+    ]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ name: '感冒液', license_number: null, candidates })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+    fireEvent.click(await screen.findByRole('button', { name: '圓形' }));
+    fireEvent.click((await screen.findByText('WR候選0')).closest('button')!);
+
+    fireEvent.click(await screen.findByRole('button', { name: '重新選擇顏色／形狀' }));
+    fireEvent.click(await screen.findByRole('button', { name: '粉紅色' }));
+    fireEvent.click(await screen.findByRole('button', { name: '橢圓形' }));
+
+    // 換了顏色與形狀之後，畫面上不該有任何一張卡片顯示「已選擇」的樣子
+    const poCard = (await screen.findByText('PO候選0')).closest('button')!;
+    expect(poCard).toHaveAttribute('aria-pressed', 'false');
 
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
 
@@ -1381,12 +1516,17 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
     };
   }
 
-  it('有證號時顯示縮圖（依證號現算的網址）與外觀文字描述', async () => {
+  // 縮圖網址由後端就地解析並隨 Medication.thumbnail_url 一起回傳（I3：
+  // 前端不再自行用證號重算雜湊路徑，只有後端知道檔案是否真的落地）；
+  // 測試直接餵一個固定網址，不依賴任何環境變數，換一台機器、換一個
+  // VITE_API_BASE_URL 都照樣通過。
+  it('有 thumbnail_url 時顯示縮圖與外觀文字描述（含刻痕／標註）', async () => {
     const med = makeMedication({
       license_number: '衛署藥製字第000001號',
       color: '白色',
       shape: '圓形',
-      size: '8mm',
+      mark_one: 'PBF 436',
+      thumbnail_url: 'https://cdn.example.com/drug-appearance/abc123.jpg',
     });
 
     renderWithToaster(
@@ -1394,17 +1534,31 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
     );
 
     expect(screen.getByText('脈優錠5毫克', { exact: false })).toBeInTheDocument();
-    expect(await screen.findByText('（白色 圓形 8mm）')).toBeInTheDocument();
-    // 縮圖網址是前端依證號的 sha256 前 16 碼現算出來的，與後端
-    // thumbnail_filename() 走同一條規則（見 utils/drugAppearanceImage.ts）。
+    // I2：刻痕／標註也要在這張卡片上呈現，不是只有顏色／形狀。
+    expect(await screen.findByText('（白色、圓形、PBF 436）')).toBeInTheDocument();
     const img = await screen.findByAltText('脈優錠5毫克');
-    expect(img.getAttribute('src')).toBe(
-      'https://care.jamessu2016.com/drug-appearance/5c5d9ce2c4802f7c.jpg',
+    expect(img.getAttribute('src')).toBe('https://cdn.example.com/drug-appearance/abc123.jpg');
+  });
+
+  it('thumbnail_url 為 null 時不顯示照片，僅呈現藥名與外觀文字', () => {
+    const med = makeMedication({
+      license_number: '衛署藥製字第000001號',
+      color: '白色',
+      shape: '圓形',
+      thumbnail_url: null,
+    });
+
+    renderWithToaster(
+      <ReminderCard reminder={makeReminderWithMedications([med])} onToggle={vi.fn()} onEdit={vi.fn()} />,
     );
+
+    expect(screen.getByText('脈優錠5毫克', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('（白色、圓形）')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('沒有證號時不顯示照片，僅呈現藥名（無外觀文字）', () => {
-    const med = makeMedication({ license_number: null });
+    const med = makeMedication({ license_number: null, thumbnail_url: null });
 
     renderWithToaster(
       <ReminderCard reminder={makeReminderWithMedications([med])} onToggle={vi.fn()} onEdit={vi.fn()} />,
@@ -1419,6 +1573,7 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
       license_number: '衛署藥製字第000001號',
       color: '白色',
       shape: '圓形',
+      thumbnail_url: 'https://cdn.example.com/drug-appearance/broken.jpg',
     });
 
     renderWithToaster(
@@ -1429,11 +1584,16 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
     fireEvent.error(img);
 
     await waitFor(() => expect(screen.queryByAltText('脈優錠5毫克')).not.toBeInTheDocument());
-    expect(screen.getByText('（白色 圓形）')).toBeInTheDocument();
+    expect(screen.getByText('（白色、圓形）')).toBeInTheDocument();
   });
 
   it('沒有外觀資料的手動建立藥品，維持原本只顯示藥名的樣子', () => {
-    const med = makeMedication({ license_number: null, source: 'manual', name: '手動藥品' });
+    const med = makeMedication({
+      license_number: null,
+      source: 'manual',
+      name: '手動藥品',
+      thumbnail_url: null,
+    });
 
     renderWithToaster(
       <ReminderCard reminder={makeReminderWithMedications([med])} onToggle={vi.fn()} onEdit={vi.fn()} />,

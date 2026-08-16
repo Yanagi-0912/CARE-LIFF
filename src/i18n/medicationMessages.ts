@@ -133,11 +133,17 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.tooManyNote':
       '這個藥名的候選太多，且無法用顏色或形狀進一步縮小範圍，這次不提供藥丸照片可供選擇，不影響這項藥品的建立。',
     'meds.scan.draft.appearance.pickPrompt': '請從這 {{count}} 種可能的藥品中，選出您藥袋裡的這一顆',
+    'meds.scan.draft.appearance.pickPromptSingle': '已縮小到只剩 1 種可能，請確認是否為這一顆',
     'meds.scan.draft.appearance.notPickedHint':
       '沒有找到相符的也沒關係，不選不會影響建立這項藥品，只是不會顯示藥丸照片。',
     'meds.scan.draft.appearance.resetNarrowing': '重新選擇顏色／形狀',
+    'meds.scan.draft.appearance.returnToNarrowing': '改用顏色／形狀重新篩選',
+    'meds.scan.draft.appearance.sizeLabel': '外觀尺寸：{{value}}',
+    'meds.scan.draft.appearance.parenthetical': '（{{text}}）',
     'meds.scan.draft.appearance.nameEditedNote':
       '您修改了藥名，原本比對到的證號與藥丸照片已一併清除；如需要，請重新掃描藥袋。',
+    'meds.scan.draft.commitDiscardedLicenseNote':
+      '{{n}} 項藥品原本挑選的藥丸照片已不再適用，未顯示照片。',
   },
 
   en: {
@@ -281,11 +287,18 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'There are too many possible matches for this name, and colour or shape can’t narrow it down further. No pill photo will be shown this time — this does not affect creating this medication.',
     'meds.scan.draft.appearance.pickPrompt':
       'Choose the one in your bag from these {{count}} possible medications',
+    'meds.scan.draft.appearance.pickPromptSingle':
+      'Narrowed down to 1 possible match — please confirm this is the one',
     'meds.scan.draft.appearance.notPickedHint':
       'It’s fine if none match — not choosing one won’t stop this medication from being created; it just means no pill photo will be shown.',
     'meds.scan.draft.appearance.resetNarrowing': 'Choose colour / shape again',
+    'meds.scan.draft.appearance.returnToNarrowing': 'Filter by colour / shape again',
+    'meds.scan.draft.appearance.sizeLabel': 'Size: {{value}}',
+    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'You changed the medication name, so the matched licence number and pill photo have been cleared. Re-scan the bag if you need them.',
+    'meds.scan.draft.commitDiscardedLicenseNote':
+      'The pill photo you picked for {{n}} medication(s) no longer applied, so it wasn’t shown.',
   },
 
   id: {
@@ -428,11 +441,18 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'Ada terlalu banyak kemungkinan kecocokan untuk nama ini, dan warna atau bentuk tidak dapat mempersempitnya lebih lanjut. Foto pil tidak akan ditampilkan kali ini — ini tidak memengaruhi pembuatan obat ini.',
     'meds.scan.draft.appearance.pickPrompt':
       'Pilih pil di kantong Anda dari {{count}} kemungkinan obat ini',
+    'meds.scan.draft.appearance.pickPromptSingle':
+      'Sudah dipersempit menjadi 1 kemungkinan — mohon konfirmasi apakah ini yang benar',
     'meds.scan.draft.appearance.notPickedHint':
       'Tidak apa-apa jika tidak ada yang cocok — tidak memilih tidak akan menghentikan pembuatan obat ini, hanya berarti foto pil tidak akan ditampilkan.',
     'meds.scan.draft.appearance.resetNarrowing': 'Pilih ulang warna/bentuk',
+    'meds.scan.draft.appearance.returnToNarrowing': 'Saring lagi berdasarkan warna/bentuk',
+    'meds.scan.draft.appearance.sizeLabel': 'Ukuran: {{value}}',
+    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'Anda mengubah nama obat, sehingga nomor izin edar dan foto pil yang cocok sebelumnya telah dihapus. Pindai ulang kantong obat jika diperlukan.',
+    'meds.scan.draft.commitDiscardedLicenseNote':
+      'Foto pil yang Anda pilih untuk {{n}} obat sudah tidak berlaku, sehingga tidak ditampilkan.',
   },
 
   vi: {
@@ -572,11 +592,18 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'Có quá nhiều khả năng khớp với tên này, và màu sắc hoặc hình dạng không thể thu hẹp thêm. Lần này sẽ không hiển thị ảnh viên thuốc — điều này không ảnh hưởng đến việc tạo thuốc này.',
     'meds.scan.draft.appearance.pickPrompt':
       'Chọn viên thuốc trong túi của bạn trong số {{count}} loại thuốc có thể này',
+    'meds.scan.draft.appearance.pickPromptSingle':
+      'Đã thu hẹp còn 1 khả năng — vui lòng xác nhận đây có đúng là viên thuốc đó không',
     'meds.scan.draft.appearance.notPickedHint':
       'Không sao nếu không có loại nào khớp — không chọn sẽ không ngăn việc tạo thuốc này, chỉ là sẽ không hiển thị ảnh viên thuốc.',
     'meds.scan.draft.appearance.resetNarrowing': 'Chọn lại màu sắc/hình dạng',
+    'meds.scan.draft.appearance.returnToNarrowing': 'Lọc lại theo màu sắc/hình dạng',
+    'meds.scan.draft.appearance.sizeLabel': 'Kích thước: {{value}}',
+    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'Bạn đã đổi tên thuốc nên số đăng ký và ảnh viên thuốc khớp trước đó đã bị xoá. Vui lòng quét lại túi thuốc nếu cần.',
+    'meds.scan.draft.commitDiscardedLicenseNote':
+      'Ảnh viên thuốc bạn chọn cho {{n}} loại thuốc không còn phù hợp nên không được hiển thị.',
   },
 
   th: {
@@ -711,11 +738,18 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.tooManyNote':
       'มีตัวเลือกที่ตรงกับชื่อนี้มากเกินไป และสีหรือรูปทรงไม่สามารถช่วยจำกัดให้แคบลงได้อีก จะไม่แสดงรูปเม็ดยาในครั้งนี้ — ไม่มีผลต่อการสร้างรายการยานี้',
     'meds.scan.draft.appearance.pickPrompt': 'เลือกเม็ดยาในถุงของคุณจากยาที่เป็นไปได้ {{count}} รายการนี้',
+    'meds.scan.draft.appearance.pickPromptSingle':
+      'แคบลงเหลือ 1 ความเป็นไปได้แล้ว กรุณายืนยันว่าใช่เม็ดนี้หรือไม่',
     'meds.scan.draft.appearance.notPickedHint':
       'ไม่เป็นไรหากไม่มีรายการที่ตรงกัน การไม่เลือกจะไม่ทำให้สร้างยานี้ไม่ได้ เพียงแต่จะไม่แสดงรูปเม็ดยา',
     'meds.scan.draft.appearance.resetNarrowing': 'เลือกสี/รูปทรงใหม่',
+    'meds.scan.draft.appearance.returnToNarrowing': 'กรองใหม่ตามสีหรือรูปทรง',
+    'meds.scan.draft.appearance.sizeLabel': 'ขนาด: {{value}}',
+    'meds.scan.draft.appearance.parenthetical': ' ({{text}})',
     'meds.scan.draft.appearance.nameEditedNote':
       'คุณแก้ไขชื่อยา ทะเบียนยาและรูปเม็ดยาที่ตรงกันก่อนหน้านี้จึงถูกล้างแล้ว หากต้องการ กรุณาสแกนถุงยาใหม่',
+    'meds.scan.draft.commitDiscardedLicenseNote':
+      'รูปเม็ดยาที่คุณเลือกสำหรับยา {{n}} รายการไม่สามารถใช้ได้แล้ว จึงไม่แสดงรูป',
   },
 
   ja: {
@@ -853,10 +887,17 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'この名前に一致する候補が多すぎ、色や形でもこれ以上絞り込めません。今回は錠剤の写真を表示しません。この薬の作成には影響しません。',
     'meds.scan.draft.appearance.pickPrompt':
       'この{{count}}件の候補薬から、お手元の薬袋にある錠剤を選んでください',
+    'meds.scan.draft.appearance.pickPromptSingle':
+      '候補が1件に絞り込まれました。これで間違いないか確認してください',
     'meds.scan.draft.appearance.notPickedHint':
       '該当するものがなくても問題ありません。選ばなくてもこの薬の作成は妨げられません。錠剤の写真が表示されないだけです。',
     'meds.scan.draft.appearance.resetNarrowing': '色／形をもう一度選び直す',
+    'meds.scan.draft.appearance.returnToNarrowing': '色／形でもう一度絞り込む',
+    'meds.scan.draft.appearance.sizeLabel': 'サイズ：{{value}}',
+    'meds.scan.draft.appearance.parenthetical': '（{{text}}）',
     'meds.scan.draft.appearance.nameEditedNote':
       '薬品名を変更したため、以前一致していた許可番号と錠剤の写真は消去されました。必要であれば薬袋を再スキャンしてください。',
+    'meds.scan.draft.commitDiscardedLicenseNote':
+      '{{n}} 件の薬で選択した錠剤の写真が無効になったため、表示されませんでした。',
   },
 };
