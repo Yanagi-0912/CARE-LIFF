@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronRightIcon } from 'lucide-react';
 
-import { SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication';
+import { SLOT_LABEL_KEY, type Medication, type MedicationReminder } from '../../types/medication';
 import { formatDateDisplay } from '../../utils/date';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,33 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { SLOT_TONE } from './slotTone';
+import { PillThumbnail } from './PillThumbnail';
+import { useDrugAppearanceImageUrl } from './useDrugAppearanceImageUrl';
+import { formatAppearancePrimary } from './appearanceText';
+
+/**
+ * 單一藥品的外觀呈現列：縮圖＋藥名＋外觀摘要。
+ *
+ * 縮圖網址不是後端直接給的（Medication 沒有 thumbnail_url 欄位，見
+ * types/medication.ts 的註解），而是依證號現算——藥品清單／提醒卡片正是
+ * spec「藥品清單與提醒卡片依證號呈現照片與外觀描述」要求的兩個介面之一。
+ * 沒有證號或算不出圖的藥品，這裡就只剩下名稱＋外觀文字（若有），與辨識
+ * 建立前的樣子一致，不會出現空的圖片區塊。
+ */
+function MedicationAppearanceRow({ medication }: { medication: Medication }) {
+  const imageUrl = useDrugAppearanceImageUrl(medication.license_number);
+  const appearanceText = formatAppearancePrimary(medication);
+
+  return (
+    <div className="flex items-center gap-2">
+      <PillThumbnail src={imageUrl} alt={medication.name} className="size-7 rounded-md" />
+      <ItemDescription className="truncate">
+        {medication.name}
+        {appearanceText && <span className="text-xs">（{appearanceText}）</span>}
+      </ItemDescription>
+    </div>
+  );
+}
 
 interface ReminderCardProps {
   reminder: MedicationReminder;
@@ -36,7 +63,7 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
       })
     : t('meds.dateRangeOpen', { start: formatDateDisplay(reminder.start_date) });
   // 藥袋辨識建立的提醒才會關聯到藥品；手動建立的提醒沒有這個欄位，維持原本只顯示時間的樣子
-  const medicationNames = (reminder.medications ?? []).map((med) => med.name).join('、');
+  const medications = reminder.medications ?? [];
 
   return (
     <Item
@@ -62,7 +89,13 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
         <ItemContent>
           <ItemTitle className="num text-2xl font-extrabold">{reminder.scheduled_time}</ItemTitle>
           <ItemDescription>{dateRange}</ItemDescription>
-          {medicationNames && <ItemDescription>{medicationNames}</ItemDescription>}
+          {medications.length > 0 && (
+            <div className="mt-1 flex flex-col gap-1">
+              {medications.map((med) => (
+                <MedicationAppearanceRow key={med.id} medication={med} />
+              ))}
+            </div>
+          )}
         </ItemContent>
 
         <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
