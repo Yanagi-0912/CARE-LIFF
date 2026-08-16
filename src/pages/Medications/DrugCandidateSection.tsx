@@ -24,7 +24,9 @@ interface DrugCandidateSectionProps {
 }
 
 /** 候選卡片：縮圖＋中文品名＋外觀摘要＋刻痕/標註。
- *  readOnly 用於「唯一候選，證號已確定」的情境——沒有東西可挑，純呈現。 */
+ *  readOnly 用於「後端已釘定證號」的情境——沒有東西可挑，純呈現，並貼上
+ *  「已確認」。判準是 `drug.license_number` 有值，**不是**候選只有一筆：
+ *  後端會回傳「候選一筆、證號留空」（見 DrugCandidateSection 的說明）。 */
 function CandidateCard({
   candidate,
   selected,
@@ -195,7 +197,17 @@ export function DrugCandidateSection({
   // 沒有候選＝這個藥名完全比不到藥證庫，本來就沒有任何外觀資料可呈現。
   if (candidates.length === 0) return null;
 
-  if (candidates.length === 1) {
+  // 唯讀的「已確認」呈現只在**後端真的釘定了證號**時才成立，不是「候選
+  // 只有一筆」就成立。兩者曾經等價（`_resolve` 在集合大小為 1 時一律釘
+  // 證號），但後端把「唯一性判定集合」與「可挑選候選集合」切開之後就不
+  // 再等價：反向含容命中的藥證算進唯一性、卻不列入候選，所以「候選剩
+  // 一筆、證號留空」是常態——實測全庫 56,886 個中文品名有 27,058 個
+  // （47.6%）落在這個狀態，其中 3,901 個那一筆候選有縮圖。只看
+  // candidates.length 會對這 3,901 個貼上「已確認」＋照片，而後端明明
+  // 拒絕釘定它——正是「畫面比後端更有把握」這個陷阱。
+  // 證號未定時改走下面的可挑選流程：使用者按下去才釘定，提交時再由後端
+  // 的候選成員檢查（`_resolve_candidate`）驗證一次。
+  if (candidates.length === 1 && drug.license_number) {
     return (
       <FieldSet className="mt-3">
         <FieldLegend variant="label">{t('meds.scan.draft.appearance.sectionTitle')}</FieldLegend>

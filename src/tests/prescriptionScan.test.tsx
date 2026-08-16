@@ -854,6 +854,105 @@ describe('PrescriptionDraftForm：候選消歧（7.2, 7.3, 7.6）', () => {
     expect(screen.queryByTestId('candidate-list')).not.toBeInTheDocument();
   });
 
+  // R7：「候選只有一筆」跟「證號已確定」不是同一件事。
+  //
+  // 後端把「唯一性判定集合」（完全比對 ∪ 正向含容 ∪ 反向含容）跟「可挑選
+  // 候選集合」（完全比對 ∪ 正向含容）切開之後，反向含容命中的藥證會算進
+  // 唯一性、卻不列入候選——所以「候選一筆、license_number 為空」是常態，
+  // 實測全庫 56,886 個中文品名有 27,058 個（47.6%）落在這個狀態，其中
+  // 3,901 個那一筆候選有已提交的縮圖。
+  //
+  // 這一段的兩個測試釘住的就是那個判準：唯讀的「已確認」呈現只跟著
+  // `license_number`，不跟著 `candidates.length`。把 DrugCandidateSection
+  // 的閘門改回 `candidates.length === 1`，兩個都會紅。
+  it('候選只有一筆但後端未釘定證號時，呈現成可挑選的卡片而不是「已確認」', async () => {
+    const candidate = makeCandidate({
+      license_number: '衛署藥輸字第024131號',
+      name_zh: '冠脂妥膜衣錠10毫克',
+    });
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({
+            name: '冠脂妥膜衣錠10毫克',
+            // 後端拒絕釘定：庫裡另有單獨掛證的「膜衣錠」（反向含容命中），
+            // 它拆掉了唯一性卻不列入候選。
+            license_number: null,
+            candidates: [candidate],
+          }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    // 這一筆候選要出現、照片也要出現——它是使用者自己的藥（完全比對命中），
+    // 照片是對的，藏起來只是白白損失資訊。
+    const list = await screen.findByTestId('candidate-list');
+    const card = within(list).getByRole('button');
+    expect(within(card).getByText('冠脂妥膜衣錠10毫克')).toBeInTheDocument();
+    expect(within(card).getByRole('img')).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/drug-appearance/sample.jpg',
+    );
+
+    // 但不得宣稱已確認：後端沒有釘定證號，畫面不能比後端更有把握。
+    expect(screen.queryByText('已確認')).not.toBeInTheDocument();
+    // 而且要真的可以按（尚未選取），使用者按下去才算數。
+    expect(card).toHaveAttribute('aria-pressed', 'false');
+    expect(
+      screen.getByText('已縮小到只剩 1 種可能，請確認是否為這一顆'),
+    ).toBeInTheDocument();
+  });
+
+  it('使用者確認唯一那一筆候選後，送出時才帶上該證號', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+    const candidate = makeCandidate({
+      license_number: '衛署藥輸字第024131號',
+      name_zh: '冠脂妥膜衣錠10毫克',
+    });
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({
+            name: '冠脂妥膜衣錠10毫克',
+            license_number: null,
+            candidates: [candidate],
+          }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const list = await screen.findByTestId('candidate-list');
+    fireEvent.click(within(list).getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    // 使用者的確認就是釘定證號的動作——後端提交時再以候選成員檢查驗證一次
+    // （`_resolve_candidate`），所以這條路徑不會放進任何候選外的值。
+    expect(payload.drugs[0]!.license_number).toBe('衛署藥輸字第024131號');
+  });
+
   // 7.2：候選多於一張且未超過呈現上限時，逐筆呈現縮圖與外觀描述；挑選後
   // 該筆的證號送出時要換成使用者挑的那一張，而不是原本任何一張的預設值。
   it('候選多於一張時逐筆呈現縮圖與外觀描述，挑選後送出對應的證號', async () => {
