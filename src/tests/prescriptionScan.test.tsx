@@ -906,9 +906,11 @@ describe('PrescriptionDraftForm：候選消歧（7.2, 7.3, 7.6）', () => {
     expect(screen.queryByText('已確認')).not.toBeInTheDocument();
     // 而且要真的可以按（尚未選取），使用者按下去才算數。
     expect(card).toHaveAttribute('aria-pressed', 'false');
-    expect(
-      screen.getByText('已縮小到只剩 1 種可能，請確認是否為這一顆'),
-    ).toBeInTheDocument();
+    // 措辭也不得比後端有把握：這條路徑上使用者一個問題都還沒答，什麼都沒有
+    // 被排除，所以只能請他確認，不能宣稱「已縮小到只剩 1 種可能」——唯一性
+    // 判定集合仍有多張，那正是 license_number 留空的原因。
+    expect(screen.getByText('請確認您藥袋裡的是不是這一顆')).toBeInTheDocument();
+    expect(screen.queryByText(/已縮小/)).not.toBeInTheDocument();
   });
 
   it('使用者確認唯一那一筆候選後，送出時才帶上該證號', async () => {
@@ -1205,6 +1207,45 @@ describe('PrescriptionDraftForm：候選過多時以外觀屬性漸進收窄（7
 
     expect(await screen.findByText('WR候選0')).toBeInTheDocument();
     expect(within(screen.getByTestId('candidate-list')).getAllByRole('button')).toHaveLength(3);
+  });
+
+  // 「只剩一筆」有兩種來路，措辭不同，這個測試釘住的是**有收窄**的那一條。
+  // 另一條（後端就只給一筆、什麼都沒被排除）由上面「候選只有一筆但後端未
+  // 釘定證號時…」那個測試釘住。兩句互斥的斷言合起來，任何一邊被改成共用
+  // 同一句都會紅。
+  it('以顏色收窄到只剩一筆時，措辭要講明範圍是「您選的顏色／形狀」，不得沿用未收窄的那句', async () => {
+    const candidates = buildCandidates([
+      { color: '白色', shape: '圓形', count: 1, prefix: 'W' },
+      { color: '粉紅色', shape: '橢圓形', count: 6, prefix: 'P' },
+    ]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ name: '感冒液', license_number: null, candidates })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(
+      await screen.findByText('這個藥名對應到 7 種可能的藥品，請問藥丸是什麼顏色？'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '白色' }));
+
+    expect(await screen.findByText('W候選0')).toBeInTheDocument();
+    expect(within(screen.getByTestId('candidate-list')).getAllByRole('button')).toHaveLength(1);
+
+    // 使用者的確答了一題、也真的排除掉東西了，所以這句「只剩這一顆」是誠實的
+    // ——但範圍限定在他自己選的條件之下，不是宣稱藥證庫裡只剩一種可能。
+    expect(
+      screen.getByText('依您選的顏色／形狀，符合的只剩這一顆，請確認是否為這一顆'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('請確認您藥袋裡的是不是這一顆')).not.toBeInTheDocument();
   });
 
   it('顏色與形狀都無法進一步收窄、候選仍超過上限時，退回純文字、不顯示任何照片', async () => {

@@ -271,11 +271,24 @@ export function DrugCandidateSection({
       {result.stage === 'pick' && (
         <div className="flex flex-col gap-3">
           <FieldDescription>
-            {/* 收窄到只剩 1 種可能時，「從這 1 種…選出」讀起來很怪，換一句
-                措辭；仍然要求使用者按一下才算數，不因為只剩一種就自動選定
-                （本能力全程「不臆測，問使用者」的同一個原則）。 */}
+            {/* 只剩一筆時「從這 1 種…選出」讀起來很怪，換一句措辭；仍然
+                要求使用者按一下才算數，不因為只剩一種就自動選定（本能力
+                全程「不臆測，問使用者」的同一個原則）。
+                一筆有兩種來路，措辭必須分開：
+                - 使用者真的用顏色／形狀篩過（filters 有值）：可以說「符合
+                  的只剩這一顆」，範圍講明是「您選的條件之下」。
+                - 沒篩過就只有一筆：這是後端「候選一筆、證號留空」的常態
+                  （實測全庫 56,886 個中文品名有 27,058 個、47.6% 落在這個
+                  狀態），什麼都沒有被排除——唯一性判定集合仍有多張，那正
+                  是後端拒絕釘定證號的原因。這裡若說「已縮小到只剩 1 種
+                  可能」，就是用文字重犯「畫面比後端更有把握」這個錯，跟
+                  貼一張沒把握的照片是同一類危險。 */}
             {result.candidates.length === 1
-              ? t('meds.scan.draft.appearance.pickPromptSingle')
+              ? t(
+                  filters.color || filters.shape
+                    ? 'meds.scan.draft.appearance.pickPromptSingleNarrowed'
+                    : 'meds.scan.draft.appearance.pickPromptSingle',
+                )
               : t('meds.scan.draft.appearance.pickPrompt', { count: result.candidates.length })}
           </FieldDescription>
           {/* 這是「可切換的單選清單」，不是 ARIA 的 radio（radio 不允許
