@@ -108,22 +108,42 @@ describe('narrowCandidates（純邏輯：候選過多時以外觀屬性漸進收
   // C2：全庫只有 6,095/66,478 筆藥證記錄顏色，多候選集合裡佔多數的是
   // 「沒記錄顏色」的候選，不是「記錄成別的顏色」——依顏色篩選時這些候選
   // 要留在集合裡，不能被當成「不符合」排除掉。
-  it('依顏色篩選時，缺少顏色資料的候選視為未知，不會被排除（C2）', () => {
+  //
+  // 這個測試必須真的走到篩選那一步才有意義：候選總數要超過上限（否則
+  // narrowCandidates 在第一行就直接回傳，篩選邏輯根本不會被呼叫），
+  // filters.color 也要真的帶一個值（否則走的是「還沒篩選」的原樣分支，
+  // 一樣不會呼叫比對函式）。同時混入一組「真的是別的顏色」的候選，
+  // 讓斷言能分辨「缺席被當成未知（正確：未知保留、別的顏色被篩掉）」
+  // 與「缺席被當成不符合（錯誤：未知跟別的顏色一起被篩掉）」——只驗證
+  // 篩完還剩幾筆不夠，篩剩的必須是「白色＋未知」這個特定集合。
+  it('依顏色篩選時，缺少顏色資料的候選視為未知而保留，記錄成別的顏色則正常排除（C2）', () => {
     const white = many(2, '白色', '圓形', 'W');
     const unknown = many(2, '', '圓形', 'U');
-    const candidates = [...white, ...unknown];
+    const pink = many(3, '粉紅色', '圓形', 'P');
+    const candidates = [...white, ...unknown, ...pink]; // 7 筆，超過上限 5
 
     const result = narrowCandidates(candidates, { color: '白色', shape: null }, 5);
 
+    // 白色（相符）與未知（缺席，視為未知）留下共 4 筆；粉紅色（記錄成
+    // 別的顏色，真的不符合）3 筆被排除，4 <= 5，直接進入可挑選階段。
     expect(result).toEqual({ stage: 'pick', candidates: [...white, ...unknown] });
   });
 
-  it('候選顏色與形狀皆缺席時，兩者都問不出分歧，且不會被誤篩掉（C2）', () => {
-    const candidates = many(8, '', '', 'U');
-    const result = narrowCandidates(candidates, { color: null, shape: null }, 5);
-    // 8 筆全部保留（沒有一筆因為「沒有值」被當成不符合而丟掉），只是
-    // 顏色與形狀都問不出分歧，最終落到 too-many。
-    expect(result).toEqual({ stage: 'too-many' });
+  // 同一條規則在第二層篩選（形狀）也要成立：顏色篩完仍超過上限、且形狀
+  // 問得出分歧時，缺少形狀資料的候選一樣要在形狀篩選時被保留。這裡直接
+  // 帶入兩個篩選值（模擬使用者已經依序回答完顏色與形狀），確定會真的
+  // 執行到 byShape 那一段比對，而不是停在中途的某個提早回傳。
+  it('依形狀篩選時，缺少形狀資料的候選同樣視為未知而保留（C2）', () => {
+    const round = many(2, '白色', '圓形', 'R');
+    const unknownShape = many(2, '白色', '', 'U');
+    const oval = many(2, '白色', '橢圓形', 'O');
+    const candidates = [...round, ...unknownShape, ...oval]; // 6 筆，超過上限 5
+
+    const result = narrowCandidates(candidates, { color: '白色', shape: '圓形' }, 5);
+
+    // 圓形（相符）與未知形狀（缺席，視為未知）留下共 4 筆；橢圓形（記錄
+    // 成別的形狀，真的不符合）2 筆被排除。
+    expect(result).toEqual({ stage: 'pick', candidates: [...round, ...unknownShape] });
   });
 
   // C3：食藥署原始資料的混色欄位以 ';;;' 分隔多個值（如「紅;;;白」）。

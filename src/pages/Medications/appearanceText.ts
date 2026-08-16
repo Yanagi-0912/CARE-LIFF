@@ -16,21 +16,29 @@ export interface AppearanceFields {
 
 /**
  * 食藥署原始資料集裡「無」代表這個欄位有記錄、但明確記成「沒有這項特徵」
- * （例如沒有刻痕）——語意上等於缺席，不是一個要呈現給使用者的值。實測
- * `score_line` 6,059 筆非空值中有 3,903 筆（64%）就是字面「無」；照原樣
- * 呈現會變成「刻痕／標示：無、CCP」，把「沒有」講成一個標記。
+ * （例如沒有刻痕）——語意上等於缺席，不是一個要呈現給使用者的值。
+ *
+ * 這個值一定要在「拆解多值分隔符之後」逐一比對，不能拿整個原始欄位字面
+ * 跟「無」比對——後者會漏掉「無;;;無」這種還沒拆解就不等於「無」的字串
+ * （score_line 有 63 筆是這個形狀），也會漏掉「無;;;直線」這種一部分是
+ * 「無」、另一部分是真實記錄的混合值（真實資料庫裡就有這一筆）。前一輪
+ * 修正只做了字串層級的比對就是這裡漏掉的原因：3,903 筆單純的「無」被擋
+ * 住了，但拆解後才會出現的「無」沒有。
  */
 const ABSENT_VALUE = '無';
 
-function isPresent(value: string): boolean {
-  const trimmed = value.trim();
-  return trimmed !== '' && trimmed !== ABSENT_VALUE;
-}
-
-/** 單一欄位可能含有食藥署原始資料的多值分隔符（如「紅;;;白」），拆開去重
- *  後用呼叫端指定的分隔符重新接回——顯示面永遠看不到原始的 ';;;'。 */
+/**
+ * 單一外觀欄位 -> 可呈現的字串。
+ *
+ * 順序固定為「先拆解多值分隔符、再逐一過濾掉『無』與空白、去重、最後才
+ * 用呼叫端指定的分隔符接回」——這是本檔案唯一組裝顯示字串的地方，
+ * formatAppearancePrimary／formatAppearanceMarks／formatAppearanceSize
+ * 都透過它，不再各自比對原始字串，避免重蹈「比對順序錯了」的覆轍。
+ */
 function normalizeField(value: string, separator: string): string {
-  return splitAppearanceValues(value).join(separator);
+  return splitAppearanceValues(value)
+    .filter((v) => v !== ABSENT_VALUE)
+    .join(separator);
 }
 
 /**
@@ -49,20 +57,21 @@ function normalizeField(value: string, separator: string): string {
  */
 export function formatAppearancePrimary(fields: AppearanceFields, separator: string): string {
   return [fields.color, fields.shape]
-    .filter(isPresent)
     .map((value) => normalizeField(value, separator))
+    .filter(Boolean)
     .join(separator);
 }
 
 /**
  * 刻痕與標註組成的補充描述。160px 縮圖看不清楚這些細節（design.md 決策 6
  * 的實測結論），因此以文字欄位獨立呈現，讓照片與文字互補而非互斥。
- * 「無」（見 ABSENT_VALUE）視為缺席，不算一個要呈現的標記。
+ * 「無」（見 ABSENT_VALUE）視為缺席，不算一個要呈現的標記，即使它跟其他
+ * 真實值混在同一個以 ';;;' 分隔的欄位裡也一樣要被濾掉。
  */
 export function formatAppearanceMarks(fields: AppearanceFields, separator: string): string {
   return [fields.score_line, fields.mark_one, fields.mark_two]
-    .filter(isPresent)
     .map((value) => normalizeField(value, separator))
+    .filter(Boolean)
     .join(separator);
 }
 
@@ -71,9 +80,16 @@ export function formatAppearanceMarks(fields: AppearanceFields, separator: strin
  * 呈現面不該替它決定（見 formatAppearancePrimary 的說明）。呼叫端要顯示
  * 時應搭配「外觀尺寸」之類的標籤一起呈現原始值，而不是讓一個裸數字
  * 單獨出現。
+ *
+ * 同樣要先經過 normalizeField：size 欄位有 69 筆是「10;;;10」這種同值
+ * 重複的多值格式，不拆解就會把分隔符原封不動印在畫面上（例如
+ * 「外觀尺寸：10;;;10」）；拆解去重後才是使用者該看到的「外觀尺寸：10」。
  */
-export function formatAppearanceSize(fields: Pick<AppearanceFields, 'size'>): string {
-  return isPresent(fields.size) ? fields.size.trim() : '';
+export function formatAppearanceSize(
+  fields: Pick<AppearanceFields, 'size'>,
+  separator: string,
+): string {
+  return normalizeField(fields.size, separator);
 }
 
 /** 這組外觀欄位是否有任何可呈現的內容——沒有的話呼叫端不需要騰出版面。
@@ -83,6 +99,6 @@ export function hasAppearanceText(fields: AppearanceFields): boolean {
   return (
     formatAppearancePrimary(fields, ' ') !== '' ||
     formatAppearanceMarks(fields, ' ') !== '' ||
-    formatAppearanceSize(fields) !== ''
+    formatAppearanceSize(fields, ' ') !== ''
   );
 }

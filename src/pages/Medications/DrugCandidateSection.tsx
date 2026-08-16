@@ -42,7 +42,7 @@ function CandidateCard({
   const separator = t('meds.scan.draft.slotListSeparator');
   const primary = formatAppearancePrimary(candidate, separator);
   const marks = formatAppearanceMarks(candidate, separator);
-  const size = formatAppearanceSize(candidate);
+  const size = formatAppearanceSize(candidate, separator);
 
   const body = (
     <>

@@ -47,12 +47,27 @@ describe('formatAppearancePrimary（C4：不臆測單位，不把 size 塞進去
 
 describe('formatAppearanceSize（C4：呈現原始值，不附加未經證實的單位）', () => {
   it('回傳裸值，不加任何單位字樣', () => {
-    expect(formatAppearanceSize(fields({ size: '8' }))).toBe('8');
-    expect(formatAppearanceSize(fields({ size: '6.5' }))).toBe('6.5');
+    expect(formatAppearanceSize(fields({ size: '8' }), '、')).toBe('8');
+    expect(formatAppearanceSize(fields({ size: '6.5' }), '、')).toBe('6.5');
   });
 
   it('缺席時回傳空字串', () => {
-    expect(formatAppearanceSize(fields())).toBe('');
+    expect(formatAppearanceSize(fields(), '、')).toBe('');
+  });
+
+  // 回歸測試（Important 1）：真實資料集有 69 筆 size 是「10;;;10」這種
+  // 同值重複的多值格式（例如「10;;;10」「9;;;9;;;9;;;9」）。前一輪修正把
+  // formatAppearanceSize 從 formatAppearancePrimary 抽成獨立函式時漏了拆解
+  // 這一步，直接回傳原始字串，導致畫面出現「外觀尺寸：10;;;10」——分隔符
+  // 原封不動洩漏給使用者，正是 C3 要處理的那個症狀，只是換一個函式重演。
+  it('多值分隔符先拆解去重，不把 ;;; 洩漏給使用者（Important 1 回歸）', () => {
+    const text = formatAppearanceSize(fields({ size: '10;;;10' }), '、');
+    expect(text).toBe('10');
+    expect(text).not.toContain(';;;');
+  });
+
+  it('多值分隔符各值不同時，去重後個別列出', () => {
+    expect(formatAppearanceSize(fields({ size: '9;;;9;;;9;;;9' }), '、')).toBe('9');
   });
 });
 
@@ -73,6 +88,41 @@ describe('formatAppearanceMarks（C4：「無」視為缺席，不是一個標�
 
   it('多值欄位同樣先拆解去重', () => {
     expect(formatAppearanceMarks(fields({ mark_one: 'A;;;A;;;B' }), '、')).toBe('A、B');
+  });
+
+  // 回歸測試（Important 2）：真實資料集有 63 筆 score_line 是「無;;;無」
+  // 這種還沒拆解就不等於字面「無」的多值格式。前一輪的 isPresent 是拿
+  // 「整個原始欄位」跟「無」比對，比對時根本還沒拆解，「無;;;無」不等於
+  // 「無」因此被誤判成「有記錄」，拆解、去重後變成單一個「無」，原封不動
+  // 印在畫面上——這正是 C4 原本要修的症狀，只是換了一種還沒拆解就比對的
+  // 寫法又重演了一次。
+  it('「無;;;無」拆解去重後仍視為缺席，不出現在結果中（Important 2 回歸）', () => {
+    const text = formatAppearanceMarks(fields({ score_line: '無;;;無', mark_one: 'CCP' }), '、');
+    expect(text).toBe('CCP');
+    expect(text).not.toContain('無');
+  });
+
+  // 覆核者回報的逐字重現案例：score_line 全部是「無」該被濾掉，
+  // mark_one／mark_two 的重複值該去重，三者接起來只剩真正有記錄的部分。
+  it('逐字重現覆核者的回歸案例：無;;;無 + 重複值的 mark_one／mark_two', () => {
+    const text = formatAppearanceMarks(
+      fields({
+        score_line: '無;;;無',
+        mark_one: 'ARICEPT;;;ARICEPT',
+        mark_two: '10;;;10',
+      }),
+      '、',
+    );
+    expect(text).toBe('ARICEPT、10');
+    expect(text).not.toContain('無');
+  });
+
+  // 真實資料集裡也有「無」跟真實值混在同一個欄位的案例（score_line 有一筆
+  // 是「無;;;直線」）——這種情況只該濾掉「無」那一部分，保留「直線」，
+  // 不能因為欄位裡出現過「無」就把整個欄位當成缺席而連真實值一起丟掉。
+  it('「無」與真實值混在同一個多值欄位時，只濾掉「無」，保留真實值', () => {
+    const text = formatAppearanceMarks(fields({ score_line: '無;;;直線' }), '、');
+    expect(text).toBe('直線');
   });
 });
 
