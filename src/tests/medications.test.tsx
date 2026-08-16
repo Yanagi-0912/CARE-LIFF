@@ -140,4 +140,63 @@ describe('MedicationsPage', () => {
     expect(screen.getAllByRole('switch')[0]).toHaveAttribute('aria-checked', 'true');
     expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', { enabled: false });
   });
+
+  it('切換啟用開關後，該時段的藥品清單不會消失', async () => {
+    // PUT /reminders/{id} 的回應刻意不帶 medications，如同真正的後端
+    // （response_model=MedicationReminder，藥品清單只有 GET 才會附上）。
+    // 快取若用回應整筆取代，藥品清單就會被洗掉——使用者停用某個時段後，
+    // 畫面同時失去「剛剛關掉的是哪些藥」這個唯一線索，要重新整理才回得來。
+    const morningWithMeds: MedicationReminder = {
+      ...morning,
+      medications: [
+        {
+          id: 'm-1',
+          user_id: 'U-self',
+          created_by_user_id: 'U-self',
+          name: '脈優錠5毫克',
+          generic_name: null,
+          license_number: '衛署藥製字第000001號',
+          shape: '圓形',
+          color: '白色',
+          score_line: '',
+          mark_one: '',
+          mark_two: '',
+          size: '',
+          thumbnail_url: null,
+          unit_content: null,
+          total_quantity: null,
+          usage_raw: null,
+          frequency_code: 'QD',
+          indication: null,
+          source: 'prescription_ocr',
+          start_date: '2026-08-01',
+          end_date: null,
+          enabled: true,
+          created_at: '2026-08-01T00:00:00.000Z',
+          updated_at: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+    };
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening, morningWithMeds]);
+    const { medications: _dropped, ...withoutMedications } = morningWithMeds;
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue({
+      ...withoutMedications,
+      enabled: false,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('脈優錠5毫克')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('switch')[0]);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('switch')[0]).toHaveAttribute('aria-checked', 'false');
+    });
+    // 開關切換完成後藥名仍在——沒有重新整理，也沒有再打一次 GET。
+    expect(screen.getByText('脈優錠5毫克')).toBeInTheDocument();
+    expect(medicationApi.fetchReminders).toHaveBeenCalledTimes(1);
+  });
 });

@@ -74,9 +74,19 @@ export function useMedications(targetUserId?: string): UseMedicationsReturn {
     onError: (_err, _vars, context) => {
       if (context?.snapshot) queryClient.setQueryData(queryKey, context.snapshot);
     },
+    // 合併而非整筆取代：PUT /reminders/{id} 的回應是後端的 MedicationReminder，
+    // **不含 medications**（藥品清單只有 GET /reminders 會附上，見
+    // types/medication.ts 的欄位註解）。直接用回應覆蓋等於把該筆規則的藥品
+    // 清單洗掉——使用者按一下「已啟用」開關，那個時段有哪些藥就整段消失，
+    // 要重新整理才回得來；停用時尤其致命，因為畫面同時失去了「你剛剛關掉的
+    // 是哪些藥」這個唯一線索。
+    // 展開順序讓伺服器回傳的欄位覆蓋樂觀更新的猜測值，而回應裡沒有的鍵
+    // （medications）保留快取既有的內容，與上面 onMutate 的合併語意一致。
     onSuccess: (saved, { reminderId }) => {
       queryClient.setQueryData<MedicationReminder[]>(queryKey, (current) =>
-        (current ?? []).map((item) => (item.id === reminderId ? saved : item)).sort(byScheduledTime),
+        (current ?? [])
+          .map((item) => (item.id === reminderId ? { ...item, ...saved } : item))
+          .sort(byScheduledTime),
       );
     },
   });
