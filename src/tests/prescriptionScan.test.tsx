@@ -1860,7 +1860,9 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
 
     expect(screen.getByText('脈優錠5毫克', { exact: false })).toBeInTheDocument();
     // I2：刻痕／標註也要在這張卡片上呈現，不是只有顏色／形狀。
-    expect(await screen.findByText('（白色、圓形、PBF 436）')).toBeInTheDocument();
+    // 外觀描述自成一行（不再接在藥名後面），因此不帶括號——與核對畫面的
+    // 候選卡片一致。這裡釘的是「刻痕／標註有出現」，不是括號本身。
+    expect(await screen.findByText('白色、圓形、PBF 436')).toBeInTheDocument();
     const img = await screen.findByAltText('脈優錠5毫克');
     expect(img.getAttribute('src')).toBe('https://cdn.example.com/drug-appearance/abc123.jpg');
   });
@@ -1878,7 +1880,7 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
     );
 
     expect(screen.getByText('脈優錠5毫克', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('（白色、圓形）')).toBeInTheDocument();
+    expect(screen.getByText('白色、圓形')).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
@@ -1909,7 +1911,7 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
     fireEvent.error(img);
 
     await waitFor(() => expect(screen.queryByAltText('脈優錠5毫克')).not.toBeInTheDocument());
-    expect(screen.getByText('（白色、圓形）')).toBeInTheDocument();
+    expect(screen.getByText('白色、圓形')).toBeInTheDocument();
   });
 
   it('沒有外觀資料的手動建立藥品，維持原本只顯示藥名的樣子', () => {

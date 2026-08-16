@@ -9,6 +9,7 @@ import {
   Item,
   ItemContent,
   ItemDescription,
+  ItemGroup,
   ItemMedia,
   ItemTitle,
 } from '@/components/ui/item';
@@ -41,17 +42,36 @@ function MedicationAppearanceRow({ medication }: { medication: Medication }) {
   const appearanceText = [primary, marks].filter(Boolean).join(separator);
 
   return (
-    <div className="flex items-center gap-2">
-      <PillThumbnail src={medication.thumbnail_url} alt={medication.name} className="size-7 rounded-md" />
-      <ItemDescription className="truncate">
-        {medication.name}
+    // role="listitem" 補上 ItemGroup 的 role="list" 需要的成員角色——shadcn 的
+    // Item 本身不帶角色，少了這個就是一個沒有項目的空清單。
+    <Item size="xs" role="listitem" className="gap-2.5 p-0">
+      {/* 刻意不用 ItemMedia 的 image variant：它會帶進 [&_img]:object-cover，
+          而那個後代選擇器的權重高過 PillThumbnail 自己的 object-contain，會把
+          官方照片的尺規裁掉——尺規正是分辨同名同形藥品的關鍵（見 PillThumbnail
+          的說明）。default variant 只負責對齊，尺寸與 object-fit 留給縮圖自己決定。 */}
+      <ItemMedia>
+        <PillThumbnail
+          src={medication.thumbnail_url}
+          alt={medication.name}
+          className="size-11 rounded-lg"
+        />
+      </ItemMedia>
+      <ItemContent className="gap-0.5">
+        {/* shadcn 的 ItemTitle／ItemDescription 預設帶 line-clamp-1／line-clamp-2，
+            在這裡一律解除：藥名與外觀描述就是使用者用來認藥的全部線索，截掉
+            等於把這個功能的目的截掉（`ANROKIN TABLETS (CHLORZOXAZONE)` 被切成
+            `ANROKIN TABLETS (CHLORZOXA` 時，剩下的字不足以認出任何東西）。
+            版面因此變高是預期的代價，不是退化。 */}
+        <ItemTitle className="w-full line-clamp-none font-semibold break-words">
+          {medication.name}
+        </ItemTitle>
         {appearanceText && (
-          <span className="text-xs">
-            {t('meds.scan.draft.appearance.parenthetical', { text: appearanceText })}
-          </span>
+          <ItemDescription className="line-clamp-none break-words">
+            {appearanceText}
+          </ItemDescription>
         )}
-      </ItemDescription>
-    </div>
+      </ItemContent>
+    </Item>
   );
 }
 
@@ -102,11 +122,13 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
           <ItemTitle className="num text-2xl font-extrabold">{reminder.scheduled_time}</ItemTitle>
           <ItemDescription>{dateRange}</ItemDescription>
           {medications.length > 0 && (
-            <div className="mt-1 flex flex-col gap-1">
+            // ItemGroup 依子項的 data-size=xs 自己收斂間距（has-data-[size=xs]:gap-2），
+            // 不需要也不該在這裡另外指定 gap。
+            <ItemGroup className="mt-1">
               {medications.map((med) => (
                 <MedicationAppearanceRow key={med.id} medication={med} />
               ))}
-            </div>
+            </ItemGroup>
           )}
         </ItemContent>
 

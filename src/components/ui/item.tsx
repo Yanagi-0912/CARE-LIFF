@@ -117,7 +117,12 @@ function ItemContent({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="item-content"
       className={cn(
-        "flex flex-1 flex-col gap-1 group-data-[size=xs]/item:gap-0.5 [&+[data-slot=item-content]]:flex-none",
+        // min-w-0 是對 shadcn 預設值的修正，不是版面微調：flex 子元素的
+        // min-width 預設為 auto，撐不下的內容會往外溢出而不是收縮，於是
+        // 底下的 line-clamp／truncate／break-words 全部失效（藥品清單的長
+        // 藥名就是這樣壓過分隔線、蓋到右側開關上）。flex-1 的本意是「可
+        // 伸可縮」，少了 min-w-0 就只剩「可伸」。
+        "flex min-w-0 flex-1 flex-col gap-1 group-data-[size=xs]/item:gap-0.5 [&+[data-slot=item-content]]:flex-none",
         className
       )}
       {...props}
