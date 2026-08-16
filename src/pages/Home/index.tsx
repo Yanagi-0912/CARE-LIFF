@@ -1,9 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { HealthIcon, PillIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, SearchIcon } from '../../components/icons';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
-import { ChevronRightIcon } from 'lucide-react';
+import { getPersonalHealthProfile } from '../../api/profileApi';
+import { isAdminRole } from '../../utils/roles';
+import { ChevronRightIcon, ShieldCheckIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 
@@ -20,6 +24,14 @@ const TONE_ICON: Record<string, string> = {
 const Home = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  // 與 Sidebar／AdminRoute 共用同一個查詢，三者都只是要判斷管理員身分。
+  // 手機沒有側欄（Sidebar 是 md:block），底部導覽的 tab 也是寫死的五個，
+  // 少了這張卡片，admin 在手機上就沒有任何地方點得到審核佇列。
+  const { data: profile } = useQuery({
+    queryKey: queryKeys.myProfile,
+    queryFn: () => getPersonalHealthProfile(),
+  });
+  const isAdmin = isAdminRole(profile?.role);
 
   // 定義功能卡片配置（tone 對應各自的圖示底色）
   const features = [
@@ -58,6 +70,17 @@ const Home = () => {
       desc: t('home.knowledgeReportsDesc'),
       tone: 'teal'
     },
+    // 緊接在使用者端的知識回報之後：兩者是同一件事的兩端（送出／審核）。
+    // coral 是這頁唯一沒被一般功能用掉的 tone，讓管理入口一眼與其他卡片分開。
+    ...(isAdmin
+      ? [{
+          title: t('home.adminKnowledgeReports'),
+          icon: <ShieldCheckIcon width={26} height={26} />,
+          path: '/admin/knowledge-reports',
+          desc: t('home.adminKnowledgeReportsDesc'),
+          tone: 'coral'
+        }]
+      : []),
     {
       title: t('home.settings'),
       icon: <SettingsIcon width={26} height={26} />,

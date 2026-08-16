@@ -4,6 +4,8 @@ import type { SupportedLanguage } from './messages';
 export const adminKnowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>> = {
   'zh-TW': {
     'sidebar.adminKnowledgeReports': '知識審核',
+    'home.adminKnowledgeReports': '知識回報審核',
+    'home.adminKnowledgeReportsDesc': '審核待處理的知識回報',
     'adminKnowledgeReports.checkingAccess': '確認權限中…',
     'adminKnowledgeReports.avatar': '審',
     'adminKnowledgeReports.eyebrow': '管理員審核',
@@ -68,6 +70,8 @@ export const adminKnowledgeFeatureMessages: Record<SupportedLanguage, Record<str
   },
   en: {
     'sidebar.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReportsDesc': 'Review pending knowledge reports',
     'adminKnowledgeReports.checkingAccess': 'Checking access…',
     'adminKnowledgeReports.avatar': 'RV',
     'adminKnowledgeReports.eyebrow': 'Admin review',
@@ -132,6 +136,8 @@ export const adminKnowledgeFeatureMessages: Record<SupportedLanguage, Record<str
   },
   id: {
     'sidebar.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReportsDesc': 'Review pending knowledge reports',
     'adminKnowledgeReports.checkingAccess': 'Checking access…',
     'adminKnowledgeReports.avatar': 'RV',
     'adminKnowledgeReports.eyebrow': 'Admin review',
@@ -196,6 +202,8 @@ export const adminKnowledgeFeatureMessages: Record<SupportedLanguage, Record<str
   },
   vi: {
     'sidebar.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReportsDesc': 'Review pending knowledge reports',
     'adminKnowledgeReports.checkingAccess': 'Checking access…',
     'adminKnowledgeReports.avatar': 'RV',
     'adminKnowledgeReports.eyebrow': 'Admin review',
@@ -260,6 +268,8 @@ export const adminKnowledgeFeatureMessages: Record<SupportedLanguage, Record<str
   },
   th: {
     'sidebar.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReportsDesc': 'Review pending knowledge reports',
     'adminKnowledgeReports.checkingAccess': 'Checking access…',
     'adminKnowledgeReports.avatar': 'RV',
     'adminKnowledgeReports.eyebrow': 'Admin review',
@@ -324,6 +334,8 @@ export const adminKnowledgeFeatureMessages: Record<SupportedLanguage, Record<str
   },
   ja: {
     'sidebar.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReports': 'Knowledge Review',
+    'home.adminKnowledgeReportsDesc': 'Review pending knowledge reports',
     'adminKnowledgeReports.checkingAccess': 'Checking access…',
     'adminKnowledgeReports.avatar': 'RV',
     'adminKnowledgeReports.eyebrow': 'Admin review',
