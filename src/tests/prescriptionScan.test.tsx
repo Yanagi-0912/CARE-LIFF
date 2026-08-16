@@ -8,6 +8,7 @@ import * as settingsApi from '../api/settingsApi';
 import MedicationsPage from '../pages/Medications';
 import { PrescriptionScanDialog } from '../pages/Medications/PrescriptionScanDialog';
 import { PrescriptionDraftForm } from '../pages/Medications/PrescriptionDraftForm';
+import { DrugCandidateSection } from '../pages/Medications/DrugCandidateSection';
 import { ReminderCard } from '../pages/Medications/ReminderCard';
 import type { DrugCandidate, PrescriptionDraft, RecognizedDrug } from '../types/prescription';
 import type { Medication, MedicationReminder } from '../types/medication';
@@ -1190,12 +1191,88 @@ describe('PrescriptionDraftForm：挑選必須隨篩選失效而清空（C1 回�
     );
   }
 
+  function mockCommitOk() {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+  }
+
+  /** 12 個候選（白／粉紅 × 圓／橢圓，各 3 個），足以走完「問顏色 → 問形狀
+   *  → 挑選」三步，也超過一次呈現的上限 5。 */
+  function twelveCandidates(): DrugCandidate[] {
+    return buildCandidates([
+      { color: '白色', shape: '圓形', count: 3, prefix: 'WR' },
+      { color: '白色', shape: '橢圓形', count: 3, prefix: 'WO' },
+      { color: '粉紅色', shape: '圓形', count: 3, prefix: 'PR' },
+      { color: '粉紅色', shape: '橢圓形', count: 3, prefix: 'PO' },
+    ]);
+  }
+
+  function renderWithCandidates(candidates: DrugCandidate[]) {
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ name: '感冒液', license_number: null, candidates })],
+        multiple_bags_suspected: false,
+      },
+    });
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+  }
+
+  /** 走完「白色 → 圓形」兩步收窄，並挑選 WR-0。 */
+  async function narrowAndPickWR0() {
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+    fireEvent.click(await screen.findByRole('button', { name: '圓形' }));
+    const card = (await screen.findByText('WR候選0')).closest('button')!;
+    fireEvent.click(card);
+    // 先確認挑選真的成立了，否則後面的「已清空」斷言會因為根本沒挑到而
+    // 假性通過——這個測試要驗的是「清空」，不是「沒挑過」。
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+  }
+
+  async function submitAndReadLicense() {
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    return payload.drugs[0]!.license_number;
+  }
+
+  // ── 逐支 handler 的隔離測試 ────────────────────────────────────────
+  //
+  // 這個測試的形狀是刻意的：**挑選 → 按下「重新選擇顏色／形狀」→ 立刻
+  // 送出**，中間不做任何其他互動。先前的版本是「重新篩選之後再略過才送
+  // 出」，兩個操作都會清空，於是後一個會把前一個的缺陷蓋掉——把
+  // `resetFilters` 裡的 `onSelect(null)` 整行刪掉，整個套件仍然全綠，
+  // 等於這組回歸測試對它要守的那一行沒有任何約束力。送出本身不會清空
+  // 選取（它只讀值），所以緊接著讀 payload 是唯一能在「不引入第二個清空
+  // 動作」的前提下觀察到選取狀態的方式。
+  it('挑選候選後按「重新選擇顏色／形狀」，緊接著送出：證號必須已清空（C1：resetFilters）', async () => {
+    mockCommitOk();
+    renderWithCandidates(twelveCandidates());
+
+    await narrowAndPickWR0();
+
+    fireEvent.click(await screen.findByRole('button', { name: '重新選擇顏色／形狀' }));
+    // 中間不做任何其他互動，直接送出。
+    expect(await submitAndReadLicense()).toBeUndefined();
+  });
+
   // 候選是在某個顏色／形狀篩選之下才呈現出來的——使用者在那個篩選底下
   // 挑了一張，接著又放棄那個篩選（重新篩選或直接略過），代表他挑的那張
   // 已經不再是畫面上任何看得到的東西。若送出時仍帶著那個舊證號，等於
   // 「螢幕說不會顯示照片，實際卻用一個使用者已經放棄的篩選底下選出的
   // 證號建立藥品、掛上照片」——這正是本能力要避免的錯誤（貼錯照片比不
   // 貼危險）。
+  //
+  // 這一個是端到端的情境測試（含畫面文案），不是上面那兩支的替代品：它
+  // 連續做了兩個會清空的操作，因此無法單獨守住其中任何一支 handler。
   it('在篩選下挑選候選後，重新篩選、略過後送出，證號不得殘留（重新篩選 → 略過）', async () => {
     vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
       medication_ids: ['m-1'],
@@ -1252,6 +1329,17 @@ describe('PrescriptionDraftForm：挑選必須隨篩選失效而清空（C1 回�
 
   // 對照情境：挑選後不放棄整個篩選，而是直接改選另一個顏色——舊的挑選一樣
   // 是在已經不存在的候選集合下選出的，同樣必須被清空。
+  //
+  // 注意這一支**無法**單獨守住 `pickColor`／`pickShape` 裡的
+  // `onSelect(null)`：要回到「問顏色」必須先按「重新選擇顏色／形狀」，而
+  // 那一步已經清空過。實際上以目前的介面，帶著一個既有挑選去觸發
+  // `pickColor`／`pickShape` 是**不可達的**——挑選只能在 'pick' 階段做出，
+  // 而 'pick' 階段唯一能改變篩選前提的按鈕就是「重新選擇顏色／形狀」
+  // （`returnToNarrowing` 同理，只能從「已略過」畫面進入，而略過本身就
+  // 清空過）。那兩支裡的 `onSelect(null)` 因此是防禦性的：它守的是日後
+  // 有人讓「不經重新篩選就換屬性值」變得可達時不要出錯，黑箱測試無法
+  // 觀察到它被刪掉。這件事寫在這裡，是為了不讓後續的人誤以為這一支測試
+  // 涵蓋了那兩支 handler。
   it('挑選候選後改選另一個屬性值時，先前的挑選必須清空', async () => {
     vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
       medication_ids: ['m-1'],
@@ -1296,6 +1384,103 @@ describe('PrescriptionDraftForm：挑選必須隨篩選失效而清空（C1 回�
     await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
     const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
     expect(payload.drugs[0]!.license_number).toBeUndefined();
+  });
+});
+
+// C1 規則本身是「**每一個**會改變篩選前提的操作都要清空挑選」，但整份表單
+// 走得到的只有 `resetFilters` 那一條：挑選只能在 'pick' 階段做出，而該階段
+// 唯一能改變篩選前提的按鈕就是「重新選擇顏色／形狀」；問顏色／問形狀的
+// 畫面與「已略過」的畫面根本不呈現候選清單，所以帶著既有挑選去按
+// 「看不出來，略過」「白色」「圓形」「改用顏色／形狀重新篩選」在目前的
+// 介面上不可達。它們裡面的 `onSelect(null)` 是防禦性的——守的是日後有人
+// 讓那些路徑變得可達（例如在 'pick' 階段也放一顆略過按鈕）時不要出錯。
+//
+// 防禦性不等於不用測：黑箱走不到，就直接在元件層把每一支釘住，否則刪掉
+// 任何一行都沒有測試會紅，那條規則就只剩註解。這裡用受控的
+// `selectedLicense`（父層不隨 onSelect 改變）模擬「挑選仍在」的前提，
+// 逐一觸發每個操作並斷言它有把選取清掉。
+describe('DrugCandidateSection：每一個改變篩選前提的操作都要清空挑選（C1 逐支釘住）', () => {
+  function renderSection(onSelect: (license: string | null) => void) {
+    const candidates = buildCandidateSet();
+    renderWithToaster(
+      <DrugCandidateSection
+        drug={makeDrug({ name: '感冒液', license_number: null, candidates })}
+        nameEdited={false}
+        selectedLicense="WR-0"
+        onSelect={onSelect}
+      />,
+    );
+  }
+
+  function buildCandidateSet(): DrugCandidate[] {
+    return [
+      { color: '白色', shape: '圓形', count: 3, prefix: 'WR' },
+      { color: '白色', shape: '橢圓形', count: 3, prefix: 'WO' },
+      { color: '粉紅色', shape: '圓形', count: 3, prefix: 'PR' },
+      { color: '粉紅色', shape: '橢圓形', count: 3, prefix: 'PO' },
+    ].flatMap(({ color, shape, count, prefix }) =>
+      Array.from({ length: count }, (_, i) =>
+        makeCandidate({
+          license_number: `${prefix}-${i}`,
+          name_zh: `${prefix}候選${i}`,
+          color,
+          shape,
+        }),
+      ),
+    );
+  }
+
+  it('挑一個顏色（pickColor）會清空既有挑選', async () => {
+    const onSelect = vi.fn();
+    renderSection(onSelect);
+
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it('挑一個形狀（pickShape）會清空既有挑選', async () => {
+    const onSelect = vi.fn();
+    renderSection(onSelect);
+
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+    // 只驗這一步：把上一步的呼叫清掉，接下來的斷言才真的是 pickShape 的。
+    onSelect.mockClear();
+    fireEvent.click(await screen.findByRole('button', { name: '圓形' }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it('略過收窄（skipNarrowing）會清空既有挑選', async () => {
+    const onSelect = vi.fn();
+    renderSection(onSelect);
+
+    fireEvent.click(await screen.findByRole('button', { name: '看不出來，略過' }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it('重新選擇顏色／形狀（resetFilters）會清空既有挑選', async () => {
+    const onSelect = vi.fn();
+    renderSection(onSelect);
+
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+    fireEvent.click(await screen.findByRole('button', { name: '圓形' }));
+    onSelect.mockClear();
+    fireEvent.click(await screen.findByRole('button', { name: '重新選擇顏色／形狀' }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it('從已略過回到收窄流程（returnToNarrowing）會清空既有挑選', async () => {
+    const onSelect = vi.fn();
+    renderSection(onSelect);
+
+    fireEvent.click(await screen.findByRole('button', { name: '看不出來，略過' }));
+    onSelect.mockClear();
+    fireEvent.click(await screen.findByRole('button', { name: '改用顏色／形狀重新篩選' }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
   });
 });
 

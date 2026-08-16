@@ -146,6 +146,32 @@ describe('narrowCandidates（純邏輯：候選過多時以外觀屬性漸進收
     expect(result).toEqual({ stage: 'pick', candidates: [...round, ...unknownShape] });
   });
 
+  // C2 的另一半：原始資料裡有 17 筆藥證的顏色欄位是 ';;;' 這種「只有
+  // 分隔符」的字串——非空但拆不出任何值。這種候選同樣是「沒記錄顏色」，
+  // 必須跟空字串一樣被當成未知而保留；把它當成「不符合」會讓這 17 筆在
+  // 使用者一回答顏色時整批消失，而**它們全部都有官方照片**，等於在最需要
+  // 照片的地方把候選悄悄刪掉。同時要確認它不會被誤列成一個可點的顏色選項。
+  it('顏色欄位只有分隔符（;;;）的候選視為未知而保留，也不會變成一個顏色選項（C2）', () => {
+    const white = many(2, '白色', '圓形', 'W');
+    const delimiterOnly = [
+      candidate({ license_number: 'D1', color: ';;;', shape: '圓形' }),
+      candidate({ license_number: 'D2', color: ';;;;;;', shape: '圓形' }),
+    ];
+    const pink = many(3, '粉紅色', '圓形', 'P');
+    const candidates = [...white, ...delimiterOnly, ...pink]; // 7 筆，超過上限 5
+
+    // ';;;' 拆不出值，不得出現在使用者可點的顏色選項裡。
+    const askResult = narrowCandidates(candidates, { color: null, shape: null }, 5);
+    expect(askResult).toEqual({ stage: 'ask-color', options: ['白色', '粉紅色'] });
+
+    const result = narrowCandidates(candidates, { color: '白色', shape: null }, 5);
+    expect(result).toEqual({ stage: 'pick', candidates: [...white, ...delimiterOnly] });
+
+    // 換一個顏色答案，這兩筆一樣要留著——「未知」對每一個答案都成立。
+    const pickedPink = narrowCandidates(candidates, { color: '粉紅色', shape: null }, 5);
+    expect(pickedPink).toEqual({ stage: 'pick', candidates: [...delimiterOnly, ...pink] });
+  });
+
   // C3：食藥署原始資料的混色欄位以 ';;;' 分隔多個值（如「紅;;;白」）。
   it('候選顏色含多值分隔符時，選項各自獨立列出，且任一值相符即算符合（C3）', () => {
     const mixed = candidate({ license_number: 'MIX', color: '紅;;;白', shape: '圓形' });
