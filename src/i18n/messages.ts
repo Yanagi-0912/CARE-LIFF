@@ -202,6 +202,31 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
     'knowledgeReports.sample.note2': '專家正在比對最新醫療指引，預計 1–2 個工作天完成。',
     'knowledgeReports.sample.note3': '審核完成，已更新知識庫內容。',
     'knowledgeReports.sample.resolution3': '已補充服用時機會依菌株與產品標示不同，應優先參考產品與醫療專業建議。',
+    'knowledgeReports.form.open': '我要回報',
+    'knowledgeReports.form.title': '回報知識問題',
+    'knowledgeReports.form.urlLabel': '資料來源網址',
+    // 講規則不列清單：完整清單會隨設定變動，且新增非 gov.tw 網域時只會讓
+    // 這句話比實際保守——那是安全的漂移方向（design.md 決策 7）
+    'knowledgeReports.form.urlHint':
+      '目前只收政府衛教網站（網址含 gov.tw），例如 hpa.gov.tw、cdc.gov.tw。',
+    'knowledgeReports.form.noteLabel': '說明',
+    'knowledgeReports.form.notePlaceholder': '請說明這頁資料哪裡有問題，或知識庫缺了什麼。',
+    'knowledgeReports.form.reasonLabel': '回報原因',
+    'knowledgeReports.form.submit': '送出回報',
+    'knowledgeReports.form.cancel': '取消',
+    'knowledgeReports.form.submitSuccess': '已送出，我們會盡快審核。',
+    // 刻意避免「網址無效」「格式錯誤」：那會把「我們不收這個網站」誤導成
+    // 「你打錯字」，讓貼了正確連結的人反覆重試（design.md 決策 8）
+    'knowledgeReports.form.error.urlNotAllowed': '這個網址目前無法收錄',
+    'knowledgeReports.form.error.urlDomainNotAllowed': '這個網站我們不收',
+    'knowledgeReports.form.error.urlInvalid': '網址不完整或含有不該出現的符號',
+    'knowledgeReports.form.error.urlRemedy':
+      '如果這是政府網站，請確認網址有沒有多出奇怪的符號，並重新複製一次完整網址。',
+    'knowledgeReports.form.error.quotaExceeded':
+      '今天的回報次數已達上限（{{limit}} 次），明天再試。已送出的回報仍在審核中。',
+    'knowledgeReports.form.error.generic': '送出失敗，請稍後再試。',
+    'knowledgeReports.detail.sourceUrls': '我提供的網址',
+    'knowledgeReports.detail.userNote': '我的說明',
   },
   en: {
     'sidebar.knowledgeReports': 'Knowledge Reports',
@@ -263,6 +288,29 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
     'knowledgeReports.sample.note2': 'An expert is comparing the latest medical guidance. Expected in 1–2 business days.',
     'knowledgeReports.sample.note3': 'Review complete. The knowledge base has been updated.',
     'knowledgeReports.sample.resolution3': 'Timing may vary by strain and product. Follow the product label and professional medical advice.',
+    'knowledgeReports.form.open': 'Report an issue',
+    'knowledgeReports.form.title': 'Report a knowledge issue',
+    'knowledgeReports.form.urlLabel': 'Source URL',
+    'knowledgeReports.form.urlHint':
+      'We currently accept government health education sites only (URLs containing gov.tw), such as hpa.gov.tw and cdc.gov.tw.',
+    'knowledgeReports.form.noteLabel': 'Description',
+    'knowledgeReports.form.notePlaceholder':
+      'Tell us what is wrong on this page, or what is missing from the knowledge base.',
+    'knowledgeReports.form.reasonLabel': 'Reason',
+    'knowledgeReports.form.submit': 'Submit report',
+    'knowledgeReports.form.cancel': 'Cancel',
+    'knowledgeReports.form.submitSuccess': 'Submitted. We will review it soon.',
+    'knowledgeReports.form.error.urlNotAllowed': 'This URL cannot be accepted right now',
+    'knowledgeReports.form.error.urlDomainNotAllowed': 'we do not accept this site',
+    'knowledgeReports.form.error.urlInvalid':
+      'the URL is incomplete or contains characters that should not be there',
+    'knowledgeReports.form.error.urlRemedy':
+      'If this is a government site, check the URL for stray characters and copy the full address again.',
+    'knowledgeReports.form.error.quotaExceeded':
+      'You have reached today’s limit of {{limit}} reports. Please try again tomorrow. Reports you already sent are still under review.',
+    'knowledgeReports.form.error.generic': 'Could not submit. Please try again later.',
+    'knowledgeReports.detail.sourceUrls': 'URL you provided',
+    'knowledgeReports.detail.userNote': 'Your description',
   },
   id: {
     'sidebar.knowledgeReports': 'Laporan Pengetahuan',
@@ -324,6 +372,29 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
     'knowledgeReports.sample.note2': 'Pakar sedang membandingkan panduan medis terbaru. Perkiraan 1–2 hari kerja.',
     'knowledgeReports.sample.note3': 'Tinjauan selesai dan basis pengetahuan telah diperbarui.',
     'knowledgeReports.sample.resolution3': 'Waktu konsumsi bergantung pada strain dan produk. Ikuti label dan saran tenaga medis.',
+    'knowledgeReports.form.open': 'Laporkan masalah',
+    'knowledgeReports.form.title': 'Laporkan masalah pengetahuan',
+    'knowledgeReports.form.urlLabel': 'URL sumber',
+    'knowledgeReports.form.urlHint':
+      'Saat ini kami hanya menerima situs edukasi kesehatan pemerintah (URL mengandung gov.tw), misalnya hpa.gov.tw dan cdc.gov.tw.',
+    'knowledgeReports.form.noteLabel': 'Keterangan',
+    'knowledgeReports.form.notePlaceholder':
+      'Jelaskan apa yang salah pada halaman ini, atau apa yang belum ada di basis pengetahuan.',
+    'knowledgeReports.form.reasonLabel': 'Alasan laporan',
+    'knowledgeReports.form.submit': 'Kirim laporan',
+    'knowledgeReports.form.cancel': 'Batal',
+    'knowledgeReports.form.submitSuccess': 'Terkirim. Kami akan meninjaunya segera.',
+    'knowledgeReports.form.error.urlNotAllowed': 'URL ini belum dapat diterima',
+    'knowledgeReports.form.error.urlDomainNotAllowed': 'kami tidak menerima situs ini',
+    'knowledgeReports.form.error.urlInvalid':
+      'URL tidak lengkap atau mengandung karakter yang tidak seharusnya ada',
+    'knowledgeReports.form.error.urlRemedy':
+      'Jika ini situs pemerintah, periksa apakah ada karakter aneh pada URL, lalu salin ulang alamat lengkapnya.',
+    'knowledgeReports.form.error.quotaExceeded':
+      'Anda telah mencapai batas {{limit}} laporan hari ini. Coba lagi besok. Laporan yang sudah dikirim tetap dalam peninjauan.',
+    'knowledgeReports.form.error.generic': 'Gagal mengirim. Silakan coba lagi nanti.',
+    'knowledgeReports.detail.sourceUrls': 'URL yang Anda berikan',
+    'knowledgeReports.detail.userNote': 'Keterangan Anda',
   },
   vi: {
     'sidebar.knowledgeReports': 'Báo cáo kiến thức',
@@ -385,6 +456,29 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
     'knowledgeReports.sample.note2': 'Chuyên gia đang đối chiếu hướng dẫn y tế mới nhất, dự kiến 1–2 ngày làm việc.',
     'knowledgeReports.sample.note3': 'Đã kiểm duyệt xong và cập nhật cơ sở kiến thức.',
     'knowledgeReports.sample.resolution3': 'Thời điểm sử dụng tùy thuộc chủng men và sản phẩm. Hãy ưu tiên nhãn sản phẩm và tư vấn y tế.',
+    'knowledgeReports.form.open': 'Gửi phản ánh',
+    'knowledgeReports.form.title': 'Phản ánh vấn đề kiến thức',
+    'knowledgeReports.form.urlLabel': 'Đường dẫn nguồn',
+    'knowledgeReports.form.urlHint':
+      'Hiện chúng tôi chỉ nhận các trang giáo dục sức khỏe của chính phủ (đường dẫn có gov.tw), ví dụ hpa.gov.tw và cdc.gov.tw.',
+    'knowledgeReports.form.noteLabel': 'Mô tả',
+    'knowledgeReports.form.notePlaceholder':
+      'Hãy cho biết trang này có vấn đề gì, hoặc kho kiến thức còn thiếu điều gì.',
+    'knowledgeReports.form.reasonLabel': 'Lý do phản ánh',
+    'knowledgeReports.form.submit': 'Gửi phản ánh',
+    'knowledgeReports.form.cancel': 'Hủy',
+    'knowledgeReports.form.submitSuccess': 'Đã gửi. Chúng tôi sẽ xem xét sớm.',
+    'knowledgeReports.form.error.urlNotAllowed': 'Hiện chưa thể tiếp nhận đường dẫn này',
+    'knowledgeReports.form.error.urlDomainNotAllowed': 'chúng tôi không nhận trang này',
+    'knowledgeReports.form.error.urlInvalid':
+      'đường dẫn không đầy đủ hoặc chứa ký tự không hợp lệ',
+    'knowledgeReports.form.error.urlRemedy':
+      'Nếu đây là trang của chính phủ, hãy kiểm tra xem đường dẫn có ký tự lạ không và sao chép lại địa chỉ đầy đủ.',
+    'knowledgeReports.form.error.quotaExceeded':
+      'Bạn đã đạt giới hạn {{limit}} phản ánh hôm nay. Hãy thử lại vào ngày mai. Các phản ánh đã gửi vẫn đang được xem xét.',
+    'knowledgeReports.form.error.generic': 'Gửi không thành công. Vui lòng thử lại sau.',
+    'knowledgeReports.detail.sourceUrls': 'Đường dẫn bạn cung cấp',
+    'knowledgeReports.detail.userNote': 'Mô tả của bạn',
   },
   th: {
     'sidebar.knowledgeReports': 'รายงานความรู้',
@@ -446,6 +540,28 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
     'knowledgeReports.sample.note2': 'ผู้เชี่ยวชาญกำลังเทียบแนวทางล่าสุด คาดว่าใช้เวลา 1–2 วันทำการ',
     'knowledgeReports.sample.note3': 'ตรวจสอบเสร็จแล้วและอัปเดตฐานความรู้เรียบร้อย',
     'knowledgeReports.sample.resolution3': 'ช่วงเวลารับประทานขึ้นอยู่กับสายพันธุ์และผลิตภัณฑ์ โปรดทำตามฉลากและคำแนะนำทางการแพทย์',
+    'knowledgeReports.form.open': 'แจ้งปัญหา',
+    'knowledgeReports.form.title': 'แจ้งปัญหาข้อมูลความรู้',
+    'knowledgeReports.form.urlLabel': 'ลิงก์แหล่งข้อมูล',
+    'knowledgeReports.form.urlHint':
+      'ขณะนี้เรารับเฉพาะเว็บไซต์ให้ความรู้ด้านสุขภาพของภาครัฐ (ลิงก์ที่มี gov.tw) เช่น hpa.gov.tw และ cdc.gov.tw',
+    'knowledgeReports.form.noteLabel': 'คำอธิบาย',
+    'knowledgeReports.form.notePlaceholder':
+      'โปรดอธิบายว่าหน้านี้มีปัญหาอะไร หรือคลังความรู้ยังขาดข้อมูลใด',
+    'knowledgeReports.form.reasonLabel': 'เหตุผลในการแจ้ง',
+    'knowledgeReports.form.submit': 'ส่งรายงาน',
+    'knowledgeReports.form.cancel': 'ยกเลิก',
+    'knowledgeReports.form.submitSuccess': 'ส่งแล้ว เราจะตรวจสอบโดยเร็ว',
+    'knowledgeReports.form.error.urlNotAllowed': 'ยังไม่สามารถรับลิงก์นี้ได้',
+    'knowledgeReports.form.error.urlDomainNotAllowed': 'เราไม่รับเว็บไซต์นี้',
+    'knowledgeReports.form.error.urlInvalid': 'ลิงก์ไม่สมบูรณ์หรือมีอักขระที่ไม่ควรมี',
+    'knowledgeReports.form.error.urlRemedy':
+      'หากเป็นเว็บไซต์ของภาครัฐ โปรดตรวจสอบว่ามีอักขระแปลกปลอมในลิงก์หรือไม่ แล้วคัดลอกที่อยู่แบบเต็มอีกครั้ง',
+    'knowledgeReports.form.error.quotaExceeded':
+      'วันนี้คุณแจ้งครบ {{limit}} ครั้งแล้ว โปรดลองใหม่พรุ่งนี้ รายงานที่ส่งไปแล้วยังอยู่ระหว่างการตรวจสอบ',
+    'knowledgeReports.form.error.generic': 'ส่งไม่สำเร็จ โปรดลองใหม่ภายหลัง',
+    'knowledgeReports.detail.sourceUrls': 'ลิงก์ที่คุณให้ไว้',
+    'knowledgeReports.detail.userNote': 'คำอธิบายของคุณ',
   },
   ja: {
     'sidebar.knowledgeReports': '知識レポート',
@@ -507,6 +623,28 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
     'knowledgeReports.sample.note2': '専門家が最新の医療指針と照合中です。1〜2営業日を予定しています。',
     'knowledgeReports.sample.note3': '確認が完了し、知識ベースを更新しました。',
     'knowledgeReports.sample.resolution3': '摂取時期は菌株や製品により異なります。製品表示と医療専門家の助言を優先してください。',
+    'knowledgeReports.form.open': '報告する',
+    'knowledgeReports.form.title': '知識の問題を報告',
+    'knowledgeReports.form.urlLabel': '情報源の URL',
+    'knowledgeReports.form.urlHint':
+      '現在は政府の健康教育サイト（URL に gov.tw を含むもの）のみ受け付けています。例：hpa.gov.tw、cdc.gov.tw。',
+    'knowledgeReports.form.noteLabel': '説明',
+    'knowledgeReports.form.notePlaceholder':
+      'このページのどこに問題があるか、または知識ベースに何が不足しているかをご記入ください。',
+    'knowledgeReports.form.reasonLabel': '報告の理由',
+    'knowledgeReports.form.submit': '報告を送信',
+    'knowledgeReports.form.cancel': 'キャンセル',
+    'knowledgeReports.form.submitSuccess': '送信しました。速やかに確認いたします。',
+    'knowledgeReports.form.error.urlNotAllowed': 'この URL は現在受け付けられません',
+    'knowledgeReports.form.error.urlDomainNotAllowed': 'このサイトは受け付けていません',
+    'knowledgeReports.form.error.urlInvalid': 'URL が不完全か、不正な文字が含まれています',
+    'knowledgeReports.form.error.urlRemedy':
+      '政府サイトの場合は、URL に余分な文字がないか確認し、完全なアドレスをもう一度コピーしてください。',
+    'knowledgeReports.form.error.quotaExceeded':
+      '本日の報告回数が上限（{{limit}} 回）に達しました。明日またお試しください。送信済みの報告は審査中です。',
+    'knowledgeReports.form.error.generic': '送信できませんでした。しばらくしてから再度お試しください。',
+    'knowledgeReports.detail.sourceUrls': '提供した URL',
+    'knowledgeReports.detail.userNote': 'あなたの説明',
   },
 };
 
