@@ -74,8 +74,9 @@ interface DrugFormValue {
    * OTHER 的時段預設就是空的，沒有勾選任何時段可能只是「還沒選」，不是
    * 「決定了不要」；這個欄位讓兩者不再混淆（見 toCommitDrug）。 */
   noReminder: boolean;
-  /** 使用者在候選清單中挑定的藥證字號；null 代表未挑選（唯一命中時預設帶入
-   * 該筆候選的證號，不需要使用者動作）。藥名一經編輯就與外觀資訊一起失效，
+  /** 使用者在候選清單中挑定的藥證字號；null 代表未挑選（**後端已釘定證號**時
+   * 預設帶入那個證號，不需要使用者動作；候選只有一筆但證號留空時刻意**不**
+   * 預設帶入，要使用者自己確認）。藥名一經編輯就與外觀資訊一起失效，
    * 但這裡刻意不清空這個欄位本身——nameEdited 只在送出當下（toCommitDrug）
    * 與畫面呈現（DrugCandidateSection）兩處生效，若使用者把名字改回原樣，
    * 原本挑過的證號要能原樣復原，不必重新挑一次。 */
@@ -188,8 +189,9 @@ function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugI
   return {
     name: row.name,
     generic_name: original.generic_name ?? undefined,
-    // 未編輯藥名時送出使用者在候選清單中挑定的證號（唯一命中時預設就是
-    // 該筆候選，不需要使用者動作）；未挑選則 row.licenseNumber 為 null，
+    // 未編輯藥名時送出使用者在候選清單中挑定的證號（後端已釘定證號時預設
+    // 就是那個證號，不需要使用者動作；候選只有一筆但證號留空時不預設，仍
+    // 要使用者自己確認）；未挑選則 row.licenseNumber 為 null，
     // 送出 undefined，後端以空證號建立，未挑選不得阻擋提交（spec「使用者
     // 為多候選藥品挑定藥證」）。藥名一經編輯，不論 row.licenseNumber 裡
     // 存了什麼，一律送出 undefined——沿用改名前挑的證號等於把新藥名和
@@ -267,9 +269,13 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
         slots: resolveDefaultSlots(drug),
         durationDays: drug.duration_days ?? null,
         noReminder: false,
-        // 唯一命中時後端已經把證號寫進 license_number，預先帶入等於「預設
-        // 選好了」，使用者不需要多做一次選擇；多候選且尚未確定的藥品這裡
+        // 後端唯一性判定成立時已經把證號寫進 license_number，預先帶入等於
+        // 「預設選好了」，使用者不需要多做一次選擇；證號尚未確定的藥品這裡
         // 會是 null，畫面上呈現「未挑選」的狀態，直到使用者從候選中挑一個。
+        // 這個 null 的主要來路**不是**「候選很多張」：反向含容命中算進唯一性
+        // 判定卻不列入候選，所以最常見的是「候選只有一筆、證號仍留空」（實測
+        // 全庫 56,886 個中文品名有 27,058 個、47.6%）。那一筆一樣不預先帶入
+        // ——後端拒絕釘定的東西，畫面不能替它決定（見 DrugCandidateSection）。
         licenseNumber: drug.license_number ?? null,
       })),
     },
