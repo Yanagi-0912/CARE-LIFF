@@ -11,21 +11,15 @@ export type ConsultationMessage = {
 
 export type ConsultationViewType = 'summary' | 'raw'
 
+//對應後端的 ConsultationViewResponse。
+//欄位依 view_type 而定（summary 版給摘要、raw 版給原始訊息），故皆為 optional。
+
 export type ConsultationViewResponse = {
+    line_id?: string
     view_type?: ConsultationViewType
     summary?: string
-    consultation_summary?: string
-    content?: string
+    language?: string
     messages?: ConsultationMessage[]
-    conversation?: ConsultationMessage[]
-    records?: ConsultationMessage[]
-    data?: {
-        summary?: string
-        consultation_summary?: string
-        messages?: ConsultationMessage[]
-        conversation?: ConsultationMessage[]
-        records?: ConsultationMessage[]
-    }
 }
 
 export type ConsultationSummary = {
@@ -35,9 +29,4 @@ export type ConsultationSummary = {
     created_at?: string
     target_date?: string
     [key: string]: unknown
-}
-
-export type ConsultationSummarizePayload = {
-    target_date?: string
-    force?: boolean
 }

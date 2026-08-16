@@ -24,9 +24,11 @@ vi.mock('@line/liff', () => ({
         isLoggedIn: vi.fn(() => true),
     },
 }));
-//避免測試中因 useNavigate 導致錯誤，直接 mock 掉 useNavigate
-vi.mock('react-router-dom', () => ({
-    ...vi.importActual('react-router-dom'),
+// 避免測試中因 useNavigate 導致錯誤，只把 useNavigate 換掉、其餘照舊。
+// factory 必須是 async 並 await importActual——它回傳的是 Promise，
+// 直接展開會得到空物件，等於把 react-router-dom 的其他匯出全部變成 undefined。
+vi.mock('react-router-dom', async () => ({
+    ...(await vi.importActual<typeof import('react-router-dom')>('react-router-dom')),
     useNavigate: () => vi.fn(), // 讓 useNavigate 直接回傳一個假的空函式
 }));
 function setupApiMocks(profile: HealthProfile | null = null) {
@@ -161,7 +163,8 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         await waitFor(() => {
             expect(upsertMock).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    chronic_history: '高血壓、糖尿病',
+                    chronic_diseases: ['hypertension', 'diabetes'],
+                    chronic_custom: [],
                     height: 175,  // 驗證有轉型為 Number
                     weight: 70,
                     age: 30,
@@ -172,58 +175,185 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     });
 
     // ==========================================
-    // 案例 4：慢性病史組合邏輯 - 勾選「其他」並填寫內容
+    // 案例 4：自訂慢性病 —— 輸入後按「新增」變成標籤
     // ==========================================
-    it('勾選「其他」並填寫內容 → 送出後包含該自訂文字', async () => {
+    it('輸入自訂病名並按「新增」→ 變成標籤，送出後包含該病名', async () => {
         setupApiMocks();
         const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
         renderWithToaster(<PersonalHealthPage />);
         await reachHealthHistoryStep('女');
 
-        // 勾選一般項目「氣喘」與「其他」
         const user = userEvent.setup();
         await user.click(await screen.findByRole('checkbox', { name: /氣喘/ }));
-        await user.click(await screen.findByRole('checkbox', { name: /其他/ }));
 
-        // 填寫自訂內容並點擊打勾保存
-        const otherTextInput = screen.getByPlaceholderText('請輸入其他慢性病');
-        fireEvent.change(otherTextInput, { target: { value: '胃食道逆流' } });
-        fireEvent.click(screen.getByRole('button', { name: '儲存其他慢性病' }));
-        expect(screen.getByText('已儲存')).toBeInTheDocument();
+        // 自訂區永遠在，不必先勾一個「其他」才看得到輸入框
+        fireEvent.change(screen.getByPlaceholderText('請輸入其他慢性病'), {
+            target: { value: '胃食道逆流' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '新增' }));
 
-        // 送出表單
+        // 變成一張可刪的標籤，輸入框清空讓他能接著打下一個
+        expect(screen.getByRole('button', { name: '移除 胃食道逆流' })).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('請輸入其他慢性病')).toHaveValue('');
+
         fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
 
         await waitFor(() => {
             expect(upsertMock).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    chronic_history: '氣喘、胃食道逆流'
-                })
+                    chronic_diseases: ['asthma'],
+                    chronic_custom: ['胃食道逆流'],
+                }),
+            );
+        });
+    });
+
+    it('多個自訂病名各自獨立，刪掉其中一個不影響另一個', async () => {
+        setupApiMocks();
+        const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
+        renderWithToaster(<PersonalHealthPage />);
+        await reachHealthHistoryStep('女');
+
+        const input = await screen.findByPlaceholderText('請輸入其他慢性病');
+        for (const name of ['腦溢血', '痛風']) {
+            fireEvent.change(input, { target: { value: name } });
+            fireEvent.click(screen.getByRole('button', { name: '新增' }));
+        }
+
+        // 只刪掉腦溢血，痛風要留著
+        fireEvent.click(screen.getByRole('button', { name: '移除 腦溢血' }));
+        expect(screen.queryByRole('button', { name: '移除 腦溢血' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '移除 痛風' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
+
+        await waitFor(() => {
+            expect(upsertMock).toHaveBeenCalledWith(
+                expect.objectContaining({ chronic_diseases: [], chronic_custom: ['痛風'] }),
+            );
+        });
+    });
+
+    // 舊流程要先按打勾「確認」，沒按就整次儲存被擋下——使用者看到的是
+    // 「我改了、按了儲存，重開卻還是舊資料」，比資料遺失更難察覺。
+    // 現在按「新增」只是方便，直接按儲存也要能存進去。
+    it('打了字沒按「新增」就儲存 → 自動補上，不會丟掉也不會擋下', async () => {
+        setupApiMocks();
+        const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
+        renderWithToaster(<PersonalHealthPage />);
+        await reachHealthHistoryStep('女');
+
+        fireEvent.change(await screen.findByPlaceholderText('請輸入其他慢性病'), {
+            target: { value: '腦溢血' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
+
+        await waitFor(() => {
+            expect(upsertMock).toHaveBeenCalledWith(
+                expect.objectContaining({ chronic_diseases: [], chronic_custom: ['腦溢血'] }),
+            );
+        });
+    });
+
+    it('自訂病名打到固定選項 → 幫他勾起卡片，不另外開一筆標籤', async () => {
+        setupApiMocks();
+        const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
+        renderWithToaster(<PersonalHealthPage />);
+        await reachHealthHistoryStep('女');
+
+        fireEvent.change(await screen.findByPlaceholderText('請輸入其他慢性病'), {
+            target: { value: '高血壓' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '新增' }));
+
+        expect(screen.getByRole('checkbox', { name: /高血壓/ })).toBeChecked();
+        expect(screen.queryByRole('button', { name: '移除 高血壓' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
+
+        await waitFor(() => {
+            expect(upsertMock).toHaveBeenCalledWith(
+                // 打的是中文「高血壓」，存進去的必須是 code
+                expect.objectContaining({
+                    chronic_diseases: ['hypertension'],
+                    chronic_custom: [],
+                }),
+            );
+        });
+    });
+
+    it('重複新增同一個病名 → 不新增並提示', async () => {
+        setupApiMocks();
+        renderWithToaster(<PersonalHealthPage />);
+        await reachHealthHistoryStep('女');
+
+        const input = await screen.findByPlaceholderText('請輸入其他慢性病');
+        const addSameName = () => {
+            fireEvent.change(input, { target: { value: '腦溢血' } });
+            fireEvent.click(screen.getByRole('button', { name: '新增' }));
+        };
+        addSameName();
+        addSameName();
+
+        expect(await screen.findByText('腦溢血 已經在清單裡了')).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: '移除 腦溢血' })).toHaveLength(1);
+    });
+
+    // ==========================================
+    // 案例 4-1：自訂慢性病要能來回（存檔 → 重新載入 → 改得動）
+    // ==========================================
+    it('載入含自訂值的慢性病 → 還原成標籤，且改得動也刪得掉', async () => {
+        setupApiMocks({ chronic_diseases: ['asthma'], chronic_custom: ['胃食道逆流'] });
+        const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
+        renderWithToaster(<PersonalHealthPage />);
+        await reachHealthHistoryStep('女');
+
+        expect(await screen.findByRole('checkbox', { name: /氣喘/ })).toBeChecked();
+        expect(screen.getByRole('button', { name: '移除 胃食道逆流' })).toBeInTheDocument();
+
+        // 下方摘要要列出真正的病名，不是「其他」這兩個字
+        expect(screen.getByText('氣喘、胃食道逆流')).toBeInTheDocument();
+        expect(screen.queryByText('氣喘、其他')).not.toBeInTheDocument();
+
+        // 換掉自訂值：刪舊的、加新的
+        fireEvent.click(screen.getByRole('button', { name: '移除 胃食道逆流' }));
+        fireEvent.change(screen.getByPlaceholderText('請輸入其他慢性病'), {
+            target: { value: '痛風' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '新增' }));
+        fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
+
+        await waitFor(() => {
+            expect(upsertMock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    chronic_diseases: ['asthma'],
+                    chronic_custom: ['痛風'],
+                }),
             );
         });
     });
 
     // ==========================================
-    // 案例 5：慢性病史組合邏輯 - 勾選「其他」但沒填內容
+    // 案例 5：什麼都沒選 → 兩個空陣列
     // ==========================================
-    it('勾選「其他」但沒填內容，也沒勾其他項目 → fallback 存成 "無"', async () => {
+    // 過去這裡存的是「無」。哨兵值混在資料裡，讀的人得先知道「無」不是病名
+    // 才能正確處理；空陣列本身就表示沒有，不需要任何約定。
+    it('沒勾任何選項也沒打自訂病名 → 存成兩個空陣列，不再有「無」', async () => {
         setupApiMocks();
         const upsertMock = vi.mocked(api.upsertPersonalHealthProfile);
         renderWithToaster(<PersonalHealthPage />);
         await reachHealthHistoryStep('男');
 
-        // 只勾選「其他」，但不填寫文字輸入框
-        const user = userEvent.setup();
-        await user.click(await screen.findByRole('checkbox', { name: /其他/ }));
-
-        // 送出表單
-        fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
+        fireEvent.click(await screen.findByRole('button', { name: '儲存紀錄' }));
 
         await waitFor(() => {
             expect(upsertMock).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    chronic_history: '無'
-                })
+                    chronic_diseases: [],
+                    chronic_custom: [],
+                    major_illness_history: '',
+                    surgery_history: '',
+                }),
             );
         });
     });
@@ -239,11 +369,12 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             // 模擬資料庫已有姓名 "王大錘"
             setupApiMocks({
                 name: '王大錘',
-                gender: '男',
+                gender: 'male',
                 height: 180,
                 weight: 75,
                 age: 25,
-                chronic_history: '無'
+                chronic_diseases: [],
+                chronic_custom: [],
             });
 
             // 模擬 LIFF 回傳名稱為 "LINE User"
@@ -272,9 +403,11 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
 
             renderWithToaster(<PersonalHealthPage />);
 
-            // 驗證輸入框與標題最終後退一步（fallback）採用 LIFF 的 "LINE User"
+            // 驗證輸入框與標題最終後退一步（fallback）採用 LIFF 的 "LINE User"。
+            // 姓名是等 LIFF 就緒後才補上的，findBy 只保證輸入框存在、不保證已填值，
+            // 所以斷言要包在 waitFor 裡等它到位。
             const nameInput = await screen.findByLabelText('姓名');
-            expect(nameInput).toHaveValue('LINE User');
+            await waitFor(() => expect(nameInput).toHaveValue('LINE User'));
             expect(screen.getByText('LINE User 的健康資料')).toBeInTheDocument();
         });
     });

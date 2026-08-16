@@ -10,124 +10,25 @@ import {
     type HealthProfile,
 } from '../../api/profileApi';
 import liff from '@line/liff';
-import { CheckIcon } from 'lucide-react';
-import Stepper, { Step } from '../../components/Stepper/Stepper';
+import { useLiff } from '../../hooks/useLiff';
+import Stepper, { Step } from './Stepper';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Field,
-    FieldContent,
-    FieldGroup,
-    FieldLabel,
-    FieldLegend,
-    FieldSet,
-    FieldTitle,
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { FieldGroup } from '@/components/ui/field';
+import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Button } from '@/components/ui/button';
 import { HealthField, HealthInput, HealthTextarea } from './HealthFields';
-
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
-
-/** 後端儲存用性別值（保持中文，與既有資料相容） */
-const GENDER_OPTIONS = [
-    { value: '男', labelKey: 'personalHealth.gender.male' },
-    { value: '女', labelKey: 'personalHealth.gender.female' },
-] as const;
-
-/** 後端儲存用慢性病選項值（保持中文，與既有資料相容） */
-const CHRONIC_OPTIONS = [
-    { value: '高血壓', labelKey: 'personalHealth.chronic.hypertension' },
-    { value: '糖尿病', labelKey: 'personalHealth.chronic.diabetes' },
-    { value: '高血脂', labelKey: 'personalHealth.chronic.hyperlipidemia' },
-    { value: '心臟病', labelKey: 'personalHealth.chronic.heartDisease' },
-    { value: '腎臟病', labelKey: 'personalHealth.chronic.kidneyDisease' },
-    { value: '氣喘', labelKey: 'personalHealth.chronic.asthma' },
-    { value: '慢性阻塞性肺病', labelKey: 'personalHealth.chronic.copd' },
-    { value: '癌症', labelKey: 'personalHealth.chronic.cancer' },
-    { value: '其他', labelKey: 'personalHealth.chronic.other' },
-] as const;
-
-const OTHER_CHRONIC_VALUE = '其他';
-const NONE_VALUE = '無';
-
-interface HealthData {
-    name: string;
-    gender: string;
-    height: string;
-    weight: string;
-    age: string;
-    chronicDisease: string[];
-    majorIllness: string;
-    surgeryHistory: string;
-}
-
-const defaultData: HealthData = {
-    name: '',
-    gender: '',
-    height: '',
-    weight: '',
-    age: '',
-    chronicDisease: [],
-    majorIllness: '',
-    surgeryHistory: '',
-};
-
-const numericFieldMeta = {
-    age: {
-        min: 0,
-        max: 130,
-        labelKey: 'personalHealth.field.age',
-        unitKey: 'personalHealth.unit.age',
-    },
-    height: {
-        min: 30,
-        max: 300,
-        labelKey: 'personalHealth.field.height',
-        unitKey: 'personalHealth.unit.height',
-    },
-    weight: {
-        min: 1,
-        max: 500,
-        labelKey: 'personalHealth.field.weight',
-        unitKey: 'personalHealth.unit.weight',
-    },
-} as const;
-
-type NumericFieldName = keyof typeof numericFieldMeta;
-
-type TranslateFn = (
-    key: string,
-    options?: Record<string, string | number>,
-) => string;
-
-const validateNumericField = (
-    value: string,
-    field: NumericFieldName,
-    t: TranslateFn,
-) => {
-    const meta = numericFieldMeta[field];
-    const label = t(meta.labelKey);
-    if (!value.trim()) {
-        return t('personalHealth.validation.required', { label });
-    }
-
-    const parsedValue = Number(value);
-    if (!Number.isFinite(parsedValue) || parsedValue < meta.min || parsedValue > meta.max) {
-        return t('personalHealth.validation.range', {
-            label,
-            min: meta.min,
-            max: meta.max,
-            unit: t(meta.unitKey),
-        });
-    }
-    return '';
-};
+import { ChronicDiseaseField } from './ChronicDiseaseField';
+import {
+    GENDER_OPTIONS,
+    addCustomChronic,
+    defaultData,
+    validateNumericField,
+    type HealthData,
+    type NumericFieldName,
+} from './healthForm';
 
 /** 三個步驟的開場文案結構相同，抽成小元件避免重複三次 */
 function StepIntro({ step }: { step: 1 | 2 | 3 }) {
@@ -146,9 +47,9 @@ function StepIntro({ step }: { step: 1 | 2 | 3 }) {
 const PersonalHealthPage: React.FC = () => {
     const { t } = useTranslation();
     const [currentStep, setCurrentStep] = useState(1);
-    // 「其他」的補充輸入與已儲存徽章屬於子輸入的 UI 狀態，不是受驗證的表單值
-    const [otherInput, setOtherInput] = useState('');
-    const [otherSaved, setOtherSaved] = useState(false);
+    // 自訂病名的輸入框內容。已新增的病名放在表單的 customChronic 陣列裡，
+    // 這裡只是還沒按下「新增」的那一行字。
+    const [customDraft, setCustomDraft] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     // 數值欄位的驗證沿用既有的 validateNumericField，包成 zod 的 superRefine，
@@ -166,6 +67,7 @@ const PersonalHealthPage: React.FC = () => {
             height: numeric('height'),
             weight: numeric('weight'),
             chronicDisease: z.array(z.string()),
+            customChronic: z.array(z.string()),
             majorIllness: z.string(),
             surgeryHistory: z.string(),
         });
@@ -182,9 +84,6 @@ const PersonalHealthPage: React.FC = () => {
     } = useForm<HealthData>({
         resolver: zodResolver(schema),
         defaultValues: defaultData,
-        // blur 時驗證（取代原本的 handleNumericBlur），改動後即時重驗以清除已修正的錯誤。
-        // 原本有個「3 秒後自動清掉欄位錯誤」的 effect——那是從 toast 自動消失沿用來的，
-        // 對驗證錯誤並不合理（錯誤應在修正後才消失），改由 reValidateMode 處理。
         mode: 'onBlur',
         reValidateMode: 'onChange',
     });
@@ -192,7 +91,7 @@ const PersonalHealthPage: React.FC = () => {
     const form = watch();
     const [userName, setUserName] = useState<string>('');
     const [userAvatar, setUserAvatar] = useState<string>('');
-    const [liffReady, setLiffReady] = useState(false);
+    const { liffReady, liffError } = useLiff();
     const navigate = useNavigate();
 
     const handleLiffProfile = (
@@ -213,23 +112,18 @@ const PersonalHealthPage: React.FC = () => {
             return;
         }
 
-        const chronicParts = data.chronic_history
-            ? data.chronic_history.split('、').filter(Boolean)
-            : [];
-        const chronicDisease =
-            chronicParts.length === 1 && chronicParts[0] === NONE_VALUE
-                ? []
-                : chronicParts;
-
         // reset 而非逐欄 setValue：一次帶入伺服器資料並重設 dirty/error 狀態
         reset({
             ...getValues(),
             name: data.name || getValues('name'),
-            gender: data.gender || '',
+            // 建立帳號時後端會填 'unknown'，那不是可選項目，當成還沒選，
+            // 否則「下一步」會在性別看起來空白的情況下就解鎖
+            gender: data.gender === 'unknown' ? '' : data.gender || '',
             height: data.height?.toString() || '',
             weight: data.weight?.toString() || '',
             age: data.age?.toString() || '',
-            chronicDisease,
+            chronicDisease: data.chronic_diseases ?? [],
+            customChronic: data.chronic_custom ?? [],
             majorIllness: data.major_illness_history || '',
             surgeryHistory: data.surgery_history || '',
         });
@@ -239,56 +133,34 @@ const PersonalHealthPage: React.FC = () => {
         }
     };
 
+    // 載入伺服器上的健康檔案
     useEffect(() => {
-        const initializeUserProfile = async () => {
-            let profileFailed = false;
-            try {
-                const data = await getPersonalHealthProfile();
-                handleUserProfileData(data);
-            } catch (error: unknown) {
+        getPersonalHealthProfile()
+            .then(handleUserProfileData)
+            .catch((error: unknown) => {
                 console.warn('載入使用者資料失敗:', error);
-                profileFailed = true;
                 toast.error(
-                    error instanceof Error
-                        ? error.message
-                        : t('personalHealth.loadError'),
+                    error instanceof Error ? error.message : t('personalHealth.loadError'),
                 );
-            }
-
-            if (!LIFF_ID) {
-                // 前面已提示過就不再疊一則（原 setLiffError(prev => prev || ...) 的語意）
-                if (!profileFailed) {
-                    toast.error(t('personalHealth.liffIdMissing'));
-                }
-                console.error(t('personalHealth.liffIdMissing'));
-            } else {
-                liff
-                    .init({ liffId: LIFF_ID })
-                    .then(() => {
-                        setLiffReady(true);
-                        liff
-                            .getProfile()
-                            .then(handleLiffProfile)
-                            .catch((err) => {
-                                console.warn('獲取 LIFF 用戶資訊失敗:', err);
-                            });
-                    })
-                    .catch((error) => {
-                        console.warn('LIFF 初始化失敗:', error);
-                    });
-            }
-        };
-
-        void initializeUserProfile();
+            });
         // 僅在掛載時載入；語言切換不需重抓 API
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // 其餘欄位皆由 register 綁定；此處只留「其他」補充輸入
-    const handleOtherChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setOtherInput(e.target.value);
-        setOtherSaved(false);
-    };
+    // LIFF 就緒後補上顯示名稱與頭像。伺服器有姓名時以伺服器為準
+    // handleLiffProfile 內的 `prev ||` 與 `!getValues('name')` 就是為此，
+    // 所以這兩個 effect 誰先回來都不影響結果。
+    useEffect(() => {
+        if (!liffReady) return;
+        liff.getProfile().then(handleLiffProfile).catch((err) => {
+            console.warn('獲取 LIFF 用戶資訊失敗:', err);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [liffReady]);
+
+    useEffect(() => {
+        if (liffError) console.warn('LIFF 初始化失敗:', liffError);
+    }, [liffError]);
 
     const handleChronicToggle = (value: string) => {
         const current = getValues('chronicDisease');
@@ -298,17 +170,50 @@ const PersonalHealthPage: React.FC = () => {
             exists ? current.filter((item) => item !== value) : [...current, value],
             { shouldValidate: true },
         );
-        // 取消勾選「其他」時一併清掉補充輸入
-        if (value === OTHER_CHRONIC_VALUE && exists) {
-            setOtherInput('');
-            setOtherSaved(false);
+    };
+
+    /**
+     * 把輸入框的內容加進清單。回傳這次的結果，讓呼叫端決定要不要提示——
+     * 使用者主動按「新增」時要提示重複，送出時自動補加則安靜處理。
+     */
+    const commitCustomDraft = () => {
+        const result = addCustomChronic(
+            getValues('chronicDisease'),
+            getValues('customChronic'),
+            customDraft,
+            t,
+        );
+        if (result.status === 'added' || result.status === 'matchedFixed') {
+            setValue('chronicDisease', result.selected, { shouldValidate: true });
+            setValue('customChronic', result.custom, { shouldValidate: true });
+        }
+        if (result.status !== 'empty') {
+            setCustomDraft('');
+        }
+        return result.status;
+    };
+
+    const handleAddCustom = () => {
+        const name = customDraft.trim();
+        if (commitCustomDraft() === 'duplicate') {
+            toast.error(t('personalHealth.chronicOtherDuplicate', { name }));
         }
     };
 
+    const handleRemoveCustom = (name: string) => {
+        setValue(
+            'customChronic',
+            getValues('customChronic').filter((item) => item !== name),
+            { shouldValidate: true },
+        );
+    };
+
     // 驗證交給 resolver；handleSubmit 的失敗分支負責提示。
-    // Stepper 的 onFinalStepCompleted 需要「失敗時拋錯」才不會前進，故保留 reject。
     const handleSave = () =>
         new Promise<void>((resolve, reject) => {
+            // 打了字卻沒按「新增」就送出：幫他補上，而不是丟掉或擋下整次儲存。
+            commitCustomDraft();
+
             void handleSubmit(
                 async (values) => {
                     try {
@@ -330,25 +235,18 @@ const PersonalHealthPage: React.FC = () => {
         });
 
     const submitProfile = async (form: HealthData) => {
-        const selected = form.chronicDisease.filter((v) => v !== OTHER_CHRONIC_VALUE);
-        const otherValue = otherInput.trim();
-        let chronicList = selected;
-        if (form.chronicDisease.includes(OTHER_CHRONIC_VALUE) && otherValue) {
-            chronicList = [...selected, otherValue];
-        }
-        if (chronicList.length === 0) {
-            chronicList = [NONE_VALUE];
-        }
-
         const payload = {
             name: form.name,
             gender: form.gender,
             height: Number(form.height),
             weight: Number(form.weight),
             age: Number(form.age),
-            chronic_history: chronicList.join('、'),
-            major_illness_history: form.majorIllness.trim() || NONE_VALUE,
-            surgery_history: form.surgeryHistory.trim() || NONE_VALUE,
+            // 表單狀態與後端欄位一對一，不需要任何攤平或還原
+            chronic_diseases: form.chronicDisease,
+            chronic_custom: form.customChronic,
+            // 空字串就是「沒有」，不再塞「無」這種混在資料裡的哨兵值
+            major_illness_history: form.majorIllness.trim(),
+            surgery_history: form.surgeryHistory.trim(),
             health_consultations: {},
         };
 
@@ -367,14 +265,12 @@ const PersonalHealthPage: React.FC = () => {
         }
     };
 
-    const showOtherInput = form.chronicDisease.includes(OTHER_CHRONIC_VALUE);
-    const ageError = validateNumericField(form.age, 'age', t);
-    const heightError = validateNumericField(form.height, 'height', t);
-    const weightError = validateNumericField(form.weight, 'weight', t);
+    const numericError = (field: NumericFieldName) =>
+        validateNumericField(form[field], field, t);
     const isBasicStepComplete = Boolean(
-        form.name.trim() && form.gender && !ageError,
+        form.name.trim() && form.gender && !numericError('age'),
     );
-    const isBodyStepComplete = !heightError && !weightError;
+    const isBodyStepComplete = !numericError('height') && !numericError('weight');
     const canContinue =
         currentStep === 1
             ? isBasicStepComplete
@@ -382,21 +278,12 @@ const PersonalHealthPage: React.FC = () => {
                 ? isBodyStepComplete
                 : true;
 
-    const isLoggedIn = liffReady && liff.isLoggedIn();
-
     const genderLabel = form.gender
         ? t(
             GENDER_OPTIONS.find((option) => option.value === form.gender)?.labelKey
                 ?? 'personalHealth.genderPlaceholder',
         )
         : t('personalHealth.genderPlaceholder');
-
-    const chronicLabelMap = Object.fromEntries(
-        CHRONIC_OPTIONS.map((option) => [option.value, t(option.labelKey)]),
-    ) as Record<string, string>;
-
-    const formatChronicSelection = (values: string[]) =>
-        values.map((value) => chronicLabelMap[value] ?? value).join('、');
 
     return (
         <div className="mx-auto flex min-h-screen max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
@@ -423,13 +310,6 @@ const PersonalHealthPage: React.FC = () => {
                             : t('personalHealth.title')}
                     </ItemTitle>
                 </ItemContent>
-                <ItemActions>
-                    <Badge variant={isLoggedIn ? 'default' : 'outline'}>
-                        {isLoggedIn
-                            ? t('personalHealth.loggedIn')
-                            : t('personalHealth.loggedOut')}
-                    </Badge>
-                </ItemActions>
             </Item>
 
             <form
@@ -575,70 +455,15 @@ const PersonalHealthPage: React.FC = () => {
                         <StepIntro step={3} />
 
                         <FieldGroup>
-                            {/* 慢性病是多選。原本藏在 Popover 的下拉選單裡，長輩得先點開
-                                才知道有哪些選項、選完還看不到自己選了什麼；九個選項直接攤成
-                                可勾選的卡片，一次看完也少一次點擊。
-                                卡片外觀用 Field 的 has-data-checked: 變體，不用自己維護選中樣式。 */}
-                            <FieldSet>
-                                <FieldLegend variant="label" className="text-base font-bold">
-                                    {t('personalHealth.chronic')}
-                                </FieldLegend>
-                                <div className="grid gap-2 sm:grid-cols-2">
-                                    {CHRONIC_OPTIONS.map((option) => {
-                                        const id = `chronic-${option.value}`;
-                                        return (
-                                            // FieldLabel 包住 Field 就是官方的可點選取卡片：
-                                            // 圓角、外框、勾選高亮都由元件提供，整張卡片可點
-                                            <FieldLabel key={option.value} htmlFor={id}>
-                                                <Field orientation="horizontal">
-                                                    <Checkbox
-                                                        id={id}
-                                                        checked={form.chronicDisease.includes(option.value)}
-                                                        onCheckedChange={() => handleChronicToggle(option.value)}
-                                                    />
-                                                    <FieldTitle className="text-base font-normal">
-                                                        {t(option.labelKey)}
-                                                    </FieldTitle>
-                                                </Field>
-                                            </FieldLabel>
-                                        );
-                                    })}
-                                </div>
-
-                                {showOtherInput && (
-                                    <Field orientation="horizontal">
-                                        <FieldContent>
-                                            <Input
-                                                name="chronicDiseaseOther"
-                                                value={otherInput}
-                                                onChange={handleOtherChange}
-                                                placeholder={t('personalHealth.chronicOtherPlaceholder')}
-                                            />
-                                        </FieldContent>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            aria-label={t('personalHealth.chronicOtherSaveAria')}
-                                            onClick={() => setOtherSaved(true)}
-                                            disabled={!otherInput.trim()}
-                                        >
-                                            <CheckIcon />
-                                        </Button>
-                                        {otherSaved && (
-                                            <Badge variant="secondary">
-                                                {t('personalHealth.chronicOtherSaved')}
-                                            </Badge>
-                                        )}
-                                    </Field>
-                                )}
-
-                                {form.chronicDisease.length > 0 && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {formatChronicSelection(form.chronicDisease)}
-                                    </p>
-                                )}
-                            </FieldSet>
+                            <ChronicDiseaseField
+                                selected={form.chronicDisease}
+                                onToggle={handleChronicToggle}
+                                custom={form.customChronic}
+                                onRemoveCustom={handleRemoveCustom}
+                                draft={customDraft}
+                                onDraftChange={setCustomDraft}
+                                onAddCustom={handleAddCustom}
+                            />
 
                             <HealthField htmlFor="majorIllness" label={t('personalHealth.majorIllness')}>
                                 <HealthTextarea

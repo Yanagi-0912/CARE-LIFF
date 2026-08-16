@@ -7,14 +7,22 @@ type ValidationErrorDetail = {
     msg?: string
 }
 
+/* 慢性病拆成兩欄而非一個「、」串起來的字串：固定選項要依讀者的語言翻譯，
+ * 自行輸入的病名必須原文照留。混在同一個字串裡就分不出哪個是哪個。 */
 export type UpsertPersonalHealthPayload = {
     name: string
+    /** 與 i18n key 的最後一段同名的 code */
     gender: string
     height: number
     weight: number
     age: number
-    chronic_history: string
+    /** 固定選項的 code，例如 hypertension */
+    chronic_diseases: string[]
+    /** 使用者自行輸入的病名，原文照送 */
+    chronic_custom: string[]
+    /** 空字串代表沒有 */
     major_illness_history: string
+    /** 空字串代表沒有 */
     surgery_history: string
     health_consultations: Record<string, unknown>
 }
@@ -26,7 +34,8 @@ export type HealthProfile = {
     height?: number
     weight?: number
     age?: number
-    chronic_history?: string
+    chronic_diseases?: string[]
+    chronic_custom?: string[]
     major_illness_history?: string
     surgery_history?: string
     health_consultations?: Record<string, unknown>

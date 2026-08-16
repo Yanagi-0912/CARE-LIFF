@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import Stepper, { Step } from '../components/Stepper/Stepper';
+import Stepper, { Step } from '../pages/PersonalHealth/Stepper';
 
 describe('Stepper', () => {
   it('可前進、返回並完成最後一步', async () => {

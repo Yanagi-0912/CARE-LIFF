@@ -28,7 +28,12 @@ export const consultRecordMessages: Record<
     "consultRecord.closeModal": "關閉視窗",
     "consultRecord.userBadge": "你",
     "consultRecord.aiBadge": "AI",
-    "consultRecord.none": "無"
+    "consultRecord.none": "無",
+    "consultRecord.self": "我自己",
+    "consultRecord.backToHealth": "返回個人健康資料",
+    "consultRecord.targetLabel": "查看對象",
+    "consultRecord.titleForMember": "{{name}} 的健康諮詢紀錄",
+    "consultRecord.modalMemberTitle": "{{name}} 的訊息"
   },
   en:{
     "consultRecord.title": "Health Consultation Records",
@@ -54,7 +59,12 @@ export const consultRecordMessages: Record<
     "consultRecord.closeModal": "Close window",
     "consultRecord.userBadge": "You",
     "consultRecord.aiBadge": "AI",
-    "consultRecord.none": "None"
+    "consultRecord.none": "None",
+    "consultRecord.self": "Myself",
+    "consultRecord.backToHealth": "Back to health profile",
+    "consultRecord.targetLabel": "Whose records",
+    "consultRecord.titleForMember": "{{name}}'s Consultation Records",
+    "consultRecord.modalMemberTitle": "Message from {{name}}"
   },
   id:{
     "consultRecord.title": "Catatan Konsultasi Kesehatan",
@@ -80,7 +90,12 @@ export const consultRecordMessages: Record<
     "consultRecord.closeModal": "Tutup jendela",
     "consultRecord.userBadge": "Anda",
     "consultRecord.aiBadge": "AI",
-    "consultRecord.none": "Tidak ada"
+    "consultRecord.none": "Tidak ada",
+    "consultRecord.self": "Saya sendiri",
+    "consultRecord.backToHealth": "Kembali ke data kesehatan",
+    "consultRecord.targetLabel": "Catatan milik siapa",
+    "consultRecord.titleForMember": "Catatan Konsultasi {{name}}",
+    "consultRecord.modalMemberTitle": "Pesan dari {{name}}"
   },
   vi:{
     "consultRecord.title": "Hồ sơ tư vấn sức khỏe",
@@ -106,7 +121,12 @@ export const consultRecordMessages: Record<
     "consultRecord.closeModal": "Đóng cửa sổ",
     "consultRecord.userBadge": "Bạn",
     "consultRecord.aiBadge": "AI",
-    "consultRecord.none": "Không có"
+    "consultRecord.none": "Không có",
+    "consultRecord.self": "Bản thân tôi",
+    "consultRecord.backToHealth": "Quay lại hồ sơ sức khỏe",
+    "consultRecord.targetLabel": "Hồ sơ của ai",
+    "consultRecord.titleForMember": "Hồ sơ tư vấn của {{name}}",
+    "consultRecord.modalMemberTitle": "Tin nhắn của {{name}}"
   },
   th:{
     "consultRecord.title": "บันทึกการปรึกษาสุขภาพ",
@@ -132,7 +152,12 @@ export const consultRecordMessages: Record<
     "consultRecord.closeModal": "ปิดหน้าต่าง",
     "consultRecord.userBadge": "คุณ",
     "consultRecord.aiBadge": "AI",
-    "consultRecord.none": "ไม่มี"
+    "consultRecord.none": "ไม่มี",
+    "consultRecord.self": "ตัวฉันเอง",
+    "consultRecord.backToHealth": "กลับไปที่ข้อมูลสุขภาพ",
+    "consultRecord.targetLabel": "บันทึกของใคร",
+    "consultRecord.titleForMember": "บันทึกการปรึกษาสุขภาพของ {{name}}",
+    "consultRecord.modalMemberTitle": "ข้อความจาก {{name}}"
   },
   ja:{
     "consultRecord.title": "健康相談記録",
@@ -158,6 +183,11 @@ export const consultRecordMessages: Record<
     "consultRecord.closeModal": "ウィンドウを閉じる",
     "consultRecord.userBadge": "あなた",
     "consultRecord.aiBadge": "AI",
-    "consultRecord.none": "なし"
+    "consultRecord.none": "なし",
+    "consultRecord.self": "自分",
+    "consultRecord.backToHealth": "健康データに戻る",
+    "consultRecord.targetLabel": "表示する対象",
+    "consultRecord.titleForMember": "{{name}} の健康相談記録",
+    "consultRecord.modalMemberTitle": "{{name}} のメッセージ"
   }
 }
