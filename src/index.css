@@ -105,6 +105,8 @@
   --shadow-card: var(--shadow-1);
   --shadow-pop: var(--shadow-2);
   --shadow-modal: var(--shadow-3);
+  --shadow-nav: var(--nav-shadow);
+  --shadow-pill: var(--pill-shadow);
 
   /* 字體同理不在此宣告：tokens.css 的 --font-sans 未分層，會蓋過 Tailwind
      @layer theme 的預設值，因此 preflight 的 --default-font-family

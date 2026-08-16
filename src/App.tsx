@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
@@ -58,6 +59,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 function AppContent() {
   // 2. 取得當前路徑，用來判斷是否要顯示導覽列
   const location = useLocation();
+  const { t } = useTranslation();
   const isStandalonePage = location.pathname === '/login' || location.pathname === '/join';
 
   useEffect(() => {
@@ -92,7 +94,7 @@ function AppContent() {
               而非轉圈動畫：切頁本身很快，閃一下 spinner 反而比留白更晃眼。
               role="status" 讓螢幕閱讀器知道正在載入。 */}
           <Suspense
-            fallback={<div className="min-h-[50vh]" role="status" aria-label="載入中" />}
+            fallback={<div className="min-h-[50vh]" role="status" aria-label={t('common.loading')} />}
           >
             <Routes>
             <Route path="/login" element={<Login />} />

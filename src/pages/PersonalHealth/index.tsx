@@ -285,8 +285,9 @@ const PersonalHealthPage: React.FC = () => {
         )
         : t('personalHealth.genderPlaceholder');
 
+    // 100dvh 而非 100vh：iOS Safari 的 vh 不含網址列，捲動時高度會跳
     return (
-        <div className="mx-auto flex min-h-screen max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
+        <div className="mx-auto flex min-h-[100dvh] max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
             <Item variant="muted" className="mb-4 rounded-2xl">
                 <ItemMedia>
                     <Avatar className="size-16">

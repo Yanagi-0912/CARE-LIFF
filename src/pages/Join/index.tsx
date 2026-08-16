@@ -100,8 +100,10 @@ const JoinPage: React.FC = () => {
     navigate('/');
   };
 
+  // 100dvh 而非 100vh：iOS Safari 的 vh 以「網址列收起後」計算，
+  // 捲動時列高變化會讓置中的卡片跳動。dvh 跟著實際可視高度走。
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-[100dvh] items-center justify-center p-4">
       <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300 w-full max-w-[400px]">
         <CardContent>
           {state === 'verifying' ? (

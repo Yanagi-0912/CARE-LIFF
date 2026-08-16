@@ -306,11 +306,13 @@ const SettingsPage: React.FC = () => {
       >
         <SettingRow label={t('settings.highContrastToggle')}>
           {/* 原手刻 toggle 是普通 button，沒有 role="switch" 與 aria-checked，
-              螢幕閱讀器只會唸「按鈕」；Base UI Switch 兩者皆備，鍵盤操作也內建 */}
+              螢幕閱讀器只會唸「按鈕」；Base UI Switch 兩者皆備，鍵盤操作也內建。
+              aria-label 走 settings.toggleAria 套用同一組已翻譯的項目名稱，
+              避免硬編中文——切到其他語言時螢幕閱讀器仍會唸中文。 */}
           <Switch
             checked={settings.highContrast}
             onCheckedChange={() => toggle('highContrast')}
-            aria-label="切換高對比模式"
+            aria-label={t('settings.toggleAria', { label: t('settings.highContrastToggle') })}
           />
         </SettingRow>
       </SettingSection>
@@ -326,7 +328,7 @@ const SettingsPage: React.FC = () => {
             <Switch
               checked={settings.notifyReminder}
               onCheckedChange={() => toggle('notifyReminder')}
-              aria-label="切換用藥提醒"
+              aria-label={t('settings.toggleAria', { label: t('settings.medicationReminder') })}
             />
           </SettingRow>
           <ItemSeparator />
@@ -334,7 +336,7 @@ const SettingsPage: React.FC = () => {
             <Switch
               checked={settings.notifyFamily}
               onCheckedChange={() => toggle('notifyFamily')}
-              aria-label="切換家人健康通知"
+              aria-label={t('settings.toggleAria', { label: t('settings.familyAlert') })}
             />
           </SettingRow>
         </ItemGroup>
@@ -350,7 +352,7 @@ const SettingsPage: React.FC = () => {
           <Switch
             checked={settings.voiceReplyEnabled}
             onCheckedChange={() => toggle('voiceReplyEnabled')}
-            aria-label="切換語音回覆"
+            aria-label={t('settings.toggleAria', { label: t('settings.voiceReplyToggle') })}
           />
         </SettingRow>
 

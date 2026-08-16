@@ -65,7 +65,7 @@ export default function GlidingTabs({
     <nav
       className={cn(
         'relative mx-2.5 mt-2 flex w-[calc(100%-20px)] items-center justify-between gap-1 rounded-full border border-hair bg-surface-2 p-1',
-        'shadow-[0_-4px_16px_-10px_rgba(20,32,29,0.1)]',
+        'shadow-nav',
         // 避開 iPhone 底部 home indicator
         'mb-[calc(8px+env(safe-area-inset-bottom,0px))]',
         className,
@@ -75,7 +75,7 @@ export default function GlidingTabs({
       <span
         className={cn(
           'pointer-events-none absolute top-1 bottom-1 z-0 rounded-full bg-primary',
-          'shadow-[0_4px_12px_-4px_rgba(14,147,132,0.55)]',
+          'shadow-pill',
           'transition-[left,width]',
           GLIDE,
         )}
