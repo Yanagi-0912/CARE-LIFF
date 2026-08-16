@@ -1,21 +1,45 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithToaster } from './testUtils'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import liff from '@line/liff'
 
 // 1. 匯入整包 API 物件，方便後面使用 vi.mocked 存取
 import * as api from '../api/consultationApi'
 import ConsultRecordsPage from '../pages/PersonalHealth/ConsultRecords'
+import type { FamilyMember } from '../types/family'
 import i18n from '../i18n'
 
 // 2. 直接在 mock 內部定義 mock 函式，檔案頂端不再需要宣告一堆 const 變數
 vi.mock('../api/consultationApi', () => ({
     getAllSummaries: vi.fn(),
-    fetchConsultationMeRaw: vi.fn(),
+    fetchConsultationRaw: vi.fn(),
     getConsultationSummaryDownloadToken: vi.fn(),
     buildConsultationSummaryDownloadUrl: vi.fn(),
 }))
+
+// 頁面改為可查看家人的紀錄後會讀族譜；預設沒有家人，
+// 個別測試再覆寫 familyState.members 來驗證對象切換。
+const familyState = {
+    members: [] as FamilyMember[],
+    loading: false,
+    error: null as string | null,
+    refetch: vi.fn(),
+}
+
+vi.mock('../hooks/useFamily', () => ({
+    useFamily: () => familyState,
+}))
+
+/** 頁面用 useSearchParams 讀查看對象，必須有 Router context */
+function renderPage(initialPath = '/personalhealth/consult') {
+    return renderWithToaster(
+        <MemoryRouter initialEntries={[initialPath]}>
+            <ConsultRecordsPage />
+        </MemoryRouter>,
+    )
+}
 
 // Mock 外部的 liff 模組
 vi.mock('@line/liff', () => ({
@@ -31,7 +55,7 @@ vi.mock('@line/liff', () => ({
 // ==========================================
 type ApiMockOverrides = {
     getAllSummaries?: ReturnType<typeof vi.fn>
-    fetchConsultationMeRaw?: ReturnType<typeof vi.fn>
+    fetchConsultationRaw?: ReturnType<typeof vi.fn>
     getConsultationSummaryDownloadToken?: ReturnType<typeof vi.fn>
     buildConsultationSummaryDownloadUrl?: ReturnType<typeof vi.fn>
 }
@@ -39,13 +63,13 @@ type ApiMockOverrides = {
 function setupApiMocks(overrides: ApiMockOverrides = {}) {
     // 預設：沒有摘要、沒有對話紀錄
     vi.mocked(api.getAllSummaries).mockResolvedValue([])
-    vi.mocked(api.fetchConsultationMeRaw).mockResolvedValue({ messages: [] })
+    vi.mocked(api.fetchConsultationRaw).mockResolvedValue({ messages: [] })
     vi.mocked(api.getConsultationSummaryDownloadToken).mockResolvedValue({ downloadToken: 'mock-token-123' })
     vi.mocked(api.buildConsultationSummaryDownloadUrl).mockReturnValue('https://download.test/file.pdf')
 
     // 套用個別測試想要的 override
     if (overrides.getAllSummaries) vi.mocked(api.getAllSummaries).mockImplementation(overrides.getAllSummaries as any)
-    if (overrides.fetchConsultationMeRaw) vi.mocked(api.fetchConsultationMeRaw).mockImplementation(overrides.fetchConsultationMeRaw as any)
+    if (overrides.fetchConsultationRaw) vi.mocked(api.fetchConsultationRaw).mockImplementation(overrides.fetchConsultationRaw as any)
     if (overrides.getConsultationSummaryDownloadToken) vi.mocked(api.getConsultationSummaryDownloadToken).mockImplementation(overrides.getConsultationSummaryDownloadToken as any)
     if (overrides.buildConsultationSummaryDownloadUrl) vi.mocked(api.buildConsultationSummaryDownloadUrl).mockImplementation(overrides.buildConsultationSummaryDownloadUrl as any)
 }
@@ -53,6 +77,7 @@ function setupApiMocks(overrides: ApiMockOverrides = {}) {
 describe('ConsultRecordsPage測試', () => {
     beforeEach(async () => {
         localStorage.clear()
+        familyState.members = []
 
         // 這個檔案原本沒初始化 i18n，畫面渲染出的是 consultRecord.xxx 這類
         // 原始 key 而非翻譯文字，導致所有以中文字串定位的斷言全部失敗。
@@ -60,7 +85,7 @@ describe('ConsultRecordsPage測試', () => {
 
         // 3. 使用 vi.mocked 幫 API 函式重置紀錄
         vi.mocked(api.getAllSummaries).mockReset()
-        vi.mocked(api.fetchConsultationMeRaw).mockReset()
+        vi.mocked(api.fetchConsultationRaw).mockReset()
         vi.mocked(api.getConsultationSummaryDownloadToken).mockReset()
         vi.mocked(api.buildConsultationSummaryDownloadUrl).mockReset()
 
@@ -82,10 +107,10 @@ describe('ConsultRecordsPage測試', () => {
     it('點擊「對話」按鈕後，切換至對話列表並正確截斷文字', async () => {
         setupApiMocks({
             getAllSummaries: vi.fn().mockResolvedValue([]),
-            fetchConsultationMeRaw: vi.fn().mockResolvedValue(mockRawMessages),
+            fetchConsultationRaw: vi.fn().mockResolvedValue(mockRawMessages),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         // 使用 findByText 抓取分頁按鈕
         const chatTabButton = await screen.findByText('對話')
@@ -106,10 +131,10 @@ describe('ConsultRecordsPage測試', () => {
     it('在對話分頁點擊對話氣泡，能正確開啟與關閉 Modal 彈窗', async () => {
         setupApiMocks({
             getAllSummaries: vi.fn().mockResolvedValue([]),
-            fetchConsultationMeRaw: vi.fn().mockResolvedValue(mockRawMessages),
+            fetchConsultationRaw: vi.fn().mockResolvedValue(mockRawMessages),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         const chatTabButton = await screen.findByText('對話')
         fireEvent.click(chatTabButton)
@@ -137,10 +162,10 @@ describe('ConsultRecordsPage測試', () => {
     it('當 API 發生錯誤時，畫面能正確顯示錯誤訊息與 Empty State', async () => {
         setupApiMocks({
             getAllSummaries: vi.fn().mockRejectedValue(new Error('伺服器斷線')),
-            fetchConsultationMeRaw: vi.fn().mockResolvedValue({ messages: [] }),
+            fetchConsultationRaw: vi.fn().mockResolvedValue({ messages: [] }),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         // 驗證錯誤訊息被渲染
         expect(await screen.findByText('伺服器斷線')).toBeInTheDocument()
@@ -161,7 +186,7 @@ describe('ConsultRecordsPage測試', () => {
 
         vi.mocked(liff.isInClient).mockReturnValue(true)
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         const downloadButton = await screen.findByText('下載所有摘要')
         fireEvent.click(downloadButton)
@@ -190,7 +215,7 @@ describe('ConsultRecordsPage測試', () => {
         delete window.location
         window.location = { href: '' } as unknown as Location
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         const downloadButton = await screen.findByText('下載所有摘要')
         fireEvent.click(downloadButton)
@@ -211,7 +236,7 @@ describe('ConsultRecordsPage測試', () => {
             getConsultationSummaryDownloadToken: vi.fn().mockRejectedValue(new Error('下載連結取得失敗')),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         const downloadButton = await screen.findByText('下載所有摘要')
         fireEvent.click(downloadButton)
@@ -244,7 +269,7 @@ describe('ConsultRecordsPage測試', () => {
             getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         // 預設就是摘要分頁，驗證標題欄位有正確顯示
         expect(await screen.findByText('主訴')).toBeInTheDocument()
@@ -273,7 +298,7 @@ describe('ConsultRecordsPage測試', () => {
             getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         expect(await screen.findByText('建議')).toBeInTheDocument()
         expect(screen.getByText('多喝水並多休息')).toBeInTheDocument()
@@ -295,7 +320,7 @@ describe('ConsultRecordsPage測試', () => {
             getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
         })
 
-        renderWithToaster(<ConsultRecordsPage />)
+        renderPage()
 
         // 預設應顯示第一筆（最新／第一個）摘要內容
         expect(await screen.findByText('第一天的紀錄內容')).toBeInTheDocument()
@@ -310,5 +335,91 @@ describe('ConsultRecordsPage測試', () => {
         // 驗證畫面內容切換為第二筆摘要
         expect(await screen.findByText('第二天的紀錄內容')).toBeInTheDocument()
         expect(screen.queryByText('第一天的紀錄內容')).not.toBeInTheDocument()
+    })
+
+    // ==========================================
+    // 以下為「查看家人紀錄」的案例
+    // ==========================================
+
+    it('沒有家人時不顯示查看對象的切換，API 也走本人（不帶 userId）', async () => {
+        setupApiMocks()
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(api.getAllSummaries).toHaveBeenCalledWith(undefined)
+        })
+        expect(api.fetchConsultationRaw).toHaveBeenCalledWith(undefined)
+        expect(screen.queryByRole('button', { name: '我自己' })).not.toBeInTheDocument()
+    })
+
+    it('有家人時可切換查看對象，並以該家人的 userId 重新查詢', async () => {
+        familyState.members = [
+            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+        ]
+        setupApiMocks()
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(api.getAllSummaries).toHaveBeenCalledWith(undefined)
+        })
+
+        fireEvent.click(screen.getByRole('button', { name: '媽媽' }))
+
+        await waitFor(() => {
+            expect(api.getAllSummaries).toHaveBeenLastCalledWith('U-mom')
+        })
+        expect(api.fetchConsultationRaw).toHaveBeenLastCalledWith('U-mom')
+    })
+
+    it('用 ?user= 深連結進來時，直接查詢該家人並在標題顯示對方名字', async () => {
+        familyState.members = [
+            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+        ]
+        setupApiMocks()
+
+        renderPage('/personalhealth/consult?user=U-mom')
+
+        await waitFor(() => {
+            expect(api.getAllSummaries).toHaveBeenCalledWith('U-mom')
+        })
+        expect(
+            screen.getByRole('heading', { name: '媽媽 的健康諮詢紀錄' }),
+        ).toBeInTheDocument()
+    })
+
+    it('查看家人時不顯示下載鈕（下載端點是本人限定）', async () => {
+        familyState.members = [
+            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+        ]
+        setupApiMocks()
+
+        renderPage('/personalhealth/consult?user=U-mom')
+
+        await waitFor(() => {
+            expect(api.getAllSummaries).toHaveBeenCalledWith('U-mom')
+        })
+        expect(screen.queryByText('下載所有摘要')).not.toBeInTheDocument()
+
+        // 切回自己就該恢復
+        fireEvent.click(screen.getByRole('button', { name: '我自己' }))
+        expect(await screen.findByText('下載所有摘要')).toBeInTheDocument()
+    })
+
+    it('對話清單把「你的訊息」換成家人的名字', async () => {
+        familyState.members = [
+            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+        ]
+        setupApiMocks({
+            fetchConsultationRaw: vi.fn().mockResolvedValue(mockRawMessages),
+        })
+
+        renderPage('/personalhealth/consult?user=U-mom')
+
+        fireEvent.click(await screen.findByText('對話'))
+
+        expect(await screen.findByText('媽媽 的訊息')).toBeInTheDocument()
+        expect(screen.queryByText('你的訊息')).not.toBeInTheDocument()
     })
 })

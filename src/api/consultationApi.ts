@@ -1,5 +1,4 @@
 import type {
-    ConsultationSummarizePayload,
     ConsultationSummary,
     ConsultationViewResponse,
 } from '../types/consultation'
@@ -17,6 +16,11 @@ function buildConsultationErrorMessage(status: number, defaultMessage: string) {
         return '登入已失效，請重新登入'
     }
 
+    // 後端在請求者與目標成員不屬同一家庭族譜時回 403
+    if (status === 403) {
+        return '你不在這位成員的家庭群組中，無法查看紀錄'
+    }
+
     if (status === 503) {
         return '資料庫暫時不可用，請稍後再試'
     }
@@ -24,8 +28,19 @@ function buildConsultationErrorMessage(status: number, defaultMessage: string) {
     return defaultMessage
 }
 
-export async function getAllSummaries(): Promise<ConsultationSummary[]> {
-    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/allsummaries`, {
+/**
+ * 組出諮詢紀錄的端點路徑。
+ *
+ * userId 省略時走 `/me/`（本人）；帶入家人的 user_id 則走 `/{userId}/`，
+ * 後端會驗證雙方是否在同一家庭族譜，不同家會回 403。
+ */
+function consultationPath(segment: string, userId?: string): string {
+    const owner = userId ? encodeURIComponent(userId) : 'me'
+    return `${BASE_URL}/api/consultations/${owner}/${segment}`
+}
+
+export async function getAllSummaries(userId?: string): Promise<ConsultationSummary[]> {
+    const res = await fetchWithAuth(consultationPath('allsummaries', userId), {
         method: 'GET',
     })
 
@@ -46,6 +61,8 @@ export async function getAllSummaries(): Promise<ConsultationSummary[]> {
         : []
 }
 
+// 下載相關的兩支端點是本人限定：後端只認 downloadToken 裡的 user id，
+// 不接受指定對象，前端在查看家人時也不會顯示下載鈕。
 export async function getConsultationSummaryDownloadToken(): Promise<ConsultationDownloadTokenResponse> {
     const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/summary/downloadtoken`, {
         method: 'GET',
@@ -68,8 +85,8 @@ export function buildConsultationSummaryDownloadUrl(downloadToken: string): stri
 
 
 //回傳原始訊息
-export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse> {
-    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/messages/raw`, {
+export async function fetchConsultationRaw(userId?: string): Promise<ConsultationViewResponse> {
+    const res = await fetchWithAuth(consultationPath('messages/raw', userId), {
         method: 'GET',
     })
 
@@ -83,52 +100,10 @@ export async function fetchConsultationMeRaw(): Promise<ConsultationViewResponse
 
     const data = (await res.json()) as ConsultationViewResponse
 
-    const messages =
-        data.messages ??
-        data.conversation ??
-        data.records ??
-        data.data?.messages ??
-        data.data?.conversation ??
-        data.data?.records ??
-        []
-
+    // 後端沒有對話時 messages 可能是 null／未帶，補成空陣列讓呼叫端不必再判斷
     return {
         ...data,
-        messages,
+        messages: data.messages ?? [],
     }
 }
-
-export async function summarizeConsultationMe(
-    payload: ConsultationSummarizePayload = {},
-): Promise<ConsultationSummary> {
-    const res = await fetchWithAuth(`${BASE_URL}/api/consultations/me/summary/generate`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) {
-        if (res.status === 422) {
-            throw new Error('日期格式不合法')
-        }
-
-        if (res.status === 429) {
-            throw new Error('AI 額度已達上限，請稍後再試')
-        }
-
-        if (res.status === 502) {
-            throw new Error('AI 服務異常')
-        }
-
-        const message = buildConsultationErrorMessage(
-            res.status,
-            `產生諮詢摘要失敗：${res.status}`,
-        )
-        throw new Error(message)
-    }
-
-    const data = (await res.json()) as ConsultationSummary
-    return {
-        ...data,
-        summary: data.summary?.trim() || '',
-    }
-}
+

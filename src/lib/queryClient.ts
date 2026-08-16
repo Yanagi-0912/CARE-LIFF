@@ -37,7 +37,10 @@ export const queryKeys = {
   /** 某筆回報的核准前內容預覽；一筆回報只有一份，所以 key 只需要 reportId */
   knowledgeReportPreview: (reportId: string) =>
     ['knowledge-report-preview', reportId] as const,
-  consultationSummaries: ['consultation-summaries'] as const,
-  consultationRaw: ['consultation-raw'] as const,
+  /** 諮詢紀錄。userId 省略＝本人；帶家人的 id 時要各自成一筆快取，
+      否則切換查看對象會沿用上一個人的資料。 */
+  consultationSummaries: (userId?: string) =>
+    ['consultation-summaries', userId ?? 'self'] as const,
+  consultationRaw: (userId?: string) => ['consultation-raw', userId ?? 'self'] as const,
   inviteVerification: (code: string) => ['invite-verification', code] as const,
 };
