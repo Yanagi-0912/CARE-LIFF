@@ -8,10 +8,15 @@ import AdminRoute from '../components/AdminRoute';
 import AdminKnowledgeReportsPage from '../pages/AdminKnowledgeReports';
 import i18n from '../i18n';
 
-vi.mock('../api/knowledgeReportsApi', () => ({
+// 只換掉會打網路的那幾支；ApiError／isStalePreviewError 是純函式，
+// 用真的那份才測得到「409 的 code 有沒有被正確辨識」
+vi.mock('../api/knowledgeReportsApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof knowledgeReportsApi>()),
   fetchAdminKnowledgeReports: vi.fn(),
   approveKnowledgeReport: vi.fn(),
   rejectKnowledgeReport: vi.fn(),
+  startKnowledgeReportPreview: vi.fn(),
+  fetchKnowledgeReportPreview: vi.fn(),
 }));
 
 vi.mock('../api/profileApi', () => ({
@@ -20,6 +25,40 @@ vi.mock('../api/profileApi', () => ({
 
 const SOURCE_A = 'https://example.com/source-a';
 const SOURCE_B = 'https://example.com/source-b';
+const HASH_A = 'a'.repeat(64);
+const HASH_B = 'b'.repeat(64);
+
+function previewItem(
+  url: string,
+  hash: string,
+  overrides: Partial<knowledgeReportsApi.ContentPreviewItemDto> = {},
+): knowledgeReportsApi.ContentPreviewItemDto {
+  return {
+    url,
+    status: 'ok',
+    title: `標題 ${url}`,
+    content: `這頁的內容 ${url}`,
+    content_hash: hash,
+    char_count: 12,
+    truncated: false,
+    message: '',
+    ...overrides,
+  };
+}
+
+function readyPreview(
+  overrides: Partial<knowledgeReportsApi.ContentPreviewDto> = {},
+): knowledgeReportsApi.ContentPreviewDto {
+  return {
+    preview_id: 'PV-1',
+    report_id: 'KR-2025-003',
+    status: 'ready',
+    items: [previewItem(SOURCE_A, HASH_A), previewItem(SOURCE_B, HASH_B)],
+    created_at: '2025-05-10T00:00:00.000Z',
+    expires_at: '2099-05-10T00:00:00.000Z',
+    ...overrides,
+  };
+}
 
 const mockReports: knowledgeReportsApi.KnowledgeReportDto[] = [
   {
@@ -65,6 +104,8 @@ describe('AdminKnowledgeReportsPage', () => {
       ...mockReports[0],
       status: 'rejected',
     });
+    vi.mocked(knowledgeReportsApi.startKnowledgeReportPreview).mockResolvedValue(readyPreview());
+    vi.mocked(knowledgeReportsApi.fetchKnowledgeReportPreview).mockResolvedValue(readyPreview());
     await i18n.changeLanguage('zh-TW');
   });
 
@@ -104,6 +145,12 @@ describe('AdminKnowledgeReportsPage', () => {
       screen.getByRole('button', { name: '審核回報：咳嗽超過兩週需要看醫生嗎？' }),
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // 內容預覽是核准的前提，抓取完成前主要動作是停用的。
+    // 這裡等「抓取中」消失而不是等某顆按鈕啟用——ingest 失敗時那顆鈕
+    // 叫「重試收錄」而不是「核准」。
+    await waitFor(() => {
+      expect(screen.queryByText('正在抓取內容，請稍候…')).not.toBeInTheDocument();
+    });
   };
 
   it('核准流程預設全選來源並呼叫 approveKnowledgeReport', async () => {
@@ -115,6 +162,8 @@ describe('AdminKnowledgeReportsPage', () => {
     await waitFor(() => {
       expect(knowledgeReportsApi.approveKnowledgeReport).toHaveBeenCalledWith('KR-2025-003', {
         selected_urls: [SOURCE_A, SOURCE_B],
+        preview_id: 'PV-1',
+        content_hashes: { [SOURCE_A]: HASH_A, [SOURCE_B]: HASH_B },
       });
     });
     expect(knowledgeReportsApi.rejectKnowledgeReport).not.toHaveBeenCalled();
@@ -130,6 +179,8 @@ describe('AdminKnowledgeReportsPage', () => {
     await waitFor(() => {
       expect(knowledgeReportsApi.approveKnowledgeReport).toHaveBeenCalledWith('KR-2025-003', {
         selected_urls: [SOURCE_A],
+        preview_id: 'PV-1',
+        content_hashes: { [SOURCE_A]: HASH_A },
       });
     });
   });
@@ -172,10 +223,22 @@ describe('AdminKnowledgeReportsPage', () => {
 
     expect(screen.getByRole('checkbox', { name: `選取來源網址 ${SOURCE_A}` })).toBeChecked();
 
+    // 新加的 URL 一樣要先抓內容，抓完才可核准
+    await waitFor(() => {
+      expect(knowledgeReportsApi.startKnowledgeReportPreview).toHaveBeenCalledWith('KR-2025-002', {
+        urls: [SOURCE_A],
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '核准' })).toBeEnabled();
+    });
+
     fireEvent.click(screen.getByRole('button', { name: '核准' }));
     await waitFor(() => {
       expect(knowledgeReportsApi.approveKnowledgeReport).toHaveBeenCalledWith('KR-2025-002', {
         selected_urls: [SOURCE_A],
+        preview_id: 'PV-1',
+        content_hashes: { [SOURCE_A]: HASH_A },
       });
     });
   });
@@ -196,6 +259,109 @@ describe('AdminKnowledgeReportsPage', () => {
     });
     // 失敗時 dialog 不關閉，admin 才能修正
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('開啟詳情會自動請求內容預覽', async () => {
+    renderPage();
+    await openFirstReport();
+
+    // 不要求 admin 多按一個「抓取內容」鈕；多出來的動作是等，不是點
+    expect(knowledgeReportsApi.startKnowledgeReportPreview).toHaveBeenCalledWith('KR-2025-003', {
+      urls: [SOURCE_A, SOURCE_B],
+    });
+  });
+
+  it('預覽就緒後呈現將被收錄的內容', async () => {
+    renderPage();
+    await openFirstReport();
+
+    expect(await screen.findByText(`標題 ${SOURCE_A}`)).toBeInTheDocument();
+    expect(screen.getByText(`這頁的內容 ${SOURCE_A}`)).toBeInTheDocument();
+  });
+
+  it('預覽尚未就緒時核准為停用', async () => {
+    vi.mocked(knowledgeReportsApi.startKnowledgeReportPreview).mockResolvedValue(
+      readyPreview({ status: 'running', items: [] }),
+    );
+    vi.mocked(knowledgeReportsApi.fetchKnowledgeReportPreview).mockResolvedValue(
+      readyPreview({ status: 'running', items: [] }),
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: '審核回報：咳嗽超過兩週需要看醫生嗎？' }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: '審核回報：咳嗽超過兩週需要看醫生嗎？' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('正在抓取內容，請稍候…')).toBeInTheDocument();
+    });
+    const approveButton = screen.getByRole('button', { name: '核准' });
+    expect(approveButton).toBeDisabled();
+
+    fireEvent.click(approveButton);
+    expect(knowledgeReportsApi.approveKnowledgeReport).not.toHaveBeenCalled();
+  });
+
+  it('抓取失敗的來源不可核准，但仍可拒絕', async () => {
+    const failed = readyPreview({
+      status: 'failed',
+      items: [
+        previewItem(SOURCE_A, HASH_A),
+        previewItem(SOURCE_B, HASH_B, { status: 'error', content: '', message: '抓取逾時' }),
+      ],
+    });
+    vi.mocked(knowledgeReportsApi.startKnowledgeReportPreview).mockResolvedValue(failed);
+    vi.mocked(knowledgeReportsApi.fetchKnowledgeReportPreview).mockResolvedValue(failed);
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: '審核回報：咳嗽超過兩週需要看醫生嗎？' }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: '審核回報：咳嗽超過兩週需要看醫生嗎？' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('抓取逾時')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '核准' })).toBeDisabled();
+    // 抓不到內容不代表這筆回報不能處理，拒絕仍要可用
+    expect(screen.getByRole('button', { name: '拒絕' })).toBeEnabled();
+  });
+
+  it('預覽失效的 409 顯示原因並提供重新抓取', async () => {
+    const staleError = new knowledgeReportsApi.ApiError(
+      '內容預覽已逾期，請重新抓取後再核准。',
+      409,
+      'preview_expired',
+    );
+    vi.mocked(knowledgeReportsApi.approveKnowledgeReport).mockRejectedValue(staleError);
+    renderPage();
+    await openFirstReport();
+
+    fireEvent.click(screen.getByRole('button', { name: '核准' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('內容預覽已逾期，請重新抓取後再核准。')).toBeInTheDocument();
+    });
+    // 不能只當成一般操作失敗，要給得出下一步
+    const refetch = screen.getByRole('button', { name: '重新抓取內容' });
+    expect(refetch).toBeInTheDocument();
+
+    fireEvent.click(refetch);
+    await waitFor(() => {
+      expect(knowledgeReportsApi.startKnowledgeReportPreview).toHaveBeenCalledWith('KR-2025-003', {
+        urls: [SOURCE_A, SOURCE_B],
+        force: true,
+      });
+    });
   });
 
   it('切換篩選會送 status 給後端並重新分頁', async () => {
@@ -311,11 +477,15 @@ describe('AdminKnowledgeReportsPage', () => {
     // 逐 URL 結果
     expect(screen.getByText(/（error，0 段）：scrape failed/)).toBeInTheDocument();
 
-    // 重試沿用上次實際送出的 URL，不是重新從 user_source_urls 全選
+    // 重試沿用上次實際送出的 URL，不是重新從 user_source_urls 全選；
+    // 重試同樣要綁定一份重新抓好的快照（「上次失敗之後頁面有沒有變」正是
+    // 重試時最該看的）
     fireEvent.click(screen.getByRole('button', { name: '重試收錄' }));
     await waitFor(() => {
       expect(knowledgeReportsApi.approveKnowledgeReport).toHaveBeenCalledWith('KR-2025-003', {
         selected_urls: [SOURCE_A],
+        preview_id: 'PV-1',
+        content_hashes: { [SOURCE_A]: HASH_A },
       });
     });
   });

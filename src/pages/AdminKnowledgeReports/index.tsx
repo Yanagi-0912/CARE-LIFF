@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import {
   approveKnowledgeReport,
   fetchAdminKnowledgeReports,
+  fetchKnowledgeReportPreview,
+  isStalePreviewError,
   rejectKnowledgeReport,
+  startKnowledgeReportPreview,
+  type ContentPreviewItemDto,
   type IngestJobDto,
   type KnowledgeReportDto,
   type KnowledgeReportReason,
@@ -92,6 +96,10 @@ function AdminKnowledgeReportsPage() {
   const [urlDraft, setUrlDraft] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // 預覽失效（逾期／被取代／雜湊不符）與一般失敗要分開呈現：前者要給重新抓取
+  // 的出口，後者只顯示訊息
+  const [previewStale, setPreviewStale] = useState(false);
+  const [expandedUrls, setExpandedUrls] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
   const {
@@ -177,6 +185,8 @@ function AdminKnowledgeReportsPage() {
     setReviewerNote('');
     setActionError(null);
     setUrlDraft('');
+    setPreviewStale(false);
+    setExpandedUrls([]);
     // 重試時沿用上次實際送出的 URL（含 admin 補的），否則無來源的回報一重開就選不到東西
     const previous = report.ingest_job?.selected_urls;
     if (previous && previous.length > 0) {
@@ -196,6 +206,8 @@ function AdminKnowledgeReportsPage() {
     setExtraUrls([]);
     setUrlDraft('');
     setActionError(null);
+    setPreviewStale(false);
+    setExpandedUrls([]);
   };
 
   const toggleUrl = (url: string) => {
@@ -219,8 +231,80 @@ function AdminKnowledgeReportsPage() {
     setUrlDraft('');
   };
 
-  // 後端在 selected_urls 為空時會退回全選，所以「一個都沒選」必須擋在前端
-  const canApprove = selectedReport !== null && selectedUrls.length > 0;
+  const reportId = selectedReport?.report_id ?? null;
+  // 陣列每次 render 都是新物件，effect／useCallback 的相依要用字串化後的值
+  const candidateKey = candidateUrls.join('\n');
+
+  // 抓取跑在背景，沒有輪詢的話「抓取中」不會自己變成就緒（沿用 ingest 那套形狀）
+  const { data: preview } = useQuery({
+    queryKey: queryKeys.knowledgeReportPreview(reportId ?? ''),
+    queryFn: () => fetchKnowledgeReportPreview(reportId as string),
+    enabled: reportId !== null && candidateUrls.length > 0,
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 3_000 : false),
+    staleTime: 0,
+  });
+
+  const startPreview = useCallback(
+    async (force: boolean) => {
+      const urls = candidateKey ? candidateKey.split('\n') : [];
+      if (!reportId || urls.length === 0) return;
+      try {
+        const started = await startKnowledgeReportPreview(reportId, {
+          urls,
+          ...(force ? { force: true } : {}),
+        });
+        // 後端會正規化網址（補 scheme、去追蹤參數）。把選取清單換成正規化後的
+        // 字串，之後的比對與核准送出才跟伺服器端的快照鍵是同一份。
+        if (started.urls.length === urls.length) {
+          const rename = new Map(urls.map((url, index) => [url, started.urls[index]]));
+          const changed = urls.some((url) => rename.get(url) !== url);
+          if (changed) {
+            setExtraUrls((prev) => prev.map((url) => rename.get(url) ?? url));
+            setSelectedUrls((prev) => prev.map((url) => rename.get(url) ?? url));
+          }
+        }
+        queryClient.setQueryData(queryKeys.knowledgeReportPreview(reportId), started);
+        setPreviewStale(false);
+      } catch (err) {
+        setActionError(
+          err instanceof Error ? err.message : t('adminKnowledgeReports.actionError'),
+        );
+      }
+    },
+    [reportId, candidateKey, queryClient, t],
+  );
+
+  // 開啟詳情時自動抓，不要求 admin 多按一個「取得內容」鈕；多出來的動作是等，
+  // 不是點（design.md 決策 8）。URL 清單變動（admin 補了來源）時要重抓。
+  const startedTokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reportId || candidateKey.length === 0) {
+      startedTokenRef.current = null;
+      return;
+    }
+    const token = `${reportId} ${candidateKey}`;
+    if (startedTokenRef.current === token) return;
+    startedTokenRef.current = token;
+    void startPreview(false);
+  }, [reportId, candidateKey, startPreview]);
+
+  const previewItems = useMemo(() => {
+    const map = new Map<string, ContentPreviewItemDto>();
+    for (const item of preview?.items ?? []) map.set(item.url, item);
+    return map;
+  }, [preview]);
+
+  const previewRunning = preview?.status === 'running' || (preview == null && candidateUrls.length > 0);
+  /** 選定的每個 URL 都要有抓取成功的預覽項目，才可核准 */
+  const previewReadyForSelection =
+    preview != null &&
+    selectedUrls.length > 0 &&
+    selectedUrls.every((url) => previewItems.get(url)?.status === 'ok');
+
+  // 後端在 selected_urls 為空時會退回全選，所以「一個都沒選」必須擋在前端；
+  // 預覽未就緒也不能送出——那就是本 change 要消除的「核准沒看過的東西」
+  const canApprove =
+    selectedReport !== null && selectedUrls.length > 0 && previewReadyForSelection && !previewStale;
 
   const handleAction = async (action: 'approve' | 'reject') => {
     if (!selectedReport) return;
@@ -230,9 +314,18 @@ function AdminKnowledgeReportsPage() {
     const note = reviewerNote.trim();
     try {
       if (action === 'approve') {
+        // 綁定 admin 實際看過的那一份快照：preview_id 指明是哪一份，
+        // content_hashes 指明每個網址當時的內容
+        const contentHashes: Record<string, string> = {};
+        for (const url of selectedUrls) {
+          const hash = previewItems.get(url)?.content_hash;
+          if (hash) contentHashes[url] = hash;
+        }
         await approveKnowledgeReport(selectedReport.report_id, {
           selected_urls: selectedUrls,
           ...(note ? { reviewer_note: note } : {}),
+          ...(preview ? { preview_id: preview.preview_id } : {}),
+          content_hashes: contentHashes,
         });
       } else {
         await rejectKnowledgeReport(selectedReport.report_id, note ? { reviewer_note: note } : {});
@@ -240,10 +333,26 @@ function AdminKnowledgeReportsPage() {
       closeDialog();
       await reloadReports();
     } catch (err) {
+      // 預覽失效不是一般的操作失敗：它要給得出下一步（重新抓取），
+      // 而不是讓 admin 對著同一顆按鈕再按一次
+      if (isStalePreviewError(err)) setPreviewStale(true);
       setActionError(err instanceof Error ? err.message : t('adminKnowledgeReports.actionError'));
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleRefetchPreview = async () => {
+    setActionError(null);
+    setPreviewStale(false);
+    startedTokenRef.current = `${reportId} ${candidateKey}`;
+    await startPreview(true);
+  };
+
+  const toggleExpanded = (url: string) => {
+    setExpandedUrls((prev) =>
+      prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
+    );
   };
 
   return (
@@ -507,6 +616,104 @@ function AdminKnowledgeReportsPage() {
                       </p>
                     )}
                   </DetailItem>
+
+                  {/* 核准的對象是「這份內容」，不是「這個網址」——所以內容要
+                      擺在核准鈕上方，而不是留給 admin 自己去點開連結看 */}
+                  {candidateUrls.length > 0 && (
+                    <DetailItem term={t('adminKnowledgeReports.preview.heading')}>
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        {t('adminKnowledgeReports.preview.hint')}
+                      </p>
+
+                      {previewStale && (
+                        <Alert variant="destructive" className="mb-2">
+                          <AlertDescription>
+                            {t('adminKnowledgeReports.preview.stale')}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {previewRunning ? (
+                        <p className="text-sm text-muted-foreground">
+                          {t('adminKnowledgeReports.preview.running')}
+                        </p>
+                      ) : (
+                        <ul className="list-none">
+                          {candidateUrls.map((url) => {
+                            const item = previewItems.get(url);
+                            const expanded = expandedUrls.includes(url);
+                            return (
+                              <li key={url} className="mb-3 border-t pt-2 first:border-t-0">
+                                <p className="mb-1 break-all text-xs text-muted-foreground">
+                                  {url}
+                                </p>
+                                {item == null ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    {t('adminKnowledgeReports.preview.notReady')}
+                                  </p>
+                                ) : item.status !== 'ok' ? (
+                                  <>
+                                    <p className="text-sm font-semibold text-destructive">
+                                      {item.status === 'empty'
+                                        ? t('adminKnowledgeReports.preview.itemEmpty')
+                                        : t('adminKnowledgeReports.preview.itemError')}
+                                    </p>
+                                    {item.message && (
+                                      <p className="break-all text-xs text-destructive">
+                                        {item.message}
+                                      </p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-sm font-semibold">{item.title || url}</p>
+                                    <p className="mb-1 text-xs text-muted-foreground">
+                                      {t('adminKnowledgeReports.preview.charCount', {
+                                        count: item.char_count,
+                                      })}
+                                    </p>
+                                    <p
+                                      className={`whitespace-pre-wrap break-words text-sm ${
+                                        expanded ? '' : 'line-clamp-4'
+                                      }`}
+                                    >
+                                      {item.content}
+                                    </p>
+                                    {item.truncated && (
+                                      <p className="mt-1 text-xs text-muted-foreground">
+                                        {t('adminKnowledgeReports.preview.truncated')}
+                                      </p>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="mt-1 px-0"
+                                      onClick={() => toggleExpanded(url)}
+                                    >
+                                      {expanded
+                                        ? t('adminKnowledgeReports.preview.collapse')
+                                        : t('adminKnowledgeReports.preview.expand')}
+                                    </Button>
+                                  </>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-1"
+                        onClick={() => void handleRefetchPreview()}
+                        disabled={actionLoading || previewRunning}
+                      >
+                        {t('adminKnowledgeReports.preview.refetch')}
+                      </Button>
+                    </DetailItem>
+                  )}
 
                   <DetailItem term={t('adminKnowledgeReports.detail.status')}>
                     {statusLabel[selectedReport.status]}

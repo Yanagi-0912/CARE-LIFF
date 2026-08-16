@@ -34,6 +34,9 @@ export const queryKeys = {
   /** 佇列篩選改由後端執行，狀態要進 key，否則換頁籤會沿用上一組分頁結果 */
   adminKnowledgeReports: (status?: string) =>
     ['admin-knowledge-reports', status ?? 'all'] as const,
+  /** 某筆回報的核准前內容預覽；一筆回報只有一份，所以 key 只需要 reportId */
+  knowledgeReportPreview: (reportId: string) =>
+    ['knowledge-report-preview', reportId] as const,
   consultationSummaries: ['consultation-summaries'] as const,
   consultationRaw: ['consultation-raw'] as const,
   inviteVerification: (code: string) => ['invite-verification', code] as const,

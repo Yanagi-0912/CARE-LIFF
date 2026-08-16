@@ -38,6 +38,32 @@ export interface KnowledgeReportDto {
   updated_at: string;
 }
 
+export type ContentPreviewStatus = 'running' | 'ready' | 'failed';
+export type ContentPreviewItemStatus = 'ok' | 'empty' | 'error';
+
+export interface ContentPreviewItemDto {
+  url: string;
+  status: ContentPreviewItemStatus;
+  title: string;
+  /** 抓到的原文；超過長度上限時會被截斷，此時 truncated 為 true */
+  content: string;
+  /** sha256(全文)；核准時要原樣回送，伺服器據此確認你看的就是它要收的 */
+  content_hash: string;
+  /** 截斷前的真實字元數 */
+  char_count: number;
+  truncated: boolean;
+  message: string;
+}
+
+export interface ContentPreviewDto {
+  preview_id: string;
+  report_id: string;
+  status: ContentPreviewStatus;
+  items: ContentPreviewItemDto[];
+  created_at: string;
+  expires_at: string;
+}
+
 export interface KnowledgeReportListResponse {
   reports: KnowledgeReportDto[];
   /** 以下分頁欄位僅 admin 待審列表會回傳 */
@@ -48,11 +74,50 @@ export interface KnowledgeReportListResponse {
   status_counts?: Record<string, number> | null;
 }
 
+/**
+ * 帶上機器可讀資訊的 API 錯誤。
+ *
+ * 呈現層要分辨「預覽逾期／被取代／雜湊不符」與一般操作失敗——前者要給重新
+ * 抓取的出口，後者只要顯示訊息。只丟 Error 的話 code 在 parseError 就被丟掉了。
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** 預覽失效的錯誤碼；這幾種要引導 admin 重新抓取，而不是當成一般失敗 */
+const STALE_PREVIEW_CODES = [
+  'preview_missing',
+  'preview_expired',
+  'preview_superseded',
+  'preview_url_missing',
+  'preview_hash_mismatch',
+] as const;
+
+export function isStalePreviewError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 409 &&
+    STALE_PREVIEW_CODES.includes(error.code as (typeof STALE_PREVIEW_CODES)[number])
+  );
+}
+
 async function parseError(res: Response): Promise<Error> {
   let message = `API 請求失敗：${res.status}`;
+  let code: string | undefined;
   try {
     const data = await res.json();
     if (data.detail) {
+      if (typeof data.detail === 'object' && !Array.isArray(data.detail)) {
+        code = typeof data.detail.code === 'string' ? data.detail.code : undefined;
+      }
       if (typeof data.detail === 'string') {
         // 舊形狀：detail 本身就是給人看的字串，向後相容
         message = data.detail;
@@ -77,7 +142,7 @@ async function parseError(res: Response): Promise<Error> {
   } catch {
     // ignore parse error
   }
-  return new Error(message);
+  return new ApiError(message, res.status, code);
 }
 
 export async function fetchKnowledgeReports(): Promise<KnowledgeReportListResponse> {
@@ -114,10 +179,50 @@ export async function fetchAdminKnowledgeReports(
   return res.json();
 }
 
+export type StartContentPreviewBody = {
+  urls?: string[];
+  /** true 時忽略 TTL 內的既有預覽，強制重抓並取得新的 preview_id */
+  force?: boolean;
+};
+
+/** 啟動內容預覽。後端立即回 202，實際抓取在背景進行，之後靠 GET 輪詢。 */
+export async function startKnowledgeReportPreview(
+  reportId: string,
+  body?: StartContentPreviewBody,
+): Promise<ContentPreviewDto> {
+  const res = await fetch(
+    `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/preview`,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(body ?? {}),
+    },
+  );
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/** 取回內容預覽；尚未建立或已逾期時後端回 404，這裡轉成 null。 */
+export async function fetchKnowledgeReportPreview(
+  reportId: string,
+): Promise<ContentPreviewDto | null> {
+  const res = await fetch(
+    `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/preview`,
+    { headers: authHeaders() },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
 export type ApproveKnowledgeReportBody = {
   selected_urls?: string[];
   resolution?: string;
   reviewer_note?: string;
+  /** 核准所依據的預覽；沒帶會被後端以 409 拒絕 */
+  preview_id?: string;
+  /** url → 呼叫端實際看過的內容雜湊 */
+  content_hashes?: Record<string, string>;
 };
 
 export async function approveKnowledgeReport(
