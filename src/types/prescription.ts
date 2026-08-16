@@ -39,6 +39,25 @@ export const FREQUENCY_TO_SLOTS: Record<PrescriptionFrequencyCode, MedicationSlo
   OTHER: [],
 };
 
+/**
+ * 單一候選藥證（對應後端 DrugCandidate）：藥名命中多張藥證時，供核對畫面
+ * 呈現給使用者挑選的其中一張。外觀欄位缺席時是空字串而非 null——原樣沿用
+ * 後端慣例，呼叫端不必先判斷型別就能安全串接顯示。
+ * `thumbnail_url` 是掃描當下就地解析好的對外縮圖路徑，查無縮圖時為
+ * null，呈現面必須安全地退回純文字（spec「照片缺席時的降級」）。
+ */
+export interface DrugCandidate {
+  license_number: string;
+  name_zh: string;
+  shape: string;
+  color: string;
+  score_line: string;
+  mark_one: string;
+  mark_two: string;
+  size: string;
+  thumbnail_url: string | null;
+}
+
 /** 單一藥品的辨識結果（對應後端 RecognizedDrug） */
 export interface RecognizedDrug {
   name: string;
@@ -52,8 +71,22 @@ export interface RecognizedDrug {
   timing?: DrugTiming;
   duration_days?: number | null;
   indication?: string | null;
-  /** 藥證庫比對命中後才會有值 */
+  /** 後端**唯一性判定成立**時才有值。null 代表「藥名比對到了，但無法確定是
+   * 哪一張藥證」，**不蘊含候選有多筆**：反向含容命中算進唯一性判定卻不列入
+   * candidates，所以「候選只有一筆、license_number 為 null」是常態（實測全庫
+   * 56,886 個中文品名有 27,058 個、47.6% 落在這個狀態）。只有單向的蘊含成立
+   * ——有值時 candidates 必然恰好一筆，反過來不成立。 */
   license_number?: string | null;
+  /**
+   * 可供使用者挑選的候選清單：完全比對與正向含容命中的藥證，**不含**只參與
+   * 唯一性判定的反向含容命中（那些按定義是別的藥，挑中就會貼上錯的照片）。
+   * 完全比不到藥證庫時為空陣列，此時沒有任何外觀資訊可呈現。
+   * **清單只有一筆不代表證號已確定**——要判斷「已確定」一律看 license_number
+   * 有沒有值，不要從 candidates.length 推論（見上一個欄位與
+   * DrugCandidateSection 的唯讀閘門）。核對畫面用它呈現候選的照片與外觀描述
+   * 供使用者挑選；挑選結果經由 CommitDrugItem 的 license_number 送回。
+   */
+  candidates: DrugCandidate[];
   name_confidence: NameConfidence;
 }
 
@@ -129,4 +162,12 @@ export interface PrescriptionCommitResult {
    * 送出後的訊息也要如實反映，不能只字未提。冪等重放時可能為空陣列。
    */
   reactivated_slots: MedicationSlotType[];
+  /**
+   * 這次提交把哪些藥品挑定的證號丟棄、改以空證號建立（候選清單外的證號，
+   * 見後端 PrescriptionCommitResult 的說明）。正常操作下不會發生——本畫面
+   * 的候選挑選器只會送出真的落在候選清單內的證號，藥名一經編輯也會清空
+   * 挑選狀態；此欄位是後端回應契約的一部分，選填是為了不強迫既有測試
+   * 逐一補上這個永遠是空陣列的欄位。
+   */
+  discarded_license_medication_ids?: string[];
 }

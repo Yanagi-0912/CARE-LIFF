@@ -28,7 +28,15 @@ export const DEFAULT_SLOT_TIMES: Record<MedicationSlotType, string> = {
   bedtime: '21:30',
 };
 
-/** 一種藥（對應後端 Medication）。藥袋辨識建立的藥會多帶 usage_raw／license_number 等欄位。 */
+/**
+ * 一種藥（對應後端 Medication）。藥袋辨識建立的藥會多帶 usage_raw／license_number 等欄位。
+ *
+ * 外觀欄位（shape／color／score_line／mark_one／mark_two／size）與後端同一慣例：
+ * 缺席時是空字串而非 null，只有 license_number 對到候選清單中「有對應藥證」時
+ * 才會非空。呈現面據此判斷要不要顯示藥丸照片與外觀描述（spec「證號不確定時
+ * 不得顯示藥丸照片」）——license_number 為 null／空字串時，這些欄位理論上
+ * 也會是空字串，兩者是一致的。
+ */
 export interface Medication {
   id: string;
   user_id: string;
@@ -36,6 +44,25 @@ export interface Medication {
   name: string;
   generic_name: string | null;
   license_number: string | null;
+  /** 藥丸形狀，例如「圓形」「橢圓形」 */
+  shape: string;
+  /** 藥丸顏色，例如「白色」 */
+  color: string;
+  /** 刻痕，例如「一字型」 */
+  score_line: string;
+  /** 標註一，例如「PBF 436」。160px 縮圖看不清楚，因此以文字欄位獨立呈現 */
+  mark_one: string;
+  mark_two: string;
+  /** 外觀尺寸的原文描述（食藥署資料集的裸數字，無單位——呈現面不臆測單位） */
+  size: string;
+  /**
+   * 藥丸縮圖的對外 URL。由後端在讀取當下就地解析（見
+   * MedicationService.get_user_reminders_with_medications），不是資料庫裡
+   * 存的值，也不是前端算出來的——只有後端知道證號對應的縮圖檔案是否真的
+   * 落地，前端用證號自行推算 URL 只會在多數沒有縮圖的情況下猜出一個會
+   * 404 的網址。查無縮圖或證號未確定時為 null，呈現面安全退回純文字。
+   */
+  thumbnail_url: string | null;
   unit_content: string | null;
   total_quantity: number | null;
   /** 藥袋上的用法原文，手動建立的藥品沒有這個值 */

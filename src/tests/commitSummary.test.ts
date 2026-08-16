@@ -74,4 +74,53 @@ describe('buildCommitSummary', () => {
 
     expect(message).not.toContain('重新開啟');
   });
+
+  // I1：後端接受候選外的證號時不拒絕整份提交，改為丟棄該證號、以空證號
+  // 建立這筆藥品——但 spec 明講「丟棄 SHALL NOT 是靜默的」。「前端邏輯應該
+  // 防得住這個情境」不能取代這句話：防得住只代表平常不會觸發，觸發時
+  // 使用者仍然要被告知，否則他會以為照片會出現而事後困惑。
+  it('有證號被丟棄時，訊息要提到這件事', () => {
+    const message = buildCommitSummary(i18n.t.bind(i18n), {
+      result: makeResult({ discarded_license_medication_ids: ['m-1'] }),
+      totalCount: 1,
+      noReminderCount: 0,
+    });
+
+    expect(message).toBe('已建立 1 項藥品與對應提醒 1 項藥品原本挑選的藥丸照片已不再適用，未顯示照片。');
+  });
+
+  it('沒有任何證號被丟棄時，訊息不提這件事', () => {
+    const message = buildCommitSummary(i18n.t.bind(i18n), {
+      result: makeResult({ discarded_license_medication_ids: [] }),
+      totalCount: 1,
+      noReminderCount: 0,
+    });
+
+    expect(message).not.toContain('照片');
+  });
+
+  it('未帶 discarded_license_medication_ids 欄位時（型別為選填）視同沒有丟棄', () => {
+    const message = buildCommitSummary(i18n.t.bind(i18n), {
+      result: makeResult(),
+      totalCount: 1,
+      noReminderCount: 0,
+    });
+
+    expect(message).not.toContain('照片');
+  });
+
+  it('重新開啟時段與證號被丟棄同時發生時，兩件事都要出現在訊息裡', () => {
+    const message = buildCommitSummary(i18n.t.bind(i18n), {
+      result: makeResult({
+        reactivated_slots: ['morning'],
+        discarded_license_medication_ids: ['m-1', 'm-2'],
+      }),
+      totalCount: 2,
+      noReminderCount: 0,
+    });
+
+    expect(message).toBe(
+      '已建立 2 項藥品與對應提醒 「早」的提醒已重新開啟。 2 項藥品原本挑選的藥丸照片已不再適用，未顯示照片。',
+    );
+  });
 });

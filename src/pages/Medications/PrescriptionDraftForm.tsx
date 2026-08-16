@@ -19,6 +19,7 @@ import {
 import { useMedications } from './useMedications';
 import { isReminderSchedulable } from './reminderSchedule';
 import { todayLocalDateString } from '../../utils/date';
+import { DrugCandidateSection } from './DrugCandidateSection';
 import {
   Dialog,
   DialogContent,
@@ -73,6 +74,13 @@ interface DrugFormValue {
    * OTHER 的時段預設就是空的，沒有勾選任何時段可能只是「還沒選」，不是
    * 「決定了不要」；這個欄位讓兩者不再混淆（見 toCommitDrug）。 */
   noReminder: boolean;
+  /** 使用者在候選清單中挑定的藥證字號；null 代表未挑選（**後端已釘定證號**時
+   * 預設帶入那個證號，不需要使用者動作；候選只有一筆但證號留空時刻意**不**
+   * 預設帶入，要使用者自己確認）。藥名一經編輯就與外觀資訊一起失效，
+   * 但這裡刻意不清空這個欄位本身——nameEdited 只在送出當下（toCommitDrug）
+   * 與畫面呈現（DrugCandidateSection）兩處生效，若使用者把名字改回原樣，
+   * 原本挑過的證號要能原樣復原，不必重新挑一次。 */
+  licenseNumber: string | null;
 }
 
 /**
@@ -128,6 +136,7 @@ function buildSchema(t: TFunction, drugs: RecognizedDrug[]) {
             .positive({ message: t('meds.scan.draft.durationDaysInvalid') })
             .nullable(),
           noReminder: z.boolean(),
+          licenseNumber: z.string().nullable(),
         }),
       )
       .superRefine((rows, ctx) => {
@@ -180,7 +189,14 @@ function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugI
   return {
     name: row.name,
     generic_name: original.generic_name ?? undefined,
-    license_number: nameEdited ? undefined : (original.license_number ?? undefined),
+    // 未編輯藥名時送出使用者在候選清單中挑定的證號（後端已釘定證號時預設
+    // 就是那個證號，不需要使用者動作；候選只有一筆但證號留空時不預設，仍
+    // 要使用者自己確認）；未挑選則 row.licenseNumber 為 null，
+    // 送出 undefined，後端以空證號建立，未挑選不得阻擋提交（spec「使用者
+    // 為多候選藥品挑定藥證」）。藥名一經編輯，不論 row.licenseNumber 裡
+    // 存了什麼，一律送出 undefined——沿用改名前挑的證號等於把新藥名和
+    // 另一顆藥的許可證字號存在一起。
+    license_number: nameEdited ? undefined : (row.licenseNumber ?? undefined),
     unit_content: original.unit_content ?? undefined,
     total_quantity: original.total_quantity ?? undefined,
     usage_raw: original.usage_raw ?? undefined,
@@ -253,6 +269,14 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
         slots: resolveDefaultSlots(drug),
         durationDays: drug.duration_days ?? null,
         noReminder: false,
+        // 後端唯一性判定成立時已經把證號寫進 license_number，預先帶入等於
+        // 「預設選好了」，使用者不需要多做一次選擇；證號尚未確定的藥品這裡
+        // 會是 null，畫面上呈現「未挑選」的狀態，直到使用者從候選中挑一個。
+        // 這個 null 的主要來路**不是**「候選很多張」：反向含容命中算進唯一性
+        // 判定卻不列入候選，所以最常見的是「候選只有一筆、證號仍留空」（實測
+        // 全庫 56,886 個中文品名有 27,058 個、47.6%）。那一筆一樣不預先帶入
+        // ——後端拒絕釘定的東西，畫面不能替它決定（見 DrugCandidateSection）。
+        licenseNumber: drug.license_number ?? null,
       })),
     },
   });
@@ -432,6 +456,10 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
               const nameUnverified = original.name_confidence === 'low';
               const rowNoReminder = watchedDrugRows?.[index]?.noReminder ?? false;
               const rowSlotsEmpty = (watchedDrugRows?.[index]?.slots?.length ?? 0) === 0;
+              // 藥名是否已被改成與辨識結果不同的字串——與 toCommitDrug 用同一個
+              // 比較方式，讓「畫面上還看不看得到照片」與「送出時要不要清空證號」
+              // 對同一件事保持一致的判斷（spec「藥名被編輯時證號與照片一併失效」）。
+              const rowNameEdited = (watchedDrugRows?.[index]?.name ?? original.name) !== original.name;
 
               return (
                 <div
@@ -475,6 +503,23 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
                       text: original.usage_raw || t('meds.scan.draft.usageRawEmpty'),
                     })}
                   </FieldDescription>
+
+                  {/* 藥丸外觀消歧：候選多於一張時逐筆呈現候選的縮圖與外觀描述供挑選，
+                      挑選後釘定該筆的證號；未挑選不阻擋提交，只是不會顯示藥丸照片
+                      （spec「使用者為多候選藥品挑定藥證」）。 */}
+                  <Controller
+                    control={control}
+                    name={`drugs.${index}.licenseNumber`}
+                    render={({ field: licenseField }) => (
+                      <DrugCandidateSection
+                        drug={original}
+                        nameEdited={rowNameEdited}
+                        selectedLicense={licenseField.value}
+                        onSelect={licenseField.onChange}
+                        disabled={busy}
+                      />
+                    )}
+                  />
 
                   {/* 療程天數換算成後端的 end_date，決定這顆藥何時自動停止提醒——
                       OCR 讀錯天數的後果不再只是顯示錯誤，而是提醒停得太早或太晚，
