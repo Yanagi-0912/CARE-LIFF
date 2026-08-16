@@ -59,6 +59,18 @@ export interface ContentPreviewDto {
   preview_id: string;
   report_id: string;
   status: ContentPreviewStatus;
+  /**
+   * 本次預覽涵蓋的 URL，已由後端正規化（補 scheme、去追蹤參數、主機名轉小寫）。
+   *
+   * 送出的字串與這裡回來的可能不同，而之後每個環節——快照的鍵、核准的
+   * selected_urls、向量庫的 url——都必須是同一份字串，所以呼叫端要以這個欄位
+   * 為準去更新自己的選取清單。
+   *
+   * 不能用 `items[].url` 代替：`status` 為 `running` 時 `items` 還是空的，
+   * 此時這個欄位是唯一能說明「正在抓哪幾個」的資訊。
+   * 對應後端 `app/models/knowledge_report.py` 的 `ContentPreview.urls`。
+   */
+  urls: string[];
   items: ContentPreviewItemDto[];
   created_at: string;
   expires_at: string;
