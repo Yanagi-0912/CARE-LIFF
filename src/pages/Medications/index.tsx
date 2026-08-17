@@ -253,6 +253,7 @@ const MedicationsPage = () => {
       {editing && (
         <ReminderEditDialog
           reminder={editing}
+          existingSlots={existingSlots}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setEditing(null)}

@@ -110,12 +110,16 @@ export interface CreateRemindersRequest {
 /**
  * PUT /api/medications/reminders/{id} 請求
  *
- * 注意：後端會濾掉值為 null／undefined 的欄位，
- * 因此無法透過此 API 把 end_date 清成「長期」。
+ * 後端以 `model_dump(exclude_unset=True)` 匯出，所以「沒帶這個 key」與
+ * 「帶了但是 null」是兩件不同的事：前者不動該欄位，後者才是清空。只有
+ * `end_date` 接受 null（清成長期），其餘欄位送 null 會被擋成 400——因此
+ * 這裡刻意只有 end_date 的型別包含 null，讓誤用在編譯期就被抓到。
  */
 export interface UpdateReminderRequest {
+  slot_type?: MedicationSlotType;
   scheduled_time?: string;
   start_date?: string;
-  end_date?: string;
+  /** null 代表清成「長期」（沒有結束日期）；不帶這個 key 則不動原值 */
+  end_date?: string | null;
   enabled?: boolean;
 }

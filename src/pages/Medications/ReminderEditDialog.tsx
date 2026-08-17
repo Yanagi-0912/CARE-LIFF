@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import {
   SLOT_LABEL_KEY,
+  SLOT_TYPES,
+  type MedicationSlotType,
   type MedicationReminder,
   type UpdateReminderRequest,
 } from '../../types/medication';
@@ -28,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -37,16 +40,30 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldLegend,
+  FieldSet,
   FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { ItemGroup } from '@/components/ui/item';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MedicationAppearanceRow } from './MedicationAppearanceRow';
 
 /** 表單掛在 dialog body 上，儲存鈕在 DialogFooter，靠 form 屬性連回來 */
 const FORM_ID = 'edit-reminder-form';
 
 interface ReminderEditDialogProps {
   reminder: MedicationReminder;
+  /**
+   * 這位使用者名下所有提醒已佔用的時段（含本筆自己的）。用來停用「改到已經
+   * 有另一筆提醒的時段」——後端 `{user_id, slot_type}` 上刻意沒有 unique
+   * index（舊資料可能已有重複，建索引會讓應用起不來，見
+   * MedicationReminderRepository.find_or_create_reminder），同一時段若出現
+   * 兩份規則，那個時段每天會推兩則。後端會擋成 409，這裡先讓使用者看得出來
+   * 哪些時段不能選，而不是選了才被拒絕。
+   */
+  existingSlots: MedicationSlotType[];
   onSave: (patch: UpdateReminderRequest) => Promise<void>;
   onDelete: () => Promise<void>;
   onClose: () => void;
@@ -54,6 +71,7 @@ interface ReminderEditDialogProps {
 
 export function ReminderEditDialog({
   reminder,
+  existingSlots,
   onSave,
   onDelete,
   onClose,
@@ -61,28 +79,30 @@ export function ReminderEditDialog({
   const { t } = useTranslation();
 
   const slotLabel = t(SLOT_LABEL_KEY[reminder.slot_type]);
-  const hadEndDate = Boolean(reminder.end_date);
+  const medications = reminder.medications ?? [];
 
-  // 三條驗證規則集中在 schema（原本是 handleSave 開頭的三段 if）
+  // 佔用判定要排除本筆自己：使用者把時段「改成它原本的值」不是衝突，
+  // 佔住那個時段的正是這筆提醒。
+  const takenByOthers = useMemo(
+    () => existingSlots.filter((slot) => slot !== reminder.slot_type),
+    [existingSlots, reminder.slot_type],
+  );
+
   const schema = useMemo(
     () =>
       z
         .object({
-          time: z.string().min(1, t('meds.updateFailed')),
-          startDate: z.string().min(1),
+          slot: z.enum(SLOT_TYPES),
+          time: z.string().min(1, t('meds.edit.timeRequired')),
+          startDate: z.string().min(1, t('meds.edit.startDateRequired')),
           endDate: z.string(),
           enabled: z.boolean(),
         })
         .refine((v) => !v.endDate || v.endDate >= v.startDate, {
           message: t('meds.add.dateOrderError'),
           path: ['endDate'],
-        })
-        // 後端會濾掉 null 欄位，無法把已設定的結束日期清成「長期」
-        .refine((v) => !hadEndDate || Boolean(v.endDate), {
-          message: t('meds.edit.endDateNote'),
-          path: ['endDate'],
         }),
-    [t, hadEndDate],
+    [t],
   );
 
   type FormValues = z.infer<typeof schema>;
@@ -97,6 +117,7 @@ export function ReminderEditDialog({
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      slot: reminder.slot_type,
       time: reminder.scheduled_time,
       startDate: reminder.start_date,
       endDate: reminder.end_date ?? '',
@@ -109,9 +130,15 @@ export function ReminderEditDialog({
   const submit = handleSubmit(async (values) => {
     // 只送出真正變動的欄位
     const patch: UpdateReminderRequest = {};
+    if (values.slot !== reminder.slot_type) patch.slot_type = values.slot;
     if (values.time !== reminder.scheduled_time) patch.scheduled_time = values.time;
     if (values.startDate !== reminder.start_date) patch.start_date = values.startDate;
-    if (values.endDate && values.endDate !== reminder.end_date) patch.end_date = values.endDate;
+    // 空字串代表「沒有結束日期」，要送出 null 才會真的清成長期——後端以
+    // exclude_unset 匯出，「沒帶這個 key」與「帶了 null」是兩件不同的事
+    // （見 UpdateReminderRequest 的說明）。先前這裡寫成 `values.endDate &&`，
+    // 清空時整個條件為 false，patch 裡什麼都沒有，等於靜默地不做事。
+    const nextEndDate = values.endDate || null;
+    if (nextEndDate !== reminder.end_date) patch.end_date = nextEndDate;
     if (values.enabled !== reminder.enabled) patch.enabled = values.enabled;
 
     if (Object.keys(patch).length === 0) {
@@ -154,7 +181,7 @@ export function ReminderEditDialog({
         <DialogHeader>
           <DialogTitle>{t('meds.edit.title')}</DialogTitle>
           <DialogDescription>
-            {t('meds.add.slotsField')} <strong className="text-foreground">{slotLabel}</strong>
+            {t('meds.editAria', { slot: slotLabel, time: reminder.scheduled_time })}
           </DialogDescription>
         </DialogHeader>
 
@@ -167,6 +194,54 @@ export function ReminderEditDialog({
         <ScrollArea>
           <form id={FORM_ID} onSubmit={(e) => void submit(e)}>
             <FieldGroup>
+              {/* 時段從唯讀改為可改。時段唯讀而時間可改時，使用者做得出
+                  「早上 21:00」這種自相矛盾的提醒——推播文案說的是「早上該吃
+                  藥了」，卻在晚上九點發出。 */}
+              <Controller
+                control={control}
+                name="slot"
+                render={({ field }) => (
+                  <FieldSet>
+                    <FieldLegend variant="label">{t('meds.edit.slot')}</FieldLegend>
+                    <FieldDescription>{t('meds.edit.slotNote')}</FieldDescription>
+
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={busy}
+                      aria-label={t('meds.edit.slot')}
+                    >
+                      {SLOT_TYPES.map((slot) => {
+                        const taken = takenByOthers.includes(slot);
+                        return (
+                          // FieldLabel 包住 Field 就會變成可點的選取卡片：
+                          // 圓角、外框、選取高亮都是 Field 元件內建的，也讓
+                          // 整張卡片成為 ≥44px 的觸控目標（圓點本身只有 16px，
+                          // 與新增表單的 Checkbox 同一個模式）。
+                          <FieldLabel key={slot} htmlFor={`edit-slot-${slot}`}>
+                            <Field orientation="horizontal" data-disabled={taken}>
+                              <RadioGroupItem
+                                id={`edit-slot-${slot}`}
+                                value={slot}
+                                disabled={taken || busy}
+                              />
+                              <FieldContent>
+                                <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
+                                {taken && (
+                                  <Badge variant="secondary">{t('meds.edit.slotTaken')}</Badge>
+                                )}
+                              </FieldContent>
+                            </Field>
+                          </FieldLabel>
+                        );
+                      })}
+                    </RadioGroup>
+
+                    <FieldError errors={[errors.slot]} />
+                  </FieldSet>
+                )}
+              />
+
               <Field data-invalid={Boolean(errors.time)}>
                 <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
                 <Input
@@ -179,9 +254,18 @@ export function ReminderEditDialog({
                 <FieldError errors={[errors.time]} />
               </Field>
 
-              <Field>
+              {/* 這一欄原本沒有 FieldError，zod 的 min(1) 也沒帶訊息：清空後
+                  按儲存毫無反應也毫無提示，看起來就像儲存鈕壞了。 */}
+              <Field data-invalid={Boolean(errors.startDate)}>
                 <FieldLabel htmlFor="edit-start">{t('meds.edit.startDate')}</FieldLabel>
-                <Input id="edit-start" type="date" disabled={busy} {...register('startDate')} />
+                <Input
+                  id="edit-start"
+                  type="date"
+                  aria-invalid={Boolean(errors.startDate)}
+                  disabled={busy}
+                  {...register('startDate')}
+                />
+                <FieldError errors={[errors.startDate]} />
               </Field>
 
               <Field data-invalid={Boolean(errors.endDate)}>
@@ -194,7 +278,9 @@ export function ReminderEditDialog({
                   disabled={busy}
                   {...register('endDate')}
                 />
-                {hadEndDate && <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>}
+                {/* 清空即改回長期，這句話對「已設過」與「還沒設過」都成立，
+                    不需要再依 hadEndDate 分岔。 */}
+                <FieldDescription>{t('meds.edit.endDateNote')}</FieldDescription>
                 <FieldError errors={[errors.endDate]} />
               </Field>
 
@@ -223,6 +309,23 @@ export function ReminderEditDialog({
                   </FieldLabel>
                 )}
               />
+
+              {/* 這個時段有哪些藥。卡片上看得到、點進編輯卻整個消失時，
+                  使用者無從確認「我正在改的是哪幾種藥的提醒」——要按下那顆
+                  刪除鈕之前尤其需要知道。這裡是唯讀的核對資訊，不是欄位：
+                  藥品的增刪走藥袋辨識流程，不在這個視窗裡。
+                  照片用 compact（size-16）：這裡的用途是核對是哪幾種藥，
+                  不是靠外觀認藥，不需要也放不下卡片上那張 160px 的大圖。 */}
+              {medications.length > 0 && (
+                <FieldSet>
+                  <FieldLegend variant="label">{t('meds.edit.medicationsLabel')}</FieldLegend>
+                  <ItemGroup>
+                    {medications.map((med) => (
+                      <MedicationAppearanceRow key={med.id} medication={med} size="compact" />
+                    ))}
+                  </ItemGroup>
+                </FieldSet>
+              )}
 
               {errors.root?.message && (
                 <Alert variant="destructive">
