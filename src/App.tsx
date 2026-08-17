@@ -6,6 +6,7 @@ import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 import AdminRoute from './components/AdminRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import {
   applyTheme,
   defaultSettings,
@@ -93,6 +94,12 @@ function AppContent() {
           {/* 頁面切分後首次進入某頁需短暫載入。fallback 用與頁面同高的空白區塊
               而非轉圈動畫：切頁本身很快，閃一下 spinner 反而比留白更晃眼。
               role="status" 讓螢幕閱讀器知道正在載入。 */}
+          {/* ErrorBoundary 包在 Suspense 外面：Suspense 只處理「還在載入」，
+              載入失敗（部署後舊的 chunk 檔名已不存在）要由 ErrorBoundary 接住，
+              否則 React 會卸載整棵樹，使用者只看到一片白。
+              放在 main 之內，因此 main 的 key={location.pathname} 會在切頁時
+              一併重建這道邊界——錯誤狀態不會跟著使用者黏到下一頁。 */}
+          <ErrorBoundary>
           <Suspense
             fallback={<div className="min-h-[50vh]" role="status" aria-label={t('common.loading')} />}
           >
@@ -124,6 +131,7 @@ function AppContent() {
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 
