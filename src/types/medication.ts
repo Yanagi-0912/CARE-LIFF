@@ -70,6 +70,25 @@ export interface Medication {
   frequency_code: string;
   /** 適應症僅供本人與族譜成員於 LIFF 內查看，後端保證不會出現在推播訊息中 */
   indication: string | null;
+  /**
+   * 食藥署仿單的適應症原文。與 thumbnail_url 同一慣例：由後端在讀取當下依
+   * 證號就地解析，不是資料庫裡存的值。證號未確定時為 null——不知道是哪一張
+   * 藥證，顯示的適應症就可能屬於另一顆藥（與「證號不確定時不得顯示藥丸
+   * 照片」同一條安全邊界）。
+   *
+   * 與上面的 `indication` 分開呈現，SHALL NOT 合併：兩者回答的是不同問題。
+   * 仿單答「這個藥核准用於哪些適應症」（監管範疇），藥袋上印的通常是醫師
+   * 針對這位病人挑過的那一個，也就是使用者真正想知道的「我為什麼要吃這個」。
+   */
+  spc_indication: string | null;
+  /**
+   * 仿單適應症的濃縮版，給不熟悉醫學名詞的長輩看。
+   *
+   * 為 null 有兩種成因（原文已經夠短所以不需要摘要、或產不出合格摘要），
+   * 但對呈現面的意義相同：**退回顯示 `spc_indication` 原文**，而不是整個
+   * 不顯示。這是 spec 的「摘要缺席時的降級」。
+   */
+  spc_indication_summary: string | null;
   source: 'manual' | 'prescription_ocr';
   start_date: string;
   end_date: string | null;
