@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as medicationApi from '../api/medicationApi';
 import MedicationsPage from '../pages/Medications';
+import { MedicationIndicationSection } from '../pages/Medications/MedicationIndicationSection';
 import type { Medication, MedicationReminder } from '../types/medication';
 import i18n from '../i18n';
 
@@ -77,6 +78,8 @@ function makeMedication(overrides: Partial<Medication> = {}): Medication {
     usage_raw: null,
     frequency_code: 'QD',
     indication: null,
+    spc_indication: null,
+    spc_indication_summary: null,
     source: 'prescription_ocr',
     start_date: '2026-08-01',
     end_date: null,
@@ -318,5 +321,71 @@ describe('MedicationsPage', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('脈優錠5毫克')).toBeInTheDocument();
     expect(within(dialog).getByText('克流感膠囊')).toBeInTheDocument();
+  });
+});
+
+describe('MedicationIndicationSection', () => {
+  it('兩個來源分開呈現，仿單顯示摘要且可展開原文', async () => {
+    renderWithToaster(
+      <MedicationIndicationSection
+        medication={makeMedication({
+          indication: '降血壓',
+          spc_indication: '1.本態性高血壓。2.治療左心室射出分率≦40%之心臟衰竭病患。',
+          spc_indication_summary: '高血壓、心臟衰竭',
+        })}
+      />,
+    );
+
+    // 藥袋那行與仿單各自標示來源，不合併
+    expect(screen.getByText(i18n.t('meds.indication.bagLabel'))).toBeInTheDocument();
+    expect(screen.getByText('降血壓')).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('meds.indication.spcLabel'))).toBeInTheDocument();
+    expect(screen.getByText('高血壓、心臟衰竭')).toBeInTheDocument();
+
+    // 原文預設收合，展開後才出現
+    expect(screen.queryByText(/本態性高血壓/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(i18n.t('meds.indication.expand')));
+    await waitFor(() => {
+      expect(screen.getByText(/本態性高血壓/)).toBeInTheDocument();
+    });
+  });
+
+  it('摘要為空時直接顯示原文，且不出現展開鈕', () => {
+    renderWithToaster(
+      <MedicationIndicationSection
+        medication={makeMedication({
+          indication: '緩解便祕',
+          spc_indication: '緩解便祕。',
+          spc_indication_summary: null,
+        })}
+      />,
+    );
+
+    // spec「摘要缺席時的降級」：顯示原文，而不是整段不顯示
+    expect(screen.getByText('緩解便祕。')).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('meds.indication.expand'))).not.toBeInTheDocument();
+  });
+
+  it('證號未確定（查無仿單）時只顯示藥袋那行，不留空白區塊', () => {
+    renderWithToaster(
+      <MedicationIndicationSection
+        medication={makeMedication({
+          license_number: null,
+          indication: '降血壓',
+          spc_indication: null,
+          spc_indication_summary: null,
+        })}
+      />,
+    );
+
+    expect(screen.getByText('降血壓')).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('meds.indication.spcLabel'))).not.toBeInTheDocument();
+  });
+
+  it('兩個來源都沒有時整段不渲染', () => {
+    const { container } = renderWithToaster(
+      <MedicationIndicationSection medication={makeMedication()} />,
+    );
+    expect(container.textContent).toBe('');
   });
 });

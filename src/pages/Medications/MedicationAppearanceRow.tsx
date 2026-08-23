@@ -4,6 +4,7 @@ import type { Medication } from '../../types/medication';
 import { cn } from '@/lib/utils';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { PillThumbnail } from './PillThumbnail';
+import { MedicationIndicationSection } from './MedicationIndicationSection';
 import { formatAppearanceMarks, formatAppearancePrimary } from './appearanceText';
 
 /**
@@ -81,6 +82,10 @@ export function MedicationAppearanceRow({
         {appearanceText && (
           <ItemDescription className="line-clamp-none break-words">{appearanceText}</ItemDescription>
         )}
+        {/* 適應症只在 full 尺寸呈現。compact 用於編輯視窗，那裡的用途是
+            「確認我正在改的是哪幾種藥」，塞進一段可能上百字的適應症只會把
+            清單撐長、蓋掉它真正要回答的問題。 */}
+        {full && <MedicationIndicationSection medication={medication} />}
       </ItemContent>
     </Item>
   );
