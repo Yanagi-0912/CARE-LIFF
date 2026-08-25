@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { TriangleAlertIcon, UsersIcon } from 'lucide-react';
+import { InfoIcon, ShieldCheckIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
 
 import { useLiff } from '../../hooks/useLiff';
 import { useFamily } from '../../hooks/useFamily';
 import { MemberCard } from './MemberCard';
 import { InviteButton } from './InviteButton';
+import { RoleManagerDialog } from './RoleManagerDialog';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -22,7 +25,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 const FamilyPage = () => {
   const { t } = useTranslation();
   const { liffReady } = useLiff();
-  const { members, loading, error, refetch } = useFamily();
+  const { members, loading, error, refetch, roleAssignment } = useFamily();
+  const [managingRoles, setManagingRoles] = useState(false);
+
+  // 還有幾位家人沒設定權限。0 或狀態未回時不顯示提示——沒有待辦就不要製造
+  // 一則永遠在那裡的橫幅。
+  const unassignedCount = roleAssignment?.unassigned_member_ids.length ?? 0;
 
   const handleInvited = () => {
     toast.success(t('family.inviteSuccess'));
@@ -51,6 +59,32 @@ const FamilyPage = () => {
           />
         )}
       </header>
+
+      {/* 引導式角色指派的入口與提示。
+          「還有幾位未設定」與「他們現在是什麼權限」都要講出來——沉默的預設值
+          在這裡特別危險：擁有者以為沒做的事等於沒有後果，實際上他正把某個人
+          留在最低權限。 */}
+      {members.length > 0 && (
+        <div className="mb-5 flex flex-col gap-3">
+          {unassignedCount > 0 && (
+            <Alert>
+              <InfoIcon />
+              <AlertDescription>
+                {t('familyRole.unassignedNotice', { count: unassignedCount })}
+              </AlertDescription>
+            </Alert>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => setManagingRoles(true)}
+          >
+            <ShieldCheckIcon data-icon="inline-start" />
+            {t('familyRole.manage.open')}
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         // 骨架屏用與 MemberCard 同一組 Item 元件，卡片外框自然對齊，
@@ -107,6 +141,9 @@ const FamilyPage = () => {
             <MemberCard key={member.user_id} member={member} />
           ))}
         </ItemGroup>
+      )}
+      {managingRoles && (
+        <RoleManagerDialog onClose={() => setManagingRoles(false)} />
       )}
     </div>
   );

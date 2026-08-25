@@ -42,10 +42,28 @@ vi.mock('../hooks/useFamily', () => ({
   useFamily: () => familyState,
 }));
 
+/** 全部權限：對應後端在影子模式或 GUARDIAN 角色下回的值。
+ *
+ * 這個欄位不能省。`familyPermissions` 是 fail-closed 的——後端沒帶
+ * `my_permissions` 時一律視為沒有權限，因此少了它整張卡片會只剩名字。
+ * 方向是刻意的：漏欄位時寧可少顯示（看得出來、報得出來），也不要顯示一堆
+ * 按下去必定 403 的入口。 */
+const fullPermissions = {
+  general: ['READ', 'WRITE'] as const,
+  sensitive: ['READ', 'WRITE'] as const,
+  private: ['READ'] as const,
+};
+
 const mom: FamilyMember = {
   user_id: 'U-mom',
   relationship_type: 'parent',
   display_name: '媽媽',
+  my_role: 'GUARDIAN',
+  my_permissions: {
+    general: [...fullPermissions.general],
+    sensitive: [...fullPermissions.sensitive],
+    private: [...fullPermissions.private],
+  },
 };
 
 /** 諮詢頁的替身：只把網址上的查看對象印出來，用來驗證導向的目標 */

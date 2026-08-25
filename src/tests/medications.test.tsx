@@ -22,7 +22,21 @@ vi.mock('../api/settingsApi', () => ({
 
 vi.mock('../hooks/useFamily', () => ({
   useFamily: () => ({
-    members: [{ user_id: 'U-mom', relationship_type: 'parent', display_name: '媽' }],
+    // my_permissions 不能省：familyPermissions 是 fail-closed 的，少了它這位
+    // 家人不會出現在對象清單裡。這裡給的是 GUARDIAN 等級（可讀可寫）。
+    members: [
+      {
+        user_id: 'U-mom',
+        relationship_type: 'parent',
+        display_name: '媽',
+        my_role: 'GUARDIAN',
+        my_permissions: {
+          general: ['READ', 'WRITE'],
+          sensitive: ['READ', 'WRITE'],
+          private: ['READ'],
+        },
+      },
+    ],
     loading: false,
     error: null,
     refetch: vi.fn(),

@@ -355,7 +355,19 @@ describe('ConsultRecordsPage測試', () => {
 
     it('有家人時可切換查看對象，並以該家人的 userId 重新查詢', async () => {
         familyState.members = [
-            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+            {
+                user_id: 'U-mom',
+                relationship_type: 'parent',
+                display_name: '媽媽',
+                // PRIVATE 讀取權是進得了這一頁的前提；fail-closed 之下少了它，
+                // 這位家人不會出現在切換清單裡。
+                my_role: 'GUARDIAN',
+                my_permissions: {
+                    general: ['READ', 'WRITE'],
+                    sensitive: ['READ', 'WRITE'],
+                    private: ['READ'],
+                },
+            },
         ]
         setupApiMocks()
 
@@ -375,7 +387,19 @@ describe('ConsultRecordsPage測試', () => {
 
     it('用 ?user= 深連結進來時，直接查詢該家人並在標題顯示對方名字', async () => {
         familyState.members = [
-            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+            {
+                user_id: 'U-mom',
+                relationship_type: 'parent',
+                display_name: '媽媽',
+                // PRIVATE 讀取權是進得了這一頁的前提；fail-closed 之下少了它，
+                // 這位家人不會出現在切換清單裡。
+                my_role: 'GUARDIAN',
+                my_permissions: {
+                    general: ['READ', 'WRITE'],
+                    sensitive: ['READ', 'WRITE'],
+                    private: ['READ'],
+                },
+            },
         ]
         setupApiMocks()
 
@@ -391,7 +415,19 @@ describe('ConsultRecordsPage測試', () => {
 
     it('查看家人時不顯示下載鈕（下載端點是本人限定）', async () => {
         familyState.members = [
-            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+            {
+                user_id: 'U-mom',
+                relationship_type: 'parent',
+                display_name: '媽媽',
+                // PRIVATE 讀取權是進得了這一頁的前提；fail-closed 之下少了它，
+                // 這位家人不會出現在切換清單裡。
+                my_role: 'GUARDIAN',
+                my_permissions: {
+                    general: ['READ', 'WRITE'],
+                    sensitive: ['READ', 'WRITE'],
+                    private: ['READ'],
+                },
+            },
         ]
         setupApiMocks()
 
@@ -409,7 +445,19 @@ describe('ConsultRecordsPage測試', () => {
 
     it('對話清單把「你的訊息」換成家人的名字', async () => {
         familyState.members = [
-            { user_id: 'U-mom', relationship_type: 'parent', display_name: '媽媽' },
+            {
+                user_id: 'U-mom',
+                relationship_type: 'parent',
+                display_name: '媽媽',
+                // PRIVATE 讀取權是進得了這一頁的前提；fail-closed 之下少了它，
+                // 這位家人不會出現在切換清單裡。
+                my_role: 'GUARDIAN',
+                my_permissions: {
+                    general: ['READ', 'WRITE'],
+                    sensitive: ['READ', 'WRITE'],
+                    private: ['READ'],
+                },
+            },
         ]
         setupApiMocks({
             fetchConsultationRaw: vi.fn().mockResolvedValue(mockRawMessages),

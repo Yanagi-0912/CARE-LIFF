@@ -8,10 +8,12 @@ import {
 } from '../../../api/consultationApi';
 import { useConsultRecords } from './useConsultRecords';
 import { useFamily } from '../../../hooks/useFamily';
+import { canReadPrivate } from '../../../utils/familyPermissions';
 import { getLineUserId } from '../../../utils/auth';
 import { toast } from 'sonner';
 import {
     ArrowLeftIcon,
+    LockIcon,
     ChevronRightIcon,
     DownloadIcon,
     FileTextIcon,
@@ -160,13 +162,28 @@ const ConsultRecordsPage: React.FC = () => {
         requestedUserId && requestedUserId !== selfUserId ? requestedUserId : undefined;
     const isViewingFamily = targetUserId !== undefined;
 
+    // 切換清單只列讀得到對話紀錄的家人（PRIVATE 讀取權）。
     const targets = [
         { userId: undefined as string | undefined, name: t('consultRecord.self') },
-        ...members.map((member) => ({
-            userId: member.user_id as string | undefined,
-            name: member.display_name || t('family.unset'),
-        })),
+        ...members
+            .filter((member) => canReadPrivate(member))
+            .map((member) => ({
+                userId: member.user_id as string | undefined,
+                name: member.display_name || t('family.unset'),
+            })),
     ];
+
+    // 網址直接帶了無權對象時（舊連結、或角色剛被降級），要講「沒有權限」而不是
+    // 讓它掉進通用的載入失敗——後者會讓使用者一直重試一件永遠不會成功的事。
+    //
+    // 找不到成員時**不**當成無權：可能只是族譜還沒載完。那種情況交給後端的
+    // 403，這裡只處理「確定知道他沒有權限」的情形。
+    const requestedMember = members.find(
+        (member) => member.user_id === requestedUserId,
+    );
+    const deniedByPermission = Boolean(
+        isViewingFamily && requestedMember && !canReadPrivate(requestedMember),
+    );
 
     // 網址帶的 id 可能已不在族譜內（例如連結是舊的），此時退回顯示 id 前 8 碼
     const targetName =
@@ -290,6 +307,21 @@ const ConsultRecordsPage: React.FC = () => {
                 </ToggleGroup>
             )}
 
+            {deniedByPermission ? (
+                // 沒有權限就不渲染分頁與內容：兩個空的分頁加兩則錯誤訊息，
+                // 只會讓使用者以為是壞掉了。
+                <Empty className="border border-dashed">
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <LockIcon />
+                        </EmptyMedia>
+                        <EmptyTitle>{t('familyPermission.noPrivate')}</EmptyTitle>
+                        <EmptyDescription>
+                            {t('familyPermission.askOwner')}
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            ) : (
             <Tabs
                 className="gap-4"
                 value={viewMode}
@@ -448,6 +480,7 @@ const ConsultRecordsPage: React.FC = () => {
                     )}
                 </TabsContent>
             </Tabs>
+            )}
 
             {/* 手機滿版、桌機收成內容寬度。
                 下載端點是本人限定（後端只認 downloadToken 裡的 user id），

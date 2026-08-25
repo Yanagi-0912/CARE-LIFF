@@ -1,13 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchFamilyTree } from '../api/familyApi';
 import { queryKeys } from '@/lib/queryClient';
-import type { FamilyMember } from '../types/family';
+import type {
+  FamilyMember,
+  FamilyRoleAssignmentStatus,
+} from '../types/family';
 
 interface UseFamilyReturn {
   members: FamilyMember[];
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  /**
+   * 我自己的引導式角色指派狀態。
+   *
+   * 跟著族譜一起回，不另外打一支——族譜頁一載入就要知道「還有幾位沒設定」，
+   * 多一次往返在長輩的行動網路上是看得見的。
+   *
+   * 由**後端**依族譜資料判定，前端不得以本地旗標代替：本地旗標會被清掉、
+   * 在另一支裝置上不同步、也可能在使用者按了「完成」卻沒設定任何人時被設起來。
+   */
+  roleAssignment: FamilyRoleAssignmentStatus | null;
 }
 
 /**
@@ -21,12 +34,16 @@ export function useFamily(): UseFamilyReturn {
     queryKey: queryKeys.familyTree,
     queryFn: async () => {
       const res = await fetchFamilyTree();
-      return res.family_tree.family_members;
+      return {
+        members: res.family_tree.family_members,
+        roleAssignment: res.role_assignment ?? null,
+      };
     },
   });
 
   return {
-    members: data ?? [],
+    members: data?.members ?? [],
+    roleAssignment: data?.roleAssignment ?? null,
     loading: isPending,
     error: error ? (error instanceof Error ? error.message : '載入族譜失敗') : null,
     refetch,

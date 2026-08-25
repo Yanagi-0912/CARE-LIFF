@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
+import {
+  canManageMedications,
+  canReadGeneral,
+} from '../../utils/familyPermissions';
 import type {
   MedicationReminder,
   MedicationSlotType,
@@ -54,19 +58,29 @@ const MedicationsPage = () => {
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
 
+  // 對象清單只列**讀得到用藥的**成員。列出沒有權限的人，使用者按下去只會
+  // 看到一片錯誤，而他無從得知那是壞掉還是不該按。
+  //
+  // `canWrite` 決定要不要顯示新增與掃描入口：只有讀取權的人看得到長輩吃什麼，
+  // 但不能替他改，那兩個按鈕對他而言按下去必定 403。
   const targets = useMemo(
     () => [
-      { userId: selfUserId, name: t('meds.self') },
-      ...members.map((member) => ({
-        userId: member.user_id as string | undefined,
-        name: member.display_name || t('family.unset'),
-      })),
+      { userId: selfUserId, name: t('meds.self'), canWrite: true },
+      ...members
+        .filter((member) => canReadGeneral(member))
+        .map((member) => ({
+          userId: member.user_id as string | undefined,
+          name: member.display_name || t('family.unset'),
+          canWrite: canManageMedications(member),
+        })),
     ],
     [selfUserId, members, t],
   );
 
-  const selectedName =
-    targets.find((target) => target.userId === selectedUserId)?.name ?? t('meds.self');
+  const selectedTarget = targets.find((target) => target.userId === selectedUserId);
+  const selectedName = selectedTarget?.name ?? t('meds.self');
+  // 找不到對象時保守處理：可能是剛被降級、清單還沒重抓。
+  const canEditSelected = selectedTarget?.canWrite ?? false;
 
   const existingSlots = useMemo<MedicationSlotType[]>(
     () => reminders.map((reminder) => reminder.slot_type),
@@ -148,8 +162,9 @@ const MedicationsPage = () => {
         <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
         <div className="flex shrink-0 gap-2">
           {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
-              而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。 */}
-          {scanEnabled && (
+              而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。
+              沒有寫入權時同理：兩個入口一併不渲染。 */}
+          {scanEnabled && canEditSelected && (
             <Button
               type="button"
               variant="outline"
@@ -160,10 +175,12 @@ const MedicationsPage = () => {
               {t('meds.scan.entry')}
             </Button>
           )}
-          <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
-            <PlusIcon data-icon="inline-start" />
-            {t('meds.addButton')}
-          </Button>
+          {canEditSelected && (
+            <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
+              <PlusIcon data-icon="inline-start" />
+              {t('meds.addButton')}
+            </Button>
+          )}
         </div>
       </header>
 
