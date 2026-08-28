@@ -22,6 +22,9 @@ export const queryClient = new QueryClient({
 /** 查詢鍵集中管理，避免各處手打字串而失效 */
 export const queryKeys = {
   familyTree: ['family-tree'] as const,
+  /** 擁有者的角色管理清單。與 familyTree 分開：那支回的是「他對我」的資料，
+      這支回的是「我對他」的角色設定，兩者失效時機不同。 */
+  familyMemberRoles: ['family-member-roles'] as const,
   /** 本人的健康檔案。Sidebar 與 AdminRoute 都靠它判斷管理員身分，
       共用同一個 key 才不會各抓一次。 */
   myProfile: ['my-profile'] as const,

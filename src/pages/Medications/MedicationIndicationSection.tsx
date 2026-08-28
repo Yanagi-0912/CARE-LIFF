@@ -19,6 +19,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
  *
  * 顯示規則（皆由後端保證資料正確，前端只負責呈現）：
  * - 證號未確定時後端兩個欄位都是 null，這裡整段不渲染，不留空白區塊。
+ * - **適應症被權限遮蔽時同樣是 null**（它屬於 SENSITIVE，只有 GENERAL 讀取權
+ *   的家人拿到的就是空值）。那不是錯誤，SHALL NOT 顯示成載入失敗——整段
+ *   不渲染是對的行為。日後若有人想「補上」錯誤提示，會讓每一位一般家人都
+ *   看到一則其實沒有出錯的紅字。
  * - `spc_indication_summary` 為 null（原文夠短不需摘要，或產不出合格摘要）
  *   時直接顯示原文，而不是不顯示——spec 的「摘要缺席時的降級」。
  * - 有摘要時顯示摘要，原文收在展開區裡供對照；摘要是便利，原文才是權威。

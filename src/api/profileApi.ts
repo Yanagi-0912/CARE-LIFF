@@ -123,3 +123,38 @@ export async function getPersonalHealthProfile(userId?: string) {
     return res.json()
 }
 
+
+/**
+ * 代為更新指定使用者的健康資料（GUARDIAN 用）。
+ *
+ * 需要對該使用者的 SENSITIVE 具備寫入權；CAREGIVER 僅有讀取權，呼叫會得到
+ * 403。顯示名稱與頭像**不在這條路徑的可寫範圍內**——後端會剝除並在
+ * `skipped_fields` 回報，介面因此不提供那兩個欄位的編輯。
+ *
+ * 型別刻意排除 `name`：那個欄位不歸這條路徑管，送過去只會被剝除。把它留在
+ * 型別裡曾經害這支 API 一路送出讀回來的舊值——而代填讀到的可能是空字串，
+ * 於是撞上後端的必填驗證。少一個欄位，那個情境就不存在。
+ */
+export async function proxyUpsertHealthProfile(
+    userId: string,
+    payload: Omit<UpsertPersonalHealthPayload, 'name'>,
+) {
+    const res = await fetchWithAuth(
+        `${BASE_URL}/api/profiles/${encodeURIComponent(userId)}`,
+        {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        },
+    )
+
+    if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`代填健康資料失敗:${res.status}${text ? ` - ${text}` : ''}`)
+    }
+
+    return res.json() as Promise<{
+        user_id: string
+        updated: boolean
+        skipped_fields: string[]
+    }>
+}

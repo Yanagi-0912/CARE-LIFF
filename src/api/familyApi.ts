@@ -1,6 +1,9 @@
 import type {
   AcceptInviteResponse,
   CreateInviteResponse,
+  FamilyRole,
+  FamilyRoleAssignmentStatus,
+  FamilyRoleEntry,
   GetFamilyTreeResponse,
   VerifyInviteResponse,
   FamilyTree,
@@ -83,3 +86,43 @@ export async function setRelationship(memberId: string, relationshipType: string
   return res.json();
 }
 
+
+/**
+ * 6. 指派家庭成員角色（限資料擁有者本人或其受委任者）
+ *
+ * 路徑不帶 ownerId，因此寫入的恆為呼叫者自己的族譜——這條路徑不存在
+ * 「改別人族譜裡的自己」這種形狀。真正的判定在後端，這裡只是呼叫。
+ */
+export async function setFamilyRole(
+  memberId: string,
+  familyRole: FamilyRole,
+): Promise<FamilyTree> {
+  const res = await fetchWithAuth(
+    `${BASE_URL}/api/family/members/${encodeURIComponent(memberId)}/role`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ family_role: familyRole }),
+    },
+  );
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 7. 查詢自己族譜中每位成員的角色
+ *
+ * `family_role` 為 null 代表**未設定**——呈現面要據此告訴擁有者「這個人目前
+ * 會以 MEMBER 的權限處理」，不能直接顯示成 MEMBER 而讓他以為自己設定過了。
+ */
+export async function fetchMemberRoles(): Promise<FamilyRoleEntry[]> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/family/members/roles`);
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/** 8. 查詢引導式角色指派的完成狀態（由後端依族譜資料判定） */
+export async function fetchRoleAssignmentStatus(): Promise<FamilyRoleAssignmentStatus> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/family/role-assignment-status`);
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
