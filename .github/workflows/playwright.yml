@@ -6,17 +6,21 @@ on:
     branches: [ main, master ]
 jobs:
   test:
-    timeout-minutes: 60
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
     - uses: actions/setup-node@v5
       with:
         node-version: lts/*
+        cache: npm
     - name: Install dependencies
-      run: npm install
+      run: npm ci
+    # 只裝 playwright.config.ts 實際會用到的兩顆瀏覽器。
+    # CARE 是 LIFF app，使用者一律在 LINE 內建 WebView（Android=Chromium、
+    # iOS=WebKit），裝 Firefox 只是白白多花 CI 時間。
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      run: npx playwright install --with-deps chromium webkit
     - name: Run Playwright tests
       run: npx playwright test
     - uses: actions/upload-artifact@v6
