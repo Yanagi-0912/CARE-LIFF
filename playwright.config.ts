@@ -64,14 +64,17 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       /**
-       * 清空 LIFF ID：bootstrapLiff() 會直接略過 liff.init()，LiffAuthProvider
-       * 退回讀 localStorage 的 token（見該檔的 `if (!LIFF_ID)` 分支）。
+       * 不帶真實 LIFF ID，改開 LINE 官方的 @line/liff-mock。
        *
-       * 這同時是 LINE 官方的要求——不得為了測試而大量呼叫 LIFF API。
-       * 之後 Phase 2 要測 LIFF 分支時，用官方的 @line/liff-mock 在瀏覽器內
-       * 假造，仍然不會連到 LINE 的伺服器。
+       * 用真 ID 的話，未登入的測試會被 liff.login() 踹到 access.line.me，
+       * 測試變成在測 LINE 的伺服器；而且違反官方規範——不得為了測試而
+       * 對 LINE Platform 發出大量請求。
+       *
+       * mock 模式下 liff.init() 不連任何外部服務，所有 API 回傳假資料，
+       * 測試再用 seedLiffMock() 逐案指定（見 e2e/fixtures.ts）。
        */
       VITE_LIFF_ID: '',
+      VITE_LIFF_MOCK: 'true',
     },
   },
 });

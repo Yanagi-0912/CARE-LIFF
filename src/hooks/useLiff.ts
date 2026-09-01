@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import liff from '@line/liff';
-
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
+import { LIFF_AVAILABLE, initLiff } from '../lib/liffClient';
 
 interface UseLiffReturn {
   liffReady: boolean;
@@ -17,14 +15,14 @@ export function useLiff(): UseLiffReturn {
   const [liffError, setLiffError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!LIFF_ID) {
+    if (!LIFF_AVAILABLE) {
       setLiffError('VITE_LIFF_ID 未設定');
       return;
     }
 
     let cancelled = false;
 
-    liff.init({ liffId: LIFF_ID })
+    initLiff()
       .then(() => {
         if (!cancelled) setLiffReady(true);
       })

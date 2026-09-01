@@ -1,7 +1,5 @@
-import liff from '@line/liff';
+import { LIFF_AVAILABLE, initLiff } from './lib/liffClient';
 import { restorePathFromLiffStateSearch } from './utils/liffState';
-
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
 
 /**
  * 在掛載 React Router 之前完成 liff.init()，並還原 Rich Menu 深連結 path。
@@ -13,13 +11,13 @@ const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
  * 請把 LINE Console 的 Endpoint URL 設成 SPA 根網址（不要加 /login）。
  */
 export async function bootstrapLiff(): Promise<void> {
-  if (!LIFF_ID) {
+  if (!LIFF_AVAILABLE) {
     console.warn('[LIFF] VITE_LIFF_ID 未設定，略過初始化');
     return;
   }
 
   try {
-    await liff.init({ liffId: LIFF_ID });
+    await initLiff();
   } catch (error) {
     // 外部瀏覽器／本機開發仍可開 app；深連結還原可能失敗
     console.warn('[LIFF] init 失敗，繼續載入應用', error);
