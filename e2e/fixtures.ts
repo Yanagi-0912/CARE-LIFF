@@ -120,6 +120,52 @@ export async function stubProfileApi(page: Page, profile: unknown = null) {
   );
 }
 
+/** 後端用 LINE ID token 換發 CARE 存取憑證的端點 */
+export async function stubLiffLogin(
+  page: Page,
+  response: { access_token: string; line_user_id: string } | { status: number },
+) {
+  const received: string[] = [];
+
+  await page.route(
+    onApiPath((pathname) => pathname === '/api/auth/liff/login'),
+    async (route) => {
+      if (await handlePreflight(route)) return;
+
+      const body = route.request().postDataJSON() as { id_token?: string } | null;
+      if (body?.id_token) received.push(body.id_token);
+
+      if ('status' in response) {
+        await route.fulfill(jsonResponse(response.status, { detail: 'e2e: 換發失敗' }));
+        return;
+      }
+      await route.fulfill(
+        jsonResponse(200, { token_type: 'bearer', expires_in: 3600, ...response }),
+      );
+    },
+  );
+
+  /** 後端實際收到的 id_token，用來確認真的走了 LIFF 那條路 */
+  return received;
+}
+
+/**
+ * 指定 LIFF mock 的假資料，鍵名就是 LIFF API 名稱。
+ *   seedLiffMock(page, { isLoggedIn: true, getProfile: { displayName: '林阿嬤' } })
+ *
+ * 必須在 page.goto() 之前呼叫：資料是寫進 localStorage，由 lib/liffClient 的
+ * initLiff() 在 liff.init() 之後、React 掛載之前套用（見該檔的 applyMockSeed）。
+ *
+ * 未指定的 API 用 @line/liff-mock 的預設值，其中 isLoggedIn 與 isInClient
+ * 預設都是 false。
+ */
+export async function seedLiffMock(page: Page, data: Record<string, unknown>) {
+  await page.addInitScript(
+    ({ key, json }) => localStorage.setItem(key, json),
+    { key: 'CARE_LIFF_MOCK', json: JSON.stringify(data) },
+  );
+}
+
 /**
  * 在頁面任何腳本執行「之前」寫入 localStorage。
  *
