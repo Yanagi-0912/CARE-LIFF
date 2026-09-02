@@ -200,3 +200,44 @@ describe('設定頁帳號區塊', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 });
+
+describe('設定頁通知區塊', () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    await i18n.changeLanguage('zh-TW');
+  });
+
+  it('三個通知開關都要在畫面上，且預設為開啟', async () => {
+    await renderSettings();
+
+    for (const label of ['用藥提醒', '家人健康通知', '每日醫療消息']) {
+      expect(screen.getByRole('switch', { name: `切換${label}` })).toBeChecked();
+    }
+  });
+
+  it('關掉「每日醫療消息」應寫入 notifyMedicalNews: false', async () => {
+    const user = userEvent.setup();
+    await renderSettings();
+
+    await user.click(screen.getByRole('switch', { name: '切換每日醫療消息' }));
+
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+      expect(saved.notifyMedicalNews).toBe(false);
+    });
+  });
+
+  it('三個開關互不影響', async () => {
+    const user = userEvent.setup();
+    await renderSettings();
+
+    await user.click(screen.getByRole('switch', { name: '切換每日醫療消息' }));
+
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+      expect(saved.notifyMedicalNews).toBe(false);
+      expect(saved.notifyReminder).toBe(true);
+      expect(saved.notifyFamily).toBe(true);
+    });
+  });
+});

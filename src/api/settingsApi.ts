@@ -9,6 +9,7 @@ export type ApiUserSettings = {
   high_contrast: boolean;
   notify_reminder: boolean;
   notify_family: boolean;
+  notify_medical_news: boolean;
   voice_reply_enabled: boolean;
   voice_rate: 'slow' | 'normal' | 'fast';
   voice_gender: 'female' | 'male';

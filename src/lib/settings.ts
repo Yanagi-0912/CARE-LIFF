@@ -13,6 +13,7 @@ export interface SettingsState {
   highContrast: boolean;
   notifyReminder: boolean;
   notifyFamily: boolean;
+  notifyMedicalNews: boolean;
   voiceReplyEnabled: boolean;
   voiceRate: 'slow' | 'normal' | 'fast';
   voiceGender: 'female' | 'male';
@@ -26,6 +27,7 @@ export const defaultSettings: SettingsState = {
   highContrast: true, // 預設高對比
   notifyReminder: true,
   notifyFamily: true,
+  notifyMedicalNews: true, // 對齊後端預設值
   voiceReplyEnabled: false, // 對齊後端預設值
   voiceRate: 'normal', // 對齊後端預設值
   voiceGender: 'female', // 對齊後端預設值
