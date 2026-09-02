@@ -303,6 +303,43 @@ describe('MedicationsPage', () => {
     expect(screen.getByRole('radio', { name: /中/ })).not.toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getByRole('radio', { name: /中/ }));
+
+    // 時間跟著新時段走：留在 08:00 會做出「中午時段、早上八點觸發」的規則，
+    // 推播文案的時段字樣取自 slot_type，觸發時刻取自 scheduled_time。
+    expect(screen.getByLabelText('提醒時間')).toHaveValue('12:00');
+
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
+        slot_type: 'noon',
+        scheduled_time: '12:00',
+      });
+    });
+  });
+
+  it('已自訂過提醒時間時，改時段不會蓋掉使用者設定的時間', async () => {
+    // 跟隨只針對「時間仍是原時段預設值」的規則。使用者自訂的 07:15 是明確
+    // 意圖，改時段時悄悄改成 12:00 等於畫面顯示一個值、存進另一個值。
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([
+      { ...morning, scheduled_time: '07:15' },
+    ]);
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue({
+      ...morning,
+      scheduled_time: '07:15',
+      slot_type: 'noon',
+    });
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('07:15')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /中/ }));
+
+    expect(screen.getByLabelText('提醒時間')).toHaveValue('07:15');
+
     fireEvent.click(screen.getByRole('button', { name: '儲存' }));
 
     await waitFor(() => {

@@ -18,8 +18,12 @@ export const SLOT_LABEL_KEY: Record<MedicationSlotType, string> = {
 };
 
 /**
- * 後端預設觸發時間（app/models/medication.py 的 DEFAULT_SLOT_TIMES）
- * 僅用於新增表單的預覽顯示；實際時間由後端寫入。
+ * 後端預設觸發時間（app/models/medication.py 的 DEFAULT_SLOT_TIMES）。
+ *
+ * 新增表單只拿它做預覽顯示，實際時間由後端寫入（新增請求不帶 slot_times）；
+ * 編輯視窗則用它判斷「時間是否仍停在原時段的預設值」，據以決定改時段時要不要
+ * 讓時間跟著走（見 ReminderEditDialog）。兩份常數必須一致——這裡改了而後端沒改，
+ * 編輯視窗會判定使用者自訂過時間而不再跟隨。
  */
 export const DEFAULT_SLOT_TIMES: Record<MedicationSlotType, string> = {
   morning: '08:00',

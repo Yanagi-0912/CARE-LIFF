@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import {
+  DEFAULT_SLOT_TIMES,
   SLOT_LABEL_KEY,
   SLOT_TYPES,
   type MedicationSlotType,
@@ -111,7 +112,9 @@ export function ReminderEditDialog({
     register,
     control,
     handleSubmit,
+    getValues,
     setError,
+    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -207,7 +210,27 @@ export function ReminderEditDialog({
 
                     <RadioGroup
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(next) => {
+                        // 時段換了，提醒時間要跟著換，否則會做出「晚上時段、
+                        // 早上 08:00 觸發」的規則——推播文案的時段字樣取自
+                        // slot_type（後端 `flex.med.alt.reminder` 與提醒卡本體都
+                        // 帶入 {slot}），觸發時刻取自 scheduled_time，兩者不一致
+                        // 時使用者會在早上八點收到「晚 服藥時間到了」。這正是
+                        // 當初開放改時段要消除的那種自相矛盾，只是方向相反。
+                        //
+                        // 只在時間仍停在原時段的預設值時才跟：新增表單沒有時間
+                        // 欄位，一律由後端寫入 DEFAULT_SLOT_TIMES，所以絕大多數
+                        // 規則都落在這條路徑上。使用者若已自訂過時間（例如早上
+                        // 07:15），那是明確的意圖，改時段不該悄悄把它蓋掉——
+                        // 時間欄位就在下方，畫面上看得到，要調整是一步的事。
+                        const prev = field.value;
+                        field.onChange(next);
+                        if (getValues('time') === DEFAULT_SLOT_TIMES[prev]) {
+                          setValue('time', DEFAULT_SLOT_TIMES[next as MedicationSlotType], {
+                            shouldDirty: true,
+                          });
+                        }
+                      }}
                       disabled={busy}
                       aria-label={t('meds.edit.slot')}
                     >
