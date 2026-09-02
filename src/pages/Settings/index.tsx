@@ -33,12 +33,17 @@ import {
 
 /* ────────── 前端欄位（camelCase）對應後端欄位（snake_case） ────────── */
 const toggleFieldMap: Record<
-  'highContrast' | 'notifyReminder' | 'notifyFamily' | 'voiceReplyEnabled',
+  | 'highContrast'
+  | 'notifyReminder'
+  | 'notifyFamily'
+  | 'notifyMedicalNews'
+  | 'voiceReplyEnabled',
   keyof UpdateUserSettingsPayload
 > = {
   highContrast: 'high_contrast',
   notifyReminder: 'notify_reminder',
   notifyFamily: 'notify_family',
+  notifyMedicalNews: 'notify_medical_news',
   voiceReplyEnabled: 'voice_reply_enabled',
 };
 
@@ -158,6 +163,10 @@ const SettingsPage: React.FC = () => {
           highContrast: apiSettings.high_contrast,
           notifyReminder: apiSettings.notify_reminder,
           notifyFamily: apiSettings.notify_family,
+          // 舊資料的 settings 沒有這一欄，後端讀回時補預設值 true；
+          // 這裡用 ?? 是為了防後端尚未部署新版時回傳 undefined 而讓 Switch 變成
+          // uncontrolled（React 會在 console 噴警告，且開關會失去反應）。
+          notifyMedicalNews: apiSettings.notify_medical_news ?? true,
           voiceReplyEnabled: apiSettings.voice_reply_enabled,
           voiceRate: apiSettings.voice_rate,
           voiceGender: apiSettings.voice_gender,
@@ -337,6 +346,14 @@ const SettingsPage: React.FC = () => {
               checked={settings.notifyFamily}
               onCheckedChange={() => toggle('notifyFamily')}
               aria-label={t('settings.toggleAria', { label: t('settings.familyAlert') })}
+            />
+          </SettingRow>
+          <ItemSeparator />
+          <SettingRow label={t('settings.medicalNews')}>
+            <Switch
+              checked={settings.notifyMedicalNews}
+              onCheckedChange={() => toggle('notifyMedicalNews')}
+              aria-label={t('settings.toggleAria', { label: t('settings.medicalNews') })}
             />
           </SettingRow>
         </ItemGroup>
