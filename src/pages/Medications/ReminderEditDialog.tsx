@@ -50,6 +50,7 @@ import { ItemGroup } from '@/components/ui/item';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MedicationAppearanceRow } from './MedicationAppearanceRow';
+import { nearestSlot } from './reminderSchedule';
 
 /** 表單掛在 dialog body 上，儲存鈕在 DialogFooter，靠 form 屬性連回來 */
 const FORM_ID = 'edit-reminder-form';
@@ -129,6 +130,27 @@ export function ReminderEditDialog({
   });
 
   const startDate = watch('startDate');
+
+  // 時間欄位要在使用者輸入時多做一件事（把時段帶過去），所以先取出 register
+  // 回傳的那組 props，再包一層自己的 onChange——直接在 JSX 裡寫 onChange 會
+  // 蓋掉 register 自己的那個，表單就再也收不到這一欄的值。
+  const timeField = register('time');
+
+  /**
+   * 時間改到別的時段範圍時，時段跟著跳（例如「睡前」的 21:30 改成 08:00 →
+   * 時段變「早」）。不跟的話推播文案會說「睡前 服藥時間到了」卻在早上八點
+   * 發出——與改時段時時間跟著走是同一個一致性要求的另一半。
+   *
+   * 目標時段已被同一位使用者的另一筆提醒佔用時不跳：一個時段只該有一份規則
+   * （後端會擋成 409，這裡的 radio 也是停用的），硬跳會把表單推進一個按下
+   * 儲存必定失敗的狀態。那顆 radio 上的「已設定」標記就是解釋。
+   */
+  const followTimeIntoSlot = (time: string) => {
+    if (!/^\d{2}:\d{2}$/.test(time)) return;
+    const next = nearestSlot(time);
+    if (next === getValues('slot') || takenByOthers.includes(next)) return;
+    setValue('slot', next, { shouldDirty: true });
+  };
 
   const submit = handleSubmit(async (values) => {
     // 只送出真正變動的欄位
@@ -272,7 +294,11 @@ export function ReminderEditDialog({
                   type="time"
                   aria-invalid={Boolean(errors.time)}
                   disabled={busy}
-                  {...register('time')}
+                  {...timeField}
+                  onChange={(event) => {
+                    void timeField.onChange(event);
+                    followTimeIntoSlot(event.target.value);
+                  }}
                 />
                 <FieldError errors={[errors.time]} />
               </Field>

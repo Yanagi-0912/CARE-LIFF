@@ -318,6 +318,57 @@ describe('MedicationsPage', () => {
     });
   });
 
+  it('時間改到別的時段範圍時，時段跟著跳', async () => {
+    // 反方向的一致性：只改時間不動時段的話，21:30 的規則會停在「早」，推播
+    // 在晚上九點半發出卻寫著「早 服藥時間到了」。
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue({
+      ...morning,
+      slot_type: 'bedtime',
+      scheduled_time: '21:30',
+    });
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+    fireEvent.change(screen.getByLabelText('提醒時間'), { target: { value: '21:30' } });
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
+        slot_type: 'bedtime',
+        scheduled_time: '21:30',
+      });
+    });
+  });
+
+  it('目標時段已被別筆提醒佔用時不跳，只改時間', async () => {
+    // 一個時段只該有一份規則（後端擋成 409，radio 也是停用的）。硬跳過去會
+    // 把表單推進一個按下儲存必定失敗的狀態，寧可讓時段留在原處。
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue({
+      ...morning,
+      scheduled_time: '18:00',
+    });
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    // 「晚」被 r-evening 佔著，18:00 最接近的正是它
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+    fireEvent.change(screen.getByLabelText('提醒時間'), { target: { value: '18:00' } });
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
+        scheduled_time: '18:00',
+      });
+    });
+  });
+
   it('已自訂過提醒時間時，改時段不會蓋掉使用者設定的時間', async () => {
     // 跟隨只針對「時間仍是原時段預設值」的規則。使用者自訂的 07:15 是明確
     // 意圖，改時段時悄悄改成 12:00 等於畫面顯示一個值、存進另一個值。

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isReminderSchedulable } from '../pages/Medications/reminderSchedule';
+import { isReminderSchedulable, nearestSlot } from '../pages/Medications/reminderSchedule';
 import type { MedicationReminder } from '../types/medication';
 
 const TODAY = '2026-08-11';
@@ -77,5 +77,46 @@ describe('isReminderSchedulable', () => {
   it('enabled 為 false 且 end_date 已過期時仍不可排程（兩個理由同時成立）', () => {
     const reminder = makeReminder({ enabled: false, end_date: '2026-08-10' });
     expect(isReminderSchedulable(reminder, TODAY)).toBe(false);
+  });
+});
+
+// 編輯視窗靠這個函式決定「時間改到別的時段範圍時，時段要跳去哪」。它刻意不用
+// 「早上是 05:00–10:59」這類區間——那些界線在這個專案裡沒有依據；改用離各時段
+// 預設時間（08:00／12:00／18:00／21:30）最近的那個，全部由後端既有的常數推導。
+describe('nearestSlot', () => {
+  it.each([
+    ['08:00', 'morning'],
+    ['12:00', 'noon'],
+    ['18:00', 'evening'],
+    ['21:30', 'bedtime'],
+  ])('預設時間 %s 對應到自己的時段', (time, slot) => {
+    expect(nearestSlot(time)).toBe(slot);
+  });
+
+  it.each([
+    ['07:15', 'morning'],
+    ['13:30', 'noon'],
+    ['19:45', 'evening'],
+    ['22:40', 'bedtime'],
+  ])('%s 落在最接近的時段', (time, slot) => {
+    expect(nearestSlot(time)).toBe(slot);
+  });
+
+  it.each([
+    ['23:50', 'bedtime'],
+    ['00:30', 'bedtime'],
+    ['02:00', 'bedtime'],
+  ])('%s 以環狀距離計算，深夜屬於睡前而不是早上', (time, slot) => {
+    // 一天是環狀的：00:30 離 21:30 是 3 小時，離 08:00 是 7.5 小時。少了這一步
+    // 會用線性差值把深夜判成離「早」最近。
+    expect(nearestSlot(time)).toBe(slot);
+  });
+
+  it.each([
+    ['10:00', 'morning'],
+    ['15:00', 'noon'],
+  ])('等距的 %s 取時段順序中較前者', (time, slot) => {
+    // 任意但確定：同一個時間永遠得到同一個答案，使用者看得到也改得掉。
+    expect(nearestSlot(time)).toBe(slot);
   });
 });
