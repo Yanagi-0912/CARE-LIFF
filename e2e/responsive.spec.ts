@@ -12,6 +12,7 @@ import {
   stubConsultations,
   stubFamily,
   stubKnowledgeReports,
+  nearbyResponse,
   stubNearby,
   stubReminderList,
   stubSettings,
@@ -55,7 +56,7 @@ async function stubWithData(page: Page) {
     },
   ]);
   await stubConsultations(page, { summaries: SUMMARIES, raw: RAW_MESSAGES });
-  await stubNearby(page, FACILITIES);
+  await stubNearby(page, nearbyResponse(FACILITIES));
 }
 
 const overflow = (page: Page) =>
@@ -67,9 +68,9 @@ const overflow = (page: Page) =>
  */
 const KNOWN_OVERFLOW = [
   {
-    path: '/medications',
+    path: '/family',
     width: 375,
-    reason: '提醒卡片的「08:00」(text-2xl) + 時段徽章 + 84px 開關欄的 min-content 超過 375px，頁面多 5px 橫向捲動；藥名欄被壓到每行 4 字、日期範圍被省略號截斷',
+    reason: '成員卡片「您沒有查看這位家人資料的權限」徽章是 whitespace-nowrap 的 Badge，24px 字級下寬 302px，頁面多 50px 橫向捲動',
   },
   {
     path: '/knowledge-reports',

@@ -224,6 +224,20 @@ test.describe('查看家人的紀錄', () => {
     await expect(authedPage.getByRole('heading', { name: t('consultRecord.title') })).toBeVisible();
   });
 
+  test('對沒有私密讀取權的家人：不列入切換清單，網址直接帶也顯示無權限而非載入失敗', async ({ authedPage }) => {
+    const UNSET = FAMILY_MEMBERS[1];
+    await stubConsultations(authedPage, { owner: UNSET.user_id });
+    // 無權限時分頁整個不渲染，不能用 openPage 等分頁
+    await authedPage.goto(`/personalhealth/consult?user=${UNSET.user_id}`);
+
+    const targets = authedPage.getByRole('group', { name: t('consultRecord.targetLabel') });
+    await expect(targets.getByRole('button', { name: UNSET.display_name })).toHaveCount(0);
+    await expect(authedPage.getByText(t('familyPermission.noPrivate'))).toBeVisible();
+    await expect(authedPage.getByRole('tab', { name: t('consultRecord.tabSummary') })).toHaveCount(0);
+    // 注意：頁面仍會對該成員發出查詢（useConsultRecords 不看權限），只是不渲染結果；
+    // 真正的邊界是後端 403，這裡不斷言請求數。
+  });
+
   test('不在同一家庭時（403）顯示權限說明', async ({ authedPage }) => {
     await stubConsultations(authedPage, {
       owner: 'Ustranger000000000000000000000000',

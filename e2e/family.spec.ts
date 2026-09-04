@@ -1,7 +1,14 @@
 import type { Page } from '@playwright/test';
 
 import { expect, seedLiffMock, t, test } from './fixtures';
-import { FAMILY_MEMBERS, familyTreeBody, stubApi, stubFamily } from './stubs';
+import {
+  FAMILY_MEMBERS,
+  FULL_PERMISSIONS,
+  NO_PERMISSIONS,
+  familyTreeBody,
+  stubApi,
+  stubFamily,
+} from './stubs';
 
 /**
  * 家庭頁：族譜列表四態、成員卡片展開後的健康資料三態、邀請流程
@@ -114,6 +121,58 @@ test.describe('成員卡片展開', () => {
     expect(profileCalls).toHaveLength(1);
   });
 
+  test('權限決定卡片展開後看得到什麼：完全無權、只有一般權、有敏感與私密權', async ({ authedPage }) => {
+    const NO_ACCESS = { user_id: 'Unoaccess', relationship_type: 'sibling', display_name: '無權限', my_permissions: NO_PERMISSIONS };
+    await stubFamily(authedPage, [FAMILY_MEMBERS[0], FAMILY_MEMBERS[1], NO_ACCESS]);
+    const profileCalls = await stubApi(authedPage, {
+      path: /^\/api\/profiles\/U/,
+      body: { name: 'x', age: 70 },
+    });
+    await openPage(authedPage);
+
+    // 完全無權：卡片上直接掛鎖頭徽章；展開後說「沒有權限」而不是「載入失敗」，且不發請求
+    const noAccessRow = authedPage.getByRole('button', { name: NO_ACCESS.display_name });
+    await expect(noAccessRow).toContainText(t('familyPermission.noAccess'));
+    await noAccessRow.click();
+    await expect(authedPage.getByText(t('familyPermission.noSensitive'))).toBeVisible();
+    await expect(authedPage.getByText(t('familyPermission.askOwner')).first()).toBeVisible();
+    expect(profileCalls).toHaveLength(0);
+
+    // 只有一般權（王小明）：健康資料不顯示、諮詢紀錄入口不渲染而是鎖頭說明
+    await authedPage.getByRole('button', { name: UNSET.display_name }).click();
+    await expect(authedPage.getByText(t('familyPermission.noSensitive'))).toHaveCount(2);
+    // 無權限那張與王小明這張都展開了，各有一則鎖頭說明
+    await expect(authedPage.getByText(t('familyPermission.noPrivate'))).toHaveCount(2);
+    await expect(authedPage.getByRole('button', { name: t('family.viewConsult') })).toHaveCount(0);
+    expect(profileCalls).toHaveLength(0);
+
+    // 有敏感寫入權與私密讀取權（林阿嬤）：健康資料、代填鈕、諮詢入口都在
+    await authedPage.getByRole('button', { name: GRANDMA.display_name }).click();
+    await expect(authedPage.getByText(`70 ${t('personalHealth.unit.age')}`)).toBeVisible();
+    await expect(authedPage.getByRole('button', { name: t('familyPermission.proxyEdit') })).toBeVisible();
+    await expect(authedPage.getByRole('button', { name: t('family.viewConsult') })).toBeVisible();
+    expect(profileCalls).toHaveLength(1);
+  });
+
+  test('還有家人未設定角色時顯示提示與管理入口', async ({ authedPage }) => {
+    await stubApi(authedPage, {
+      path: '/api/family/me',
+      body: familyTreeBody(FAMILY_MEMBERS, {
+        owner_id: 'me',
+        is_complete: false,
+        unassigned_member_ids: [FAMILY_MEMBERS[1].user_id],
+        rbac_migration_state: 'shadow',
+      }),
+    });
+    await openPage(authedPage);
+
+    // i18next 的複數 key：fixtures 的 t() 不做複數解析，直接取 _one
+    await expect(
+      authedPage.getByText(t('familyRole.unassignedNotice_one', { count: 1 })),
+    ).toBeVisible();
+    await expect(authedPage.getByRole('button', { name: t('familyRole.manage.open') })).toBeVisible();
+  });
+
   test('後端只有佔位值時視為尚無資料', async ({ authedPage }) => {
     await stubApi(authedPage, {
       path: `/api/profiles/${GRANDMA.user_id}`,
@@ -127,6 +186,8 @@ test.describe('成員卡片展開', () => {
   });
 
   test('健康資料 404（尚未建檔）也視為尚無資料，500 才顯示錯誤', async ({ authedPage }) => {
+    // 王小明預設只有一般權，這裡給他完整權限才會發健康資料請求
+    await stubFamily(authedPage, [GRANDMA, { ...UNSET, my_permissions: FULL_PERMISSIONS }]);
     await stubApi(authedPage, {
       path: `/api/profiles/${GRANDMA.user_id}`,
       status: 404,

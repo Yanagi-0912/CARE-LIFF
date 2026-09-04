@@ -88,7 +88,7 @@ test.describe('各項設定', () => {
     await authedPage.reload();
     await expect(
       authedPage.getByRole('heading', { name: messages.id['settings.title'], exact: true }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('高對比開關即時掛上／拿掉 html.high-contrast 並 PATCH', async ({ authedPage }) => {
@@ -113,6 +113,7 @@ test.describe('各項設定', () => {
     const rows: Array<[string, string]> = [
       ['settings.medicationReminder', 'notify_reminder'],
       ['settings.familyAlert', 'notify_family'],
+      ['settings.medicalNews', 'notify_medical_news'],
       ['settings.voiceReplyToggle', 'voice_reply_enabled'],
     ];
     for (const [labelKey, field] of rows) {

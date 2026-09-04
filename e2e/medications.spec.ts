@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { LINE_USER_ID, expect, t, test } from './fixtures';
 import {
   FAMILY_MEMBERS,
+  NO_PERMISSIONS,
   medication,
   reminder,
   stubApi,
@@ -109,8 +110,11 @@ test.describe('用藥提醒列表', () => {
     await expect(editButton(authedPage, EVENING)).toContainText(
       t('meds.dateRangeClosed', { start: '2026/09/01', end: '2026/12/31' }),
     );
-    // 藥袋辨識建立的提醒會列出藥名與外觀
-    await expect(editButton(authedPage, EVENING)).toContainText('AMLODIPINE 5MG');
+    // 藥袋辨識建立的提醒會在卡片下段列出藥名與外觀（不在編輯按鈕那一列裡，
+    // 藥丸照片需要整張卡片的寬度）
+    await expect(list).toContainText('AMLODIPINE 5MG');
+    await expect(list).toContainText('白色');
+    await expect(editButton(authedPage, EVENING)).not.toContainText('AMLODIPINE 5MG');
 
     await expect(toggle(authedPage, MORNING)).toBeChecked();
     await expect(toggle(authedPage, EVENING)).not.toBeChecked();
@@ -333,6 +337,38 @@ test.describe('編輯與刪除 dialog', () => {
     ).toBeVisible();
   });
 
+  test('時間改到別的時段範圍時，時段跟著跳，兩者一起送出', async ({ authedPage }) => {
+    const puts = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'PUT',
+      body: { ...MORNING, slot_type: 'noon', scheduled_time: '12:30' },
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    // 12:30 離「中」的預設 12:00 最近，時段 radio 應自動跳到「中」
+    await dialog.locator('#edit-time').fill('12:30');
+    await expect(dialog.locator('#edit-slot-noon')).toBeChecked();
+    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
+
+    await expect.poll(() => puts.length).toBe(1);
+    expect(puts[0].body).toEqual({ slot_type: 'noon', scheduled_time: '12:30' });
+  });
+
+  test('已被其他提醒佔用的時段停用，時間改過去也不會跳到它', async ({ authedPage }) => {
+    await stubReminderList(authedPage, [
+      MORNING,
+      reminder({ id: 'rem-noon', slot_type: 'noon', scheduled_time: '12:00' }),
+    ]);
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await expect(dialog.locator('#edit-slot-noon')).toBeDisabled();
+    await dialog.locator('#edit-time').fill('12:30');
+    // 「中」被 rem-noon 佔住，時段留在「早」
+    await expect(dialog.locator('#edit-slot-morning')).toBeChecked();
+  });
+
   test('沒有任何變更時按儲存直接關閉，不打 API', async ({ authedPage }) => {
     const puts = await stubApi(authedPage, {
       path: `/api/medications/reminders/${MORNING.id}`,
@@ -445,6 +481,30 @@ test.describe('提醒對象與功能旗標', () => {
     await expect(
       authedPage.getByText(t('meds.empty', { name: FAMILY_MEMBERS[1].display_name })),
     ).toBeVisible();
+  });
+
+  test('對沒有讀取權的家人不列入對象；只有讀取權的家人看不到新增與掃描入口', async ({ authedPage }) => {
+    await stubFamily(authedPage, [
+      FAMILY_MEMBERS[0],
+      FAMILY_MEMBERS[1],
+      { user_id: 'Unoaccess', relationship_type: null, display_name: '沒權限的人', my_permissions: NO_PERMISSIONS },
+    ]);
+    await stubSettings(authedPage, {}, { prescriptionScanEnabled: true });
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+
+    const targets = authedPage.getByRole('group', { name: t('meds.targetLabel') });
+    await expect(targets.getByRole('button')).toHaveCount(3);
+    await expect(targets.getByRole('button', { name: '沒權限的人' })).toHaveCount(0);
+
+    // 王小明只有 general READ：看得到提醒，但新增與掃描入口整個不渲染
+    await targets.getByRole('button', { name: FAMILY_MEMBERS[1].display_name }).click();
+    await expect(authedPage.getByRole('button', { name: t('meds.addButton') })).toHaveCount(0);
+    await expect(authedPage.getByRole('button', { name: t('meds.scan.entry') })).toHaveCount(0);
+
+    // 林阿嬤有 general WRITE：入口回來
+    await targets.getByRole('button', { name: FAMILY_MEMBERS[0].display_name }).click();
+    await expect(authedPage.getByRole('button', { name: t('meds.addButton') })).toBeVisible();
   });
 
   test('藥袋掃描旗標關閉時入口完全不渲染', async ({ authedPage }) => {

@@ -82,21 +82,43 @@ export async function stubApi(page: Page, options: StubOptions): Promise<ApiCall
 
 /* ───────────── 家庭 ───────────── */
 
+/** 後端回的「實際生效」權限。前端一律 fail-closed：沒帶就當沒有權限。 */
+export const FULL_PERMISSIONS = {
+  general: ['READ', 'WRITE'],
+  sensitive: ['READ', 'WRITE'],
+  private: ['READ'],
+} as const;
+export const GENERAL_ONLY_PERMISSIONS = {
+  general: ['READ'],
+  sensitive: [],
+  private: [],
+} as const;
+export const NO_PERMISSIONS = { general: [], sensitive: [], private: [] } as const;
+
 export const FAMILY_MEMBERS = [
   {
     user_id: 'Ufamily00000000000000000000000001',
     relationship_type: 'parent',
     display_name: '林阿嬤',
     picture_url: undefined,
+    family_role: 'GUARDIAN',
+    my_role: 'GUARDIAN',
+    my_permissions: FULL_PERMISSIONS,
   },
   {
     user_id: 'Ufamily00000000000000000000000002',
     relationship_type: null,
     display_name: '王小明',
+    family_role: null,
+    my_role: 'MEMBER',
+    my_permissions: GENERAL_ONLY_PERMISSIONS,
   },
 ] as const;
 
-export function familyTreeBody(members: readonly unknown[]) {
+export function familyTreeBody(
+  members: readonly unknown[],
+  roleAssignment: unknown = null,
+) {
   return {
     family_tree: {
       user_id: LINE_USER_ID,
@@ -104,6 +126,7 @@ export function familyTreeBody(members: readonly unknown[]) {
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     },
+    role_assignment: roleAssignment,
   };
 }
 
@@ -199,6 +222,7 @@ export const DEFAULT_API_SETTINGS = {
   high_contrast: true,
   notify_reminder: true,
   notify_family: true,
+  notify_medical_news: true,
   voice_reply_enabled: false,
   voice_rate: 'normal' as 'slow' | 'normal' | 'fast',
   voice_gender: 'female' as 'female' | 'male',
@@ -380,6 +404,8 @@ export async function stubConsultations(
 
 /* ───────────── 附近醫院 ───────────── */
 
+const OPEN_STATUS = { status: 'open', next_open: null, note: null, has_emergency: false };
+
 export const FACILITIES = [
   {
     id: 'f1',
@@ -390,6 +416,8 @@ export const FACILITIES = [
     phone: '(02)27201234',
     type: '中醫診所',
     distance_meters: 99,
+    departments: ['中醫一般科'],
+    business_status: OPEN_STATUS,
   },
   {
     id: 'f2',
@@ -400,21 +428,68 @@ export const FACILITIES = [
     phone: null,
     type: '醫學中心',
     distance_meters: 1234,
+    departments: ['內科', '外科', '急診醫學科'],
+    business_status: { status: 'break', next_open: { weekday_key: 'monday', time_text: '14:00', is_today: true }, note: null, has_emergency: true },
   },
 ];
 
+/** NearbyHospitalsResponse 的完整形狀；預設是「第一級 5 公里內就湊滿」的最單純情形 */
+export function nearbyResponse(
+  facilities: unknown[],
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    facilities,
+    count: facilities.length,
+    reached_meters: 5000,
+    satisfied: facilities.length > 0,
+    expanded: false,
+    furthest_meters: facilities.length > 0 ? 1234 : null,
+    max_meters: 50000,
+    open_now_requested: false,
+    open_now_fallback: false,
+    department: null,
+    facility_type: null,
+    unresolved_department: null,
+    unresolved_facility_type: null,
+    pharmacy_data_gap_meters: null,
+    ...overrides,
+  };
+}
+
 export function stubNearby(
   page: Page,
-  facilities: unknown[] | { status: number },
+  response: ReturnType<typeof nearbyResponse> | { status: number },
   options: Omit<StubOptions, 'path' | 'body' | 'respond'> = {},
 ) {
   return stubApi(page, {
     path: '/api/medical/nearby',
     respond: () =>
-      Array.isArray(facilities)
-        ? { status: 200, body: { facilities, count: facilities.length } }
-        : { status: facilities.status, body: { detail: 'e2e' } },
+      'facilities' in response
+        ? { status: 200, body: response }
+        : { status: response.status, body: { detail: 'e2e' } },
     ...options,
+  });
+}
+
+/** GET /api/medical/facilities（依名稱查詢） */
+export function stubFacilitySearch(
+  page: Page,
+  response: { facilities: unknown[]; total_count?: number } | { status: number },
+) {
+  return stubApi(page, {
+    path: '/api/medical/facilities',
+    respond: () =>
+      'facilities' in response
+        ? {
+            status: 200,
+            body: {
+              facilities: response.facilities,
+              count: response.facilities.length,
+              total_count: response.total_count ?? response.facilities.length,
+            },
+          }
+        : { status: response.status, body: { detail: 'e2e' } },
   });
 }
 
