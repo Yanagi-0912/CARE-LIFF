@@ -112,7 +112,13 @@ const Home = () => {
         </CardContent>
       </Card>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* data-testid 給 e2e 用：功能卡片的文案與側欄／底部導覽大量重複
+          （「家庭」「設定」…），沒有這個錨點就只能靠 CSS class 選取器，
+          一改樣式測試就爆——正是先前 e2e 全紅的原因。 */}
+      <section
+        data-testid="home-features"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {features.map((f, index) => (
           <Item
             key={f.path}
