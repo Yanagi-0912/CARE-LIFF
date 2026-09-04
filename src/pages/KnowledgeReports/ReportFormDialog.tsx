@@ -157,7 +157,7 @@ export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) 
               onValueChange={(value) => setReason(value as KnowledgeReportReason)}
             >
               <SelectTrigger id="knowledge-report-reason">
-                <SelectValue />
+                <SelectValue>{(value) => t(REASON_LABEL_KEYS[value as KnowledgeReportReason])}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {REASON_OPTIONS.map((option) => (
