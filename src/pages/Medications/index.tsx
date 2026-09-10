@@ -21,7 +21,7 @@ import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
 import { buildCommitSummary } from './commitSummary';
 import { toast } from 'sonner';
-import { PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -54,6 +54,10 @@ const MedicationsPage = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<PrescriptionDraft | null>(null);
+  // 詳細設定是同一頁內的整頁檢視，不另開路由（design.md 決策 8：LIFF webview
+  // 換路徑會重掛整頁、重打 API，在長輩裝置上明顯卡頓）。Task 10 會在
+  // view === 'detailed' 時渲染實際的時段編輯面，這裡先接上狀態與返回動線。
+  const [view, setView] = useState<'list' | 'detailed'>('list');
 
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
@@ -98,21 +102,28 @@ const MedicationsPage = () => {
     }
   };
 
-  const handleCreate = async (
-    slots: MedicationSlotType[],
-    startDate: string,
-    endDate?: string,
-  ) => {
+  const handleCreate = async (payload: {
+    slots: MedicationSlotType[];
+    slotTimes: Partial<Record<MedicationSlotType, string>>;
+    startDate: string;
+    endDate?: string;
+  }) => {
     // 未取得本人 userId 時 getLineUserId 會拋錯，訊息由 dialog 就地顯示
     const userId = selectedUserId ?? getLineUserId();
     const created = await create({
       user_id: userId,
-      slots,
-      start_date: startDate,
-      end_date: endDate,
+      slots: payload.slots,
+      slot_times: payload.slotTimes,
+      start_date: payload.startDate,
+      end_date: payload.endDate,
     });
     setAdding(false);
     toast.success(t('meds.add.success', { n: created.length }));
+  };
+
+  const handleOpenDetailed = () => {
+    setAdding(false);
+    setView('detailed');
   };
 
   const handleSave = async (patch: UpdateReminderRequest) => {
@@ -158,31 +169,36 @@ const MedicationsPage = () => {
 
   return (
     <div className="mx-auto max-w-[760px]">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
-        <div className="flex shrink-0 gap-2">
-          {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
-              而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。
-              沒有寫入權時同理：兩個入口一併不渲染。 */}
-          {scanEnabled && canEditSelected && (
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full"
-              onClick={() => setScanning(true)}
-            >
-              <ScanLineIcon data-icon="inline-start" />
-              {t('meds.scan.entry')}
-            </Button>
-          )}
-          {canEditSelected && (
-            <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
-              <PlusIcon data-icon="inline-start" />
-              {t('meds.addButton')}
-            </Button>
-          )}
-        </div>
-      </header>
+      {/* 詳細設定取代清單區塊與頂端的新增／掃描入口，但對象 chips 與已載入的
+          提醒資料都保留（design.md 決策 8）——換對象或返回清單都不必重打 API。
+          Task 10 會把下面的 <p> 佔位換成實際的時段編輯面。 */}
+      {view === 'list' && (
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
+          <div className="flex shrink-0 gap-2">
+            {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
+                而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。
+                沒有寫入權時同理：兩個入口一併不渲染。 */}
+            {scanEnabled && canEditSelected && (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setScanning(true)}
+              >
+                <ScanLineIcon data-icon="inline-start" />
+                {t('meds.scan.entry')}
+              </Button>
+            )}
+            {canEditSelected && (
+              <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
+                <PlusIcon data-icon="inline-start" />
+                {t('meds.addButton')}
+              </Button>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* 對象切換是互斥的單選，用 ToggleGroup 而非一排各自 aria-pressed 的按鈕：
           語意正確，且方向鍵可在群組內移動焦點。
@@ -205,7 +221,20 @@ const MedicationsPage = () => {
         ))}
       </ToggleGroup>
 
-      {loading ? (
+      {view === 'detailed' ? (
+        <div className="flex flex-col gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-fit"
+            onClick={() => setView('list')}
+          >
+            <ArrowLeftIcon data-icon="inline-start" />
+            {t('meds.detailed.back')}
+          </Button>
+          <p className="text-base">{t('meds.detailed.title')}</p>
+        </div>
+      ) : loading ? (
         // 骨架屏用與 ReminderCard 同一組 Item 元件，卡片外框自然對齊，
         // 不必再手寫一份 rounded/border/padding
         <ItemGroup className="gap-3" aria-busy="true" aria-label={t('meds.loading')}>
@@ -263,6 +292,7 @@ const MedicationsPage = () => {
           targetName={selectedName}
           existingSlots={existingSlots}
           onSubmit={handleCreate}
+          onOpenDetailed={handleOpenDetailed}
           onClose={() => setAdding(false)}
         />
       )}

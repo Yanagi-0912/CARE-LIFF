@@ -44,7 +44,14 @@ interface ReminderFormDialogProps {
   targetName: string;
   /** 該對象已設定的時段，會被停用以避免重複建立 */
   existingSlots: MedicationSlotType[];
-  onSubmit: (slots: MedicationSlotType[], startDate: string, endDate?: string) => Promise<void>;
+  onSubmit: (payload: {
+    slots: MedicationSlotType[];
+    slotTimes: Partial<Record<MedicationSlotType, string>>;
+    startDate: string;
+    endDate?: string;
+  }) => Promise<void>;
+  /** 切到詳細設定整頁檢視（同一頁內，見 design.md 決策 8）：關閉本 dialog 後由呼叫端切換 view */
+  onOpenDetailed: () => void;
   onClose: () => void;
 }
 
@@ -52,6 +59,7 @@ export function ReminderFormDialog({
   targetName,
   existingSlots,
   onSubmit,
+  onOpenDetailed,
   onClose,
 }: ReminderFormDialogProps) {
   const { t } = useTranslation();
@@ -64,6 +72,12 @@ export function ReminderFormDialog({
       z
         .object({
           slots: z.array(z.enum(SLOT_TYPES)).min(1, t('meds.add.needSlot')),
+          // 四個時段的時間一律存在（z.record 搭 z.enum 是完整型，不是 partial），
+          // 未勾選的時段維持預設值即可通過驗證；送出前才依 slots 篩選成 partial。
+          slotTimes: z.record(
+            z.enum(SLOT_TYPES),
+            z.string().regex(/^\d{2}:\d{2}$/, t('meds.edit.timeRequired')),
+          ),
           startDate: z.string().min(1),
           endDate: z.string(),
         })
@@ -86,14 +100,28 @@ export function ReminderFormDialog({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { slots: [], startDate: todayLocalDateString(), endDate: '' },
+    defaultValues: {
+      slots: [],
+      slotTimes: { ...DEFAULT_SLOT_TIMES },
+      startDate: todayLocalDateString(),
+      endDate: '',
+    },
   });
 
   const startDate = watch('startDate');
 
   const submit = handleSubmit(async (values) => {
     try {
-      await onSubmit(values.slots, values.startDate, values.endDate || undefined);
+      // 只送出勾選時段的時間，其餘停留在預設值的欄位不必帶給後端
+      const slotTimes = Object.fromEntries(
+        values.slots.map((slot) => [slot, values.slotTimes[slot]]),
+      ) as Partial<Record<MedicationSlotType, string>>;
+      await onSubmit({
+        slots: values.slots,
+        slotTimes,
+        startDate: values.startDate,
+        endDate: values.endDate || undefined,
+      });
     } catch (err) {
       // 送出失敗掛在 root，與欄位錯誤分開顯示在表單底部
       setError('root', {
@@ -136,38 +164,61 @@ export function ReminderFormDialog({
                         const taken = existingSlots.includes(slot);
                         const checked = field.value.includes(slot);
                         return (
-                          // FieldLabel 包住 Field 就會變成可點的選取卡片：
-                          // 圓角、外框、勾選高亮都是 Field 元件內建的。
-                          <FieldLabel key={slot} htmlFor={`slot-${slot}`}>
-                            <Field orientation="horizontal" data-disabled={taken}>
-                              <Checkbox
-                                id={`slot-${slot}`}
-                                checked={checked}
-                                disabled={taken || isSubmitting}
-                                onCheckedChange={() =>
-                                  field.onChange(
-                                    checked
-                                      ? field.value.filter((item) => item !== slot)
-                                      : [...field.value, slot],
-                                  )
-                                }
-                              />
-                              {/* 時間／「已設定」疊在時段名稱下方，不與名稱爭同一列寬度。
-                                  原本三者並排時，Badge 帶 shrink-0 whitespace-nowrap
-                                  （見 ui/badge.tsx）是不能壓縮的地板，字級設到
-                                  large／xlarge 就會把整列撐出容器、右緣被裁掉。 */}
-                              <FieldContent>
-                                <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
-                                {taken ? (
-                                  <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
-                                ) : (
-                                  <FieldDescription className="num">
-                                    {DEFAULT_SLOT_TIMES[slot]}
-                                  </FieldDescription>
-                                )}
-                              </FieldContent>
-                            </Field>
-                          </FieldLabel>
+                          // 整列（含 FieldLabel）與勾選後才出現的時間欄位包在同一個
+                          // <div> 裡：時間輸入框刻意放在 FieldLabel 之外——FieldLabel
+                          // 本身是綁定 checkbox 的 <label>，input[type=time] 若塞在裡面，
+                          // 點時間欄位會連帶觸發（甚至誤取消）checkbox。
+                          <div key={slot}>
+                            {/* FieldLabel 包住 Field 就會變成可點的選取卡片：
+                                圓角、外框、勾選高亮都是 Field 元件內建的。 */}
+                            <FieldLabel htmlFor={`slot-${slot}`}>
+                              <Field orientation="horizontal" data-disabled={taken}>
+                                <Checkbox
+                                  id={`slot-${slot}`}
+                                  checked={checked}
+                                  disabled={taken || isSubmitting}
+                                  onCheckedChange={() =>
+                                    field.onChange(
+                                      checked
+                                        ? field.value.filter((item) => item !== slot)
+                                        : [...field.value, slot],
+                                    )
+                                  }
+                                />
+                                {/* 時間／「已設定」疊在時段名稱下方，不與名稱爭同一列寬度。
+                                    原本三者並排時，Badge 帶 shrink-0 whitespace-nowrap
+                                    （見 ui/badge.tsx）是不能壓縮的地板，字級設到
+                                    large／xlarge 就會把整列撐出容器、右緣被裁掉。 */}
+                                <FieldContent>
+                                  <FieldTitle>{t(SLOT_LABEL_KEY[slot])}</FieldTitle>
+                                  {taken ? (
+                                    <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
+                                  ) : (
+                                    <FieldDescription className="num">
+                                      {DEFAULT_SLOT_TIMES[slot]}
+                                    </FieldDescription>
+                                  )}
+                                </FieldContent>
+                              </Field>
+                            </FieldLabel>
+
+                            {checked && !taken && (
+                              <Field className="mt-3">
+                                <FieldLabel htmlFor={`slot-time-${slot}`}>
+                                  {t('meds.add.timeField')}
+                                </FieldLabel>
+                                <Input
+                                  id={`slot-time-${slot}`}
+                                  type="time"
+                                  className="num"
+                                  aria-invalid={Boolean(errors.slotTimes?.[slot])}
+                                  disabled={isSubmitting}
+                                  {...register(`slotTimes.${slot}`)}
+                                />
+                                <FieldError errors={[errors.slotTimes?.[slot]]} />
+                              </Field>
+                            )}
+                          </div>
                         );
                       })}
                     </FieldGroup>
@@ -209,6 +260,17 @@ export function ReminderFormDialog({
         </ScrollArea>
 
         <DialogFooter>
+          {/* 詳細設定關掉這個 dialog、換成同一頁內的整頁檢視（design.md 決策 8），
+              不是另開路由——放在最左側，與「取消／建立」的送出動線分開。 */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onOpenDetailed}
+            disabled={isSubmitting}
+            className="mr-auto"
+          >
+            {t('meds.add.detailed')}
+          </Button>
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             {t('meds.cancel')}
           </Button>

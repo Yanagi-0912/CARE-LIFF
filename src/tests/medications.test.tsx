@@ -176,6 +176,64 @@ describe('MedicationsPage', () => {
     expect(screen.getAllByText('已設定')).toHaveLength(2);
   });
 
+  it('新增表單勾選時段後可直接改時間，送出會帶上 slot_times', async () => {
+    // 「早」預設就已被 r-morning 佔用（見 beforeEach），這裡改成只有「晚」
+    // 已設定，讓「早」保持可勾選，才測得出「勾選後展開時間欄位」這件事。
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening]);
+    vi.mocked(medicationApi.createReminders).mockResolvedValue([
+      makeReminder({ id: 'r-morning-2', slot_type: 'morning', scheduled_time: '07:30' }),
+    ]);
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('18:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /新增/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // 勾選前時間欄位不存在——避免長輩被一次塞四個時間輸入框
+    expect(screen.queryByLabelText('提醒時間')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /早/ }));
+
+    const timeInput = screen.getByLabelText('提醒時間');
+    expect(timeInput).toHaveValue('08:00');
+    fireEvent.change(timeInput, { target: { value: '07:30' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '建立提醒' }));
+
+    await waitFor(() => {
+      expect(medicationApi.createReminders).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'U-self',
+          slots: ['morning'],
+          slot_times: { morning: '07:30' },
+        }),
+      );
+    });
+  });
+
+  it('點「詳細設定」會關閉新增視窗並切到詳細檢視，返回鈕可以切回清單', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /新增/ }));
+    fireEvent.click(screen.getByRole('button', { name: '詳細設定' }));
+
+    // dialog 關閉，換成整頁的詳細檢視佔位（Task 10 會補上實際內容）
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('詳細設定', { selector: 'p' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /返回/ }));
+
+    expect(screen.queryByText('詳細設定', { selector: 'p' })).not.toBeInTheDocument();
+    expect(screen.getByText('08:00')).toBeInTheDocument();
+  });
+
   it('啟用開關送出失敗時，畫面回滾並顯示錯誤訊息', async () => {
     vi.mocked(medicationApi.updateReminder).mockRejectedValue(new Error('無權限修改此用藥提醒'));
     renderPage();
