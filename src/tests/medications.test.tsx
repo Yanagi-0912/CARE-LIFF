@@ -13,6 +13,8 @@ vi.mock('../api/medicationApi', () => ({
   createReminders: vi.fn(),
   updateReminder: vi.fn(),
   deleteReminder: vi.fn(),
+  fetchMedications: vi.fn(),
+  createMedication: vi.fn(),
 }));
 
 // 這份既有測試不驗證藥袋掃描入口，開關固定回傳 false（不顯示掃描入口）

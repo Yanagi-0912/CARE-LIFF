@@ -31,6 +31,10 @@ export const queryKeys = {
   /** 家人的健康檔案，展開成員卡片時才會用到 */
   memberProfile: (userId: string) => ['member-profile', userId] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
+  /** 詳細設定頁的藥品清單（GET /api/medications，含已停用者），與 medications
+      的提醒清單分開快取——兩者失效時機不同，藥品清單不受提醒的時段/時間變動影響 */
+  medicationList: (targetUserId?: string) =>
+    ['medication-list', targetUserId ?? 'self'] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
   prescriptionScanEnabled: ['prescription-scan-enabled'] as const,
   knowledgeReports: ['knowledge-reports'] as const,

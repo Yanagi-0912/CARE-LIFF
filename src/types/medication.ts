@@ -20,10 +20,11 @@ export const SLOT_LABEL_KEY: Record<MedicationSlotType, string> = {
 /**
  * 後端預設觸發時間（app/models/medication.py 的 DEFAULT_SLOT_TIMES）。
  *
- * 新增表單只拿它做預覽顯示，實際時間由後端寫入（新增請求不帶 slot_times）；
- * 編輯視窗則用它判斷「時間是否仍停在原時段的預設值」，據以決定改時段時要不要
- * 讓時間跟著走（見 ReminderEditDialog）。兩份常數必須一致——這裡改了而後端沒改，
- * 編輯視窗會判定使用者自訂過時間而不再跟隨。
+ * 新增表單（簡易模式）拿它預先帶入每個勾選時段的時間欄位，使用者可直接調整，
+ * 送出時連同 slot_times 一起送給後端；編輯視窗則用它判斷「時間是否仍停在原
+ * 時段的預設值」，據以決定改時段時要不要讓時間跟著走（見 ReminderEditDialog）。
+ * 兩份常數必須一致——這裡改了而後端沒改，編輯視窗會判定使用者自訂過時間而
+ * 不再跟隨。
  */
 export const DEFAULT_SLOT_TIMES: Record<MedicationSlotType, string> = {
   morning: '08:00',
@@ -31,6 +32,27 @@ export const DEFAULT_SLOT_TIMES: Record<MedicationSlotType, string> = {
   evening: '18:00',
   bedtime: '21:30',
 };
+
+/** 條目內的服藥時機（對應後端 MealTiming）。同一筆提醒內每種至多一個、至少一個條目。 */
+export type MealTiming = 'before_meal' | 'after_meal' | 'none';
+
+/** 顯示順序：飯前 → 飯後 → 其他，推播版面與詳細設定頁都依此排序 */
+export const MEAL_TIMING_ORDER: readonly MealTiming[] = ['before_meal', 'after_meal', 'none'] as const;
+
+/** 各服藥時機的 i18n key */
+export const MEAL_LABEL_KEY: Record<MealTiming, string> = {
+  before_meal: 'meds.meal.before_meal',
+  after_meal: 'meds.meal.after_meal',
+  none: 'meds.meal.none',
+};
+
+/** 一筆提醒內的條目（對應後端 ReminderEntry） */
+export interface ReminderEntry {
+  meal_timing: MealTiming;
+  /** HH:MM */
+  scheduled_time: string;
+  medication_ids: string[];
+}
 
 /**
  * 一種藥（對應後端 Medication）。藥袋辨識建立的藥會多帶 usage_raw／license_number 等欄位。
@@ -109,8 +131,15 @@ export interface MedicationReminder {
   /** 服用藥物者的 LINE userId */
   user_id: string;
   slot_type: MedicationSlotType;
-  /** HH:MM。後端以 UTC 判定觸發，前端原樣顯示不做換算 */
+  /** HH:MM，派生自 entries 中最早的時刻。後端以 UTC 判定觸發，前端原樣顯示不做換算 */
   scheduled_time: string;
+  /**
+   * HH:MM，派生自 entries 中最晚的時刻。T+20 催促與 T+30 家屬警報以它為基準——
+   * 只有單一 none 條目時與 scheduled_time 相等。
+   */
+  timeout_anchor_time: string;
+  /** 依飯前 → 飯後 → 其他排序，同一時機至多一筆；medication_ids 為條目聯集的唯讀來源 */
+  entries: ReminderEntry[];
   /** YYYY-MM-DD */
   start_date: string;
   /** YYYY-MM-DD，null 代表長期 */
@@ -126,6 +155,10 @@ export interface MedicationReminder {
 export interface CreateRemindersRequest {
   user_id: string;
   slots: MedicationSlotType[];
+  /** 簡易模式：每個勾選時段的觸發時間，缺席的時段套用 DEFAULT_SLOT_TIMES */
+  slot_times?: Partial<Record<MedicationSlotType, string>>;
+  /** 詳細設定：帶條目的時段以此為準，覆蓋 slot_times 的單時刻假設 */
+  slot_entries?: Partial<Record<MedicationSlotType, ReminderEntry[]>>;
   start_date?: string;
   end_date?: string;
 }
@@ -141,8 +174,16 @@ export interface CreateRemindersRequest {
 export interface UpdateReminderRequest {
   slot_type?: MedicationSlotType;
   scheduled_time?: string;
+  /** 整份取代現有條目；多條目規則不可再送 scheduled_time（後端回 400，不知道要改哪一個時刻） */
+  entries?: ReminderEntry[];
   start_date?: string;
   /** null 代表清成「長期」（沒有結束日期）；不帶這個 key 則不動原值 */
   end_date?: string | null;
   enabled?: boolean;
+}
+
+/** POST /api/medications 請求：手動新增一種藥品（source 固定為 manual） */
+export interface CreateMedicationRequest {
+  user_id: string;
+  name: string;
 }
