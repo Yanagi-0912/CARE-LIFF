@@ -137,12 +137,18 @@ function makeDraft(overrides: Partial<PrescriptionDraft> = {}): PrescriptionDraf
 }
 
 function makeExistingReminder(overrides: Partial<MedicationReminder> = {}): MedicationReminder {
+  // entries／timeout_anchor_time 是派生欄位：這裡沒有多條目情境，固定用單一
+  // none 條目、時刻跟著 scheduled_time 走，overrides 帶了 scheduled_time 也會
+  // 一併反映，不會出現條目時刻與 scheduled_time 對不上的假資料。
+  const scheduled_time = overrides.scheduled_time ?? '08:00';
   return {
     id: 'r-existing',
     creator_user_id: 'U-self',
     user_id: 'U-self',
     slot_type: 'morning',
-    scheduled_time: '08:00',
+    scheduled_time,
+    timeout_anchor_time: scheduled_time,
+    entries: [{ meal_timing: 'none', scheduled_time, medication_ids: [] }],
     start_date: '2026-06-01',
     end_date: null,
     enabled: true,
@@ -1826,12 +1832,19 @@ describe('MedicationsPage：送出後的 toast 反映實際發生的事（Fix 3�
 
 describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', () => {
   function makeReminderWithMedications(medications: Medication[]): MedicationReminder {
+    const scheduled_time = '08:00';
     return {
       id: 'r-1',
       creator_user_id: 'U-self',
       user_id: 'U-self',
       slot_type: 'morning',
-      scheduled_time: '08:00',
+      scheduled_time,
+      timeout_anchor_time: scheduled_time,
+      // 條目的 medication_ids 跟入參的 medications 對上，避免提醒有藥、
+      // 條目聯集卻是空的這種自相矛盾的假資料。
+      entries: [
+        { meal_timing: 'none', scheduled_time, medication_ids: medications.map((m) => m.id) },
+      ],
       start_date: '2026-06-01',
       end_date: null,
       enabled: true,

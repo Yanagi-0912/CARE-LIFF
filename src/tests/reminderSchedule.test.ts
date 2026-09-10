@@ -5,12 +5,18 @@ import type { MedicationReminder } from '../types/medication';
 const TODAY = '2026-08-11';
 
 function makeReminder(overrides: Partial<MedicationReminder> = {}): MedicationReminder {
+  // entries／timeout_anchor_time 是派生欄位；這支測試只練 isReminderSchedulable／
+  // nearestSlot 兩個純函式，不涉及條目內容，固定用單一 none 條目、時刻跟著
+  // scheduled_time 走即可，overrides 帶了 scheduled_time 也會一併反映。
+  const scheduled_time = overrides.scheduled_time ?? '08:00';
   return {
     id: 'r-1',
     creator_user_id: 'U-family',
     user_id: 'U-patient',
     slot_type: 'morning',
-    scheduled_time: '08:00',
+    scheduled_time,
+    timeout_anchor_time: scheduled_time,
+    entries: [{ meal_timing: 'none', scheduled_time, medication_ids: [] }],
     start_date: '2026-06-01',
     end_date: null,
     enabled: true,

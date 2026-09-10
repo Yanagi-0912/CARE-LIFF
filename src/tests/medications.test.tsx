@@ -46,12 +46,18 @@ vi.mock('../hooks/useFamily', () => ({
 }));
 
 function makeReminder(overrides: Partial<MedicationReminder>): MedicationReminder {
+  // entries／timeout_anchor_time 是派生欄位：這裡沒有多條目情境，固定用單一
+  // none 條目、時刻跟著 scheduled_time 走，overrides 若自己帶了 scheduled_time
+  // 也會反映到條目裡，不會出現條目時刻與 scheduled_time 對不上的假資料。
+  const scheduled_time = overrides.scheduled_time ?? '08:00';
   return {
     id: 'r-1',
     creator_user_id: 'U-self',
     user_id: 'U-self',
     slot_type: 'morning',
-    scheduled_time: '08:00',
+    scheduled_time,
+    timeout_anchor_time: scheduled_time,
+    entries: [{ meal_timing: 'none', scheduled_time, medication_ids: [] }],
     start_date: '2026-08-01',
     end_date: null,
     enabled: true,
@@ -195,9 +201,13 @@ describe('MedicationsPage', () => {
     // （response_model=MedicationReminder，藥品清單只有 GET 才會附上）。
     // 快取若用回應整筆取代，藥品清單就會被洗掉——使用者停用某個時段後，
     // 畫面同時失去「剛剛關掉的是哪些藥」這個唯一線索，要重新整理才回得來。
+    const med = makeMedication();
     const morningWithMeds: MedicationReminder = {
       ...morning,
-      medications: [makeMedication()],
+      medications: [med],
+      // entries 的 medication_ids 要跟 medications 對上，否則這筆假資料自相矛盾
+      // （提醒說有一顆藥，條目卻宣稱聯集是空的）
+      entries: [{ meal_timing: 'none', scheduled_time: morning.scheduled_time, medication_ids: [med.id] }],
     };
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening, morningWithMeds]);
     const { medications: _dropped, ...withoutMedications } = morningWithMeds;
