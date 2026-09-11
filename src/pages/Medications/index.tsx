@@ -9,6 +9,7 @@ import {
 import type {
   MedicationReminder,
   MedicationSlotType,
+  ReminderEntry,
   UpdateReminderRequest,
 } from '../../types/medication';
 import type { PrescriptionCommitResult, PrescriptionDraft } from '../../types/prescription';
@@ -17,11 +18,12 @@ import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
 import { PrescriptionScanDialog } from './PrescriptionScanDialog';
 import { PrescriptionDraftForm } from './PrescriptionDraftForm';
+import { DetailedSetupView } from './DetailedSetupView';
 import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
 import { buildCommitSummary } from './commitSummary';
 import { toast } from 'sonner';
-import { ArrowLeftIcon, PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
+import { PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -55,9 +57,11 @@ const MedicationsPage = () => {
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<PrescriptionDraft | null>(null);
   // 詳細設定是同一頁內的整頁檢視，不另開路由（design.md 決策 8：LIFF webview
-  // 換路徑會重掛整頁、重打 API，在長輩裝置上明顯卡頓）。Task 10 會在
-  // view === 'detailed' 時渲染實際的時段編輯面，這裡先接上狀態與返回動線。
+  // 換路徑會重掛整頁、重打 API，在長輩裝置上明顯卡頓）。
   const [view, setView] = useState<'list' | 'detailed'>('list');
+  // 從新增表單的「詳細設定」進入時不預選任何時段；Task 11 起編輯視窗會把
+  // 目前這筆規則的時段帶進來，直接跳進該時段的編輯面。
+  const [detailedSlot, setDetailedSlot] = useState<MedicationSlotType | undefined>(undefined);
 
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
@@ -123,7 +127,33 @@ const MedicationsPage = () => {
 
   const handleOpenDetailed = () => {
     setAdding(false);
+    setDetailedSlot(undefined);
     setView('detailed');
+  };
+
+  // 該時段尚未有規則 → 走建立（帶 slot_entries）；refetch 是因為 create／update
+  // 的回應不含 medications（只有 GET /reminders 會附上），詳細檢視第一層的
+  // 摘要與藥品指派畫面都需要重新整份的提醒清單才會是正確的。
+  const handleDetailedCreate = async (
+    slot: MedicationSlotType,
+    entries: ReminderEntry[],
+    startDate: string,
+  ) => {
+    const userId = selectedUserId ?? getLineUserId();
+    await create({
+      user_id: userId,
+      slots: [slot],
+      slot_entries: { [slot]: entries },
+      start_date: startDate,
+    });
+    await refetch();
+    toast.success(t('meds.detailed.saveSuccess'));
+  };
+
+  const handleDetailedUpdate = async (reminderId: string, entries: ReminderEntry[]) => {
+    await update(reminderId, { entries });
+    await refetch();
+    toast.success(t('meds.detailed.saveSuccess'));
   };
 
   const handleSave = async (patch: UpdateReminderRequest) => {
@@ -170,8 +200,7 @@ const MedicationsPage = () => {
   return (
     <div className="mx-auto max-w-[760px]">
       {/* 詳細設定取代清單區塊與頂端的新增／掃描入口，但對象 chips 與已載入的
-          提醒資料都保留（design.md 決策 8）——換對象或返回清單都不必重打 API。
-          Task 10 會把下面的 <p> 佔位換成實際的時段編輯面。 */}
+          提醒資料都保留（design.md 決策 8）——換對象或返回清單都不必重打 API。 */}
       {view === 'list' && (
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
@@ -222,18 +251,15 @@ const MedicationsPage = () => {
       </ToggleGroup>
 
       {view === 'detailed' ? (
-        <div className="flex flex-col gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-fit"
-            onClick={() => setView('list')}
-          >
-            <ArrowLeftIcon data-icon="inline-start" />
-            {t('meds.detailed.back')}
-          </Button>
-          <p className="text-base">{t('meds.detailed.title')}</p>
-        </div>
+        <DetailedSetupView
+          targetUserId={selectedUserId}
+          targetName={selectedName}
+          reminders={reminders}
+          initialSlot={detailedSlot}
+          onBack={() => setView('list')}
+          onCreate={handleDetailedCreate}
+          onUpdate={handleDetailedUpdate}
+        />
       ) : loading ? (
         // 骨架屏用與 ReminderCard 同一組 Item 元件，卡片外框自然對齊，
         // 不必再手寫一份 rounded/border/padding

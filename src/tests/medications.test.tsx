@@ -119,6 +119,9 @@ describe('MedicationsPage', () => {
     localStorage.setItem('CARE_LINE_USER_ID', 'U-self');
     // 故意回傳時間顛倒的順序，驗證頁面會自行排序
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening, morning]);
+    // 只有切到詳細檢視才會用到（DetailedSetupView 內的 useMedicationList），
+    // 給個安全預設值，避免其他測試因為 query 回傳 undefined 而炸開。
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
     await i18n.changeLanguage('zh-TW');
   });
 
@@ -231,13 +234,13 @@ describe('MedicationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /新增/ }));
     fireEvent.click(screen.getByRole('button', { name: '詳細設定' }));
 
-    // dialog 關閉，換成整頁的詳細檢視佔位（Task 10 會補上實際內容）
+    // dialog 關閉，換成整頁的詳細檢視（第一層：四張時段卡）
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('詳細設定', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '詳細設定' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /返回/ }));
 
-    expect(screen.queryByText('詳細設定', { selector: 'p' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '詳細設定' })).not.toBeInTheDocument();
     expect(screen.getByText('08:00')).toBeInTheDocument();
   });
 
