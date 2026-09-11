@@ -149,8 +149,22 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
               return (
                 <Item key={entry.meal_timing} size="xs" role="listitem" className="p-0">
                   <Badge variant="secondary">{t(MEAL_LABEL_KEY[entry.meal_timing])}</Badge>
-                  <span className="num text-sm font-semibold">{entry.scheduled_time}</span>
-                  {names && <span className="text-sm text-muted-foreground">{names}</span>}
+                  {/* ItemContent 提供 min-w-0，讓這個 flex 子項能被壓縮到比內容的
+                      min-content 更窄——沒有它，一串不能斷行的英文藥名（例如
+                      CHLORPHENIRAMINE MALEATE）會把 flex 子項的最小寬度撐成
+                      整串字的寬度，在 24px 字級的 375px 手機上把卡片一起撐寬，
+                      與 MedicationAppearanceRow 的既有作法一致。 */}
+                  <ItemContent className="min-w-0 flex-row flex-wrap items-baseline gap-x-2 gap-y-0">
+                    <span className="num text-sm font-semibold">{entry.scheduled_time}</span>
+                    {/* break-words 讓一般的空白／標點處優先斷行；單一長字仍斷不開時
+                        由 [overflow-wrap:anywhere] 兜底，允許在字內斷行——寧可切開
+                        一個英文藥名，也不要讓卡片長出水平捲軸。 */}
+                    {names && (
+                      <span className="min-w-0 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                        {names}
+                      </span>
+                    )}
+                  </ItemContent>
                 </Item>
               );
             })}

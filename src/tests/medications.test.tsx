@@ -534,6 +534,12 @@ describe('MedicationsPage', () => {
     expect(within(entriesList).getByText('08:30')).toBeInTheDocument();
     expect(within(entriesList).getByText('脈優錠5毫克')).toBeInTheDocument();
 
+    // 藥名允許斷行：不能斷行的一長串英文藥名（例如
+    // CHLORPHENIRAMINE MALEATE）在 24px 字級的 375px 手機上會把整張卡片
+    // 撐寬，見 MedicationAppearanceRow 的既有作法——時刻與藥名要包在
+    // ItemContent（提供 min-w-0）裡，藥名本身要能斷行。
+    expect(within(entriesList).getByText('心得安錠')).toHaveClass('break-words');
+
     // 標題仍顯示派生出來的最早時刻，不受下面攤開的條目影響
     const editButton = screen.getByRole('button', { name: /編輯「早」/ });
     expect(within(editButton).getByText('07:30')).toBeInTheDocument();
