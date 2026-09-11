@@ -194,9 +194,14 @@ export function ReminderFormDialog({
                                   {taken ? (
                                     <Badge variant="secondary">{t('meds.add.slotExists')}</Badge>
                                   ) : (
-                                    <FieldDescription className="num">
-                                      {DEFAULT_SLOT_TIMES[slot]}
-                                    </FieldDescription>
+                                    // 勾選後改由下方可編輯的時間欄位顯示時刻——同時留著這行
+                                    // 寫死的預設值，會在使用者改動時間後變成兩個互相矛盾的
+                                    // 時刻（這裡顯示 08:00、下面卻是使用者剛改的 07:30）。
+                                    !checked && (
+                                      <FieldDescription className="num">
+                                        {DEFAULT_SLOT_TIMES[slot]}
+                                      </FieldDescription>
+                                    )
                                   )}
                                 </FieldContent>
                               </Field>
@@ -211,6 +216,12 @@ export function ReminderFormDialog({
                                   id={`slot-time-${slot}`}
                                   type="time"
                                   className="num"
+                                  // 可見的 FieldLabel 統一顯示「提醒時間」即可（旁邊已有時段名稱的
+                                  // FieldTitle），但四個時段的欄位若無障礙名稱都唸成「提醒時間」，
+                                  // 螢幕閱讀器使用者切換欄位時分不出是哪個時段。
+                                  aria-label={t('meds.add.timeFieldFor', {
+                                    slot: t(SLOT_LABEL_KEY[slot]),
+                                  })}
                                   aria-invalid={Boolean(errors.slotTimes?.[slot])}
                                   disabled={isSubmitting}
                                   {...register(`slotTimes.${slot}`)}

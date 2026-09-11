@@ -193,13 +193,20 @@ describe('MedicationsPage', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     // 勾選前時間欄位不存在——避免長輩被一次塞四個時間輸入框
-    expect(screen.queryByLabelText('提醒時間')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/早提醒時間/)).not.toBeInTheDocument();
+    // 勾選前卡片顯示的是預設時間文字（非輸入框）
+    expect(screen.getByText('08:00')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /早/ }));
 
-    const timeInput = screen.getByLabelText('提醒時間');
+    const timeInput = screen.getByLabelText(/早提醒時間/);
     expect(timeInput).toHaveValue('08:00');
     fireEvent.change(timeInput, { target: { value: '07:30' } });
+
+    // 改動後卡片上不該再留著寫死的「08:00」——那會跟下面剛改的 07:30 互相矛盾，
+    // 使用者分不清哪個才是真正要送出的時間。
+    expect(screen.queryByText('08:00')).not.toBeInTheDocument();
+    expect(timeInput).toHaveValue('07:30');
 
     fireEvent.click(screen.getByRole('button', { name: '建立提醒' }));
 
