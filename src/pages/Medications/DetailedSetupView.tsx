@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { ArrowLeftIcon, ChevronRightIcon, TriangleAlertIcon } from 'lucide-react';
 
 import {
   MEAL_LABEL_KEY,
@@ -11,9 +11,11 @@ import {
   type ReminderEntry,
 } from '../../types/medication';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
 import { todayLocalDateString } from '../../utils/date';
 import { SLOT_TONE } from './slotTone';
 import { SlotEntryEditor } from './SlotEntryEditor';
@@ -23,6 +25,12 @@ interface DetailedSetupViewProps {
   targetUserId?: string;
   targetName: string;
   reminders: MedicationReminder[];
+  /** 提醒清單（reminders）是否仍在載入——第一層四張時段卡靠它才有正確的
+   *  摘要（entries／medication_ids），載入中不能先渲染成「尚未設定」。 */
+  remindersLoading: boolean;
+  /** 提醒清單載入失敗的訊息；非 null 時第一層改顯示錯誤，不呈現時段卡
+   *  （那會讓使用者以為四個時段真的都還沒設定，點進去才發現是空的）。 */
+  remindersError: string | null;
   /** 從新增表單的「詳細設定」進入時為 undefined；Task 11 起編輯視窗會帶入該筆規則的時段 */
   initialSlot?: MedicationSlotType;
   onBack: () => void;
@@ -42,6 +50,8 @@ export function DetailedSetupView({
   targetUserId,
   targetName,
   reminders,
+  remindersLoading,
+  remindersError,
   initialSlot,
   onBack,
   onCreate,
@@ -102,52 +112,75 @@ export function DetailedSetupView({
         <p className="text-base text-muted-foreground">{targetName}</p>
       </div>
 
-      <ItemGroup className="gap-3" aria-label={t('meds.detailed.title')}>
-        {SLOT_TYPES.map((slot) => {
-          const reminder = reminderBySlot.get(slot);
-          const entries = reminder?.entries ?? [];
-          const slotLabel = t(SLOT_LABEL_KEY[slot]);
-
-          return (
-            <Item key={slot} variant="outline" className="gap-0 p-0">
-              <button
-                type="button"
-                className="flex w-full min-w-0 items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                onClick={() => setSelectedSlot(slot)}
-                aria-label={slotLabel}
-              >
-                <ItemMedia>
-                  <Badge
-                    variant="secondary"
-                    className={cn('size-11 rounded-xl text-sm font-extrabold', SLOT_TONE[slot])}
-                  >
-                    {slotLabel}
-                  </Badge>
-                </ItemMedia>
-
-                <ItemContent>
-                  <ItemTitle className="text-lg font-semibold">{slotLabel}</ItemTitle>
-                  <ItemDescription className="line-clamp-none">
-                    {entries.length === 0
-                      ? t('meds.detailed.slotSummaryEmpty')
-                      : entries.map((entry) => (
-                          <span key={entry.meal_timing} className="block">
-                            {t('meds.detailed.entrySummary', {
-                              meal: t(MEAL_LABEL_KEY[entry.meal_timing]),
-                              time: entry.scheduled_time,
-                              count: entry.medication_ids.length,
-                            })}
-                          </span>
-                        ))}
-                  </ItemDescription>
-                </ItemContent>
-
-                <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
-              </button>
+      {remindersLoading ? (
+        // 骨架屏與 index.tsx 的清單骨架同一組 Item 元件，四張卡對齊第一層
+        // 真正渲染出來的時段卡數量——載入中不能先把摘要顯示成「尚未設定」，
+        // 那看起來像是這個人真的什麼都沒設定過。
+        <ItemGroup className="gap-3" aria-busy="true" aria-label={t('meds.loading')}>
+          {SLOT_TYPES.map((slot) => (
+            <Item key={slot} variant="outline">
+              <ItemMedia>
+                <Skeleton className="size-11 rounded-xl" />
+              </ItemMedia>
+              <ItemContent>
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-4 w-40" />
+              </ItemContent>
             </Item>
-          );
-        })}
-      </ItemGroup>
+          ))}
+        </ItemGroup>
+      ) : remindersError ? (
+        <Alert variant="destructive">
+          <TriangleAlertIcon />
+          <AlertDescription>{t('meds.loadError')}</AlertDescription>
+        </Alert>
+      ) : (
+        <ItemGroup className="gap-3" aria-label={t('meds.detailed.title')}>
+          {SLOT_TYPES.map((slot) => {
+            const reminder = reminderBySlot.get(slot);
+            const entries = reminder?.entries ?? [];
+            const slotLabel = t(SLOT_LABEL_KEY[slot]);
+
+            return (
+              <Item key={slot} variant="outline" className="gap-0 p-0">
+                <button
+                  type="button"
+                  className="flex w-full min-w-0 items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() => setSelectedSlot(slot)}
+                >
+                  <ItemMedia>
+                    <Badge
+                      variant="secondary"
+                      className={cn('size-11 rounded-xl text-sm font-extrabold', SLOT_TONE[slot])}
+                    >
+                      {slotLabel}
+                    </Badge>
+                  </ItemMedia>
+
+                  <ItemContent>
+                    <ItemTitle className="text-lg font-semibold">{slotLabel}</ItemTitle>
+                    <ItemDescription className="line-clamp-none">
+                      {entries.length === 0
+                        ? t('meds.detailed.slotSummaryEmpty')
+                        : entries.map((entry) => (
+                            <span key={entry.meal_timing} className="block">
+                              {t('meds.detailed.entrySummary', {
+                                meal: t(MEAL_LABEL_KEY[entry.meal_timing]),
+                                time: entry.scheduled_time,
+                                count: entry.medication_ids.length,
+                              })}
+                            </span>
+                          ))}
+                    </ItemDescription>
+                  </ItemContent>
+
+                  <ChevronRightIcon className="size-5 shrink-0 text-muted-foreground" />
+                </button>
+              </Item>
+            );
+          })}
+        </ItemGroup>
+      )}
     </div>
   );
 }

@@ -33,7 +33,13 @@ import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatAppearancePrimary } from './appearanceText';
 import { PillThumbnail } from './PillThumbnail';
-import { buildEntries, computeDefaults, type Assignment } from './slotEntryForm';
+import {
+  buildEntries,
+  computeDefaults,
+  computePriorMemberIds,
+  findEmptyEnabledTiming,
+  type Assignment,
+} from './slotEntryForm';
 
 interface SlotEntryEditorProps {
   slot: MedicationSlotType;
@@ -66,6 +72,11 @@ export function SlotEntryEditor({
 
   // 驗證訊息需要 t，故隨語言重建；只依賴 slot／reminder 的預設值同理。
   const defaultValues = useMemo(() => computeDefaults(slot, reminder), [slot, reminder]);
+
+  // 原本就屬於這筆規則的藥品 id：這次若維持未指派會落入 none 條目繼續被
+  // 提醒（見 buildEntries），findEmptyEnabledTiming 判斷「其他條目是否有藥」
+  // 時要把這些算進去，否則會誤判成「全部都沒藥」而放行。
+  const priorNoneIds = useMemo(() => computePriorMemberIds(reminder), [reminder]);
 
   const schema = useMemo(
     () =>
@@ -106,8 +117,21 @@ export function SlotEntryEditor({
               path: ['after', 'time'],
             });
           }
+          // Controller ruling（final review item 2）：開啟卻沒指派藥品的時機，
+          // 若另一個時機（或落入 none 的既有藥品）已經掛著藥，不能放行存檔
+          // ——buildEntries 仍會產生一個空條目，讓後端把 timeout_anchor_time
+          // 訂在它的時刻，拖慢真正有藥的時機的 T+20/T+30 升級。全部時機都
+          // 沒有藥（純時間提醒）不受影響，findEmptyEnabledTiming 對此回傳 null。
+          const emptyTiming = findEmptyEnabledTiming(values, priorNoneIds);
+          if (emptyTiming) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('meds.detailed.emptyTiming', { meal: t(MEAL_LABEL_KEY[emptyTiming]) }),
+              path: [emptyTiming === 'before_meal' ? 'before' : 'after', 'enabled'],
+            });
+          }
         }),
-    [t],
+    [t, priorNoneIds],
   );
 
   type FormValues = z.infer<typeof schema>;
@@ -179,15 +203,18 @@ export function SlotEntryEditor({
   });
 
   // 「至少開一個服藥時機」掛在 before.enabled 欄位上（見上面 superRefine 的註解），
-  // 但呈現面比照 root 錯誤，一樣顯示成表單底部的 Alert，不是掛在飯前開關旁邊——
-  // 這個錯誤講的是飯前飯後兩者的組合，不是飯前這一個欄位本身有問題。
-  const formError = errors.root?.message ?? errors.before?.enabled?.message;
+  // 「時機開著卻沒指派藥品」則可能掛在 before 或 after 任一邊，取決於是哪個
+  // 時機違規——但呈現面比照 root 錯誤，一樣顯示成表單底部的 Alert，不是掛在
+  // 對應開關旁邊：這兩種錯誤講的都是跨欄位的組合，不是單一欄位本身有問題。
+  const formError =
+    errors.root?.message ?? errors.before?.enabled?.message ?? errors.after?.enabled?.message;
   const saveDisabled = isSubmitting || medicationsLoading || Boolean(medicationsError);
 
   const renderTiming = (key: 'before' | 'after', mealTiming: 'before_meal' | 'after_meal') => {
     const mealLabel = t(MEAL_LABEL_KEY[mealTiming]);
     const enabled = key === 'before' ? beforeEnabled : afterEnabled;
     const timeError = key === 'before' ? errors.before?.time : errors.after?.time;
+    const switchId = `slot-entry-${key}-enabled`;
     return (
       <Field key={key}>
         <div className="flex items-center gap-3">

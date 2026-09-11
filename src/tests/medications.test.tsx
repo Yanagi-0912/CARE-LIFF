@@ -603,7 +603,7 @@ describe('MedicationsPage', () => {
     // 四張時段卡的第一層。
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '早', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '提醒飯前' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: '飯前' })).toBeChecked();
   });
 });
 

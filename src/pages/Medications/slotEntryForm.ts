@@ -72,6 +72,63 @@ export function computeDefaults(slot: MedicationSlotType, reminder?: MedicationR
  * 落在 none，就不生出一個空的 none 條目——空條目會把規則的最早觸發時刻
  * 往前拉，卻沒有任何藥可以顯示，沒有意義。
  */
+/**
+ * 這筆規則既有條目裡出現過的藥品 id 聯集——buildEntries 與
+ * findEmptyEnabledTiming 都需要「這個 id 原本就屬於本規則」這個判斷，
+ * 抽成共用函式避免兩處各自維護一份同樣的邏輯。
+ */
+export function computePriorMemberIds(reminder: MedicationReminder | undefined): Set<string> {
+  const priorEntries = reminder?.entries ?? [];
+  return new Set(priorEntries.flatMap((entry) => entry.medication_ids));
+}
+
+/**
+ * 找出「已開啟但沒有任何指派藥品」的時機，且同時有其他條目（另一個時機，
+ * 或未指派但原屬本規則、會落入 none 條目的藥品）掛著至少一種藥。
+ *
+ * Controller ruling（final review）：這種組合不能靜默存檔——buildEntries 仍會
+ * 依 values.before.enabled／values.after.enabled 老實產生一個 medication_ids
+ * 為空陣列的條目，後端據此把 timeout_anchor_time 訂在這個空條目的時刻上。
+ * 若那個時刻比真正掛著藥的條目晚，T+20 催促與 T+30 家屬警報的基準點就會
+ * 被一個「其實沒有藥」的時機往後拖，延誤真正該吃藥的那顆藥的升級通知。
+ * 因此改成擋下存檔，讓使用者明確指派藥品或關掉這個時機，而不是任由它
+ * 悄悄拖慢別顆藥的升級時序。
+ *
+ * 全部時機都沒有藥（純時間提醒，例如量血壓提醒）不受影響——那種情況下
+ * 沒有「其他條目掛著藥」可比較，允許維持現狀存檔。
+ *
+ * @param priorNoneIds 原本就屬於這筆規則的藥品 id（entries 的 medication_ids
+ *   聯集，與 buildEntries 的 priorIds 同一來源）。這次若維持未指派，
+ *   buildEntries 會把它們放進 none 條目繼續提醒，因此在這裡等同「掛在
+ *   none 時機的藥」，要算進「其他條目是否有藥」的判斷。全新、從未屬於
+ *   本規則的藥品維持未指派時不會落入 none，因此不算。
+ */
+export function findEmptyEnabledTiming(
+  values: SlotEntryFormValues,
+  priorNoneIds: Set<string>,
+): 'before_meal' | 'after_meal' | null {
+  let beforeCount = 0;
+  let afterCount = 0;
+  let noneCount = 0;
+  Object.entries(values.assignments).forEach(([id, assignment]) => {
+    if (assignment === 'before_meal') beforeCount += 1;
+    else if (assignment === 'after_meal') afterCount += 1;
+    else if (priorNoneIds.has(id)) noneCount += 1;
+  });
+
+  const timings: Array<{ meal: 'before_meal' | 'after_meal'; enabled: boolean; count: number; otherCount: number }> = [
+    { meal: 'before_meal', enabled: values.before.enabled, count: beforeCount, otherCount: afterCount },
+    { meal: 'after_meal', enabled: values.after.enabled, count: afterCount, otherCount: beforeCount },
+  ];
+
+  for (const timing of timings) {
+    if (timing.enabled && timing.count === 0 && (timing.otherCount > 0 || noneCount > 0)) {
+      return timing.meal;
+    }
+  }
+  return null;
+}
+
 export function buildEntries(
   slot: MedicationSlotType,
   reminder: MedicationReminder | undefined,
@@ -79,7 +136,7 @@ export function buildEntries(
   values: SlotEntryFormValues,
 ): ReminderEntry[] {
   const priorEntries = reminder?.entries ?? [];
-  const priorIds = new Set(priorEntries.flatMap((entry) => entry.medication_ids));
+  const priorIds = computePriorMemberIds(reminder);
   // 聯集：載入清單在前（維持既有的顯示順序），既有規則裡但這次清單沒帶到的
   // 藥品接在後面——不能因為清單缺席就讓它們憑空消失。
   const allIds = new Set<string>([...medications.map((med) => med.id), ...priorIds]);

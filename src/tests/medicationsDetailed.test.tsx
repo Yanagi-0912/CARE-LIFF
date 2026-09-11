@@ -22,14 +22,12 @@ vi.mock('../api/settingsApi', () => ({
   getPrescriptionScanEnabled: vi.fn().mockResolvedValue(false),
 }));
 
-// 這份測試不驗證家人切換，成員清單固定為空——對象只有「我自己」
+// 這份測試多數不驗證家人切換，成員清單預設為空——對象只有「我自己」；
+// 用 vi.hoisted 包一層可覆寫的 mock，讓「切換對象」的回歸測試能在單一
+// 測試裡改成有其他成員可切，其餘測試不受影響（beforeEach 會重置回預設）。
+const { mockUseFamily } = vi.hoisted(() => ({ mockUseFamily: vi.fn() }));
 vi.mock('../hooks/useFamily', () => ({
-  useFamily: () => ({
-    members: [],
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useFamily: mockUseFamily,
 }));
 
 function makeReminder(overrides: Partial<MedicationReminder> = {}): MedicationReminder {
@@ -94,6 +92,7 @@ function itemFor(name: string) {
 describe('MedicationsPage 詳細設定檢視', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockUseFamily.mockReturnValue({ members: [], loading: false, error: null, refetch: vi.fn() });
     localStorage.setItem('CARE_AUTH_TOKEN', 'test-token');
     localStorage.setItem('CARE_LINE_USER_ID', 'U-self');
     await i18n.changeLanguage('zh-TW');
@@ -132,16 +131,16 @@ describe('MedicationsPage 詳細設定檢視', () => {
       expect(screen.getAllByText('尚未設定')).toHaveLength(4);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '早' }));
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
 
     await waitFor(() => {
       expect(screen.getByText(medA.name)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: '提醒飯前' }));
+    fireEvent.click(screen.getByRole('switch', { name: '飯前' }));
     fireEvent.change(screen.getByLabelText('飯前時間'), { target: { value: '07:30' } });
 
-    fireEvent.click(screen.getByRole('switch', { name: '提醒飯後' }));
+    fireEvent.click(screen.getByRole('switch', { name: '飯後' }));
     fireEvent.change(screen.getByLabelText('飯後時間'), { target: { value: '08:30' } });
 
     fireEvent.click(itemFor(medA.name).getByRole('button', { name: '放到飯前' }));
@@ -192,15 +191,15 @@ describe('MedicationsPage 詳細設定檢視', () => {
     });
 
     await openDetailed();
-    fireEvent.click(screen.getByRole('button', { name: '早' }));
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
 
     await waitFor(() => {
       expect(screen.getByText(medA.name)).toBeInTheDocument();
     });
 
     // 開關、時間、指派都照既有條目帶出
-    expect(screen.getByRole('switch', { name: '提醒飯前' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('switch', { name: '提醒飯後' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: '飯前' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: '飯後' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByLabelText('飯前時間')).toHaveValue('07:30');
     expect(screen.getByLabelText('飯後時間')).toHaveValue('08:30');
     expect(itemFor(medA.name).getByRole('button', { name: '放到飯前' })).toHaveAttribute(
@@ -215,14 +214,15 @@ describe('MedicationsPage 詳細設定檢視', () => {
     // 把 B 從飯後搬到飯前
     fireEvent.click(itemFor(medB.name).getByRole('button', { name: '放到飯前' }));
 
+    // review fix 2 之後，飯後開著卻沒有藥（B 已經搬走）會被擋下存檔——
+    // 兩個時機都改成掛在飯前，飯後索性關掉，這才是合理的最終狀態。
+    fireEvent.click(screen.getByRole('switch', { name: '飯後' }));
+
     fireEvent.click(screen.getByRole('button', { name: '儲存' }));
 
     await waitFor(() => {
       expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
-        entries: [
-          { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a', 'm-b'] },
-          { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [] },
-        ],
+        entries: [{ meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a', 'm-b'] }],
       });
     });
   });
@@ -253,7 +253,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     });
 
     await openDetailed();
-    fireEvent.click(screen.getByRole('button', { name: '早' }));
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
 
     await waitFor(() => {
       expect(screen.getByText(medB.name)).toBeInTheDocument();
@@ -265,7 +265,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     );
 
     // 關掉飯後開關
-    fireEvent.click(screen.getByRole('switch', { name: '提醒飯後' }));
+    fireEvent.click(screen.getByRole('switch', { name: '飯後' }));
 
     // B 的指派被清掉，畫面顯示未指派
     expect(itemFor(medB.name).getByText('未指派')).toBeInTheDocument();
@@ -293,7 +293,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     renderPage();
     await openDetailed();
 
-    fireEvent.click(screen.getByRole('button', { name: '早' }));
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
 
     await waitFor(() => {
       expect(screen.getByText('目前沒有藥品，可在下方新增')).toBeInTheDocument();
@@ -308,6 +308,57 @@ describe('MedicationsPage 詳細設定檢視', () => {
     expect(medicationApi.updateReminder).not.toHaveBeenCalled();
   });
 
+  it('開啟飯前飯後但只指派飯前時擋下儲存，補上飯後的指派後才能存檔', async () => {
+    // final review item 2 的回歸測試：飯後開著卻沒有藥，buildEntries 仍會老實
+    // 產生一個空條目，後端會把 timeout_anchor_time 訂在它的時刻，拖慢真正
+    // 有藥的飯前時機的 T+20/T+30 升級——所以要擋下存檔，而不是靜默送出。
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    const medA = makeMedication({ id: 'm-a', name: '脈優錠5毫克' });
+    const medB = makeMedication({ id: 'm-b', name: '克流感膠囊' });
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([medA, medB]);
+    vi.mocked(medicationApi.createReminders).mockResolvedValue([
+      makeReminder({ id: 'r-morning', slot_type: 'morning', scheduled_time: '07:30' }),
+    ]);
+
+    renderPage();
+    await openDetailed();
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(medA.name)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('switch', { name: '飯前' }));
+    fireEvent.click(screen.getByRole('switch', { name: '飯後' }));
+
+    // 只指派飯前，飯後留空
+    fireEvent.click(itemFor(medA.name).getByRole('button', { name: '放到飯前' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('飯後尚未指派任何藥品，請指派藥品或關閉這個時機')).toBeInTheDocument();
+    });
+    expect(medicationApi.createReminders).not.toHaveBeenCalled();
+
+    // 補上飯後的指派後，儲存就會成功
+    fireEvent.click(itemFor(medB.name).getByRole('button', { name: '放到飯後' }));
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.createReminders).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slot_entries: {
+            morning: [
+              { meal_timing: 'before_meal', scheduled_time: '08:00', medication_ids: ['m-a'] },
+              { meal_timing: 'after_meal', scheduled_time: '08:00', medication_ids: ['m-b'] },
+            ],
+          },
+        }),
+      );
+    });
+  });
+
   it('新增藥品：輸入名稱送出後呼叫 createMedication，新藥品出現在清單', async () => {
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
     const medA = makeMedication({ id: 'm-a', name: '脈優錠5毫克' });
@@ -317,15 +368,20 @@ describe('MedicationsPage 詳細設定檢視', () => {
 
     renderPage();
     await openDetailed();
-    fireEvent.click(screen.getByRole('button', { name: '早' }));
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
 
     await waitFor(() => {
       expect(screen.getByText(medA.name)).toBeInTheDocument();
     });
 
-    // 空白輸入不該送出
-    fireEvent.click(screen.getByRole('button', { name: '新增藥品' }));
-    expect(medicationApi.createMedication).not.toHaveBeenCalled();
+    // 空白與純空白輸入都不該讓按鈕變成可按——原本的斷言是「點下去沒呼叫
+    // API」，但按鈕本來就是 disabled，點擊本來就不會觸發任何事，這個斷言
+    // 就算按鈕沒有正確停用也一樣會通過，測不出真正想驗證的東西。
+    const addButton = screen.getByRole('button', { name: '新增藥品' });
+    expect(addButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('藥品名稱'), { target: { value: '   ' } });
+    expect(addButton).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText('藥品名稱'), { target: { value: '普拿疼' } });
     fireEvent.click(screen.getByRole('button', { name: '新增藥品' }));
@@ -340,6 +396,35 @@ describe('MedicationsPage 詳細設定檢視', () => {
     expect(screen.getByText('已新增藥品')).toBeInTheDocument();
     // 輸入框清空
     expect(screen.getByLabelText('藥品名稱')).toHaveValue('');
+  });
+
+  it('已停用的藥品顯示「已停用」標籤，飯前飯後指派按鈕都停用', async () => {
+    // final review item 4：已停用的藥品（療程結束或家屬手動停用）不該再被
+    // 指派新的服藥時機——三重編碼（opacity 淡化＋圖示＋文字），不只靠淡化
+    // 的視覺差異表達狀態。
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    const medA = makeMedication({ id: 'm-a', name: '脈優錠5毫克', enabled: true });
+    const medB = makeMedication({ id: 'm-b', name: '克流感膠囊', enabled: false });
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([medA, medB]);
+
+    renderPage();
+    await openDetailed();
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(medB.name)).toBeInTheDocument();
+    });
+
+    expect(itemFor(medB.name).getByText('已停用')).toBeInTheDocument();
+    expect(itemFor(medA.name).queryByText('已停用')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('switch', { name: '飯前' }));
+    fireEvent.click(screen.getByRole('switch', { name: '飯後' }));
+
+    expect(itemFor(medB.name).getByRole('button', { name: '放到飯前' })).toBeDisabled();
+    expect(itemFor(medB.name).getByRole('button', { name: '放到飯後' })).toBeDisabled();
+    // 未停用的藥不受影響
+    expect(itemFor(medA.name).getByRole('button', { name: '放到飯前' })).toBeEnabled();
   });
 
   it('藥品清單載入失敗時顯示錯誤訊息並擋住儲存，不會靜默送出殘缺的指派', async () => {
@@ -362,7 +447,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     });
 
     await openDetailed();
-    fireEvent.click(screen.getByRole('button', { name: '早' }));
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
 
     await waitFor(() => {
       expect(screen.getByText('藥品清單載入失敗，請稍後再試')).toBeInTheDocument();
@@ -371,5 +456,59 @@ describe('MedicationsPage 詳細設定檢視', () => {
     expect(screen.queryByText('目前沒有藥品，可在下方新增')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '儲存' })).toBeDisabled();
     expect(medicationApi.updateReminder).not.toHaveBeenCalled();
+  });
+
+  it('切換照顧對象時，若還停在詳細設定畫面會自動退回清單，避免把上一位的表單套用到新對象', async () => {
+    // final review item 3 的回歸測試：詳細設定的 SlotEntryEditor 是依
+    // targetUserId 載入藥品清單建構表單，換對象卻留在原地，儲存會把 A 的
+    // 藥品指派套用到 B 身上。
+    mockUseFamily.mockReturnValue({
+      members: [
+        {
+          user_id: 'U-mom',
+          relationship_type: 'parent',
+          display_name: '媽',
+          my_role: 'GUARDIAN',
+          my_permissions: {
+            general: ['READ', 'WRITE'],
+            sensitive: ['READ', 'WRITE'],
+            private: ['READ'],
+          },
+        },
+      ],
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+
+    renderPage();
+    await openDetailed();
+
+    await waitFor(() => {
+      expect(screen.getByText('詳細設定')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '媽' }));
+
+    await waitFor(() => {
+      expect(medicationApi.fetchReminders).toHaveBeenLastCalledWith('U-mom');
+    });
+    // 回到清單：詳細設定第一層的標題不再出現
+    expect(screen.queryByText('詳細設定')).not.toBeInTheDocument();
+  });
+
+  it('提醒清單載入中時，詳細設定第一層顯示骨架屏，不呈現時段卡', async () => {
+    // final review item 3 的回歸測試：載入中不能先把摘要顯示成「尚未設定」，
+    // 那看起來像是這個人真的什麼都沒設定過。
+    vi.mocked(medicationApi.fetchReminders).mockReturnValue(new Promise(() => {}));
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+
+    renderPage();
+    await openDetailed();
+
+    expect(await screen.findByRole('list', { name: '載入中…' })).toBeInTheDocument();
+    expect(screen.queryByText('尚未設定')).not.toBeInTheDocument();
   });
 });

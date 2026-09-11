@@ -240,6 +240,13 @@ const MedicationsPage = () => {
           const next = groupValue[0];
           if (next === undefined) return;
           setSelectedUserId(next === 'self' ? selfUserId : next);
+          // 切換照顧對象時，若還停在詳細設定畫面就要退回清單：詳細設定的
+          // SlotEntryEditor 是依 selectedUserId 載入的藥品清單建構表單，
+          // 留在原地換對象會讓使用者看著 A 的表單、儲存卻套用到 B 身上。
+          if (view === 'detailed') {
+            setView('list');
+            setDetailedSlot(undefined);
+          }
         }}
         aria-label={t('meds.targetLabel')}
       >
@@ -255,6 +262,8 @@ const MedicationsPage = () => {
           targetUserId={selectedUserId}
           targetName={selectedName}
           reminders={reminders}
+          remindersLoading={loading}
+          remindersError={error}
           initialSlot={detailedSlot}
           onBack={() => setView('list')}
           onCreate={handleDetailedCreate}

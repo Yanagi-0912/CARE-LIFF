@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildEntries, computeDefaults } from '../pages/Medications/slotEntryForm';
+import { buildEntries, computeDefaults, findEmptyEnabledTiming } from '../pages/Medications/slotEntryForm';
 import type { Medication, MedicationReminder, ReminderEntry } from '../types/medication';
 
 function makeReminder(entries: ReminderEntry[]): MedicationReminder {
@@ -206,5 +206,78 @@ describe('buildEntries', () => {
     });
 
     expect(entries).toEqual([]);
+  });
+});
+
+describe('findEmptyEnabledTiming', () => {
+  // final review item 2：開啟但沒指派藥品的時機，若放任存檔，buildEntries
+  // 仍會老實產生一個空條目，後端據此把 timeout_anchor_time 訂在它的時刻，
+  // 可能拖慢真正掛著藥的那個時機的 T+20/T+30 升級。
+
+  it('飯後開啟但沒有指派、飯前有藥時，回傳 after_meal', () => {
+    const result = findEmptyEnabledTiming(
+      {
+        before: { enabled: true, time: '07:30' },
+        after: { enabled: true, time: '08:30' },
+        assignments: { 'm-a': 'before_meal' },
+      },
+      new Set(),
+    );
+
+    expect(result).toBe('after_meal');
+  });
+
+  it('兩個時機都沒有指派任何藥品時回傳 null（純時間提醒，允許存檔）', () => {
+    const result = findEmptyEnabledTiming(
+      {
+        before: { enabled: true, time: '07:30' },
+        after: { enabled: true, time: '08:30' },
+        assignments: {},
+      },
+      new Set(),
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('兩個時機都有藥時回傳 null', () => {
+    const result = findEmptyEnabledTiming(
+      {
+        before: { enabled: true, time: '07:30' },
+        after: { enabled: true, time: '08:30' },
+        assignments: { 'm-a': 'before_meal', 'm-b': 'after_meal' },
+      },
+      new Set(),
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('未開啟的時機即使沒有藥也不算違規', () => {
+    const result = findEmptyEnabledTiming(
+      {
+        before: { enabled: true, time: '07:30' },
+        after: { enabled: false, time: '08:30' },
+        assignments: { 'm-a': 'before_meal' },
+      },
+      new Set(),
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('未指派但原屬本規則、會落入 none 的藥品，也算另一個條目有藥', () => {
+    // m-c 原本就屬於這筆規則（priorNoneIds 有它），這次沒特別指派，
+    // buildEntries 會把它放進 none 條目——飯後開著卻沒有藥，一樣要擋。
+    const result = findEmptyEnabledTiming(
+      {
+        before: { enabled: false, time: '07:30' },
+        after: { enabled: true, time: '08:30' },
+        assignments: { 'm-c': null },
+      },
+      new Set(['m-c']),
+    );
+
+    expect(result).toBe('after_meal');
   });
 });

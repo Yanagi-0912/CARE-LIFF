@@ -381,14 +381,14 @@ test.describe('用藥提醒 飯前飯後', () => {
 
     await page.getByRole('button', { name: '新增', exact: true }).click();
     await page.getByRole('button', { name: '詳細設定' }).click();
-    await page.getByRole('button', { name: '早', exact: true }).click();
+    await page.getByRole('button', { name: /^早/ }).click();
 
     await expect(page.getByText('降血糖藥')).toBeVisible({ timeout: 15000 });
 
-    await page.getByRole('switch', { name: '提醒飯前' }).click();
+    await page.getByRole('switch', { name: '飯前' }).click();
     await page.getByLabel('飯前時間').fill('07:30');
 
-    await page.getByRole('switch', { name: '提醒飯後' }).click();
+    await page.getByRole('switch', { name: '飯後' }).click();
     await page.getByLabel('飯後時間').fill('08:30');
 
     const beforeMed = page.getByRole('listitem').filter({ hasText: '降血糖藥' });
@@ -421,7 +421,7 @@ test.describe('用藥提醒 飯前飯後', () => {
 
     await page.getByRole('button', { name: '新增', exact: true }).click();
     await page.getByRole('button', { name: '詳細設定' }).click();
-    await page.getByRole('button', { name: '早', exact: true }).click();
+    await page.getByRole('button', { name: /^早/ }).click();
 
     await expect(page.getByText('降血糖藥')).toBeVisible({ timeout: 15000 });
 
@@ -432,7 +432,7 @@ test.describe('用藥提醒 飯前飯後', () => {
     await expect(newMedRow).toBeVisible({ timeout: 15000 });
 
     // 開啟飯後開關，指派按鈕才可按（未開啟時 disabled）
-    await page.getByRole('switch', { name: '提醒飯後' }).click();
+    await page.getByRole('switch', { name: '飯後' }).click();
 
     const assignAfterButton = newMedRow.getByRole('button', { name: '放到飯後' });
     await expect(assignAfterButton).toBeEnabled();
