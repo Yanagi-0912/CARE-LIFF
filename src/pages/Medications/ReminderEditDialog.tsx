@@ -3,6 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { SettingsIcon } from 'lucide-react';
 import {
   DEFAULT_SLOT_TIMES,
   SLOT_LABEL_KEY,
@@ -69,6 +70,13 @@ interface ReminderEditDialogProps {
   onSave: (patch: UpdateReminderRequest) => Promise<void>;
   onDelete: () => Promise<void>;
   onClose: () => void;
+  /**
+   * 多條目規則（飯前飯後拆成不同時刻）沒有單一「時間」可改，這裡的表單不
+   * 收這種規則的時間欄位——改時間要到詳細設定，那裡才有飯前／飯後各自的
+   * 時刻與藥品指派。呼叫端負責關掉這個 dialog、切到詳細檢視並帶入這筆
+   * 規則的時段。
+   */
+  onOpenDetailed: (reminder: MedicationReminder) => void;
 }
 
 export function ReminderEditDialog({
@@ -77,11 +85,16 @@ export function ReminderEditDialog({
   onSave,
   onDelete,
   onClose,
+  onOpenDetailed,
 }: ReminderEditDialogProps) {
   const { t } = useTranslation();
 
   const slotLabel = t(SLOT_LABEL_KEY[reminder.slot_type]);
   const medications = reminder.medications ?? [];
+  // 同一條規則被拆成飯前／飯後多個時刻，或條目數 > 1，都代表「一個時間欄位」
+  // 已經不足以描述這筆規則——與 ReminderCard 的判定邏輯一致。
+  const isMultiTiming =
+    reminder.entries.length > 1 || reminder.entries.some((entry) => entry.meal_timing !== 'none');
 
   // 佔用判定要排除本筆自己：使用者把時段「改成它原本的值」不是衝突，
   // 佔住那個時段的正是這筆提醒。
@@ -156,7 +169,13 @@ export function ReminderEditDialog({
     // 只送出真正變動的欄位
     const patch: UpdateReminderRequest = {};
     if (values.slot !== reminder.slot_type) patch.slot_type = values.slot;
-    if (values.time !== reminder.scheduled_time) patch.scheduled_time = values.time;
+    // 多條目規則沒有時間欄位可改（見上面的 isMultiTiming 分支），值固定停在
+    // reminder.scheduled_time；這裡仍多一道防線，即使改時段時的自動跟隨邏輯
+    // 意外把 time 帶離原值，也不會送出後端一定會拒絕的 scheduled_time patch
+    // （多條目規則的 PUT 不接受單一 scheduled_time，不知道要改哪一個時刻）。
+    if (!isMultiTiming && values.time !== reminder.scheduled_time) {
+      patch.scheduled_time = values.time;
+    }
     if (values.startDate !== reminder.start_date) patch.start_date = values.startDate;
     // 空字串代表「沒有結束日期」，要送出 null 才會真的清成長期——後端以
     // exclude_unset 匯出，「沒帶這個 key」與「帶了 null」是兩件不同的事
@@ -287,21 +306,39 @@ export function ReminderEditDialog({
                 )}
               />
 
-              <Field data-invalid={Boolean(errors.time)}>
-                <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
-                <Input
-                  id="edit-time"
-                  type="time"
-                  aria-invalid={Boolean(errors.time)}
-                  disabled={busy}
-                  {...timeField}
-                  onChange={(event) => {
-                    void timeField.onChange(event);
-                    followTimeIntoSlot(event.target.value);
-                  }}
-                />
-                <FieldError errors={[errors.time]} />
-              </Field>
+              {isMultiTiming ? (
+                // 這筆規則飯前飯後各有自己的時刻，一個時間欄位改不出正確的結果
+                // （後端也會擋成 400：不知道要改哪一個時刻）。改時間要到詳細設定，
+                // 那裡才看得到飯前／飯後各自的時刻與藥品指派。
+                <Field>
+                  <FieldDescription>{t('meds.edit.multiEntryNote')}</FieldDescription>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => onOpenDetailed(reminder)}
+                  >
+                    <SettingsIcon data-icon="inline-start" />
+                    {t('meds.edit.openDetailed')}
+                  </Button>
+                </Field>
+              ) : (
+                <Field data-invalid={Boolean(errors.time)}>
+                  <FieldLabel htmlFor="edit-time">{t('meds.edit.time')}</FieldLabel>
+                  <Input
+                    id="edit-time"
+                    type="time"
+                    aria-invalid={Boolean(errors.time)}
+                    disabled={busy}
+                    {...timeField}
+                    onChange={(event) => {
+                      void timeField.onChange(event);
+                      followTimeIntoSlot(event.target.value);
+                    }}
+                  />
+                  <FieldError errors={[errors.time]} />
+                </Field>
+              )}
 
               {/* 這一欄原本沒有 FieldError，zod 的 min(1) 也沒帶訊息：清空後
                   按儲存毫無反應也毫無提示，看起來就像儲存鈕壞了。 */}

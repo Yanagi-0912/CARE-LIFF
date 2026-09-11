@@ -188,7 +188,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('07:30')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /編輯「早」/ })).toBeInTheDocument();
     });
 
     await openDetailed();
@@ -249,7 +249,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('07:30')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /編輯「早」/ })).toBeInTheDocument();
     });
 
     await openDetailed();
@@ -358,7 +358,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('07:30')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /編輯「早」/ })).toBeInTheDocument();
     });
 
     await openDetailed();

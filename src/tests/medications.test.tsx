@@ -504,6 +504,78 @@ describe('MedicationsPage', () => {
     expect(within(dialog).getByText('脈優錠5毫克')).toBeInTheDocument();
     expect(within(dialog).getByText('克流感膠囊')).toBeInTheDocument();
   });
+
+  it('多條目提醒（飯前飯後）在卡片上分別列出每個時機、時刻與藥名', async () => {
+    // Task 11：scheduled_time／timeout_anchor_time 是派生欄位，卡片標題只能
+    // 顯示最早的那個時刻（07:30），使用者無從得知這其實是兩個時間點——
+    // 需要在標題下方把每個條目攤開列出。
+    const medA = makeMedication({ id: 'm-a', name: '心得安錠' });
+    const medB = makeMedication({ id: 'm-b', name: '脈優錠5毫克' });
+    const multi = makeReminder({
+      id: 'r-multi',
+      slot_type: 'morning',
+      scheduled_time: '07:30',
+      timeout_anchor_time: '08:30',
+      entries: [
+        { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: [medA.id] },
+        { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [medB.id] },
+      ],
+      medications: [medA, medB],
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([multi]);
+
+    renderPage();
+
+    const entriesList = await screen.findByRole('list', { name: '服藥時機' });
+    expect(within(entriesList).getByText('飯前')).toBeInTheDocument();
+    expect(within(entriesList).getByText('07:30')).toBeInTheDocument();
+    expect(within(entriesList).getByText('心得安錠')).toBeInTheDocument();
+    expect(within(entriesList).getByText('飯後')).toBeInTheDocument();
+    expect(within(entriesList).getByText('08:30')).toBeInTheDocument();
+    expect(within(entriesList).getByText('脈優錠5毫克')).toBeInTheDocument();
+
+    // 標題仍顯示派生出來的最早時刻，不受下面攤開的條目影響
+    const editButton = screen.getByRole('button', { name: /編輯「早」/ });
+    expect(within(editButton).getByText('07:30')).toBeInTheDocument();
+  });
+
+  it('多條目提醒的編輯視窗隱藏時間欄位、改顯示提示，按鈕可切到詳細設定並預選同一時段', async () => {
+    // 後端多條目規則不接受單一 scheduled_time patch（不知道要改哪一個時刻），
+    // 編輯視窗因此不該再給一個看似能改、實際上一按儲存就會 400 的時間欄位。
+    const medA = makeMedication({ id: 'm-a', name: '心得安錠' });
+    const medB = makeMedication({ id: 'm-b', name: '脈優錠5毫克' });
+    const multi = makeReminder({
+      id: 'r-multi',
+      slot_type: 'morning',
+      scheduled_time: '07:30',
+      timeout_anchor_time: '08:30',
+      entries: [
+        { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: [medA.id] },
+        { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [medB.id] },
+      ],
+      medications: [medA, medB],
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([multi]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([medA, medB]);
+
+    renderPage();
+
+    await screen.findByRole('button', { name: /編輯「早」/ });
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('此提醒有飯前飯後多個時間，請到詳細設定調整')).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('提醒時間')).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '前往詳細設定' }));
+
+    // dialog 關閉、切到詳細檢視，且直接落在「早」這個時段的編輯面
+    // （initialSlot 由 index.tsx 帶入這筆規則的 slot_type），而不是先停在
+    // 四張時段卡的第一層。
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '早', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '提醒飯前' })).toBeChecked();
+  });
 });
 
 describe('MedicationIndicationSection', () => {

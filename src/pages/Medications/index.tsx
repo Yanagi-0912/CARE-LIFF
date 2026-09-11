@@ -330,6 +330,11 @@ const MedicationsPage = () => {
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setEditing(null)}
+          onOpenDetailed={(reminder) => {
+            setEditing(null);
+            setDetailedSlot(reminder.slot_type);
+            setView('detailed');
+          }}
         />
       )}
 
