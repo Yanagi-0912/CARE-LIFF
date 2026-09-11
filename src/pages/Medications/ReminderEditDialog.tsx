@@ -91,10 +91,13 @@ export function ReminderEditDialog({
 
   const slotLabel = t(SLOT_LABEL_KEY[reminder.slot_type]);
   const medications = reminder.medications ?? [];
+  // entries 型別上是必填，但前後端不保證同時部署——若這次前端先上線，舊
+  // 後端回應可能沒有這個欄位，直接讀 .length／.some 會讓整個編輯視窗拋錯。
+  // 這裡是部署順序的安全網，型別本身維持必填不放寬（見 ReminderCard 同一處）。
+  const entries = reminder.entries ?? [];
   // 同一條規則被拆成飯前／飯後多個時刻，或條目數 > 1，都代表「一個時間欄位」
   // 已經不足以描述這筆規則——與 ReminderCard 的判定邏輯一致。
-  const isMultiTiming =
-    reminder.entries.length > 1 || reminder.entries.some((entry) => entry.meal_timing !== 'none');
+  const isMultiTiming = entries.length > 1 || entries.some((entry) => entry.meal_timing !== 'none');
 
   // 佔用判定要排除本筆自己：使用者把時段「改成它原本的值」不是衝突，
   // 佔住那個時段的正是這筆提醒。

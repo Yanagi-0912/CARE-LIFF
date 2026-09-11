@@ -44,11 +44,15 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
   // 的清單，這裡的量級不同。
   const medicationNameById = new Map(medications.map((med) => [med.id, med.name]));
   const separator = t('meds.scan.draft.slotListSeparator');
+  // entries 在型別上是必填欄位，但前後端不保證同時部署——若這次前端上線時
+  // 後端還沒補上這個欄位，舊回應裡不會有 entries，直接讀 .length／.some 會
+  // 整卡拋錯，被 ErrorBoundary 接住後整頁空白。這裡是部署順序的安全網，
+  // 不是在放寬型別承諾：一旦兩邊都上線，reminder.entries 理論上必為陣列。
+  const entries = reminder.entries ?? [];
   // 多條目（飯前／飯後拆開、或條目數 > 1）才需要在卡片上多列一段服藥時機清單；
   // 單一 none 條目（多數手動建立的提醒）維持原本只有時間的樣子，不需要重複
   // 顯示一行「其他 08:00」。
-  const isMultiTiming =
-    reminder.entries.length > 1 || reminder.entries.some((entry) => entry.meal_timing !== 'none');
+  const isMultiTiming = entries.length > 1 || entries.some((entry) => entry.meal_timing !== 'none');
 
   return (
     // 直向兩段：上段是「時間／日期＋啟用開關」，下段是藥品清單。
@@ -141,7 +145,7 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
         <>
           <Separator className="w-full" />
           <ItemGroup className="w-full min-w-0 px-4 py-3.5" aria-label={t('meds.card.entriesLabel')}>
-            {reminder.entries.map((entry) => {
+            {entries.map((entry) => {
               const names = entry.medication_ids
                 .map((id) => medicationNameById.get(id))
                 .filter((name): name is string => Boolean(name))

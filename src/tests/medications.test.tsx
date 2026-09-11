@@ -505,6 +505,29 @@ describe('MedicationsPage', () => {
     expect(within(dialog).getByText('克流感膠囊')).toBeInTheDocument();
   });
 
+  it('entries 缺席時（部署順序：前端先於後端上線）卡片與編輯視窗仍能渲染，不拋錯', async () => {
+    // final-review fix 1 的回歸測試：entries 型別上必填，但實際部署時前後端
+    // 不保證同時上線；用 cast 模擬舊後端回應少了這個欄位。少了防呆的話，
+    // ReminderCard／ReminderEditDialog 讀 .length／.some 會直接拋錯，
+    // 被 ErrorBoundary 接住後整頁空白，而不是只有這一張卡片降級。
+    const { entries: _omit, ...reminderWithoutEntries } = morning;
+    void _omit;
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([
+      reminderWithoutEntries as unknown as MedicationReminder,
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('08:00', { exact: false })).toBeInTheDocument();
+  });
+
   it('多條目提醒（飯前飯後）在卡片上分別列出每個時機、時刻與藥名', async () => {
     // Task 11：scheduled_time／timeout_anchor_time 是派生欄位，卡片標題只能
     // 顯示最早的那個時刻（07:30），使用者無從得知這其實是兩個時間點——

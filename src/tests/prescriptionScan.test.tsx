@@ -1943,4 +1943,27 @@ describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', (
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.queryByText(/（/)).not.toBeInTheDocument();
   });
+
+  it('entries 缺席時（部署順序：前端先於後端上線）仍能渲染卡片與時間，不拋錯', () => {
+    // final-review fix 1 的回歸測試：entries 型別上必填，但實際部署時前後端
+    // 不保證同時上線；用 cast 模擬舊後端回應少了這個欄位，若元件沒有防呆，
+    // .length／.some 會直接拋錯，被 ErrorBoundary 接住後整頁空白。
+    const reminder = {
+      id: 'r-1',
+      creator_user_id: 'U-self',
+      user_id: 'U-self',
+      slot_type: 'morning',
+      scheduled_time: '08:00',
+      timeout_anchor_time: '08:00',
+      start_date: '2026-06-01',
+      end_date: null,
+      enabled: true,
+      created_at: '2026-06-01T00:00:00.000Z',
+      updated_at: '2026-06-01T00:00:00.000Z',
+    } as unknown as MedicationReminder;
+
+    renderWithToaster(<ReminderCard reminder={reminder} onToggle={vi.fn()} onEdit={vi.fn()} />);
+
+    expect(screen.getByText('08:00')).toBeInTheDocument();
+  });
 });
