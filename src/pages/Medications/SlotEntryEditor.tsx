@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { ArrowLeftIcon } from 'lucide-react';
 
 import {
-  DEFAULT_SLOT_TIMES,
   MEAL_LABEL_KEY,
   SLOT_LABEL_KEY,
   type Medication,
@@ -34,22 +33,7 @@ import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatAppearancePrimary } from './appearanceText';
 import { PillThumbnail } from './PillThumbnail';
-
-/** 藥品指派：飯前／飯後其中之一，或未指派（null） */
-type Assignment = 'before_meal' | 'after_meal' | null;
-
-interface TimingFormValues {
-  enabled: boolean;
-  /** HH:MM */
-  time: string;
-}
-
-interface SlotEntryFormValues {
-  before: TimingFormValues;
-  after: TimingFormValues;
-  /** 依藥品 id 索引；未出現在物件裡的藥品視同未指派（null） */
-  assignments: Record<string, Assignment>;
-}
+import { buildEntries, computeDefaults, type Assignment } from './slotEntryForm';
 
 interface SlotEntryEditorProps {
   slot: MedicationSlotType;
@@ -57,96 +41,13 @@ interface SlotEntryEditorProps {
   reminder?: MedicationReminder;
   medications: Medication[];
   medicationsLoading: boolean;
+  /** 藥品清單載入失敗的訊息；非 null 時擋住儲存——buildEntries 雖然會保留
+   *  既有規則掛著的藥品，但清單缺席時使用者看不到完整的指派畫面，不該讓
+   *  他在看不全的狀態下按下儲存。 */
+  medicationsError?: string | null;
   onAddMedication: (name: string) => Promise<Medication>;
   onSave: (entries: ReminderEntry[]) => Promise<void>;
   onBack: () => void;
-}
-
-/**
- * 依既有條目算出表單預設值。刻意只依賴 `reminder`，不依賴 `medications`——
- * 指派狀態的權威來源是條目裡的 medication_ids，藥品清單載入的快慢不該
- * 影響這裡算出來的值：清單還沒回來時，已指派的藥品一樣要能正確顯示在
- * 「飯前」或「飯後」，晚到的清單只是把對應的卡片渲染出來、不需要重算指派。
- */
-function computeDefaultAssignments(entries: ReminderEntry[]): Record<string, Assignment> {
-  const assignments: Record<string, Assignment> = {};
-  entries.forEach((entry) => {
-    entry.medication_ids.forEach((id) => {
-      assignments[id] = entry.meal_timing === 'none' ? null : entry.meal_timing;
-    });
-  });
-  return assignments;
-}
-
-function computeDefaults(slot: MedicationSlotType, reminder?: MedicationReminder): SlotEntryFormValues {
-  const entries = reminder?.entries ?? [];
-  const beforeEntry = entries.find((entry) => entry.meal_timing === 'before_meal');
-  const afterEntry = entries.find((entry) => entry.meal_timing === 'after_meal');
-  return {
-    before: {
-      enabled: Boolean(beforeEntry),
-      time: beforeEntry?.scheduled_time ?? DEFAULT_SLOT_TIMES[slot],
-    },
-    after: {
-      enabled: Boolean(afterEntry),
-      time: afterEntry?.scheduled_time ?? DEFAULT_SLOT_TIMES[slot],
-    },
-    assignments: computeDefaultAssignments(entries),
-  };
-}
-
-/**
- * 組出要送出的 entries（before → after → none）。
- *
- * none 條目只在「既有規則本來就有 none 條目」或「有未指派藥品原本屬於這筆
- * 規則」時才附上——藥袋辨識掛上、使用者這次沒特別指派的藥不能因此從規則
- * 上消失（design.md 決策 7／brief 10.3）；但從沒屬於這筆規則、這次也沒指派
- * 的藥（例如剛手動新增的）維持真正的「未指派」，不塞進 none 條目。
- */
-function buildEntries(
-  slot: MedicationSlotType,
-  reminder: MedicationReminder | undefined,
-  medications: Medication[],
-  values: SlotEntryFormValues,
-): ReminderEntry[] {
-  const beforeIds = medications
-    .filter((med) => values.assignments[med.id] === 'before_meal')
-    .map((med) => med.id);
-  const afterIds = medications
-    .filter((med) => values.assignments[med.id] === 'after_meal')
-    .map((med) => med.id);
-  const unassignedIds = medications
-    .filter((med) => !values.assignments[med.id])
-    .map((med) => med.id);
-
-  const priorEntries = reminder?.entries ?? [];
-  const priorNoneEntry = priorEntries.find((entry) => entry.meal_timing === 'none');
-  const belongsToReminder = new Set(priorEntries.flatMap((entry) => entry.medication_ids));
-  const noneIds = unassignedIds.filter((id) => belongsToReminder.has(id));
-
-  const entries: ReminderEntry[] = [];
-  if (values.before.enabled) {
-    entries.push({ meal_timing: 'before_meal', scheduled_time: values.before.time, medication_ids: beforeIds });
-  }
-  if (values.after.enabled) {
-    entries.push({ meal_timing: 'after_meal', scheduled_time: values.after.time, medication_ids: afterIds });
-  }
-  if (priorNoneEntry || noneIds.length > 0) {
-    // 時間取既有 none 條目的時刻，缺席時取最早啟用時機的時刻——驗證已保證
-    // 至少一個時機啟用，這裡一定找得到。
-    const earliestEnabledTime = [
-      values.before.enabled ? values.before.time : undefined,
-      values.after.enabled ? values.after.time : undefined,
-    ]
-      .filter((value): value is string => Boolean(value))
-      .sort()[0];
-    entries.push({
-      meal_timing: 'none',
-      scheduled_time: priorNoneEntry?.scheduled_time ?? earliestEnabledTime ?? DEFAULT_SLOT_TIMES[slot],
-      medication_ids: noneIds,
-    });
-  }
-  return entries;
 }
 
 export function SlotEntryEditor({
@@ -154,6 +55,7 @@ export function SlotEntryEditor({
   reminder,
   medications,
   medicationsLoading,
+  medicationsError,
   onAddMedication,
   onSave,
   onBack,
@@ -234,6 +136,21 @@ export function SlotEntryEditor({
     setValue('assignments', { ...assignments, [medicationId]: value }, { shouldDirty: true });
   };
 
+  // 關掉某個時機的開關時，原本指派在它底下的藥品要跟著清成未指派——不然
+  // chip 停用了但指派值還留著「before_meal」／「after_meal」，儲存時
+  // buildEntries 不會把它算進任何一個啟用中的條目，等於這顆藥悄悄從規則
+  // 上消失。清成 null 之後，若它原本屬於這筆規則，會落進 none 條目繼續
+  // 被提醒；全新指派過的藥則單純變回未指派。
+  const clearAssignmentsFor = (mealTiming: 'before_meal' | 'after_meal') => {
+    setValue(
+      'assignments',
+      Object.fromEntries(
+        Object.entries(assignments).map(([id, value]) => [id, value === mealTiming ? null : value]),
+      ),
+      { shouldDirty: true },
+    );
+  };
+
   const handleAddMedication = async () => {
     const trimmed = addName.trim();
     if (!trimmed) return;
@@ -265,6 +182,7 @@ export function SlotEntryEditor({
   // 但呈現面比照 root 錯誤，一樣顯示成表單底部的 Alert，不是掛在飯前開關旁邊——
   // 這個錯誤講的是飯前飯後兩者的組合，不是飯前這一個欄位本身有問題。
   const formError = errors.root?.message ?? errors.before?.enabled?.message;
+  const saveDisabled = isSubmitting || medicationsLoading || Boolean(medicationsError);
 
   const renderTiming = (key: 'before' | 'after', mealTiming: 'before_meal' | 'after_meal') => {
     const mealLabel = t(MEAL_LABEL_KEY[mealTiming]);
@@ -279,7 +197,10 @@ export function SlotEntryEditor({
             render={({ field }) => (
               <Switch
                 checked={field.value}
-                onCheckedChange={field.onChange}
+                onCheckedChange={(next) => {
+                  field.onChange(next);
+                  if (!next) clearAssignmentsFor(mealTiming);
+                }}
                 disabled={isSubmitting}
                 aria-label={t('meds.detailed.enableTiming', { meal: mealLabel })}
               />
@@ -326,7 +247,11 @@ export function SlotEntryEditor({
         <FieldSet>
           <FieldLegend variant="label">{t('meds.detailed.medsHeading')}</FieldLegend>
 
-          {medicationsLoading ? (
+          {medicationsError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{medicationsError}</AlertDescription>
+            </Alert>
+          ) : medicationsLoading ? (
             <div className="flex flex-col gap-2.5" aria-busy="true" aria-label={t('meds.loading')}>
               <Skeleton className="h-16 w-full rounded-xl" />
               <Skeleton className="h-16 w-full rounded-xl" />
@@ -411,7 +336,7 @@ export function SlotEntryEditor({
           </Alert>
         )}
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={saveDisabled}>
           {t('meds.detailed.save')}
         </Button>
       </form>

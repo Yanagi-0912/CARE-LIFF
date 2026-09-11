@@ -227,6 +227,65 @@ describe('MedicationsPage 詳細設定檢視', () => {
     });
   });
 
+  it('關閉某個時機的開關後，原本指派在底下的藥品變成未指派並落入 none 條目', async () => {
+    // review fix 2 的回歸測試：關掉飯後開關前 B 指派在飯後，關掉後 B 不能悄悄
+    // 從所有條目消失——它原本就屬於這筆規則，要落入 none 繼續被提醒。
+    const medA = makeMedication({ id: 'm-a', name: '脈優錠5毫克' });
+    const medB = makeMedication({ id: 'm-b', name: '克流感膠囊' });
+    const morningReminder = makeReminder({
+      id: 'r-morning',
+      slot_type: 'morning',
+      scheduled_time: '07:30',
+      timeout_anchor_time: '08:30',
+      entries: [
+        { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a'] },
+        { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: ['m-b'] },
+      ],
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([morningReminder]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([medA, medB]);
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue(morningReminder);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('07:30')).toBeInTheDocument();
+    });
+
+    await openDetailed();
+    fireEvent.click(screen.getByRole('button', { name: '早' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(medB.name)).toBeInTheDocument();
+    });
+
+    expect(itemFor(medB.name).getByRole('button', { name: '放到飯後' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // 關掉飯後開關
+    fireEvent.click(screen.getByRole('switch', { name: '提醒飯後' }));
+
+    // B 的指派被清掉，畫面顯示未指派
+    expect(itemFor(medB.name).getByText('未指派')).toBeInTheDocument();
+    expect(itemFor(medB.name).getByRole('button', { name: '放到飯後' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
+        entries: [
+          { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a'] },
+          { meal_timing: 'none', scheduled_time: '07:30', medication_ids: ['m-b'] },
+        ],
+      });
+    });
+  });
+
   it('沒有開啟任何服藥時機時顯示錯誤，不呼叫任何 API', async () => {
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
     vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
@@ -281,5 +340,36 @@ describe('MedicationsPage 詳細設定檢視', () => {
     expect(screen.getByText('已新增藥品')).toBeInTheDocument();
     // 輸入框清空
     expect(screen.getByLabelText('藥品名稱')).toHaveValue('');
+  });
+
+  it('藥品清單載入失敗時顯示錯誤訊息並擋住儲存，不會靜默送出殘缺的指派', async () => {
+    // review fix 1 的回歸測試：GET /medications 失敗時畫面不能長得像「這個
+    // 時段本來就沒有藥品」（那會讓使用者以為可以放心儲存），且儲存鈕要直接
+    // 擋住，不能讓使用者在看不到完整指派畫面的狀態下按下儲存。
+    const morningReminder = makeReminder({
+      id: 'r-morning',
+      slot_type: 'morning',
+      scheduled_time: '07:30',
+      entries: [{ meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a'] }],
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([morningReminder]);
+    vi.mocked(medicationApi.fetchMedications).mockRejectedValue(new Error('網路逾時'));
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('07:30')).toBeInTheDocument();
+    });
+
+    await openDetailed();
+    fireEvent.click(screen.getByRole('button', { name: '早' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('藥品清單載入失敗，請稍後再試')).toBeInTheDocument();
+    });
+    // 不該出現誤導性的「目前沒有藥品」
+    expect(screen.queryByText('目前沒有藥品，可在下方新增')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '儲存' })).toBeDisabled();
+    expect(medicationApi.updateReminder).not.toHaveBeenCalled();
   });
 });

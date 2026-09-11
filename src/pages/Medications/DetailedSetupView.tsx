@@ -50,7 +50,12 @@ export function DetailedSetupView({
   const { t } = useTranslation();
   const [selectedSlot, setSelectedSlot] = useState<MedicationSlotType | undefined>(initialSlot);
 
-  const { medications, loading: medicationsLoading, addMedication } = useMedicationList(targetUserId);
+  const {
+    medications,
+    loading: medicationsLoading,
+    error: medicationsError,
+    addMedication,
+  } = useMedicationList(targetUserId);
 
   const reminderBySlot = useMemo(() => {
     const map = new Map<MedicationSlotType, MedicationReminder>();
@@ -67,6 +72,9 @@ export function DetailedSetupView({
         reminder={reminder}
         medications={medications}
         medicationsLoading={medicationsLoading}
+        // 不直接把 medicationsError 的原始訊息（可能是英文的 API 例外訊息）往下傳——
+        // 一律換成固定的中文引導文案，行為與呈現都由這裡集中決定。
+        medicationsError={medicationsError ? t('meds.detailed.medsLoadError') : null}
         onAddMedication={addMedication}
         onBack={() => setSelectedSlot(undefined)}
         onSave={async (entries) => {
