@@ -203,9 +203,8 @@ test.describe('回報表單', () => {
   });
 
   test('回報原因下拉要顯示翻譯後的標籤，而不是 outdated 這種原始值', async ({ authedPage }) => {
-    // 已知 bug：ReportFormDialog 的 <SelectValue /> 沒有像設定頁那樣用函式 child
-    // 對應回標籤，觸發器上直接顯示 "outdated"。修好後把這行 test.fail 拿掉。
-    test.fail(true, '已知 bug：回報原因 Select 顯示原始值 outdated');
+    // 曾是已知 bug：ReportFormDialog 的 <SelectValue /> 直接顯示 "outdated"，
+    // 主幹已修正（Playwright 回報「預期失敗卻通過」後拿掉 test.fail）。
     await openPage(authedPage);
     const dialog = await openForm(authedPage);
 
