@@ -344,12 +344,12 @@ async function setupMedicationsPage(page: Page): Promise<{ state: StubState; cap
     });
   });
 
-  await page.goto('http://localhost:5173/login');
+  await page.goto('/login');
   await page.evaluate(() => {
     localStorage.setItem('CARE_AUTH_TOKEN', 'mock-jwt-token-12345');
     localStorage.setItem('CARE_LINE_USER_ID', 'U-self');
   });
-  await page.goto('http://localhost:5173/medications', { waitUntil: 'domcontentloaded' });
+  await page.goto('/medications', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: '用藥提醒' })).toBeVisible({ timeout: 15000 });
 
   return { state, captured };
