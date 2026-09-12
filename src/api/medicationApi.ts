@@ -1,6 +1,9 @@
 import type {
+  CreateMedicationRequest,
   CreateRemindersRequest,
+  Medication,
   MedicationReminder,
+  MedicationVisit,
   UpdateReminderRequest,
 } from '../types/medication';
 import type {
@@ -110,7 +113,9 @@ export async function fetchReminders(targetUserId?: string): Promise<MedicationR
 
 /**
  * 2. 建立用藥提醒（一次可勾多個時段，後端每個時段建一筆）
- * 時間由後端套用 DEFAULT_SLOT_TIMES，此 API 不接受 scheduled_time。
+ * 簡易模式帶 slot_times（缺席的時段套用後端的 DEFAULT_SLOT_TIMES）；
+ * 詳細設定帶 slot_entries，兩者都給時以 slot_entries 為準。目標時段已有
+ * 規則時後端回 409。
  */
 export async function createReminders(
   req: CreateRemindersRequest,
@@ -158,10 +163,36 @@ export async function deleteReminder(reminderId: string): Promise<{ ok: boolean 
   return res.json();
 }
 
+/**
+ * 5. 查詢某位用藥者的藥品清單（含已停用者，帶 enabled）
+ * 詳細設定頁用它列出可指派到飯前／飯後的藥品；後端一次只吃一個 user_id，省略則回傳本人的藥品。
+ */
+export async function fetchMedications(targetUserId?: string): Promise<Medication[]> {
+  const query = targetUserId ? `?user_id=${encodeURIComponent(targetUserId)}` : '';
+  const res = await fetch(`${BASE_URL}/api/medications${query}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 6. 手動新增一種藥品（source 固定為 manual）
+ */
+export async function createMedication(req: CreateMedicationRequest): Promise<Medication> {
+  const res = await fetch(`${BASE_URL}/api/medications`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
 // ── 藥袋辨識 ──────────────────────────────────────────────────────────
 
 /**
- * 5. 上傳藥袋影像進行辨識，回傳待使用者核對的草稿。
+ * 7. 上傳藥袋影像進行辨識，回傳待使用者核對的草稿。
  * 影像僅以 multipart 傳輸，欄位名稱需與後端 `file: UploadFile = File(...)` 一致。
  */
 export async function scanPrescription(file: File): Promise<PrescriptionDraft> {
@@ -177,7 +208,7 @@ export async function scanPrescription(file: File): Promise<PrescriptionDraft> {
 }
 
 /**
- * 6. 查詢先前掃描產生的草稿，供核對畫面重新載入時使用。
+ * 8. 查詢先前掃描產生的草稿，供核對畫面重新載入時使用。
  */
 export async function getPrescriptionDraft(draftId: string): Promise<PrescriptionDraft> {
   const res = await fetch(
@@ -189,7 +220,7 @@ export async function getPrescriptionDraft(draftId: string): Promise<Prescriptio
 }
 
 /**
- * 7. 使用者核對草稿後提交，依草稿內容建立藥品並關聯至對應時段的提醒。
+ * 9. 使用者核對草稿後提交，依草稿內容建立藥品並關聯至對應時段的提醒。
  */
 export async function commitPrescriptionDraft(
   draftId: string,
@@ -205,4 +236,30 @@ export async function commitPrescriptionDraft(
   );
   if (!res.ok) throw await parseError(res);
   return res.json();
+}
+
+/**
+ * 查詢看診紀錄。
+ *
+ * 這支端點整體是 SENSITIVE：後端不做部分遮蔽，沒有 SENSITIVE 讀取權者直接
+ * 403（把機構名遮掉之後剩下的就是一串沒有意義的日期）。因此 MEMBER 角色
+ * 呼叫這支會拿到 403，呼叫端要把它當成「沒有權限看」而不是「載入失敗」。
+ */
+export async function fetchVisits(targetUserId?: string): Promise<MedicationVisit[]> {
+  const query = targetUserId ? `?target_user_id=${encodeURIComponent(targetUserId)}` : '';
+  const res = await fetch(`${BASE_URL}/api/medications/visits${query}`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 403) throw new VisitsForbiddenError();
+  if (!res.ok) throw await parseError(res);
+  const data = await res.json();
+  return data.visits ?? [];
+}
+
+/** 無權查看看診紀錄。與一般載入失敗分開，畫面要給的訊息完全不同。 */
+export class VisitsForbiddenError extends Error {
+  constructor() {
+    super('no permission to view visits');
+    this.name = 'VisitsForbiddenError';
+  }
 }

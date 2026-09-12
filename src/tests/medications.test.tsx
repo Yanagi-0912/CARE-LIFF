@@ -13,6 +13,8 @@ vi.mock('../api/medicationApi', () => ({
   createReminders: vi.fn(),
   updateReminder: vi.fn(),
   deleteReminder: vi.fn(),
+  fetchMedications: vi.fn(),
+  createMedication: vi.fn(),
 }));
 
 // 這份既有測試不驗證藥袋掃描入口，開關固定回傳 false（不顯示掃描入口）
@@ -44,12 +46,18 @@ vi.mock('../hooks/useFamily', () => ({
 }));
 
 function makeReminder(overrides: Partial<MedicationReminder>): MedicationReminder {
+  // entries／timeout_anchor_time 是派生欄位：這裡沒有多條目情境，固定用單一
+  // none 條目、時刻跟著 scheduled_time 走，overrides 若自己帶了 scheduled_time
+  // 也會反映到條目裡，不會出現條目時刻與 scheduled_time 對不上的假資料。
+  const scheduled_time = overrides.scheduled_time ?? '08:00';
   return {
     id: 'r-1',
     creator_user_id: 'U-self',
     user_id: 'U-self',
     slot_type: 'morning',
-    scheduled_time: '08:00',
+    scheduled_time,
+    timeout_anchor_time: scheduled_time,
+    entries: [{ meal_timing: 'none', scheduled_time, medication_ids: [] }],
     start_date: '2026-08-01',
     end_date: null,
     enabled: true,
@@ -111,6 +119,9 @@ describe('MedicationsPage', () => {
     localStorage.setItem('CARE_LINE_USER_ID', 'U-self');
     // 故意回傳時間顛倒的順序，驗證頁面會自行排序
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening, morning]);
+    // 只有切到詳細檢視才會用到（DetailedSetupView 內的 useMedicationList），
+    // 給個安全預設值，避免其他測試因為 query 回傳 undefined 而炸開。
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
     await i18n.changeLanguage('zh-TW');
   });
 
@@ -168,6 +179,71 @@ describe('MedicationsPage', () => {
     expect(screen.getAllByText('已設定')).toHaveLength(2);
   });
 
+  it('新增表單勾選時段後可直接改時間，送出會帶上 slot_times', async () => {
+    // 「早」預設就已被 r-morning 佔用（見 beforeEach），這裡改成只有「晚」
+    // 已設定，讓「早」保持可勾選，才測得出「勾選後展開時間欄位」這件事。
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening]);
+    vi.mocked(medicationApi.createReminders).mockResolvedValue([
+      makeReminder({ id: 'r-morning-2', slot_type: 'morning', scheduled_time: '07:30' }),
+    ]);
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('18:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /新增/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // 勾選前時間欄位不存在——避免長輩被一次塞四個時間輸入框
+    expect(screen.queryByLabelText(/早提醒時間/)).not.toBeInTheDocument();
+    // 勾選前卡片顯示的是預設時間文字（非輸入框）
+    expect(screen.getByText('08:00')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /早/ }));
+
+    const timeInput = screen.getByLabelText(/早提醒時間/);
+    expect(timeInput).toHaveValue('08:00');
+    fireEvent.change(timeInput, { target: { value: '07:30' } });
+
+    // 改動後卡片上不該再留著寫死的「08:00」——那會跟下面剛改的 07:30 互相矛盾，
+    // 使用者分不清哪個才是真正要送出的時間。
+    expect(screen.queryByText('08:00')).not.toBeInTheDocument();
+    expect(timeInput).toHaveValue('07:30');
+
+    fireEvent.click(screen.getByRole('button', { name: '建立提醒' }));
+
+    await waitFor(() => {
+      expect(medicationApi.createReminders).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'U-self',
+          slots: ['morning'],
+          slot_times: { morning: '07:30' },
+        }),
+      );
+    });
+  });
+
+  it('點「詳細設定」會關閉新增視窗並切到詳細檢視，返回鈕可以切回清單', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /新增/ }));
+    fireEvent.click(screen.getByRole('button', { name: '詳細設定' }));
+
+    // dialog 關閉，換成整頁的詳細檢視（第一層：四張時段卡）
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '詳細設定' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /返回/ }));
+
+    expect(screen.queryByRole('heading', { name: '詳細設定' })).not.toBeInTheDocument();
+    expect(screen.getByText('08:00')).toBeInTheDocument();
+  });
+
   it('啟用開關送出失敗時，畫面回滾並顯示錯誤訊息', async () => {
     vi.mocked(medicationApi.updateReminder).mockRejectedValue(new Error('無權限修改此用藥提醒'));
     renderPage();
@@ -193,9 +269,13 @@ describe('MedicationsPage', () => {
     // （response_model=MedicationReminder，藥品清單只有 GET 才會附上）。
     // 快取若用回應整筆取代，藥品清單就會被洗掉——使用者停用某個時段後，
     // 畫面同時失去「剛剛關掉的是哪些藥」這個唯一線索，要重新整理才回得來。
+    const med = makeMedication();
     const morningWithMeds: MedicationReminder = {
       ...morning,
-      medications: [makeMedication()],
+      medications: [med],
+      // entries 的 medication_ids 要跟 medications 對上，否則這筆假資料自相矛盾
+      // （提醒說有一顆藥，條目卻宣稱聯集是空的）
+      entries: [{ meal_timing: 'none', scheduled_time: morning.scheduled_time, medication_ids: [med.id] }],
     };
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening, morningWithMeds]);
     const { medications: _dropped, ...withoutMedications } = morningWithMeds;
@@ -423,6 +503,107 @@ describe('MedicationsPage', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('脈優錠5毫克')).toBeInTheDocument();
     expect(within(dialog).getByText('克流感膠囊')).toBeInTheDocument();
+  });
+
+  it('entries 缺席時（部署順序：前端先於後端上線）卡片與編輯視窗仍能渲染，不拋錯', async () => {
+    // final-review fix 1 的回歸測試：entries 型別上必填，但實際部署時前後端
+    // 不保證同時上線；用 cast 模擬舊後端回應少了這個欄位。少了防呆的話，
+    // ReminderCard／ReminderEditDialog 讀 .length／.some 會直接拋錯，
+    // 被 ErrorBoundary 接住後整頁空白，而不是只有這一張卡片降級。
+    const { entries: _omit, ...reminderWithoutEntries } = morning;
+    void _omit;
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([
+      reminderWithoutEntries as unknown as MedicationReminder,
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('08:00', { exact: false })).toBeInTheDocument();
+  });
+
+  it('多條目提醒（飯前飯後）在卡片上分別列出每個時機、時刻與藥名', async () => {
+    // Task 11：scheduled_time／timeout_anchor_time 是派生欄位，卡片標題只能
+    // 顯示最早的那個時刻（07:30），使用者無從得知這其實是兩個時間點——
+    // 需要在標題下方把每個條目攤開列出。
+    const medA = makeMedication({ id: 'm-a', name: '心得安錠' });
+    const medB = makeMedication({ id: 'm-b', name: '脈優錠5毫克' });
+    const multi = makeReminder({
+      id: 'r-multi',
+      slot_type: 'morning',
+      scheduled_time: '07:30',
+      timeout_anchor_time: '08:30',
+      entries: [
+        { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: [medA.id] },
+        { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [medB.id] },
+      ],
+      medications: [medA, medB],
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([multi]);
+
+    renderPage();
+
+    const entriesList = await screen.findByRole('list', { name: '服藥時機' });
+    expect(within(entriesList).getByText('飯前')).toBeInTheDocument();
+    expect(within(entriesList).getByText('07:30')).toBeInTheDocument();
+    expect(within(entriesList).getByText('心得安錠')).toBeInTheDocument();
+    expect(within(entriesList).getByText('飯後')).toBeInTheDocument();
+    expect(within(entriesList).getByText('08:30')).toBeInTheDocument();
+    expect(within(entriesList).getByText('脈優錠5毫克')).toBeInTheDocument();
+
+    // 藥名允許斷行：不能斷行的一長串英文藥名（例如
+    // CHLORPHENIRAMINE MALEATE）在 24px 字級的 375px 手機上會把整張卡片
+    // 撐寬，見 MedicationAppearanceRow 的既有作法——時刻與藥名要包在
+    // ItemContent（提供 min-w-0）裡，藥名本身要能斷行。
+    expect(within(entriesList).getByText('心得安錠')).toHaveClass('break-words');
+
+    // 標題仍顯示派生出來的最早時刻，不受下面攤開的條目影響
+    const editButton = screen.getByRole('button', { name: /編輯「早」/ });
+    expect(within(editButton).getByText('07:30')).toBeInTheDocument();
+  });
+
+  it('多條目提醒的編輯視窗隱藏時間欄位、改顯示提示，按鈕可切到詳細設定並預選同一時段', async () => {
+    // 後端多條目規則不接受單一 scheduled_time patch（不知道要改哪一個時刻），
+    // 編輯視窗因此不該再給一個看似能改、實際上一按儲存就會 400 的時間欄位。
+    const medA = makeMedication({ id: 'm-a', name: '心得安錠' });
+    const medB = makeMedication({ id: 'm-b', name: '脈優錠5毫克' });
+    const multi = makeReminder({
+      id: 'r-multi',
+      slot_type: 'morning',
+      scheduled_time: '07:30',
+      timeout_anchor_time: '08:30',
+      entries: [
+        { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: [medA.id] },
+        { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [medB.id] },
+      ],
+      medications: [medA, medB],
+    });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([multi]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([medA, medB]);
+
+    renderPage();
+
+    await screen.findByRole('button', { name: /編輯「早」/ });
+    fireEvent.click(screen.getByRole('button', { name: /編輯「早」/ }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('此提醒有飯前飯後多個時間，請到詳細設定調整')).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('提醒時間')).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '前往詳細設定' }));
+
+    // dialog 關閉、切到詳細檢視，且直接落在「早」這個時段的編輯面
+    // （initialSlot 由 index.tsx 帶入這筆規則的 slot_type），而不是先停在
+    // 四張時段卡的第一層。
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '早', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '飯前' })).toBeChecked();
   });
 });
 
