@@ -152,9 +152,17 @@ const PersonalHealthPage: React.FC = () => {
     // 所以這兩個 effect 誰先回來都不影響結果。
     useEffect(() => {
         if (!liffReady) return;
-        liff.getProfile().then(handleLiffProfile).catch((err) => {
-            console.warn('獲取 LIFF 用戶資訊失敗:', err);
-        });
+        // liff.getProfile() 在 LIFF session 未登入時是「同步」丟錯（'You need to
+        // call liff.login first.'），不是回傳 rejected promise —— .then().catch()
+        // 接不到，例外會往上竄，整個 PersonalHealthPage 被 React 卸載成白畫面。
+        // 使用者手上有有效的 CARE token 但 LINE session 過期時就會踩到。
+        void (async () => {
+            try {
+                handleLiffProfile(await liff.getProfile());
+            } catch (err) {
+                console.warn('獲取 LIFF 用戶資訊失敗:', err);
+            }
+        })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [liffReady]);
 

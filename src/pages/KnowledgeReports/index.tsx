@@ -205,7 +205,9 @@ function KnowledgeReportsPage() {
           {/* basis 16rem 而非 flex-1：低於這個寬度就讓按鈕換行，
               不會把說明文字擠成每行三四個字 */}
           <span className="flex-[1_1_16rem]">{t('knowledgeReports.notice')}</span>
-          <Button type="button" variant="outline" size="sm" onClick={handleAskInLine}>
+          {/* 不加 size="sm"：那是 h-10(40px)，低於 44px 觸控底線（規範 §2）。
+              這是頁面主要行動點，不屬於「密集版面明確 opt-in」的情形。 */}
+          <Button type="button" variant="outline" onClick={handleAskInLine}>
             {t('knowledgeReports.backToLine')}
             <ChevronRightIcon data-icon="inline-end" />
           </Button>
