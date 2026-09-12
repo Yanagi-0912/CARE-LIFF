@@ -25,7 +25,6 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet,
-  FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
@@ -224,6 +223,7 @@ export function SlotEntryEditor({
             name={`${key}.enabled`}
             render={({ field }) => (
               <Switch
+                id={switchId}
                 checked={field.value}
                 onCheckedChange={(next) => {
                   field.onChange(next);
@@ -234,7 +234,14 @@ export function SlotEntryEditor({
               />
             )}
           />
-          <FieldTitle>{mealLabel}</FieldTitle>
+          {/* 文字接上 htmlFor，點文字也能切換開關——與 ReminderCard 開關列
+              同一個「整個可點區域」慣例，長輩不必精準點在 16px 的滑鈕上。 */}
+          <label
+            htmlFor={switchId}
+            className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium"
+          >
+            {mealLabel}
+          </label>
         </div>
 
         {enabled && (
