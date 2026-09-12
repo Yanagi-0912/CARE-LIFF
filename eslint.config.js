@@ -20,4 +20,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Playwright 的 fixture 第二個參數固定叫 `use`，react-hooks 外掛會誤判成
+    // 在非元件裡呼叫 Hook。e2e 目錄沒有 React 元件，整條規則關掉即可。
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
 ])

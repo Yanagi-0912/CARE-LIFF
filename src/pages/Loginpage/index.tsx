@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import liff from '@line/liff'
+import liff, { LIFF_AVAILABLE, initLiff } from '../../lib/liffClient'
 import { loginWithLiffIdToken } from '../../api/authApi'
 import { clearLoggedOutFlag, hasLoggedOut } from '../../utils/auth'
 import { useLiffAuth } from '../../context/LiffAuthProvider'
@@ -16,7 +16,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim()
 
 function LoginPage() {
 	const navigate = useNavigate()
@@ -81,14 +80,15 @@ function LoginPage() {
 	}, [location.search, navigate, markAuthenticated])
 
 	useEffect(() => {
-		const initLiff = async () => {
-			if (!LIFF_ID) {
+		// 區域函式名稱避開 lib/liffClient 的 initLiff（原本同名會把 import 遮掉）
+		const bootstrapAndLogin = async () => {
+			if (!LIFF_AVAILABLE) {
 				setErrorText('尚未設定 VITE_LIFF_ID，請先完成前端環境變數設定。')
 				return
 			}
 
 			try {
-				await liff.init({ liffId: LIFF_ID })
+				await initLiff()
 				if (cancelledRef.current) return
 
 				// 剛登出就別再自動換發 token 了，否則使用者會被瞬間登回去
@@ -105,7 +105,7 @@ function LoginPage() {
 			}
 		}
 
-		void initLiff()
+		void bootstrapAndLogin()
 	}, [runLogin])
 
 	const handleManualLogin = async () => {
