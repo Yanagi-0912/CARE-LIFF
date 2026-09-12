@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, PauseCircleIcon } from 'lucide-react';
 
 import {
   MEAL_LABEL_KEY,
@@ -14,6 +14,7 @@ import {
   type MedicationSlotType,
   type ReminderEntry,
 } from '../../types/medication';
+import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -290,8 +291,18 @@ export function SlotEntryEditor({
               {medications.map((med) => {
                 const primary = formatAppearancePrimary(med, separator);
                 const value = assignments[med.id] ?? null;
+                // 已停用的藥品（Medication.enabled === false）不該再被指派新的服藥
+                // 時機——它多半是療程已結束或被家屬手動停用，指派了也不會再被
+                // 提醒。既有指派仍照原樣顯示，只是不能再改，這裡刻意只看
+                // enabled，不連動 end_date（YAGNI，之後真的需要再加）。
+                const medDisabled = !med.enabled;
                 return (
-                  <Item key={med.id} size="xs" role="listitem" className="gap-2.5 p-0">
+                  <Item
+                    key={med.id}
+                    size="xs"
+                    role="listitem"
+                    className={cn('gap-2.5 p-0', medDisabled && 'opacity-60')}
+                  >
                     <ItemMedia>
                       <PillThumbnail src={med.thumbnail_url} alt={med.name} className="size-16 rounded-lg" />
                     </ItemMedia>
@@ -317,20 +328,28 @@ export function SlotEntryEditor({
                       >
                         <ToggleGroupItem
                           value="before_meal"
-                          disabled={!beforeEnabled || isSubmitting}
+                          disabled={!beforeEnabled || isSubmitting || medDisabled}
                           aria-label={t('meds.detailed.assignTo', { meal: t(MEAL_LABEL_KEY.before_meal) })}
                         >
                           {t(MEAL_LABEL_KEY.before_meal)}
                         </ToggleGroupItem>
                         <ToggleGroupItem
                           value="after_meal"
-                          disabled={!afterEnabled || isSubmitting}
+                          disabled={!afterEnabled || isSubmitting || medDisabled}
                           aria-label={t('meds.detailed.assignTo', { meal: t(MEAL_LABEL_KEY.after_meal) })}
                         >
                           {t(MEAL_LABEL_KEY.after_meal)}
                         </ToggleGroupItem>
                       </ToggleGroup>
                       {!value && <Badge variant="secondary">{t('meds.detailed.unassigned')}</Badge>}
+                      {/* 三重編碼：opacity-60（色）＋ PauseCircleIcon（圖示）＋ 文字，
+                          不只靠淡化的視覺差異表達「這顆藥已經停用」。 */}
+                      {medDisabled && (
+                        <Badge variant="secondary" className="gap-1">
+                          <PauseCircleIcon className="size-3.5 shrink-0" />
+                          {t('meds.detailed.medDisabled')}
+                        </Badge>
+                      )}
                     </div>
                   </Item>
                 );
