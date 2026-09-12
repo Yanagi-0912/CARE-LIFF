@@ -25,6 +25,7 @@ const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultReco
 const KnowledgeReportsPage = lazy(() => import('./pages/KnowledgeReports'));
 const AdminKnowledgeReportsPage = lazy(() => import('./pages/AdminKnowledgeReports'));
 const MedicationsPage = lazy(() => import('./pages/Medications'));
+const VisitsPage = lazy(() => import('./pages/Medications/Visits'));
 const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Loginpage'));
@@ -112,6 +113,7 @@ function AppContent() {
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
             <Route path="/medications" element={<ProtectedRoute><MedicationsPage /></ProtectedRoute>} />
+            <Route path="/medications/visits" element={<ProtectedRoute><VisitsPage /></ProtectedRoute>} />
             <Route path="/knowledge-reports" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
             {/* 深連結：渲染同一個頁面元件，掛載時自動開啟回報表單。獨立頁面會
                 讓 LIFF webview 導頁重掛整個頁面、重打 API，長輩裝置上明顯卡頓 */}

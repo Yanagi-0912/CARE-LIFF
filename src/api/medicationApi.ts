@@ -1,6 +1,7 @@
 import type {
   CreateRemindersRequest,
   MedicationReminder,
+  MedicationVisit,
   UpdateReminderRequest,
 } from '../types/medication';
 import type {
@@ -205,4 +206,30 @@ export async function commitPrescriptionDraft(
   );
   if (!res.ok) throw await parseError(res);
   return res.json();
+}
+
+/**
+ * 查詢看診紀錄。
+ *
+ * 這支端點整體是 SENSITIVE：後端不做部分遮蔽，沒有 SENSITIVE 讀取權者直接
+ * 403（把機構名遮掉之後剩下的就是一串沒有意義的日期）。因此 MEMBER 角色
+ * 呼叫這支會拿到 403，呼叫端要把它當成「沒有權限看」而不是「載入失敗」。
+ */
+export async function fetchVisits(targetUserId?: string): Promise<MedicationVisit[]> {
+  const query = targetUserId ? `?target_user_id=${encodeURIComponent(targetUserId)}` : '';
+  const res = await fetch(`${BASE_URL}/api/medications/visits${query}`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 403) throw new VisitsForbiddenError();
+  if (!res.ok) throw await parseError(res);
+  const data = await res.json();
+  return data.visits ?? [];
+}
+
+/** 無權查看看診紀錄。與一般載入失敗分開，畫面要給的訊息完全不同。 */
+export class VisitsForbiddenError extends Error {
+  constructor() {
+    super('no permission to view visits');
+    this.name = 'VisitsForbiddenError';
+  }
 }

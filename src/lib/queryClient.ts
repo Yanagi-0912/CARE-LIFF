@@ -31,6 +31,10 @@ export const queryKeys = {
   /** 家人的健康檔案，展開成員卡片時才會用到 */
   memberProfile: (userId: string) => ['member-profile', userId] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
+  /** 看診紀錄。與 medications 分開：它是 SENSITIVE 端點，權限不足時整支 403，
+      失效時機也不同（只有掃藥袋提交後才會變）。 */
+  medicationVisits: (targetUserId?: string) =>
+    ['medication-visits', targetUserId ?? 'self'] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
   prescriptionScanEnabled: ['prescription-scan-enabled'] as const,
   knowledgeReports: ['knowledge-reports'] as const,

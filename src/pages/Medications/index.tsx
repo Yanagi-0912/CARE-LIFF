@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
 import {
@@ -21,7 +22,7 @@ import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
 import { buildCommitSummary } from './commitSummary';
 import { toast } from 'sonner';
-import { PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
+import { BuildingIcon, PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -45,6 +46,7 @@ function readSelfUserId(): string | undefined {
 
 const MedicationsPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { members } = useFamily();
 
   const [selfUserId] = useState(readSelfUserId);
@@ -161,6 +163,19 @@ const MedicationsPage = () => {
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
         <div className="flex shrink-0 gap-2">
+          {/* 看診紀錄入口。**不受 canEditSelected 影響**——那是寫入權，而看
+              紀錄是讀取行為；能看到這一頁的人就該看得到入口。權限不足時由
+              目標頁自己顯示「沒有權限」，比在這裡靜靜藏起入口好：使用者至少
+              知道有這個功能存在，而不是以為系統沒有。 */}
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => navigate('/medications/visits')}
+          >
+            <BuildingIcon data-icon="inline-start" />
+            {t('visits.title')}
+          </Button>
           {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
               而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。
               沒有寫入權時同理：兩個入口一併不渲染。 */}
