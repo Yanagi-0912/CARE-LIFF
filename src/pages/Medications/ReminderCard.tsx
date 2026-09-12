@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronRightIcon } from 'lucide-react';
 
-import { SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication';
+import { MEAL_LABEL_KEY, SLOT_LABEL_KEY, type MedicationReminder } from '../../types/medication';
 import { formatDateDisplay } from '../../utils/date';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,20 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
     : t('meds.dateRangeOpen', { start: formatDateDisplay(reminder.start_date) });
   // 藥袋辨識建立的提醒才會關聯到藥品；手動建立的提醒沒有這個欄位，維持原本只顯示時間的樣子
   const medications = reminder.medications ?? [];
+  // 條目數固定是個位數（至多飯前／飯後／其他三筆），沒有必要為這張小 map 上
+  // useMemo——真正需要快取的是 SlotEntryEditor 那種每個藥品都要重算指派狀態
+  // 的清單，這裡的量級不同。
+  const medicationNameById = new Map(medications.map((med) => [med.id, med.name]));
+  const separator = t('meds.scan.draft.slotListSeparator');
+  // entries 在型別上是必填欄位，但前後端不保證同時部署——若這次前端上線時
+  // 後端還沒補上這個欄位，舊回應裡不會有 entries，直接讀 .length／.some 會
+  // 整卡拋錯，被 ErrorBoundary 接住後整頁空白。這裡是部署順序的安全網，
+  // 不是在放寬型別承諾：一旦兩邊都上線，reminder.entries 理論上必為陣列。
+  const entries = reminder.entries ?? [];
+  // 多條目（飯前／飯後拆開、或條目數 > 1）才需要在卡片上多列一段服藥時機清單；
+  // 單一 none 條目（多數手動建立的提醒）維持原本只有時間的樣子，不需要重複
+  // 顯示一行「其他 08:00」。
+  const isMultiTiming = entries.length > 1 || entries.some((entry) => entry.meal_timing !== 'none');
 
   return (
     // 直向兩段：上段是「時間／日期＋啟用開關」，下段是藥品清單。
@@ -123,6 +137,44 @@ export function ReminderCard({ reminder, onToggle, onEdit, busy = false }: Remin
           </span>
         </label>
       </div>
+
+      {/* 飯前飯後拆成多個時刻的規則，卡片標題只能顯示最早那個時刻
+          （scheduled_time 是派生欄位），這裡把每個條目各自的時機、時刻、
+          藥名攤開列出，使用者才看得出「這張卡其實是兩個時間點」。 */}
+      {isMultiTiming && (
+        <>
+          <Separator className="w-full" />
+          <ItemGroup className="w-full min-w-0 px-4 py-3.5" aria-label={t('meds.card.entriesLabel')}>
+            {entries.map((entry) => {
+              const names = entry.medication_ids
+                .map((id) => medicationNameById.get(id))
+                .filter((name): name is string => Boolean(name))
+                .join(separator);
+              return (
+                <Item key={entry.meal_timing} size="xs" role="listitem" className="p-0">
+                  <Badge variant="secondary">{t(MEAL_LABEL_KEY[entry.meal_timing])}</Badge>
+                  {/* ItemContent 提供 min-w-0，讓這個 flex 子項能被壓縮到比內容的
+                      min-content 更窄——沒有它，一串不能斷行的英文藥名（例如
+                      CHLORPHENIRAMINE MALEATE）會把 flex 子項的最小寬度撐成
+                      整串字的寬度，在 24px 字級的 375px 手機上把卡片一起撐寬，
+                      與 MedicationAppearanceRow 的既有作法一致。 */}
+                  <ItemContent className="min-w-0 flex-row flex-wrap items-baseline gap-x-2 gap-y-0">
+                    <span className="num text-sm font-semibold">{entry.scheduled_time}</span>
+                    {/* break-words 讓一般的空白／標點處優先斷行；單一長字仍斷不開時
+                        由 [overflow-wrap:anywhere] 兜底，允許在字內斷行——寧可切開
+                        一個英文藥名，也不要讓卡片長出水平捲軸。 */}
+                    {names && (
+                      <span className="min-w-0 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                        {names}
+                      </span>
+                    )}
+                  </ItemContent>
+                </Item>
+              );
+            })}
+          </ItemGroup>
+        </>
+      )}
 
       {/* 藥袋辨識建立的提醒才會關聯到藥品；手動建立的提醒沒有這個欄位，
           整個下段不渲染，版面與只顯示時間的樣子完全相同。 */}
