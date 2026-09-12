@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
+import type { UseMutationResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import liff from '@line/liff';
 import { CopyIcon, ShareIcon, TriangleAlertIcon } from 'lucide-react';
 
-import { createInvite } from '../../api/familyApi';
+import type { CreateInviteResponse } from '../../types/family';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,17 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 
 interface Props {
+  /**
+   * 建立邀請的 mutation，由 InviteButton 在點擊時觸發後傳進來。
+   *
+   * 不在這裡用 useEffect 開 mutation：React StrictMode（開發模式、e2e 的
+   * dev server）會把 effect 執行兩次，中間模擬一次 unmount。TanStack Query 的
+   * MutationObserver 在 unmount 時把自己從 mutation 移除，remount 後不會再掛
+   * 回去——effect 裡 mutate() 出去的那筆 mutation 完成時沒有人在聽，畫面就
+   * 永遠停在「正在建立邀請…」。先前用 ref 擋第二次 mutate() 正是踩到這個：
+   * 第一次的結果收不到，第二次又被擋掉。從點擊事件觸發就沒有這個問題。
+   */
+  invite: UseMutationResult<CreateInviteResponse, Error, void>;
   liffReady: boolean;
   /** 邀請確實送進 LINE 分享時觸發。掃 QR 不會經過這裡——那條路沒有回呼。 */
   onShared: () => void;
@@ -34,23 +45,10 @@ interface Props {
  * 進得來**（後端 accept 之後即 410），所以畫面上要把這件事講明白，不能讓
  * 邀請人以為連結和 QR 是兩個名額。
  */
-export function InviteDialog({ liffReady, onShared, onError, onClose }: Props) {
+export function InviteDialog({ invite, liffReady, onShared, onError, onClose }: Props) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
-
-  // StrictMode 在開發模式會把 effect 跑兩次。少了這道閘，每開一次 dialog
-  // 就會在後端留下兩筆邀請，其中一筆永遠不會被用掉。
-  const requested = useRef(false);
-
-  const invite = useMutation({ mutationFn: createInvite });
-  const { mutate: requestInvite } = invite;
-
-  useEffect(() => {
-    if (requested.current) return;
-    requested.current = true;
-    requestInvite();
-  }, [requestInvite]);
 
   const data = invite.data;
   // 後端沒設 LIFF_ID 時才會走到這個 fallback。站台網址在外部瀏覽器開得起來，
@@ -106,18 +104,20 @@ export function InviteDialog({ liffReady, onShared, onError, onClose }: Props) {
           <DialogDescription>{t('family.inviteDialog.desc')}</DialogDescription>
         </DialogHeader>
 
-        {invite.isPending || !data ? (
+        {/* 錯誤要先判斷：失敗時 data 也是 undefined，若先看 `!data` 會永遠停在
+            「正在建立邀請…」，建立失敗的提示根本到不了畫面。 */}
+        {invite.isError ? (
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertDescription>{t('family.inviteDialog.createFailed')}</AlertDescription>
+          </Alert>
+        ) : invite.isPending || !data ? (
           <div className="flex flex-col items-center gap-3 py-10">
             <Spinner className="size-8" />
             <p className="text-sm text-muted-foreground">
               {t('family.inviteDialog.creating')}
             </p>
           </div>
-        ) : invite.isError ? (
-          <Alert variant="destructive">
-            <TriangleAlertIcon />
-            <AlertDescription>{t('family.inviteDialog.createFailed')}</AlertDescription>
-          </Alert>
         ) : (
           <div className="flex flex-col gap-4">
             {data.qr_url ? (
