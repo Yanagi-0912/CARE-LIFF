@@ -12,7 +12,7 @@ import {
 
 /**
  * 家庭頁：族譜列表四態、成員卡片展開後的健康資料三態、邀請流程
- * （shareTargetPicker 成功／取消／失敗、瀏覽器 fallback）。
+ * （邀請 dialog：建立成功／失敗、分享到 LINE 成功／取消、外部瀏覽器 fallback）。
  */
 
 const GRANDMA = FAMILY_MEMBERS[0];
@@ -221,7 +221,47 @@ test.describe('成員卡片展開', () => {
 });
 
 test.describe('邀請家人', () => {
-  const INVITE = { invite_token: 'inv-token-123', expires_at: '2026-12-31T00:00:00Z' };
+  // 三種遞出方式（QR、分享到 LINE、複製連結）共用同一組邀請碼，dialog 一開就建立。
+  // qr_url 給 null：QR 圖是後端組的對外網址，e2e 不打外部資源，走「無法顯示 QR」分支。
+  const INVITE = {
+    invite_token: 'inv-token-123',
+    expires_at: '2026-12-31T00:00:00Z',
+    invite_url: 'https://liff.line.me/1234567890-abcdefgh/join?code=inv-token-123',
+    qr_url: null,
+  };
+
+  async function openInviteDialog(page: Page) {
+    await page.getByRole('button', { name: t('family.inviteBtn') }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText(t('family.inviteDialog.title'))).toBeVisible();
+    return dialog;
+  }
+
+  test('開啟 dialog 就建立邀請，顯示連結與單次使用提示', async ({ authedPage }) => {
+    await seedLiffMock(authedPage, { isLoggedIn: true, isInClient: true, isApiAvailable: true });
+    await stubFamily(authedPage, []);
+    const invites = await stubApi(authedPage, {
+      path: '/api/family/invites',
+      method: 'POST',
+      body: INVITE,
+    });
+    await openPage(authedPage);
+    const dialog = await openInviteDialog(authedPage);
+
+    await expect(dialog.getByText(t('family.inviteDialog.qrUnavailable'))).toBeVisible();
+    await expect(dialog.getByText(t('family.inviteDialog.singleUse'))).toBeVisible();
+    await expect(dialog.locator('#family-invite-url')).toHaveValue(INVITE.invite_url);
+    await expect(
+      dialog.getByRole('button', { name: t('family.inviteDialog.shareLine') }),
+    ).toBeEnabled();
+    await expect(
+      dialog.getByRole('button', { name: t('family.inviteDialog.copyLink') }),
+    ).toBeEnabled();
+    expect(invites).toHaveLength(1);
+
+    await dialog.getByRole('button', { name: t('family.inviteDialog.close') }).click();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+  });
 
   test('在 LINE 內經 shareTargetPicker 送出後顯示成功並重新載入族譜', async ({ authedPage }) => {
     await seedLiffMock(authedPage, {
@@ -231,23 +271,17 @@ test.describe('邀請家人', () => {
       shareTargetPicker: { status: 'success' },
     });
     const familyCalls = await stubFamily(authedPage, []);
-    const invites = await stubApi(authedPage, {
-      path: '/api/family/invites',
-      method: 'POST',
-      body: INVITE,
-    });
+    await stubApi(authedPage, { path: '/api/family/invites', method: 'POST', body: INVITE });
     await openPage(authedPage);
+    const dialog = await openInviteDialog(authedPage);
 
-    const button = authedPage.getByRole('button', { name: t('family.inviteBtn') });
-    await expect(button).toBeEnabled();
-    await button.click();
+    await dialog.getByRole('button', { name: t('family.inviteDialog.shareLine') }).click();
 
     await expect(authedPage.getByText(t('family.inviteSuccess'))).toBeVisible();
-    expect(invites).toHaveLength(1);
     await expect.poll(() => familyCalls.length).toBeGreaterThanOrEqual(2);
   });
 
-  test('在選擇器裡取消不算成功，不顯示任何 toast', async ({ authedPage }) => {
+  test('在選擇器裡取消不算成功，不顯示任何 toast、dialog 留著', async ({ authedPage }) => {
     await seedLiffMock(authedPage, {
       isLoggedIn: true,
       isInClient: true,
@@ -257,15 +291,18 @@ test.describe('邀請家人', () => {
     await stubFamily(authedPage, []);
     await stubApi(authedPage, { path: '/api/family/invites', method: 'POST', body: INVITE });
     await openPage(authedPage);
+    const dialog = await openInviteDialog(authedPage);
 
-    await authedPage.getByRole('button', { name: t('family.inviteBtn') }).click();
+    const share = dialog.getByRole('button', { name: t('family.inviteDialog.shareLine') });
+    await share.click();
 
-    await expect(authedPage.getByRole('button', { name: t('family.inviteBtn') })).toBeEnabled();
+    await expect(share).toBeEnabled();
+    await expect(dialog).toBeVisible();
     await expect(authedPage.getByText(t('family.inviteSuccess'))).toHaveCount(0);
     await expect(authedPage.getByText(t('family.inviteError'))).toHaveCount(0);
   });
 
-  test('產生邀請碼失敗時顯示錯誤 toast', async ({ authedPage }) => {
+  test('產生邀請碼失敗時 dialog 內顯示錯誤，沒有分享與複製鈕', async ({ authedPage }) => {
     await seedLiffMock(authedPage, { isLoggedIn: true, isInClient: true, isApiAvailable: true });
     await stubFamily(authedPage, []);
     await stubApi(authedPage, {
@@ -275,24 +312,28 @@ test.describe('邀請家人', () => {
       body: { detail: 'boom' },
     });
     await openPage(authedPage);
+    const dialog = await openInviteDialog(authedPage);
 
-    await authedPage.getByRole('button', { name: t('family.inviteBtn') }).click();
-
-    await expect(authedPage.getByText(t('family.inviteError'))).toBeVisible();
+    await expect(dialog.getByText(t('family.inviteDialog.createFailed'))).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: t('family.inviteDialog.shareLine') }),
+    ).toHaveCount(0);
+    await expect(
+      dialog.getByRole('button', { name: t('family.inviteDialog.close') }),
+    ).toBeVisible();
   });
 
-  test('外部瀏覽器且無系統分享時，提示需在 LINE 內操作', async ({ authedPage }) => {
+  test('外部瀏覽器按「分享到 LINE」會提示需在 LINE 內操作，連結仍可用', async ({ authedPage }) => {
     await seedLiffMock(authedPage, { isLoggedIn: true, isInClient: false, isApiAvailable: false });
-    // 桌面 Chromium 沒有 navigator.share；WebKit 可能有，統一拿掉才測得到這條分支
-    await authedPage.addInitScript(() => {
-      Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
-    });
     await stubFamily(authedPage, []);
     await stubApi(authedPage, { path: '/api/family/invites', method: 'POST', body: INVITE });
     await openPage(authedPage);
+    const dialog = await openInviteDialog(authedPage);
 
-    await authedPage.getByRole('button', { name: t('family.inviteBtn') }).click();
+    await dialog.getByRole('button', { name: t('family.inviteDialog.shareLine') }).click();
 
     await expect(authedPage.getByText(t('family.inviteLineRequired'))).toBeVisible();
+    // 不在 LINE 裡沒有路可走的只有分享；QR／連結仍在同一個畫面上
+    await expect(dialog.locator('#family-invite-url')).toHaveValue(INVITE.invite_url);
   });
 });

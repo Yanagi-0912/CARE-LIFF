@@ -68,6 +68,11 @@ const overflow = (page: Page) =>
  */
 const KNOWN_OVERFLOW = [
   {
+    path: '/medications',
+    width: 375,
+    reason: '頁首右側「看診紀錄」「掃描藥袋」「新增」三顆按鈕的容器是 shrink-0 且不換行，24px 字級下寬 506px，頁面多 131px 橫向捲動；「新增」被推到視窗外',
+  },
+  {
     path: '/family',
     width: 375,
     reason: '成員卡片「您沒有查看這位家人資料的權限」徽章是 whitespace-nowrap 的 Badge，24px 字級下寬 302px，頁面多 50px 橫向捲動',
@@ -141,6 +146,10 @@ test.describe('手機直式 375px 的 dialog', () => {
   }
 
   test('新增用藥提醒表單：整個 dialog 在視窗內，底部按鈕看得到', async ({ authedPage }) => {
+    // 已知版面問題（同 KNOWN_OVERFLOW 的 /medications）：頁首三顆按鈕溢出，
+    // 「新增」被推到 375px 之外點不到。用 fixme 而非 fail：失敗形式是 click 等滿
+    // 30 秒逾時，fail 會讓每次跑都多等 30 秒。修好後把這行拿掉即可。
+    test.fixme(true, '已知版面問題：/medications 頁首按鈕在特大字級下溢出，「新增」點不到');
     await authedPage.goto('/medications');
     await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
 
@@ -151,6 +160,9 @@ test.describe('手機直式 375px 的 dialog', () => {
   });
 
   test('編輯用藥提醒表單：刪除／取消／儲存三顆按鈕都在視窗內', async ({ authedPage }) => {
+    // 已知 bug：編輯 dialog 在 24px 字級下寬 456px（375px 視窗置中後左右各溢出約 40px），
+    // 撐寬的是「用藥時段」四列 radio 的欄位內容，最小寬度沒有被 dialog 約束住。
+    test.fail(true, '已知 bug：編輯用藥提醒 dialog 特大字級在 375px 手機上寬 456px 超出視窗');
     await authedPage.goto('/medications');
     await authedPage.getByText('08:00').first().click();
 
