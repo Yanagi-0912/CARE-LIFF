@@ -48,8 +48,11 @@ function InputGroupAddon({
   align = "inline-start",
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
+  // 點擊 addon（icon、文字）把焦點移到 input，等同 <label> 的行為，只是給
+  // 滑鼠與觸控用的便利。addon 本身不可聚焦，鍵盤使用者一律 Tab 直達 input，
+  // 不存在鍵盤對等操作的缺口，故不補無意義的 onKeyDown（SonarCloud S1082）。
   return (
-    <div
+    <div // NOSONAR
       role="group"
       data-slot="input-group-addon"
       data-align={align}

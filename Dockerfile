@@ -3,7 +3,9 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# --ignore-scripts：build 不需要任何 lifecycle script（lockfile 裡唯一有 install
+# script 的是 macOS 專用的 fsevents），關掉可避免套件在安裝階段執行任意程式。
+RUN npm ci --ignore-scripts
 
 COPY . .
 
