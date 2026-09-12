@@ -192,14 +192,59 @@ describe('FamilyPage', () => {
     });
   });
 
-  it('不在 LINE 內且沒有 Web Share 時，跳的是錯誤提示而不是成功提示', async () => {
-    vi.mocked(familyApi.createInvite).mockResolvedValue({
-      invite_token: 'tok',
-      expires_at: '2026-12-31T00:00:00.000Z',
-    });
+  // ── 邀請 dialog ────────────────────────────────────────────────────────
+  //
+  // 「加入家人」不再直接開 shareTargetPicker，而是先開 dialog：
+  // shareTargetPicker 只列得出 LINE 好友與群組，當面要給非好友掃的 QR 沒有
+  // 地方可放。以下幾個測試守的就是「不在 LINE 裡也仍然有路可走」。
 
+  const inviteResponse = {
+    invite_token: 'tok',
+    expires_at: '2026-12-31T00:00:00.000Z',
+    invite_url: 'https://liff.line.me/1234-abcd/join?code=tok',
+    qr_url: 'https://care.example.com/api/family/invites/tok/qr.png',
+  };
+
+  async function openInviteDialog() {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
+    return screen.findByRole('img', { name: '邀請家人' });
+  }
+
+  it('按下加入家人會開 dialog，顯示 QR 與可複製的邀請連結', async () => {
+    vi.mocked(familyApi.createInvite).mockResolvedValue(inviteResponse);
+
+    const qr = await openInviteDialog();
+
+    expect(qr).toHaveAttribute('src', inviteResponse.qr_url);
+    // 連結要與 QR 指向同一處，否則兩條路會把人帶到不同地方。
+    expect(screen.getByLabelText('邀請連結')).toHaveValue(inviteResponse.invite_url);
+    // 一次性這件事一定要講出來，否則邀請人會以為連結和 QR 是兩個名額。
+    expect(
+      screen.getByText('這張邀請只能一位家人使用，對方加入後就會失效。'),
+    ).toBeInTheDocument();
+  });
+
+  it('開一次 dialog 只建立一張邀請', async () => {
+    // StrictMode 會把 effect 跑兩次。少了元件裡那道閘，每開一次就留下一筆
+    // 永遠不會被用掉的邀請。
+    vi.mocked(familyApi.createInvite).mockResolvedValue(inviteResponse);
+
+    await openInviteDialog();
+
+    expect(familyApi.createInvite).toHaveBeenCalledTimes(1);
+  });
+
+  it('不在 LINE 內時，錯誤只在按下分享時出現，QR 與連結仍然可用', async () => {
+    vi.mocked(familyApi.createInvite).mockResolvedValue(inviteResponse);
+
+    await openInviteDialog();
+    // 光是開啟 dialog 不該報錯——QR 與複製連結都不需要 LIFF。
+    expect(
+      screen.queryByText('請在 LINE App 內開啟後再分享邀請連結'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /分享到 LINE/ }));
 
     await waitFor(() => {
       expect(
@@ -207,6 +252,41 @@ describe('FamilyPage', () => {
       ).toBeInTheDocument();
     });
     expect(screen.queryByText('邀請已送出')).not.toBeInTheDocument();
+    // 報錯之後 QR 還在，使用者仍然可以改用當面掃。
+    expect(screen.getByRole('img', { name: '邀請家人' })).toBeInTheDocument();
+  });
+
+  it('後端組不出 QR 網址時說明原因，而不是留一張破圖', async () => {
+    vi.mocked(familyApi.createInvite).mockResolvedValue({
+      ...inviteResponse,
+      qr_url: null,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
+
+    expect(
+      await screen.findByText('目前無法顯示 QR code，請改用下方連結分享。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: '邀請家人' })).not.toBeInTheDocument();
+    // 連結那條路不受影響。
+    expect(screen.getByLabelText('邀請連結')).toHaveValue(inviteResponse.invite_url);
+  });
+
+  it('後端未設定 LIFF_ID 時，連結退回站台網址而不是空白', async () => {
+    vi.mocked(familyApi.createInvite).mockResolvedValue({
+      ...inviteResponse,
+      invite_url: null,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('邀請連結')).toHaveValue(
+        `${window.location.origin}/join?code=tok`,
+      );
+    });
   });
 
   it('展開後有「查看諮詢紀錄」，點了會帶著該成員的 id 導向諮詢頁', async () => {

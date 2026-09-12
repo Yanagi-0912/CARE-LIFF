@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
 import {
@@ -9,6 +10,7 @@ import {
 import type {
   MedicationReminder,
   MedicationSlotType,
+  ReminderEntry,
   UpdateReminderRequest,
 } from '../../types/medication';
 import type { PrescriptionCommitResult, PrescriptionDraft } from '../../types/prescription';
@@ -17,11 +19,12 @@ import { ReminderEditDialog } from './ReminderEditDialog';
 import { ReminderFormDialog } from './ReminderFormDialog';
 import { PrescriptionScanDialog } from './PrescriptionScanDialog';
 import { PrescriptionDraftForm } from './PrescriptionDraftForm';
+import { DetailedSetupView } from './DetailedSetupView';
 import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
 import { buildCommitSummary } from './commitSummary';
 import { toast } from 'sonner';
-import { PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
+import { BuildingIcon, PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -45,6 +48,7 @@ function readSelfUserId(): string | undefined {
 
 const MedicationsPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { members } = useFamily();
 
   const [selfUserId] = useState(readSelfUserId);
@@ -54,6 +58,12 @@ const MedicationsPage = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<PrescriptionDraft | null>(null);
+  // 詳細設定是同一頁內的整頁檢視，不另開路由（design.md 決策 8：LIFF webview
+  // 換路徑會重掛整頁、重打 API，在長輩裝置上明顯卡頓）。
+  const [view, setView] = useState<'list' | 'detailed'>('list');
+  // 從新增表單的「詳細設定」進入時不預選任何時段；Task 11 起編輯視窗會把
+  // 目前這筆規則的時段帶進來，直接跳進該時段的編輯面。
+  const [detailedSlot, setDetailedSlot] = useState<MedicationSlotType | undefined>(undefined);
 
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
@@ -98,21 +108,54 @@ const MedicationsPage = () => {
     }
   };
 
-  const handleCreate = async (
-    slots: MedicationSlotType[],
-    startDate: string,
-    endDate?: string,
-  ) => {
+  const handleCreate = async (payload: {
+    slots: MedicationSlotType[];
+    slotTimes: Partial<Record<MedicationSlotType, string>>;
+    startDate: string;
+    endDate?: string;
+  }) => {
     // 未取得本人 userId 時 getLineUserId 會拋錯，訊息由 dialog 就地顯示
     const userId = selectedUserId ?? getLineUserId();
     const created = await create({
       user_id: userId,
-      slots,
-      start_date: startDate,
-      end_date: endDate,
+      slots: payload.slots,
+      slot_times: payload.slotTimes,
+      start_date: payload.startDate,
+      end_date: payload.endDate,
     });
     setAdding(false);
     toast.success(t('meds.add.success', { n: created.length }));
+  };
+
+  const handleOpenDetailed = () => {
+    setAdding(false);
+    setDetailedSlot(undefined);
+    setView('detailed');
+  };
+
+  // 該時段尚未有規則 → 走建立（帶 slot_entries）；refetch 是因為 create／update
+  // 的回應不含 medications（只有 GET /reminders 會附上），詳細檢視第一層的
+  // 摘要與藥品指派畫面都需要重新整份的提醒清單才會是正確的。
+  const handleDetailedCreate = async (
+    slot: MedicationSlotType,
+    entries: ReminderEntry[],
+    startDate: string,
+  ) => {
+    const userId = selectedUserId ?? getLineUserId();
+    await create({
+      user_id: userId,
+      slots: [slot],
+      slot_entries: { [slot]: entries },
+      start_date: startDate,
+    });
+    await refetch();
+    toast.success(t('meds.detailed.saveSuccess'));
+  };
+
+  const handleDetailedUpdate = async (reminderId: string, entries: ReminderEntry[]) => {
+    await update(reminderId, { entries });
+    await refetch();
+    toast.success(t('meds.detailed.saveSuccess'));
   };
 
   const handleSave = async (patch: UpdateReminderRequest) => {
@@ -158,31 +201,48 @@ const MedicationsPage = () => {
 
   return (
     <div className="mx-auto max-w-[760px]">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
-        <div className="flex shrink-0 gap-2">
-          {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
-              而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。
-              沒有寫入權時同理：兩個入口一併不渲染。 */}
-          {scanEnabled && canEditSelected && (
+      {/* 詳細設定取代清單區塊與頂端的新增／掃描入口，但對象 chips 與已載入的
+          提醒資料都保留（design.md 決策 8）——換對象或返回清單都不必重打 API。 */}
+      {view === 'list' && (
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
+          <div className="flex shrink-0 gap-2">
+            {/* 看診紀錄入口。**不受 canEditSelected 影響**——那是寫入權，而看
+                紀錄是讀取行為；能看到這一頁的人就該看得到入口。權限不足時由
+                目標頁自己顯示「沒有權限」，比在這裡靜靜藏起入口好：使用者至少
+                知道有這個功能存在，而不是以為系統沒有。 */}
             <Button
               type="button"
               variant="outline"
               className="rounded-full"
-              onClick={() => setScanning(true)}
+              onClick={() => navigate('/medications/visits')}
             >
-              <ScanLineIcon data-icon="inline-start" />
-              {t('meds.scan.entry')}
+              <BuildingIcon data-icon="inline-start" />
+              {t('visits.title')}
             </Button>
-          )}
-          {canEditSelected && (
-            <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
-              <PlusIcon data-icon="inline-start" />
-              {t('meds.addButton')}
-            </Button>
-          )}
-        </div>
-      </header>
+            {/* 功能開關關閉時 usePrescriptionScanEnabled 回傳 false，入口整個不渲染，
+                而不是渲染成停用狀態——關閉時要表現得像這個功能不存在一樣。
+                沒有寫入權時同理：兩個入口一併不渲染。 */}
+            {scanEnabled && canEditSelected && (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setScanning(true)}
+              >
+                <ScanLineIcon data-icon="inline-start" />
+                {t('meds.scan.entry')}
+              </Button>
+            )}
+            {canEditSelected && (
+              <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
+                <PlusIcon data-icon="inline-start" />
+                {t('meds.addButton')}
+              </Button>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* 對象切換是互斥的單選，用 ToggleGroup 而非一排各自 aria-pressed 的按鈕：
           語意正確，且方向鍵可在群組內移動焦點。
@@ -195,6 +255,13 @@ const MedicationsPage = () => {
           const next = groupValue[0];
           if (next === undefined) return;
           setSelectedUserId(next === 'self' ? selfUserId : next);
+          // 切換照顧對象時，若還停在詳細設定畫面就要退回清單：詳細設定的
+          // SlotEntryEditor 是依 selectedUserId 載入的藥品清單建構表單，
+          // 留在原地換對象會讓使用者看著 A 的表單、儲存卻套用到 B 身上。
+          if (view === 'detailed') {
+            setView('list');
+            setDetailedSlot(undefined);
+          }
         }}
         aria-label={t('meds.targetLabel')}
       >
@@ -205,7 +272,19 @@ const MedicationsPage = () => {
         ))}
       </ToggleGroup>
 
-      {loading ? (
+      {view === 'detailed' ? (
+        <DetailedSetupView
+          targetUserId={selectedUserId}
+          targetName={selectedName}
+          reminders={reminders}
+          remindersLoading={loading}
+          remindersError={error}
+          initialSlot={detailedSlot}
+          onBack={() => setView('list')}
+          onCreate={handleDetailedCreate}
+          onUpdate={handleDetailedUpdate}
+        />
+      ) : loading ? (
         // 骨架屏用與 ReminderCard 同一組 Item 元件，卡片外框自然對齊，
         // 不必再手寫一份 rounded/border/padding
         <ItemGroup className="gap-3" aria-busy="true" aria-label={t('meds.loading')}>
@@ -263,6 +342,7 @@ const MedicationsPage = () => {
           targetName={selectedName}
           existingSlots={existingSlots}
           onSubmit={handleCreate}
+          onOpenDetailed={handleOpenDetailed}
           onClose={() => setAdding(false)}
         />
       )}
@@ -274,6 +354,11 @@ const MedicationsPage = () => {
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setEditing(null)}
+          onOpenDetailed={(reminder) => {
+            setEditing(null);
+            setDetailedSlot(reminder.slot_type);
+            setView('detailed');
+          }}
         />
       )}
 
