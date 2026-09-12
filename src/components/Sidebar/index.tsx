@@ -23,7 +23,9 @@ function Sidebar() {
     { path: '/', label: t('sidebar.home') },
     { path: '/nearby-hospitals', label: t('sidebar.nearbyHospitals') },
     { path: '/personalhealth', label: t('sidebar.health') },
-    { path: '/medications', label: t('sidebar.medications') },
+    // 側欄沒有格數限制，兩種提醒各列一項；手機的底部導覽才需要合成一格
+    { path: '/reminders/medications', label: t('sidebar.medications') },
+    { path: '/reminders/appointments', label: t('sidebar.appointments') },
     { path: '/knowledge-reports', label: t('sidebar.knowledgeReports') },
     ...(isAdmin
       ? [{ path: '/admin/knowledge-reports', label: t('sidebar.adminKnowledgeReports') }]

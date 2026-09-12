@@ -32,7 +32,7 @@ describe('Sidebar', () => {
     );
 
   it('標記目前頁面，點擊其他項目時導覽過去', () => {
-    renderAt('/medications');
+    renderAt('/reminders/medications');
 
     expect(screen.getByRole('button', { name: '用藥提醒' })).toHaveAttribute(
       'aria-current',

@@ -31,6 +31,15 @@ export const queryKeys = {
   /** 家人的健康檔案，展開成員卡片時才會用到 */
   memberProfile: (userId: string) => ['member-profile', userId] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
+  /** 掛號提醒，與用藥同一慣例：對象要進 key，切換對象才不會沿用上一個人的清單。
+      即將到來與過去是兩個查詢，共用這個前綴，失效時一次涵蓋兩者。 */
+  appointments: (targetUserId?: string) => ['appointments', targetUserId ?? 'self'] as const,
+  appointmentsUpcoming: (targetUserId?: string) =>
+    ['appointments', targetUserId ?? 'self', 'upcoming'] as const,
+  appointmentsPast: (targetUserId?: string) =>
+    ['appointments', targetUserId ?? 'self', 'past'] as const,
+  /** 單一院所（編輯掛號提醒時重抓門診時段用） */
+  facility: (facilityId: string) => ['facility', facilityId] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
   prescriptionScanEnabled: ['prescription-scan-enabled'] as const,
   knowledgeReports: ['knowledge-reports'] as const,

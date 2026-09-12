@@ -1,15 +1,19 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { HealthIcon, PillIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, SearchIcon } from '../../components/icons';
+import {
+  HealthIcon, PillIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, SearchIcon,
+} from '../../components/icons';
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
-import { ChevronRightIcon, ShieldCheckIcon } from 'lucide-react';
+import { CalendarClockIcon, ChevronRightIcon, ShieldCheckIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
-import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
+import {
+  Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle,
+} from '@/components/ui/item';
 
 // 圖示圓底的 tone 配色。必須是完整字串的查表，不能用 `tone-${f.tone}` 拼接：
 // Tailwind 掃描原始碼文字比對 class，拼接出的字串不會出現在檔案裡，規則不會產生。
@@ -52,8 +56,16 @@ const Home = () => {
     {
       title: t('home.medications'),
       icon: <PillIcon width={26} height={26} />,
-      path: '/medications',
+      path: '/reminders/medications',
       desc: t('home.medicationsDesc'),
+      tone: 'amber'
+    },
+    // 與用藥同屬「提醒」分頁，tone 也跟著用 amber，兩張卡一眼看得出是同一類
+    {
+      title: t('home.appointments'),
+      icon: <CalendarClockIcon width={26} height={26} />,
+      path: '/reminders/appointments',
+      desc: t('home.appointmentsDesc'),
       tone: 'amber'
     },
     {

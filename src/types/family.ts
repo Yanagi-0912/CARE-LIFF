@@ -47,6 +47,15 @@ export interface FamilyMember {
    */
   my_role?: FamilyRole | null;
   my_permissions?: FamilyPermissions;
+  /**
+   * 同一份權限的**純 RBAC** 值（含委任），不受遷移狀態影響。
+   *
+   * 給後端以嚴格判定把關的功能用（目前是掛號提醒的寫入）：那些路徑在影子模式下
+   * 也是嚴格的，照 `my_permissions` 渲染會出現按了必定 403 的按鈕。它不是「更嚴的
+   * my_permissions」——受委任者的某些格子反而比較寬——所以其他功能維持看
+   * `my_permissions`。
+   */
+  my_strict_permissions?: FamilyPermissions;
   /** 對方家庭的遷移狀態。權限已經套用過它，這裡只供呈現面說明用。 */
   rbac_migration_state?: 'shadow' | 'enforced';
 }

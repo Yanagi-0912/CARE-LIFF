@@ -38,6 +38,22 @@ function permissionsOf(member: FamilyMember): FamilyPermissions {
   };
 }
 
+/**
+ * 嚴格判定的權限（`my_strict_permissions`），給後端以嚴格判定把關的路徑用。
+ *
+ * 同樣 fail-closed：欄位缺席時一律視為沒有權限。後端是與這個欄位一起上線的，
+ * 缺席只會發生在舊版後端，那時最多是家屬少看到幾顆按鈕。
+ */
+function strictPermissionsOf(member: FamilyMember): FamilyPermissions {
+  const permissions = member.my_strict_permissions;
+  if (!permissions) return NO_PERMISSIONS;
+  return {
+    general: permissions.general ?? [],
+    sensitive: permissions.sensitive ?? [],
+    private: permissions.private ?? [],
+  };
+}
+
 export function canReadGeneral(member: FamilyMember): boolean {
   return permissionsOf(member).general.includes('READ');
 }
@@ -76,6 +92,19 @@ export function hasNoAccess(member: FamilyMember): boolean {
 /** 我可以幫這位成員設定用藥嗎。用藥對象清單靠它決定要不要顯示新增入口。 */
 export function canManageMedications(member: FamilyMember): boolean {
   return canWriteGeneral(member);
+}
+
+/**
+ * 我可以幫這位成員管理掛號提醒嗎——新增、修改、取消、刪除，以及代按「我已出發」
+ * 「我已到診」。後端對這些事用的是同一條規則：對就診者有 GENERAL WRITE，而且是
+ * **嚴格判定**（影子模式下只有讀取權的 MEMBER 也不行，已拍板）。
+ *
+ * 所以這裡看 `my_strict_permissions`，不看 `my_permissions`：後者在影子模式下會
+ * 對 MEMBER 回報 GENERAL WRITE，照它渲染就是一排按了必定 403 的按鈕。
+ * 用藥沒有收緊，維持看 `my_permissions`。
+ */
+export function canManageAppointments(member: FamilyMember): boolean {
+  return strictPermissionsOf(member).general.includes('WRITE');
 }
 
 /** 我可以代這位成員填健康資料嗎。 */

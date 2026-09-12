@@ -7,12 +7,7 @@ import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 import AdminRoute from './components/AdminRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import {
-  applyTheme,
-  defaultSettings,
-  STORAGE_KEY,
-  type SettingsState,
-} from '@/lib/settings';
+import { applyTheme, defaultSettings, STORAGE_KEY, type SettingsState } from '@/lib/settings';
 
 // 各頁改為動態載入：原本 12 個頁面全部打包進單一 JS，使用者只想看首頁
 // 也得先下載並解析全部內容。這對跑在 LINE webview、裝置偏舊的長輩使用者
@@ -24,7 +19,9 @@ const JoinPage = lazy(() => import('./pages/Join'));
 const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultRecords'));
 const KnowledgeReportsPage = lazy(() => import('./pages/KnowledgeReports'));
 const AdminKnowledgeReportsPage = lazy(() => import('./pages/AdminKnowledgeReports'));
+const RemindersLayout = lazy(() => import('./pages/Reminders'));
 const MedicationsPage = lazy(() => import('./pages/Medications'));
+const AppointmentsPage = lazy(() => import('./pages/Appointments'));
 const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Loginpage'));
@@ -55,6 +52,15 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+/**
+ * 舊的 /medications 轉到新位置。保留 query string：LIFF 深連結可能帶著
+ * liff.state 之類的參數，丟掉會讓登入後跳回的流程失效。
+ */
+function LegacyMedicationsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/reminders/medications', search }} replace />;
 }
 
 function AppContent() {
@@ -111,7 +117,15 @@ function AppContent() {
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
-            <Route path="/medications" element={<ProtectedRoute><MedicationsPage /></ProtectedRoute>} />
+            {/* 用藥與掛號收在同一個「提醒」分頁底下，子頁切換由 RemindersLayout 負責。
+                /reminders 本身與未知子路徑都由 layout 導回上次看的子頁。 */}
+            <Route path="/reminders" element={<ProtectedRoute><RemindersLayout /></ProtectedRoute>}>
+              <Route path="medications" element={<MedicationsPage />} />
+              <Route path="appointments" element={<AppointmentsPage />} />
+              <Route path="*" element={null} />
+            </Route>
+            {/* 舊路徑：Rich Menu 的「用藥提醒」格與既有書籤都還指著它 */}
+            <Route path="/medications" element={<LegacyMedicationsRedirect />} />
             <Route path="/knowledge-reports" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
             {/* 深連結：渲染同一個頁面元件，掛載時自動開啟回報表單。獨立頁面會
                 讓 LIFF webview 導頁重掛整個頁面、重打 API，長輩裝置上明顯卡頓 */}
