@@ -144,25 +144,54 @@ export function stubFamily(
 
 /* ───────────── 用藥提醒 ───────────── */
 
+export type MealTiming = 'before_meal' | 'after_meal' | 'none';
+
+/** 一筆提醒內的條目，對齊 types/medication.ts 的 ReminderEntry */
+export type ReminderEntryDto = {
+  meal_timing: MealTiming;
+  scheduled_time: string;
+  medication_ids: string[];
+};
+
 export type ReminderDto = {
   id: string;
   creator_user_id: string;
   user_id: string;
   slot_type: 'morning' | 'noon' | 'evening' | 'bedtime';
+  /** 派生自 entries 中最早的時刻 */
   scheduled_time: string;
+  /** 派生自 entries 中最晚的時刻；單一 none 條目時與 scheduled_time 相等 */
+  timeout_anchor_time: string;
+  entries: ReminderEntryDto[];
   start_date: string;
   end_date: string | null;
   enabled: boolean;
   created_at: string;
   updated_at: string;
-  medications?: unknown[];
+  medications?: MedicationDto[];
 };
 
+/** 對齊 types/medication.ts 的 DEFAULT_SLOT_TIMES；stub 端建立提醒時套用同一份預設值 */
+export const DEFAULT_SLOT_TIMES: Record<ReminderDto['slot_type'], string> = {
+  morning: '08:00',
+  noon: '12:00',
+  evening: '18:00',
+  bedtime: '21:30',
+};
+
+/**
+ * 預設是「單一 none 條目、時刻等於 scheduled_time」——多數手動建立的提醒
+ * 就是這個形狀，卡片維持只顯示時間的樣子。要測飯前飯後拆開的規則就自己帶
+ * entries，並記得 scheduled_time／timeout_anchor_time 是條目的最早／最晚時刻。
+ */
 export function reminder(overrides: Partial<ReminderDto> & Pick<ReminderDto, 'id' | 'slot_type'>): ReminderDto {
+  const scheduledTime = overrides.scheduled_time ?? '08:00';
   return {
     creator_user_id: LINE_USER_ID,
     user_id: LINE_USER_ID,
-    scheduled_time: '08:00',
+    scheduled_time: scheduledTime,
+    timeout_anchor_time: scheduledTime,
+    entries: [{ meal_timing: 'none', scheduled_time: scheduledTime, medication_ids: [] }],
     start_date: '2026-09-01',
     end_date: null,
     enabled: true,
@@ -172,7 +201,18 @@ export function reminder(overrides: Partial<ReminderDto> & Pick<ReminderDto, 'id
   };
 }
 
-export function medication(overrides: Partial<Record<string, unknown>> & { id: string; name: string }) {
+export type MedicationDto = {
+  id: string;
+  user_id: string;
+  created_by_user_id: string;
+  name: string;
+  enabled: boolean;
+  [key: string]: unknown;
+};
+
+export function medication(
+  overrides: Partial<Record<string, unknown>> & { id: string; name: string },
+): MedicationDto {
   return {
     user_id: LINE_USER_ID,
     created_by_user_id: LINE_USER_ID,
@@ -198,6 +238,140 @@ export function medication(overrides: Partial<Record<string, unknown>> & { id: s
     updated_at: '2026-09-01T00:00:00Z',
     ...overrides,
   };
+}
+
+/**
+ * 有狀態的用藥提醒後端：GET／POST reminders、PUT／DELETE reminders/{id}、
+ * GET／POST medications 共用同一份 state。
+ *
+ * 給「建立後畫面要立刻反映」這類跨多個請求的流程用（詳細設定的飯前飯後
+ * 就是：POST 建立 → refetch GET → 卡片攤開條目）。單一請求的斷言仍用
+ * stubReminderList／stubApi，狀態越少越好懂。
+ *
+ * 派生規則比照後端：scheduled_time／timeout_anchor_time 取條目的最早／最晚
+ * 時刻，medications 是條目 medication_ids 聯集解析出的藥品；PUT 的回應不含
+ * medications（與真後端一致，見 useMedications.ts）。
+ */
+export async function stubReminderStore(
+  page: Page,
+  initial: { reminders?: ReminderDto[]; medications?: MedicationDto[] } = {},
+) {
+  const state = {
+    reminders: [...(initial.reminders ?? [])],
+    medications: [...(initial.medications ?? [])],
+    seq: 1,
+  };
+
+  const deriveTimes = (entries: ReminderEntryDto[]) => {
+    const times = entries.map((entry) => entry.scheduled_time).sort((a, b) => a.localeCompare(b));
+    return { scheduled_time: times[0], timeout_anchor_time: times[times.length - 1] };
+  };
+  const resolveMedications = (entries: ReminderEntryDto[]) => {
+    const ids = new Set(entries.flatMap((entry) => entry.medication_ids));
+    return state.medications.filter((med) => ids.has(med.id));
+  };
+  const withoutMedications = (r: ReminderDto) => {
+    const rest: ReminderDto = { ...r };
+    delete rest.medications;
+    return rest;
+  };
+
+  const gets = await stubReminderList(page, () => state.reminders);
+
+  const posts = await stubApi(page, {
+    path: '/api/medications/reminders',
+    method: 'POST',
+    respond: (call) => {
+      const body = call.body as {
+        user_id: string;
+        slots: ReminderDto['slot_type'][];
+        slot_times?: Partial<Record<ReminderDto['slot_type'], string>>;
+        slot_entries?: Partial<Record<ReminderDto['slot_type'], ReminderEntryDto[]>>;
+        start_date?: string;
+        end_date?: string;
+      };
+      const created = body.slots.map((slot) => {
+        const entries: ReminderEntryDto[] = body.slot_entries?.[slot] ?? [
+          {
+            meal_timing: 'none',
+            scheduled_time: body.slot_times?.[slot] ?? DEFAULT_SLOT_TIMES[slot],
+            medication_ids: [],
+          },
+        ];
+        const item = reminder({
+          id: `r-${state.seq++}`,
+          slot_type: slot,
+          creator_user_id: body.user_id,
+          user_id: body.user_id,
+          ...deriveTimes(entries),
+          entries,
+          start_date: body.start_date ?? '2026-09-01',
+          end_date: body.end_date ?? null,
+          medications: resolveMedications(entries),
+        });
+        state.reminders.push(item);
+        return item;
+      });
+      return { status: 200, body: created.map(withoutMedications) };
+    },
+  });
+
+  const REMINDER_ID = /^\/api\/medications\/reminders\/([^/]+)$/;
+  const findReminder = (call: ApiCall) => {
+    const id = REMINDER_ID.exec(call.url.pathname)?.[1];
+    return state.reminders.find((item) => item.id === id);
+  };
+
+  const puts = await stubApi(page, {
+    path: REMINDER_ID,
+    method: 'PUT',
+    respond: (call) => {
+      const target = findReminder(call);
+      if (!target) return { status: 404, body: { detail: 'not found' } };
+      const body = call.body as Partial<ReminderDto>;
+      Object.assign(target, body);
+      if (body.entries) {
+        Object.assign(target, deriveTimes(body.entries));
+        target.medications = resolveMedications(body.entries);
+      }
+      return { status: 200, body: withoutMedications(target) };
+    },
+  });
+
+  const deletes = await stubApi(page, {
+    path: REMINDER_ID,
+    method: 'DELETE',
+    respond: (call) => {
+      const target = findReminder(call);
+      if (!target) return { status: 404, body: { detail: 'not found' } };
+      state.reminders = state.reminders.filter((item) => item !== target);
+      return { status: 200, body: { ok: true } };
+    },
+  });
+
+  const medGets = await stubApi(page, {
+    path: '/api/medications',
+    method: 'GET',
+    respond: () => ({ status: 200, body: state.medications }),
+  });
+
+  const medPosts = await stubApi(page, {
+    path: '/api/medications',
+    method: 'POST',
+    respond: (call) => {
+      const body = call.body as { user_id: string; name: string };
+      const created = medication({
+        id: `m-${state.seq++}`,
+        name: body.name,
+        user_id: body.user_id,
+        created_by_user_id: body.user_id,
+      });
+      state.medications.push(created);
+      return { status: 200, body: created };
+    },
+  });
+
+  return { state, gets, posts, puts, deletes, medGets, medPosts };
 }
 
 /** GET /api/medications/reminders；回傳的清單可由 respond 動態決定 */

@@ -9,13 +9,16 @@ import {
   stubApi,
   stubFamily,
   stubReminderList,
+  stubReminderStore,
   stubSettings,
   type ReminderDto,
+  type ReminderEntryDto,
 } from './stubs';
 
 /**
  * 用藥提醒：列表四態（載入／錯誤／空／有資料）、開關的樂觀更新與回滾、
- * 新增／編輯／刪除三個 dialog 的表單驗證與 API 契約、對象切換、掃描入口旗標。
+ * 新增／編輯／刪除三個 dialog 的表單驗證與 API 契約、對象切換、掃描入口旗標，
+ * 以及飯前飯後的詳細設定流程（時段時間、條目指派、手動新增藥品）。
  *
  * 藥袋辨識（上傳影像→草稿核對）需要真實影像與辨識服務，不在這裡；
  * 這裡只驗「入口有沒有出現」。
@@ -527,5 +530,136 @@ test.describe('提醒對象與功能旗標', () => {
     await expect(entry).toBeVisible();
     await entry.click();
     await expect(authedPage.getByRole('dialog').getByText(t('meds.scan.title'))).toBeVisible();
+  });
+});
+
+test.describe('飯前飯後（詳細設定）', () => {
+  const MED_A = medication({ id: 'm-a', name: '降血糖藥' });
+  const MED_B = medication({ id: 'm-b', name: '血壓藥' });
+  const BEFORE = t('meds.meal.before_meal');
+  const AFTER = t('meds.meal.after_meal');
+
+  type CreateBody = {
+    slot_times?: Record<string, string>;
+    slot_entries?: Record<string, ReminderEntryDto[]>;
+  };
+
+  // 開關的無障礙名稱來自旁邊接了 htmlFor 的文字（「飯前」），不是 aria-label
+  const timingSwitch = (page: Page, meal: string) =>
+    page.getByRole('switch', { name: meal, exact: true });
+  const timingTime = (page: Page, meal: string) =>
+    page.getByLabel(t('meds.detailed.timeFor', { meal }), { exact: true });
+  const medRow = (page: Page, name: string) => page.getByRole('listitem').filter({ hasText: name });
+  const assignButton = (row: ReturnType<typeof medRow>, meal: string) =>
+    row.getByRole('button', { name: t('meds.detailed.assignTo', { meal }) });
+
+  test.beforeEach(async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage);
+  });
+
+  /** 新增 dialog →「詳細設定」→ 點進某個時段的編輯面；藥品清單載入完才回傳 */
+  async function openSlotEditor(page: Page, slot: ReminderDto['slot_type']) {
+    await page.getByRole('button', { name: t('meds.addButton') }).click();
+    await page.getByRole('dialog').getByRole('button', { name: t('meds.add.detailed') }).click();
+    // 詳細設定是同一頁內切換檢視，不是另一個 dialog（design.md 決策 8）
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page
+      .getByRole('list', { name: t('meds.detailed.title') })
+      .getByRole('button', { name: new RegExp(`^${slotLabel(slot)}`) })
+      .click();
+    await expect(page.getByRole('list', { name: t('meds.detailed.medsHeading') })).toBeVisible();
+  }
+
+  test('新增表單可直接改時段時間，送出 slot_times', async ({ authedPage }) => {
+    const { posts } = await stubReminderStore(authedPage, { medications: [MED_A, MED_B] });
+    await openPage(authedPage);
+    await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
+    const dialog = authedPage.getByRole('dialog');
+
+    // Base UI 的 Checkbox 是 role=checkbox 的自訂元件，用 click 切換勾選
+    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
+    const timeInput = dialog.getByLabel(t('meds.add.timeFieldFor', { slot: slotLabel('morning') }));
+    await expect(timeInput).toHaveValue('08:00');
+    await timeInput.fill('07:30');
+    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
+
+    await expect(authedPage.getByText(t('meds.add.success', { n: 1 }))).toBeVisible();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(
+      editButton(authedPage, reminder({ id: 'x', slot_type: 'morning', scheduled_time: '07:30' })),
+    ).toBeVisible();
+
+    expect(posts).toHaveLength(1);
+    expect((posts[0].body as CreateBody).slot_times?.morning).toBe('07:30');
+  });
+
+  test('詳細設定：飯前飯後各自的時間與藥品，送出 slot_entries 並在卡片攤開', async ({ authedPage }) => {
+    const { posts } = await stubReminderStore(authedPage, { medications: [MED_A, MED_B] });
+    await openPage(authedPage);
+    await openSlotEditor(authedPage, 'morning');
+
+    await timingSwitch(authedPage, BEFORE).click();
+    await timingTime(authedPage, BEFORE).fill('07:30');
+    await timingSwitch(authedPage, AFTER).click();
+    await timingTime(authedPage, AFTER).fill('08:30');
+
+    await assignButton(medRow(authedPage, MED_A.name), BEFORE).click();
+    await assignButton(medRow(authedPage, MED_B.name), AFTER).click();
+
+    await authedPage.getByRole('button', { name: t('meds.detailed.save') }).click();
+    await expect(authedPage.getByText(t('meds.detailed.saveSuccess'))).toBeVisible();
+
+    // 儲存後回到四張時段卡，「早」的摘要列出兩個時機
+    const slotCards = authedPage.getByRole('list', { name: t('meds.detailed.title') });
+    await expect(slotCards).toContainText(
+      t('meds.detailed.entrySummary', { meal: BEFORE, time: '07:30', count: 1 }),
+    );
+    await expect(slotCards).toContainText(
+      t('meds.detailed.entrySummary', { meal: AFTER, time: '08:30', count: 1 }),
+    );
+
+    // 回到列表：卡片標題是最早時刻，下段把兩個時機各自的時刻與藥名攤開
+    await authedPage.getByRole('button', { name: t('meds.detailed.back') }).click();
+    await expect(
+      editButton(authedPage, reminder({ id: 'x', slot_type: 'morning', scheduled_time: '07:30' })),
+    ).toBeVisible();
+    const entries = authedPage.getByRole('list', { name: t('meds.card.entriesLabel') });
+    const beforeRow = entries.getByRole('listitem').filter({ hasText: BEFORE });
+    await expect(beforeRow).toContainText('07:30');
+    await expect(beforeRow).toContainText(MED_A.name);
+    const afterRow = entries.getByRole('listitem').filter({ hasText: AFTER });
+    await expect(afterRow).toContainText('08:30');
+    await expect(afterRow).toContainText(MED_B.name);
+
+    expect(posts).toHaveLength(1);
+    expect(posts[0].body).toMatchObject({ user_id: LINE_USER_ID, slots: ['morning'] });
+    expect((posts[0].body as CreateBody).slot_entries?.morning).toEqual([
+      { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: [MED_A.id] },
+      { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [MED_B.id] },
+    ]);
+  });
+
+  test('詳細設定內手動新增藥品後可立即指派；時機未開啟前指派鈕停用', async ({ authedPage }) => {
+    const { medPosts } = await stubReminderStore(authedPage, { medications: [MED_A] });
+    await openPage(authedPage);
+    await openSlotEditor(authedPage, 'morning');
+
+    await authedPage.getByLabel(t('meds.detailed.addMedName'), { exact: true }).fill('胃藥');
+    await authedPage.getByRole('button', { name: t('meds.detailed.addMed') }).click();
+
+    await expect(authedPage.getByText(t('meds.detailed.addMedSuccess'))).toBeVisible();
+    const newRow = medRow(authedPage, '胃藥');
+    await expect(newRow).toBeVisible();
+    expect(medPosts).toHaveLength(1);
+    expect(medPosts[0].body).toEqual({ user_id: LINE_USER_ID, name: '胃藥' });
+
+    // 飯後開關還沒開，指派鈕不可按；開了才可按
+    const assignAfter = assignButton(newRow, AFTER);
+    await expect(assignAfter).toBeDisabled();
+    await timingSwitch(authedPage, AFTER).click();
+    await expect(assignAfter).toBeEnabled();
+    await assignAfter.click();
+    await expect(assignAfter).toHaveAttribute('aria-pressed', 'true');
   });
 });
