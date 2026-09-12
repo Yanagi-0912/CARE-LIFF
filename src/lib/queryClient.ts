@@ -35,6 +35,10 @@ export const queryKeys = {
       的提醒清單分開快取——兩者失效時機不同，藥品清單不受提醒的時段/時間變動影響 */
   medicationList: (targetUserId?: string) =>
     ['medication-list', targetUserId ?? 'self'] as const,
+  /** 看診紀錄。與 medications 分開：它是 SENSITIVE 端點，權限不足時整支 403，
+      失效時機也不同（只有掃藥袋提交後才會變）。 */
+  medicationVisits: (targetUserId?: string) =>
+    ['medication-visits', targetUserId ?? 'self'] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
   prescriptionScanEnabled: ['prescription-scan-enabled'] as const,
   knowledgeReports: ['knowledge-reports'] as const,

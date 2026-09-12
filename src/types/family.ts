@@ -93,6 +93,13 @@ export interface FamilyRoleEntry {
 export interface CreateInviteResponse {
   invite_token: string;
   expires_at: string; // ISO 8601
+  /**
+   * 受邀者要開啟的網址（LIFF URL）。QR 圖裡編的就是這一個，兩者不會分歧。
+   * 後端未設定 LIFF_ID 時為 null，呼叫端自行退回站台網址。
+   */
+  invite_url: string | null;
+  /** QR 圖片的絕對網址。後端未設定 PUBLIC_BASE_URL 時為 null。 */
+  qr_url: string | null;
 }
 
 /** GET /family-tree/invites/verify/{code} 回應 */

@@ -187,3 +187,26 @@ export interface CreateMedicationRequest {
   user_id: string;
   name: string;
 }
+
+/**
+ * 一次看診：同一個調劑機構、同一個調劑日期拿到的那些藥。
+ *
+ * 資料來自藥袋辨識。健保雲端藥歷看不到自費看診（不插健保卡就不會產生就醫
+ * 紀錄），藥袋是那件事唯一的入口——這也是這個畫面存在的理由。
+ *
+ * institution 為 null 代表「未記錄來源」：手動新增的藥，以及後端把這個欄位
+ * 落地之前建立的舊紀錄。畫面 SHALL 明確標示，不要留白。
+ */
+export interface MedicationVisit {
+  institution: string | null;
+  /** 藥袋上印的調劑日期（YYYY-MM-DD），不是掃描時間 */
+  dispensed_date: string | null;
+  medication_ids: string[];
+  medication_names: string[];
+  /**
+   * 這次看診被掃描了幾次。實測同一個藥袋在 42 分鐘內被掃了三次，
+   * 但那仍然只是一次看診——這個數字只供顯示「掃描過 N 次」，不是分組依據。
+   */
+  scan_count: number;
+  first_created_at: string | null;
+}
