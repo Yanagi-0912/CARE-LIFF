@@ -1,9 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import liff from '@line/liff';
+import liff, { LIFF_AVAILABLE, initLiff } from '../lib/liffClient';
 import { loginWithLiffIdToken } from '../api/authApi';
 import { clearAuth, hasLoggedOut, isAuthenticated, markLoggedOut } from '../utils/auth';
-
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID ?? '').trim();
 
 interface LiffAuthContextType {
   authInitialized: boolean;
@@ -38,7 +36,7 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!LIFF_ID) {
+    if (!LIFF_AVAILABLE) {
       // 本地開發無 LIFF ID 時，視原本 localStorage token 狀況決定
       setIsLoggedIn(isAuthenticated());
       setAuthInitialized(true);
@@ -46,7 +44,7 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await liff.init({ liffId: LIFF_ID });
+      await initLiff();
 
       if (liff.isLoggedIn()) {
         const idToken = liff.getIDToken();
