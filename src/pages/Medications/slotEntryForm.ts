@@ -169,7 +169,7 @@ export function buildEntries(
       values.after.enabled ? values.after.time : undefined,
     ]
       .filter((value): value is string => Boolean(value))
-      .sort()[0];
+      .sort((a, b) => a.localeCompare(b))[0];
     entries.push({
       meal_timing: 'none',
       scheduled_time: priorNoneEntry?.scheduled_time ?? earliestEnabledTime ?? DEFAULT_SLOT_TIMES[slot],
