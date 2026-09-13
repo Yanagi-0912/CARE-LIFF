@@ -159,10 +159,15 @@ test.describe('手機直式 375px 的 dialog', () => {
     ).toBeInViewport();
   });
 
-  test('編輯用藥提醒表單：刪除／取消／儲存三顆按鈕都在視窗內', async ({ authedPage }) => {
+  test('編輯用藥提醒表單：刪除／取消／儲存三顆按鈕都在視窗內', async ({ authedPage, browserName }) => {
     // 已知 bug：編輯 dialog 在 24px 字級下寬 456px（375px 視窗置中後左右各溢出約 40px），
     // 撐寬的是「用藥時段」四列 radio 的欄位內容，最小寬度沒有被 dialog 約束住。
-    test.fail(true, '已知 bug：編輯用藥提醒 dialog 特大字級在 375px 手機上寬 456px 超出視窗');
+    // 只在 Chromium 溢出；WebKit 的字體度量不同、放得下，CI 上 mobile-safari 是過的，
+    // 所以 fail 標記要限定瀏覽器，否則「預期失敗卻通過」會被算成失敗。
+    test.fail(
+      browserName === 'chromium',
+      '已知 bug：編輯用藥提醒 dialog 特大字級在 375px 手機上寬 456px 超出視窗（Chromium）',
+    );
     await authedPage.goto('/medications');
     await authedPage.getByText('08:00').first().click();
 
