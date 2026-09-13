@@ -1,442 +1,665 @@
-import { expect, type Page, type Route, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
-const API_HEADERS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'access-control-allow-headers': 'authorization,content-type,ngrok-skip-browser-warning',
-};
+import { LINE_USER_ID, expect, t, test } from './fixtures';
+import {
+  FAMILY_MEMBERS,
+  NO_PERMISSIONS,
+  medication,
+  reminder,
+  stubApi,
+  stubFamily,
+  stubReminderList,
+  stubReminderStore,
+  stubSettings,
+  type ReminderDto,
+  type ReminderEntryDto,
+} from './stubs';
 
-/** 對齊 types/medication.ts 的 DEFAULT_SLOT_TIMES，stub 端建立提醒時套用同一份預設值 */
-const DEFAULT_SLOT_TIMES: Record<string, string> = {
-  morning: '08:00',
-  noon: '12:00',
-  evening: '18:00',
-  bedtime: '21:30',
-};
+/**
+ * 用藥提醒：列表四態（載入／錯誤／空／有資料）、開關的樂觀更新與回滾、
+ * 新增／編輯／刪除三個 dialog 的表單驗證與 API 契約、對象切換、掃描入口旗標，
+ * 以及飯前飯後的詳細設定流程（時段時間、條目指派、手動新增藥品）。
+ *
+ * 藥袋辨識（上傳影像→草稿核對）需要真實影像與辨識服務，不在這裡；
+ * 這裡只驗「入口有沒有出現」。
+ */
 
-interface StubEntry {
-  meal_timing: 'before_meal' | 'after_meal' | 'none';
-  scheduled_time: string;
-  medication_ids: string[];
+const MORNING = reminder({ id: 'rem-morning', slot_type: 'morning', scheduled_time: '08:00' });
+const EVENING = reminder({
+  id: 'rem-evening',
+  slot_type: 'evening',
+  scheduled_time: '18:00',
+  enabled: false,
+  end_date: '2026-12-31',
+  medications: [
+    medication({ id: 'med-1', name: 'AMLODIPINE 5MG', shape: '圓形', color: '白色' }),
+  ],
+});
+
+const slotLabel = (slot: ReminderDto['slot_type']) => t(`meds.slot.${slot}`);
+const editButton = (page: Page, r: ReminderDto) =>
+  page.getByRole('button', {
+    name: t('meds.editAria', { slot: slotLabel(r.slot_type), time: r.scheduled_time }),
+  });
+const toggle = (page: Page, r: ReminderDto) =>
+  page.getByRole('switch', { name: t('meds.toggleAria', { slot: slotLabel(r.slot_type) }) });
+
+async function openPage(page: Page) {
+  await page.goto('/medications');
+  await expect(page.getByRole('heading', { name: t('meds.title') })).toBeVisible();
 }
 
-interface StubMedication {
-  id: string;
-  user_id: string;
-  created_by_user_id: string;
-  name: string;
-  generic_name: null;
-  license_number: null;
-  shape: '';
-  color: '';
-  score_line: '';
-  mark_one: '';
-  mark_two: '';
-  size: '';
-  thumbnail_url: null;
-  unit_content: null;
-  total_quantity: null;
-  usage_raw: null;
-  frequency_code: 'OTHER';
-  indication: null;
-  spc_indication: null;
-  spc_indication_summary: null;
-  source: 'manual';
-  start_date: string;
-  end_date: null;
-  enabled: true;
-  created_at: string;
-  updated_at: string;
-}
+test.describe('用藥提醒列表', () => {
+  test.beforeEach(async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage);
+  });
 
-interface StubReminder {
-  id: string;
-  creator_user_id: string;
-  user_id: string;
-  slot_type: string;
-  scheduled_time: string;
-  timeout_anchor_time: string;
-  entries: StubEntry[];
-  start_date: string;
-  end_date: string | null;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-  medications: StubMedication[];
-}
+  test('載入中先顯示骨架屏，載入完才顯示內容', async ({ authedPage }) => {
+    await stubReminderList(authedPage, [], { delayMs: 1500 });
+    await openPage(authedPage);
 
-function makeMedication(id: string, name: string): StubMedication {
-  return {
-    id,
-    user_id: 'U-self',
-    created_by_user_id: 'U-self',
-    name,
-    generic_name: null,
-    license_number: null,
-    shape: '',
-    color: '',
-    score_line: '',
-    mark_one: '',
-    mark_two: '',
-    size: '',
-    thumbnail_url: null,
-    unit_content: null,
-    total_quantity: null,
-    usage_raw: null,
-    frequency_code: 'OTHER',
-    indication: null,
-    spc_indication: null,
-    spc_indication_summary: null,
-    source: 'manual',
-    start_date: '2026-01-01',
-    end_date: null,
-    enabled: true,
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-  };
-}
+    await expect(authedPage.getByRole('list', { name: t('meds.loading') })).toBeVisible();
+    await expect(
+      authedPage.getByText(t('meds.empty', { name: t('meds.self') })),
+    ).toBeVisible({ timeout: 5000 });
+    await expect(authedPage.getByRole('list', { name: t('meds.loading') })).toHaveCount(0);
+  });
 
-/** entries 的最早／最晚時刻，比照後端 scheduled_time／timeout_anchor_time 的派生規則 */
-function deriveTimes(entries: StubEntry[]): { scheduled_time: string; timeout_anchor_time: string } {
-  const times = entries.map((entry) => entry.scheduled_time).sort();
-  return { scheduled_time: times[0], timeout_anchor_time: times[times.length - 1] };
-}
+  test('沒有提醒時顯示空狀態與操作提示', async ({ authedPage }) => {
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
 
-function unionIds(entries: StubEntry[]): string[] {
-  return Array.from(new Set(entries.flatMap((entry) => entry.medication_ids)));
-}
+    await expect(authedPage.getByText(t('meds.empty', { name: t('meds.self') }))).toBeVisible();
+    await expect(authedPage.getByText(t('meds.emptyHint'))).toBeVisible();
+  });
 
-interface StubState {
-  reminders: StubReminder[];
-  medications: StubMedication[];
-  reminderSeq: number;
-  medSeq: number;
-}
+  test('後端 500 時顯示錯誤狀態與後端訊息', async ({ authedPage }) => {
+    await stubApi(authedPage, {
+      path: '/api/medications/reminders',
+      method: 'GET',
+      status: 500,
+      body: { detail: '資料庫暫時無法連線' },
+    });
+    await openPage(authedPage);
 
-interface Captured {
-  lastReminderPost?: {
-    user_id: string;
-    slots: string[];
+    await expect(authedPage.getByText(t('meds.loadError'))).toBeVisible();
+    await expect(authedPage.getByText('資料庫暫時無法連線')).toBeVisible();
+  });
+
+  test('網路中斷時同樣落入錯誤狀態', async ({ authedPage }) => {
+    await stubApi(authedPage, { path: '/api/medications/reminders', method: 'GET', abort: true });
+    await openPage(authedPage);
+
+    await expect(authedPage.getByText(t('meds.loadError'))).toBeVisible();
+  });
+
+  test('有資料時依時段排序顯示卡片、開關狀態與藥品清單', async ({ authedPage }) => {
+    // 刻意倒序給，畫面要依 scheduled_time 排好
+    await stubReminderList(authedPage, [EVENING, MORNING]);
+    await openPage(authedPage);
+
+    const list = authedPage.getByRole('list', { name: t('meds.listLabel') });
+    await expect(list).toBeVisible();
+
+    const cards = list.getByRole('button');
+    await expect(cards).toHaveCount(2);
+    await expect(cards.nth(0)).toContainText('08:00');
+    await expect(cards.nth(1)).toContainText('18:00');
+
+    await expect(editButton(authedPage, MORNING)).toContainText(
+      t('meds.dateRangeOpen', { start: '2026/09/01' }),
+    );
+    await expect(editButton(authedPage, EVENING)).toContainText(
+      t('meds.dateRangeClosed', { start: '2026/09/01', end: '2026/12/31' }),
+    );
+    // 藥袋辨識建立的提醒會在卡片下段列出藥名與外觀（不在編輯按鈕那一列裡，
+    // 藥丸照片需要整張卡片的寬度）
+    await expect(list).toContainText('AMLODIPINE 5MG');
+    await expect(list).toContainText('白色');
+    await expect(editButton(authedPage, EVENING)).not.toContainText('AMLODIPINE 5MG');
+
+    await expect(toggle(authedPage, MORNING)).toBeChecked();
+    await expect(toggle(authedPage, EVENING)).not.toBeChecked();
+    await expect(list).toContainText(t('meds.statusOn'));
+    await expect(list).toContainText(t('meds.statusOff'));
+  });
+});
+
+test.describe('啟用開關', () => {
+  test.beforeEach(async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage);
+    await stubReminderList(authedPage, [MORNING]);
+  });
+
+  test('關閉提醒會送 PUT enabled=false，且卡片保留藥品資訊', async ({ authedPage }) => {
+    const puts = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'PUT',
+      body: { ...MORNING, enabled: false, medications: undefined },
+    });
+    await openPage(authedPage);
+
+    await toggle(authedPage, MORNING).click();
+
+    await expect(toggle(authedPage, MORNING)).not.toBeChecked();
+    await expect.poll(() => puts.length).toBe(1);
+    expect(puts[0].body).toEqual({ enabled: false });
+  });
+
+  test('後端失敗時開關回滾並跳出錯誤 toast', async ({ authedPage }) => {
+    await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'PUT',
+      status: 500,
+      body: { detail: '更新失敗，請稍後再試' },
+    });
+    await openPage(authedPage);
+
+    await toggle(authedPage, MORNING).click();
+
+    await expect(authedPage.getByText('更新失敗，請稍後再試')).toBeVisible();
+    await expect(toggle(authedPage, MORNING)).toBeChecked();
+  });
+});
+
+test.describe('新增提醒 dialog', () => {
+  test.beforeEach(async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage);
+  });
+
+  async function openAddDialog(page: Page) {
+    await page.getByRole('button', { name: t('meds.addButton') }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText(t('meds.add.title'))).toBeVisible();
+    return dialog;
+  }
+
+  test('未勾選時段就送出會被擋下', async ({ authedPage }) => {
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+    const dialog = await openAddDialog(authedPage);
+
+    await expect(dialog).toContainText(t('meds.self'));
+    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
+
+    await expect(dialog.getByText(t('meds.add.needSlot'))).toBeVisible();
+  });
+
+  test('勾選時段後建立成功：送出正確 payload、關閉 dialog、更新列表', async ({ authedPage }) => {
+    let current: ReminderDto[] = [];
+    await stubReminderList(authedPage, () => current);
+    const posts = await stubApi(authedPage, {
+      path: '/api/medications/reminders',
+      method: 'POST',
+      respond: () => {
+        current = [MORNING];
+        return { status: 200, body: [MORNING] };
+      },
+    });
+    await openPage(authedPage);
+    const dialog = await openAddDialog(authedPage);
+
+    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
+    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0].body).toMatchObject({
+      user_id: LINE_USER_ID,
+      slots: ['morning'],
+      start_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
+    expect((posts[0].body as { end_date?: string }).end_date).toBeUndefined();
+
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(authedPage.getByText(t('meds.add.success', { n: 1 }))).toBeVisible();
+    await expect(editButton(authedPage, MORNING)).toBeVisible();
+  });
+
+  test('已設定的時段停用並標示「已設定」', async ({ authedPage }) => {
+    await stubReminderList(authedPage, [MORNING]);
+    await openPage(authedPage);
+    const dialog = await openAddDialog(authedPage);
+
+    await expect(
+      dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }),
+    ).toBeDisabled();
+    await expect(dialog.getByText(t('meds.add.slotExists'))).toBeVisible();
+    await expect(
+      dialog.getByRole('checkbox', { name: new RegExp(slotLabel('noon')) }),
+    ).toBeEnabled();
+  });
+
+  test('四個時段都設定過時無法再新增', async ({ authedPage }) => {
+    await stubReminderList(authedPage, [
+      MORNING,
+      reminder({ id: 'n', slot_type: 'noon', scheduled_time: '12:00' }),
+      reminder({ id: 'e', slot_type: 'evening', scheduled_time: '18:00' }),
+      reminder({ id: 'b', slot_type: 'bedtime', scheduled_time: '21:30' }),
+    ]);
+    await openPage(authedPage);
+    const dialog = await openAddDialog(authedPage);
+
+    await expect(dialog.getByText(t('meds.add.allSlotsUsed'))).toBeVisible();
+    await expect(dialog.getByRole('button', { name: t('meds.add.submit') })).toBeDisabled();
+  });
+
+  test('結束日期早於開始日期會顯示欄位錯誤', async ({ authedPage }) => {
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+    const dialog = await openAddDialog(authedPage);
+
+    const posts = await stubApi(authedPage, {
+      path: '/api/medications/reminders',
+      method: 'POST',
+      body: [MORNING],
+    });
+    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
+    await dialog.locator('#startDate').fill('2026-09-10');
+    await dialog.locator('#endDate').fill('2026-09-01');
+    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
+
+    // 結束日期欄位帶 min={startDate}，瀏覽器的原生約束驗證會先擋下送出，
+    // zod 的 dateOrderError 文案因此永遠到不了畫面（見報告的發現）。
+    // 這裡守的是「不能送出」這個結果，而不是哪一層擋的。
+    await expect(dialog).toBeVisible();
+    expect(
+      await dialog.locator('#endDate').evaluate((el) => (el as HTMLInputElement).validity.rangeUnderflow),
+    ).toBe(true);
+    await authedPage.waitForTimeout(300);
+    expect(posts).toHaveLength(0);
+  });
+
+  test('後端建立失敗時錯誤留在表單內、dialog 不關閉', async ({ authedPage }) => {
+    await stubReminderList(authedPage, []);
+    await stubApi(authedPage, {
+      path: '/api/medications/reminders',
+      method: 'POST',
+      status: 400,
+      body: { detail: '該時段已有提醒' },
+    });
+    await openPage(authedPage);
+    const dialog = await openAddDialog(authedPage);
+
+    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
+    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
+
+    await expect(dialog.getByText('該時段已有提醒')).toBeVisible();
+    await expect(dialog).toBeVisible();
+  });
+
+  test('取消與 Escape 都能關閉 dialog', async ({ authedPage }) => {
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+
+    let dialog = await openAddDialog(authedPage);
+    await dialog.getByRole('button', { name: t('meds.cancel') }).click();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+
+    dialog = await openAddDialog(authedPage);
+    await authedPage.keyboard.press('Escape');
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+  });
+});
+
+test.describe('編輯與刪除 dialog', () => {
+  test.beforeEach(async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage);
+    await stubReminderList(authedPage, [MORNING]);
+  });
+
+  async function openEditDialog(page: Page) {
+    await editButton(page, MORNING).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText(t('meds.edit.title'))).toBeVisible();
+    return dialog;
+  }
+
+  test('修改時間後儲存，只送出變動的欄位', async ({ authedPage }) => {
+    const puts = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'PUT',
+      body: { ...MORNING, scheduled_time: '09:30', medications: undefined },
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await expect(dialog.locator('#edit-time')).toHaveValue('08:00');
+    await dialog.locator('#edit-time').fill('09:30');
+    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
+
+    await expect.poll(() => puts.length).toBe(1);
+    expect(puts[0].body).toEqual({ scheduled_time: '09:30' });
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(authedPage.getByText(t('meds.edit.saveSuccess'))).toBeVisible();
+    await expect(
+      editButton(authedPage, { ...MORNING, scheduled_time: '09:30' }),
+    ).toBeVisible();
+  });
+
+  test('時間改到別的時段範圍時，時段跟著跳，兩者一起送出', async ({ authedPage }) => {
+    const puts = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'PUT',
+      body: { ...MORNING, slot_type: 'noon', scheduled_time: '12:30' },
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    // 12:30 離「中」的預設 12:00 最近，時段 radio 應自動跳到「中」
+    await dialog.locator('#edit-time').fill('12:30');
+    await expect(dialog.locator('#edit-slot-noon')).toBeChecked();
+    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
+
+    await expect.poll(() => puts.length).toBe(1);
+    expect(puts[0].body).toEqual({ slot_type: 'noon', scheduled_time: '12:30' });
+  });
+
+  test('已被其他提醒佔用的時段停用，時間改過去也不會跳到它', async ({ authedPage }) => {
+    await stubReminderList(authedPage, [
+      MORNING,
+      reminder({ id: 'rem-noon', slot_type: 'noon', scheduled_time: '12:00' }),
+    ]);
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await expect(dialog.locator('#edit-slot-noon')).toBeDisabled();
+    await dialog.locator('#edit-time').fill('12:30');
+    // 「中」被 rem-noon 佔住，時段留在「早」
+    await expect(dialog.locator('#edit-slot-morning')).toBeChecked();
+  });
+
+  test('沒有任何變更時按儲存直接關閉，不打 API', async ({ authedPage }) => {
+    const puts = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'PUT',
+      body: MORNING,
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
+
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    expect(puts).toHaveLength(0);
+  });
+
+  test('刪除要先經過確認框；取消不會打 API', async ({ authedPage }) => {
+    const deletes = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'DELETE',
+      body: { ok: true },
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await dialog.getByRole('button', { name: t('meds.edit.delete') }).click();
+    const confirm = authedPage.getByRole('alertdialog');
+    await expect(confirm.getByText(t('meds.edit.deleteConfirm'))).toBeVisible();
+
+    await confirm.getByRole('button', { name: t('meds.edit.deleteConfirmNo') }).click();
+    await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    expect(deletes).toHaveLength(0);
+  });
+
+  test('確認刪除後卡片消失並顯示成功 toast', async ({ authedPage }) => {
+    const deletes = await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'DELETE',
+      body: { ok: true },
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await dialog.getByRole('button', { name: t('meds.edit.delete') }).click();
+    await authedPage
+      .getByRole('alertdialog')
+      .getByRole('button', { name: t('meds.edit.deleteConfirmYes') })
+      .click();
+
+    await expect.poll(() => deletes.length).toBe(1);
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(authedPage.getByText(t('meds.edit.deleteSuccess'))).toBeVisible();
+    await expect(editButton(authedPage, MORNING)).toHaveCount(0);
+    await expect(authedPage.getByText(t('meds.empty', { name: t('meds.self') }))).toBeVisible();
+  });
+
+  test('刪除失敗時關掉確認框、錯誤顯示在編輯表單', async ({ authedPage }) => {
+    await stubApi(authedPage, {
+      path: `/api/medications/reminders/${MORNING.id}`,
+      method: 'DELETE',
+      status: 500,
+      body: { detail: '刪除失敗' },
+    });
+    await openPage(authedPage);
+    const dialog = await openEditDialog(authedPage);
+
+    await dialog.getByRole('button', { name: t('meds.edit.delete') }).click();
+    await authedPage
+      .getByRole('alertdialog')
+      .getByRole('button', { name: t('meds.edit.deleteConfirmYes') })
+      .click();
+
+    await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
+    await expect(dialog.getByText('刪除失敗')).toBeVisible();
+
+    // 關掉編輯框後卡片仍在（沒有被樂觀移除）
+    await dialog.getByRole('button', { name: t('meds.cancel') }).click();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(editButton(authedPage, MORNING)).toBeVisible();
+  });
+});
+
+test.describe('提醒對象與功能旗標', () => {
+  test('有家人時可切換對象，列表改查該家人的提醒', async ({ authedPage }) => {
+    await stubFamily(authedPage, FAMILY_MEMBERS);
+    await stubSettings(authedPage);
+    const gets = await stubReminderList(authedPage, (call) =>
+      call.url.searchParams.get('target_user_id') === FAMILY_MEMBERS[0].user_id
+        ? [reminder({ id: 'grandma', slot_type: 'noon', scheduled_time: '12:00', user_id: FAMILY_MEMBERS[0].user_id })]
+        : [],
+    );
+    await openPage(authedPage);
+
+    const targets = authedPage.getByRole('group', { name: t('meds.targetLabel') });
+    await expect(targets.getByRole('button')).toHaveCount(1 + FAMILY_MEMBERS.length);
+    await expect(targets.getByRole('button', { name: t('meds.self') })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await targets.getByRole('button', { name: FAMILY_MEMBERS[0].display_name }).click();
+
+    await expect
+      .poll(() => gets.map((call) => call.url.searchParams.get('target_user_id')))
+      .toContain(FAMILY_MEMBERS[0].user_id);
+    await expect(authedPage.getByText('12:00')).toBeVisible();
+
+    // 沒有名字的成員退回「未設定」
+    await targets.getByRole('button', { name: FAMILY_MEMBERS[1].display_name }).click();
+    await expect(
+      authedPage.getByText(t('meds.empty', { name: FAMILY_MEMBERS[1].display_name })),
+    ).toBeVisible();
+  });
+
+  test('對沒有讀取權的家人不列入對象；只有讀取權的家人看不到新增與掃描入口', async ({ authedPage }) => {
+    await stubFamily(authedPage, [
+      FAMILY_MEMBERS[0],
+      FAMILY_MEMBERS[1],
+      { user_id: 'Unoaccess', relationship_type: null, display_name: '沒權限的人', my_permissions: NO_PERMISSIONS },
+    ]);
+    await stubSettings(authedPage, {}, { prescriptionScanEnabled: true });
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+
+    const targets = authedPage.getByRole('group', { name: t('meds.targetLabel') });
+    await expect(targets.getByRole('button')).toHaveCount(3);
+    await expect(targets.getByRole('button', { name: '沒權限的人' })).toHaveCount(0);
+
+    // 王小明只有 general READ：看得到提醒，但新增與掃描入口整個不渲染
+    await targets.getByRole('button', { name: FAMILY_MEMBERS[1].display_name }).click();
+    await expect(authedPage.getByRole('button', { name: t('meds.addButton') })).toHaveCount(0);
+    await expect(authedPage.getByRole('button', { name: t('meds.scan.entry') })).toHaveCount(0);
+
+    // 林阿嬤有 general WRITE：入口回來
+    await targets.getByRole('button', { name: FAMILY_MEMBERS[0].display_name }).click();
+    await expect(authedPage.getByRole('button', { name: t('meds.addButton') })).toBeVisible();
+  });
+
+  test('藥袋掃描旗標關閉時入口完全不渲染', async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage, {}, { prescriptionScanEnabled: false });
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+
+    await expect(authedPage.getByRole('button', { name: t('meds.addButton') })).toBeVisible();
+    await expect(authedPage.getByRole('button', { name: t('meds.scan.entry') })).toHaveCount(0);
+  });
+
+  test('藥袋掃描旗標開啟時顯示入口並能開啟掃描 dialog', async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage, {}, { prescriptionScanEnabled: true });
+    await stubReminderList(authedPage, []);
+    await openPage(authedPage);
+
+    const entry = authedPage.getByRole('button', { name: t('meds.scan.entry') });
+    await expect(entry).toBeVisible();
+    await entry.click();
+    await expect(authedPage.getByRole('dialog').getByText(t('meds.scan.title'))).toBeVisible();
+  });
+});
+
+test.describe('飯前飯後（詳細設定）', () => {
+  const MED_A = medication({ id: 'm-a', name: '降血糖藥' });
+  const MED_B = medication({ id: 'm-b', name: '血壓藥' });
+  const BEFORE = t('meds.meal.before_meal');
+  const AFTER = t('meds.meal.after_meal');
+
+  type CreateBody = {
     slot_times?: Record<string, string>;
-    slot_entries?: Record<string, StubEntry[]>;
-    start_date?: string;
-    end_date?: string;
+    slot_entries?: Record<string, ReminderEntryDto[]>;
   };
-  lastReminderPut?: { entries?: StubEntry[] };
-}
 
-function resolveMedications(state: StubState, ids: string[]): StubMedication[] {
-  return state.medications.filter((med) => ids.includes(med.id));
-}
+  // 開關的無障礙名稱來自旁邊接了 htmlFor 的文字（「飯前」），不是 aria-label
+  const timingSwitch = (page: Page, meal: string) =>
+    page.getByRole('switch', { name: meal, exact: true });
+  const timingTime = (page: Page, meal: string) =>
+    page.getByLabel(t('meds.detailed.timeFor', { meal }), { exact: true });
+  const medRow = (page: Page, name: string) => page.getByRole('listitem').filter({ hasText: name });
+  const assignButton = (row: ReturnType<typeof medRow>, meal: string) =>
+    row.getByRole('button', { name: t('meds.detailed.assignTo', { meal }) });
 
-async function handleMedicationsRoute(
-  route: Route,
-  state: StubState,
-  captured: Captured,
-): Promise<void> {
-  const request = route.request();
-  const method = request.method();
-  const url = new URL(request.url());
-  const pathname = url.pathname;
-
-  if (method === 'OPTIONS') {
-    await route.fulfill({ status: 204, headers: API_HEADERS });
-    return;
-  }
-
-  // GET/POST /api/medications/reminders
-  if (pathname.endsWith('/api/medications/reminders')) {
-    if (method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify(state.reminders),
-      });
-      return;
-    }
-    if (method === 'POST') {
-      const body = request.postDataJSON() as Captured['lastReminderPost'];
-      captured.lastReminderPost = body;
-      const created: StubReminder[] = [];
-      for (const slot of body?.slots ?? []) {
-        const entries: StubEntry[] = body?.slot_entries?.[slot] ?? [
-          {
-            meal_timing: 'none',
-            scheduled_time: body?.slot_times?.[slot] ?? DEFAULT_SLOT_TIMES[slot],
-            medication_ids: [],
-          },
-        ];
-        const { scheduled_time, timeout_anchor_time } = deriveTimes(entries);
-        const reminder: StubReminder = {
-          id: `r-${state.reminderSeq++}`,
-          creator_user_id: body!.user_id,
-          user_id: body!.user_id,
-          slot_type: slot,
-          scheduled_time,
-          timeout_anchor_time,
-          entries,
-          start_date: body?.start_date ?? '2026-01-01',
-          end_date: body?.end_date ?? null,
-          enabled: true,
-          created_at: '2026-01-01T00:00:00.000Z',
-          updated_at: '2026-01-01T00:00:00.000Z',
-          medications: resolveMedications(state, unionIds(entries)),
-        };
-        state.reminders.push(reminder);
-        created.push(reminder);
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify(created),
-      });
-      return;
-    }
-  }
-
-  // PUT/DELETE /api/medications/reminders/{id}
-  const reminderMatch = pathname.match(/\/api\/medications\/reminders\/([^/]+)$/);
-  if (reminderMatch) {
-    const id = reminderMatch[1];
-    const reminder = state.reminders.find((item) => item.id === id);
-    if (!reminder) {
-      await route.fulfill({
-        status: 404,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify({ detail: 'not found' }),
-      });
-      return;
-    }
-    if (method === 'PUT') {
-      const body = request.postDataJSON() as { entries?: StubEntry[]; enabled?: boolean };
-      captured.lastReminderPut = body;
-      if (body.entries) {
-        reminder.entries = body.entries;
-        const { scheduled_time, timeout_anchor_time } = deriveTimes(body.entries);
-        reminder.scheduled_time = scheduled_time;
-        reminder.timeout_anchor_time = timeout_anchor_time;
-        reminder.medications = resolveMedications(state, unionIds(body.entries));
-      }
-      if (typeof body.enabled === 'boolean') reminder.enabled = body.enabled;
-      reminder.updated_at = '2026-01-02T00:00:00.000Z';
-      // 真實後端的 PUT 回應不含 medications（見 useMedications.ts 的說明）
-      const withoutMedications: Record<string, unknown> = { ...reminder };
-      delete withoutMedications.medications;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify(withoutMedications),
-      });
-      return;
-    }
-    if (method === 'DELETE') {
-      state.reminders = state.reminders.filter((item) => item.id !== id);
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify({ ok: true }),
-      });
-      return;
-    }
-  }
-
-  // GET/POST /api/medications
-  if (pathname.endsWith('/api/medications')) {
-    if (method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify(state.medications),
-      });
-      return;
-    }
-    if (method === 'POST') {
-      const body = request.postDataJSON() as { user_id: string; name: string };
-      const created = makeMedication(`m-manual-${state.medSeq++}`, body.name);
-      created.user_id = body.user_id;
-      created.created_by_user_id = body.user_id;
-      state.medications.push(created);
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify(created),
-      });
-      return;
-    }
-  }
-
-  await route.fulfill({ status: 404, headers: API_HEADERS, body: JSON.stringify({ detail: 'unhandled' }) });
-}
-
-async function setupMedicationsPage(page: Page): Promise<{ state: StubState; captured: Captured }> {
-  const state: StubState = {
-    reminders: [],
-    medications: [makeMedication('m-a', '降血糖藥'), makeMedication('m-b', '血壓藥')],
-    reminderSeq: 1,
-    medSeq: 1,
-  };
-  const captured: Captured = {};
-
-  await page.route('**/api/medications**', (route) => handleMedicationsRoute(route, state, captured));
-
-  await page.route('**/api/family/**', async (route) => {
-    if (route.request().method() === 'OPTIONS') {
-      await route.fulfill({ status: 204, headers: API_HEADERS });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      headers: API_HEADERS,
-      body: JSON.stringify({
-        family_tree: {
-          user_id: 'U-self',
-          family_members: [],
-          created_at: '2026-01-01T00:00:00.000Z',
-          updated_at: '2026-01-01T00:00:00.000Z',
-        },
-        role_assignment: null,
-      }),
-    });
+  test.beforeEach(async ({ authedPage }) => {
+    await stubFamily(authedPage);
+    await stubSettings(authedPage);
   });
 
-  await page.route('**/api/profiles/**', async (route) => {
-    if (route.request().method() === 'OPTIONS') {
-      await route.fulfill({ status: 204, headers: API_HEADERS });
-      return;
-    }
-    const pathname = new URL(route.request().url()).pathname;
-    if (pathname.endsWith('/api/profiles/me/settings')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        headers: API_HEADERS,
-        body: JSON.stringify({
-          settings: {
-            language: 'zh-TW',
-            font_size: 'normal',
-            high_contrast: false,
-            notify_reminder: true,
-            notify_family: true,
-            notify_medical_news: false,
-            voice_reply_enabled: false,
-            voice_rate: 'normal',
-            voice_gender: 'female',
-          },
-          prescription_scan_enabled: false,
-        }),
-      });
-      return;
-    }
-    // /api/profiles/me：側欄用來判斷管理員身分，找不到就 404，行為與 personalhealth.spec 一致
-    await route.fulfill({
-      status: 404,
-      contentType: 'application/json',
-      headers: API_HEADERS,
-      body: JSON.stringify({ detail: 'Not found' }),
-    });
-  });
+  /** 新增 dialog →「詳細設定」→ 點進某個時段的編輯面；藥品清單載入完才回傳 */
+  async function openSlotEditor(page: Page, slot: ReminderDto['slot_type']) {
+    await page.getByRole('button', { name: t('meds.addButton') }).click();
+    await page.getByRole('dialog').getByRole('button', { name: t('meds.add.detailed') }).click();
+    // 詳細設定是同一頁內切換檢視，不是另一個 dialog（design.md 決策 8）
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page
+      .getByRole('list', { name: t('meds.detailed.title') })
+      .getByRole('button', { name: new RegExp(`^${slotLabel(slot)}`) })
+      .click();
+    await expect(page.getByRole('list', { name: t('meds.detailed.medsHeading') })).toBeVisible();
+  }
 
-  await page.goto('/login');
-  await page.evaluate(() => {
-    localStorage.setItem('CARE_AUTH_TOKEN', 'mock-jwt-token-12345');
-    localStorage.setItem('CARE_LINE_USER_ID', 'U-self');
-  });
-  await page.goto('/medications', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('heading', { name: '用藥提醒' })).toBeVisible({ timeout: 15000 });
+  test('新增表單可直接改時段時間，送出 slot_times', async ({ authedPage }) => {
+    const { posts } = await stubReminderStore(authedPage, { medications: [MED_A, MED_B] });
+    await openPage(authedPage);
+    await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
+    const dialog = authedPage.getByRole('dialog');
 
-  return { state, captured };
-}
-
-test.describe('用藥提醒 飯前飯後', () => {
-  test('新增表單可改時間', async ({ page }) => {
-    const { captured } = await setupMedicationsPage(page);
-
-    await page.getByRole('button', { name: '新增', exact: true }).click();
-    // Base UI 的 Checkbox 是 role=checkbox 的自訂元件，不是原生 input[type=checkbox]，
-    // 用 click 切換勾選狀態（比照 switch/toggle 的互動方式）
-    await page.getByRole('checkbox', { name: /早/ }).click();
-
-    const timeInput = page.getByLabel('早提醒時間');
-    await expect(timeInput).toHaveValue('08:00', { timeout: 15000 });
+    // Base UI 的 Checkbox 是 role=checkbox 的自訂元件，用 click 切換勾選
+    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
+    const timeInput = dialog.getByLabel(t('meds.add.timeFieldFor', { slot: slotLabel('morning') }));
+    await expect(timeInput).toHaveValue('08:00');
     await timeInput.fill('07:30');
+    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
 
-    await page.getByRole('button', { name: '建立提醒' }).click();
+    await expect(authedPage.getByText(t('meds.add.success', { n: 1 }))).toBeVisible();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(
+      editButton(authedPage, reminder({ id: 'x', slot_type: 'morning', scheduled_time: '07:30' })),
+    ).toBeVisible();
 
-    await expect(page.getByText('已建立 1 筆用藥提醒')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('07:30', { exact: true })).toBeVisible({ timeout: 15000 });
-
-    expect(captured.lastReminderPost?.slot_times?.morning).toBe('07:30');
+    expect(posts).toHaveLength(1);
+    expect((posts[0].body as CreateBody).slot_times?.morning).toBe('07:30');
   });
 
-  test('詳細設定建立飯前飯後', async ({ page }) => {
-    const { captured } = await setupMedicationsPage(page);
+  test('詳細設定：飯前飯後各自的時間與藥品，送出 slot_entries 並在卡片攤開', async ({ authedPage }) => {
+    const { posts } = await stubReminderStore(authedPage, { medications: [MED_A, MED_B] });
+    await openPage(authedPage);
+    await openSlotEditor(authedPage, 'morning');
 
-    await page.getByRole('button', { name: '新增', exact: true }).click();
-    await page.getByRole('button', { name: '詳細設定' }).click();
-    await page.getByRole('button', { name: /^早/ }).click();
+    await timingSwitch(authedPage, BEFORE).click();
+    await timingTime(authedPage, BEFORE).fill('07:30');
+    await timingSwitch(authedPage, AFTER).click();
+    await timingTime(authedPage, AFTER).fill('08:30');
 
-    await expect(page.getByText('降血糖藥')).toBeVisible({ timeout: 15000 });
+    await assignButton(medRow(authedPage, MED_A.name), BEFORE).click();
+    await assignButton(medRow(authedPage, MED_B.name), AFTER).click();
 
-    await page.getByRole('switch', { name: '飯前' }).click();
-    await page.getByLabel('飯前時間').fill('07:30');
+    await authedPage.getByRole('button', { name: t('meds.detailed.save') }).click();
+    await expect(authedPage.getByText(t('meds.detailed.saveSuccess'))).toBeVisible();
 
-    await page.getByRole('switch', { name: '飯後' }).click();
-    await page.getByLabel('飯後時間').fill('08:30');
+    // 儲存後回到四張時段卡，「早」的摘要列出兩個時機
+    const slotCards = authedPage.getByRole('list', { name: t('meds.detailed.title') });
+    await expect(slotCards).toContainText(
+      t('meds.detailed.entrySummary', { meal: BEFORE, time: '07:30', count: 1 }),
+    );
+    await expect(slotCards).toContainText(
+      t('meds.detailed.entrySummary', { meal: AFTER, time: '08:30', count: 1 }),
+    );
 
-    const beforeMed = page.getByRole('listitem').filter({ hasText: '降血糖藥' });
-    await beforeMed.getByRole('button', { name: '放到飯前' }).click();
-
-    const afterMed = page.getByRole('listitem').filter({ hasText: '血壓藥' });
-    await afterMed.getByRole('button', { name: '放到飯後' }).click();
-
-    await page.getByRole('button', { name: '儲存' }).click();
-    await expect(page.getByText('已儲存用藥提醒')).toBeVisible({ timeout: 15000 });
-
-    await page.getByRole('button', { name: '返回' }).click();
-
-    const beforeRow = page.getByRole('listitem').filter({ hasText: '飯前' });
-    await expect(beforeRow).toContainText('07:30', { timeout: 15000 });
-    await expect(beforeRow).toContainText('降血糖藥');
-
-    const afterRow = page.getByRole('listitem').filter({ hasText: '飯後' });
+    // 回到列表：卡片標題是最早時刻，下段把兩個時機各自的時刻與藥名攤開
+    await authedPage.getByRole('button', { name: t('meds.detailed.back') }).click();
+    await expect(
+      editButton(authedPage, reminder({ id: 'x', slot_type: 'morning', scheduled_time: '07:30' })),
+    ).toBeVisible();
+    const entries = authedPage.getByRole('list', { name: t('meds.card.entriesLabel') });
+    const beforeRow = entries.getByRole('listitem').filter({ hasText: BEFORE });
+    await expect(beforeRow).toContainText('07:30');
+    await expect(beforeRow).toContainText(MED_A.name);
+    const afterRow = entries.getByRole('listitem').filter({ hasText: AFTER });
     await expect(afterRow).toContainText('08:30');
-    await expect(afterRow).toContainText('血壓藥');
+    await expect(afterRow).toContainText(MED_B.name);
 
-    expect(captured.lastReminderPost?.slot_entries?.morning).toEqual([
-      { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a'] },
-      { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: ['m-b'] },
+    expect(posts).toHaveLength(1);
+    expect(posts[0].body).toMatchObject({ user_id: LINE_USER_ID, slots: ['morning'] });
+    expect((posts[0].body as CreateBody).slot_entries?.morning).toEqual([
+      { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: [MED_A.id] },
+      { meal_timing: 'after_meal', scheduled_time: '08:30', medication_ids: [MED_B.id] },
     ]);
   });
 
-  test('手動新增藥品後可指派', async ({ page }) => {
-    await setupMedicationsPage(page);
+  test('詳細設定內手動新增藥品後可立即指派；時機未開啟前指派鈕停用', async ({ authedPage }) => {
+    const { medPosts } = await stubReminderStore(authedPage, { medications: [MED_A] });
+    await openPage(authedPage);
+    await openSlotEditor(authedPage, 'morning');
 
-    await page.getByRole('button', { name: '新增', exact: true }).click();
-    await page.getByRole('button', { name: '詳細設定' }).click();
-    await page.getByRole('button', { name: /^早/ }).click();
+    await authedPage.getByLabel(t('meds.detailed.addMedName'), { exact: true }).fill('胃藥');
+    await authedPage.getByRole('button', { name: t('meds.detailed.addMed') }).click();
 
-    await expect(page.getByText('降血糖藥')).toBeVisible({ timeout: 15000 });
+    await expect(authedPage.getByText(t('meds.detailed.addMedSuccess'))).toBeVisible();
+    const newRow = medRow(authedPage, '胃藥');
+    await expect(newRow).toBeVisible();
+    expect(medPosts).toHaveLength(1);
+    expect(medPosts[0].body).toEqual({ user_id: LINE_USER_ID, name: '胃藥' });
 
-    await page.getByLabel('藥品名稱').fill('胃藥');
-    await page.getByRole('button', { name: '新增藥品' }).click();
-
-    const newMedRow = page.getByRole('listitem').filter({ hasText: '胃藥' });
-    await expect(newMedRow).toBeVisible({ timeout: 15000 });
-
-    // 開啟飯後開關，指派按鈕才可按（未開啟時 disabled）
-    await page.getByRole('switch', { name: '飯後' }).click();
-
-    const assignAfterButton = newMedRow.getByRole('button', { name: '放到飯後' });
-    await expect(assignAfterButton).toBeEnabled();
-    await assignAfterButton.click();
-    await expect(assignAfterButton).toHaveAttribute('aria-pressed', 'true');
+    // 飯後開關還沒開，指派鈕不可按；開了才可按
+    const assignAfter = assignButton(newRow, AFTER);
+    await expect(assignAfter).toBeDisabled();
+    await timingSwitch(authedPage, AFTER).click();
+    await expect(assignAfter).toBeEnabled();
+    await assignAfter.click();
+    await expect(assignAfter).toHaveAttribute('aria-pressed', 'true');
   });
 });
