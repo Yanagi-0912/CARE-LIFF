@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
 import { canManageMedications } from '../../utils/familyPermissions';
 import { useReminderTargets } from '../Reminders/useReminderTargets';
@@ -34,10 +33,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 const MedicationsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { members } = useFamily();
-
-  const [selfUserId] = useState(readSelfUserId);
-  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(selfUserId);
+  // 對象清單與權限判斷和掛號分頁共用，見 useReminderTargets
+  const { selfUserId, targets, selectedUserId, setSelectedUserId, selectedName, canEditSelected } =
+    useReminderTargets(canManageMedications);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MedicationReminder | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -176,7 +174,7 @@ const MedicationsPage = () => {
               type="button"
               variant="outline"
               className="rounded-full"
-              onClick={() => navigate('/medications/visits')}
+              onClick={() => navigate('/reminders/medications/visits')}
             >
               <BuildingIcon data-icon="inline-start" />
               {t('visits.title')}
@@ -205,17 +203,13 @@ const MedicationsPage = () => {
         </header>
       )}
 
-      {/* 對象切換是互斥的單選，用 ToggleGroup 而非一排各自 aria-pressed 的按鈕：
-          語意正確，且方向鍵可在群組內移動焦點。
-          userId 可能為 undefined（本人），以 'self' 當作群組內的識別值。 */}
-      <ToggleGroup
-        variant="primary"
-        className="mb-4 flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        value={[selectedUserId ?? 'self']}
-        onValueChange={(groupValue) => {
-          const next = groupValue[0];
-          if (next === undefined) return;
-          setSelectedUserId(next === 'self' ? selfUserId : next);
+      {/* 與掛號分頁共用；只有讀取權的對象，上方的新增與掃描入口不會渲染 */}
+      <ReminderTargetToggle
+        targets={targets}
+        selectedUserId={selectedUserId}
+        selfUserId={selfUserId}
+        onSelect={(userId) => {
+          setSelectedUserId(userId);
           // 切換照顧對象時，若還停在詳細設定畫面就要退回清單：詳細設定的
           // SlotEntryEditor 是依 selectedUserId 載入的藥品清單建構表單，
           // 留在原地換對象會讓使用者看著 A 的表單、儲存卻套用到 B 身上。
@@ -224,14 +218,7 @@ const MedicationsPage = () => {
             setDetailedSlot(undefined);
           }
         }}
-        aria-label={t('meds.targetLabel')}
-      >
-        {targets.map((target) => (
-          <ToggleGroupItem key={target.userId ?? 'self'} value={target.userId ?? 'self'}>
-            {target.name}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+      />
 
       {view === 'detailed' ? (
         <DetailedSetupView

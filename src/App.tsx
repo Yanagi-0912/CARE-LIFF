@@ -56,12 +56,12 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 /**
- * 舊的 /medications 轉到新位置。保留 query string：LIFF 深連結可能帶著
+ * 舊的 /medications 系列路徑轉到新位置。保留 query string：LIFF 深連結可能帶著
  * liff.state 之類的參數，丟掉會讓登入後跳回的流程失效。
  */
-function LegacyMedicationsRedirect() {
+function LegacyRedirect({ to }: { to: string }) {
   const { search } = useLocation();
-  return <Navigate to={{ pathname: '/reminders/medications', search }} replace />;
+  return <Navigate to={{ pathname: to, search }} replace />;
 }
 
 function AppContent() {
@@ -118,8 +118,18 @@ function AppContent() {
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
-            <Route path="/medications" element={<ProtectedRoute><MedicationsPage /></ProtectedRoute>} />
-            <Route path="/medications/visits" element={<ProtectedRoute><VisitsPage /></ProtectedRoute>} />
+            {/* 用藥與掛號收在同一個「提醒」分頁底下，子頁切換由 RemindersLayout 負責。
+                /reminders 本身與未知子路徑都由 layout 導回上次看的子頁。 */}
+            <Route path="/reminders" element={<ProtectedRoute><RemindersLayout /></ProtectedRoute>}>
+              <Route path="medications" element={<MedicationsPage />} />
+              {/* 看診紀錄從用藥頁進入，掛在用藥底下：底部導覽亮「提醒」、子分頁停在「用藥」 */}
+              <Route path="medications/visits" element={<VisitsPage />} />
+              <Route path="appointments" element={<AppointmentsPage />} />
+              <Route path="*" element={null} />
+            </Route>
+            {/* 舊路徑：Rich Menu 的「用藥提醒」格與既有書籤都還指著它 */}
+            <Route path="/medications" element={<LegacyRedirect to="/reminders/medications" />} />
+            <Route path="/medications/visits" element={<LegacyRedirect to="/reminders/medications/visits" />} />
             <Route path="/knowledge-reports" element={<ProtectedRoute><KnowledgeReportsPage /></ProtectedRoute>} />
             {/* 深連結：渲染同一個頁面元件，掛載時自動開啟回報表單。獨立頁面會
                 讓 LIFF webview 導頁重掛整個頁面、重打 API，長輩裝置上明顯卡頓 */}
