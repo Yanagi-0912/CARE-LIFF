@@ -103,7 +103,8 @@ function DecryptedTextInstance({
       .split('')
       .map((character, index) => {
         if (character === ' ' || currentRevealed.has(index)) return character;
-        const randomOffset = Math.floor(Math.random() * availableChars.length);
+        // 純視覺亂碼特效，不涉及任何安全決策，用 Math.random 即可（SonarCloud S2245）。
+        const randomOffset = Math.floor(Math.random() * availableChars.length); // NOSONAR
         return availableChars[
           (randomOffset + animationIteration + index) % availableChars.length
         ];

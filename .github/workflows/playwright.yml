@@ -14,15 +14,22 @@ jobs:
       with:
         node-version: lts/*
         cache: npm
+    # --ignore-scripts：CI 不需要任何套件的 lifecycle script（lockfile 裡唯一有
+    # install script 的是 macOS 專用的 fsevents），關掉可避免供應鏈套件在安裝
+    # 階段執行任意程式（SonarCloud S6505）。
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     # 只裝 playwright.config.ts 實際會用到的兩顆瀏覽器。
     # CARE 是 LIFF app，使用者一律在 LINE 內建 WebView（Android=Chromium、
     # iOS=WebKit），裝 Firefox 只是白白多花 CI 時間。
+    #
+    # 一律走 npm run 而不用 npx：npx 找不到套件時會臨時從 registry 下載並執行，
+    # 版本也不受 lockfile 約束（SonarCloud S6505、S8543）。npm run 只會用
+    # node_modules/.bin 裡 lockfile 鎖定的那一版。
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps chromium webkit
+      run: npm run test:e2e:install
     - name: Run Playwright tests
-      run: npx playwright test
+      run: npm run test:e2e
     - uses: actions/upload-artifact@v6
       if: ${{ !cancelled() }}
       with:

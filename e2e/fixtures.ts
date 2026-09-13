@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, type Page } from '@playwright/test';
 
 import { messages } from '../src/i18n/messages';
 
@@ -219,4 +219,4 @@ export const test = base.extend<Fixtures>({
   },
 });
 
-export { expect };
+export { expect } from '@playwright/test';
