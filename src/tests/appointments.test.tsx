@@ -913,6 +913,8 @@ describe('AppointmentsPage', () => {
     const pastList = await screen.findByLabelText('過去的門診');
     expect(within(pastList).getByText('8/25（週二）')).toBeInTheDocument();
     expect(within(pastList).getByText('已到診')).toBeInTheDocument();
+    // 醫師那一行要是翻譯過的文字，不能露出原始的 key
+    expect(within(pastList).getByText('心臟內科 · 林建宏 醫師')).toBeInTheDocument();
 
     fireEvent.click(within(pastList).getByRole('button', { name: '再掛一次：臺大醫院 心臟內科' }));
     const dialog = await screen.findByRole('dialog');

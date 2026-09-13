@@ -59,6 +59,7 @@ export const appointmentFeatureMessages: Record<SupportedLanguage, Record<string
     'appt.past.listLabel': '過去的門診',
     'appt.past.rebook': '再掛一次',
     'appt.past.rebookAria': '再掛一次：{{hospital}} {{department}}',
+    'appt.doctorLine': '{{name}} 醫師',
 
     'nav.reminders': '提醒',
     'sidebar.appointments': '掛號提醒',
@@ -215,6 +216,7 @@ export const appointmentFeatureMessages: Record<SupportedLanguage, Record<string
     'appt.past.listLabel': 'Past visits',
     'appt.past.rebook': 'Book again',
     'appt.past.rebookAria': 'Book again: {{hospital}} {{department}}',
+    'appt.doctorLine': 'Dr. {{name}}',
 
     'nav.reminders': 'Reminders',
     'sidebar.appointments': 'Appointment Reminders',
@@ -371,6 +373,7 @@ export const appointmentFeatureMessages: Record<SupportedLanguage, Record<string
     'appt.past.listLabel': 'Kunjungan sebelumnya',
     'appt.past.rebook': 'Daftar lagi',
     'appt.past.rebookAria': 'Daftar lagi: {{hospital}} {{department}}',
+    'appt.doctorLine': 'dr. {{name}}',
 
     'nav.reminders': 'Pengingat',
     'sidebar.appointments': 'Pengingat Janji Temu',
@@ -527,6 +530,7 @@ export const appointmentFeatureMessages: Record<SupportedLanguage, Record<string
     'appt.past.listLabel': 'Lịch khám đã qua',
     'appt.past.rebook': 'Đặt lại lịch',
     'appt.past.rebookAria': 'Đặt lại lịch: {{hospital}} {{department}}',
+    'appt.doctorLine': 'BS. {{name}}',
 
     'nav.reminders': 'Nhắc nhở',
     'sidebar.appointments': 'Nhắc lịch khám',
@@ -683,6 +687,7 @@ export const appointmentFeatureMessages: Record<SupportedLanguage, Record<string
     'appt.past.listLabel': 'นัดที่ผ่านมา',
     'appt.past.rebook': 'นัดอีกครั้ง',
     'appt.past.rebookAria': 'นัดอีกครั้ง: {{hospital}} {{department}}',
+    'appt.doctorLine': 'แพทย์ {{name}}',
 
     'nav.reminders': 'แจ้งเตือน',
     'sidebar.appointments': 'แจ้งเตือนนัดหมอ',
@@ -839,6 +844,7 @@ export const appointmentFeatureMessages: Record<SupportedLanguage, Record<string
     'appt.past.listLabel': '過去の受診',
     'appt.past.rebook': 'もう一度予約',
     'appt.past.rebookAria': 'もう一度予約：{{hospital}} {{department}}',
+    'appt.doctorLine': '{{name}} 医師',
 
     'nav.reminders': '通知',
     'sidebar.appointments': '通院リマインダー',

@@ -267,12 +267,13 @@ export function PastAppointmentCard({
           <StatusBadge status={reminder.status} />
         </div>
       </ItemContent>
+      {/* 動作放在內容下方整列：放在右側時，窄螢幕會把院所名稱、日期擠成好幾行 */}
       {canEdit && (
-        <ItemActions className="flex-wrap">
+        <ItemActions className="w-full flex-wrap">
           <Button
             type="button"
             variant="outline"
-            className="h-auto min-h-11 whitespace-normal"
+            className="h-auto min-h-11 flex-1 basis-36 whitespace-normal"
             disabled={busy}
             aria-label={t(attention ? 'appt.attention.rebookAria' : 'appt.past.rebookAria', {
               hospital: reminder.hospital_name,
@@ -290,7 +291,7 @@ export function PastAppointmentCard({
                 <Button
                   type="button"
                   variant="destructive"
-                  className="h-auto min-h-11 whitespace-normal"
+                  className="h-auto min-h-11 flex-1 basis-36 whitespace-normal"
                   disabled={busy}
                   aria-label={t('appt.past.deleteAria', which)}
                 />
