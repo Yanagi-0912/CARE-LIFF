@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
-import {
-  canManageMedications,
-  canReadGeneral,
-} from '../../utils/familyPermissions';
+import { canManageMedications } from '../../utils/familyPermissions';
+import { useReminderTargets } from '../Reminders/useReminderTargets';
+import { ReminderTargetToggle } from '../Reminders/ReminderTargetToggle';
 import type {
   MedicationReminder,
   MedicationSlotType,
@@ -27,24 +26,10 @@ import { toast } from 'sonner';
 import { BuildingIcon, PlusIcon, PillIcon, ScanLineIcon, TriangleAlertIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
+  Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
 } from '@/components/ui/empty';
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-
-/** 讀取本人 LINE userId；未登入時回 undefined（列表 API 省略參數即為本人） */
-function readSelfUserId(): string | undefined {
-  try {
-    return getLineUserId();
-  } catch {
-    return undefined;
-  }
-}
 
 const MedicationsPage = () => {
   const { t } = useTranslation();
@@ -67,30 +52,6 @@ const MedicationsPage = () => {
 
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
-
-  // 對象清單只列**讀得到用藥的**成員。列出沒有權限的人，使用者按下去只會
-  // 看到一片錯誤，而他無從得知那是壞掉還是不該按。
-  //
-  // `canWrite` 決定要不要顯示新增與掃描入口：只有讀取權的人看得到長輩吃什麼，
-  // 但不能替他改，那兩個按鈕對他而言按下去必定 403。
-  const targets = useMemo(
-    () => [
-      { userId: selfUserId, name: t('meds.self'), canWrite: true },
-      ...members
-        .filter((member) => canReadGeneral(member))
-        .map((member) => ({
-          userId: member.user_id as string | undefined,
-          name: member.display_name || t('family.unset'),
-          canWrite: canManageMedications(member),
-        })),
-    ],
-    [selfUserId, members, t],
-  );
-
-  const selectedTarget = targets.find((target) => target.userId === selectedUserId);
-  const selectedName = selectedTarget?.name ?? t('meds.self');
-  // 找不到對象時保守處理：可能是剛被降級、清單還沒重抓。
-  const canEditSelected = selectedTarget?.canWrite ?? false;
 
   const existingSlots = useMemo<MedicationSlotType[]>(
     () => reminders.map((reminder) => reminder.slot_type),

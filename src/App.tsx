@@ -7,12 +7,7 @@ import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 import AdminRoute from './components/AdminRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import {
-  applyTheme,
-  defaultSettings,
-  STORAGE_KEY,
-  type SettingsState,
-} from '@/lib/settings';
+import { applyTheme, defaultSettings, STORAGE_KEY, type SettingsState } from '@/lib/settings';
 
 // 各頁改為動態載入：原本 12 個頁面全部打包進單一 JS，使用者只想看首頁
 // 也得先下載並解析全部內容。這對跑在 LINE webview、裝置偏舊的長輩使用者
@@ -24,8 +19,10 @@ const JoinPage = lazy(() => import('./pages/Join'));
 const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultRecords'));
 const KnowledgeReportsPage = lazy(() => import('./pages/KnowledgeReports'));
 const AdminKnowledgeReportsPage = lazy(() => import('./pages/AdminKnowledgeReports'));
+const RemindersLayout = lazy(() => import('./pages/Reminders'));
 const MedicationsPage = lazy(() => import('./pages/Medications'));
 const VisitsPage = lazy(() => import('./pages/Medications/Visits'));
+const AppointmentsPage = lazy(() => import('./pages/Appointments'));
 const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Loginpage'));
@@ -56,6 +53,15 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+/**
+ * 舊的 /medications 轉到新位置。保留 query string：LIFF 深連結可能帶著
+ * liff.state 之類的參數，丟掉會讓登入後跳回的流程失效。
+ */
+function LegacyMedicationsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/reminders/medications', search }} replace />;
 }
 
 function AppContent() {

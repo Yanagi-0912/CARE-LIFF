@@ -11,7 +11,10 @@ function BottomNav() {
   const tabs = [
     { key: '/', label: t('nav.home'), icon: <HomeIcon /> },
     { key: '/personalhealth', label: t('nav.health'), icon: <HealthIcon /> },
-    { key: '/medications', label: t('nav.meds'), icon: <PillIcon /> },
+    // 用藥與掛號合成一格「提醒」，進去再分兩個子頁（見 pages/Reminders）。
+    // 第六格放不下：每格文字區只剩約 38px，印尼／泰／越文的標籤會壓到隔壁格。
+    // 圖示沿用藥丸，既有使用者認得這一格的位置與樣子。
+    { key: '/reminders', label: t('nav.reminders'), icon: <PillIcon /> },
     { key: '/family', label: t('nav.family'), icon: <FamilyIcon /> },
     { key: '/settings', label: t('nav.settings'), icon: <SettingsIcon /> },
   ];

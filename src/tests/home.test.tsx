@@ -86,6 +86,12 @@ describe('Home Page Component', () => {
     fireEvent.click(familyButton!);
     expect(mockNavigate).toHaveBeenCalledWith('/family');
 
+    // 用藥與掛號都收在「提醒」分頁底下，卡片直接進對應的子頁
+    fireEvent.click(screen.getByText('用藥提醒').closest('button')!);
+    expect(mockNavigate).toHaveBeenCalledWith('/reminders/medications');
+    fireEvent.click(screen.getByText('掛號提醒').closest('button')!);
+    expect(mockNavigate).toHaveBeenCalledWith('/reminders/appointments');
+
     // 測試點擊「知識回報」
     const reportButton = screen.getByText('知識回報').closest('button');
     fireEvent.click(reportButton!);

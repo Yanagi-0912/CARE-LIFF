@@ -39,6 +39,15 @@ export const queryKeys = {
       失效時機也不同（只有掃藥袋提交後才會變）。 */
   medicationVisits: (targetUserId?: string) =>
     ['medication-visits', targetUserId ?? 'self'] as const,
+  /** 掛號提醒，與用藥同一慣例：對象要進 key，切換對象才不會沿用上一個人的清單。
+      即將到來與過去是兩個查詢，共用這個前綴，失效時一次涵蓋兩者。 */
+  appointments: (targetUserId?: string) => ['appointments', targetUserId ?? 'self'] as const,
+  appointmentsUpcoming: (targetUserId?: string) =>
+    ['appointments', targetUserId ?? 'self', 'upcoming'] as const,
+  appointmentsPast: (targetUserId?: string) =>
+    ['appointments', targetUserId ?? 'self', 'past'] as const,
+  /** 單一院所（編輯掛號提醒時重抓門診時段用） */
+  facility: (facilityId: string) => ['facility', facilityId] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
   prescriptionScanEnabled: ['prescription-scan-enabled'] as const,
   knowledgeReports: ['knowledge-reports'] as const,
