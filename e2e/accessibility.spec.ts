@@ -168,6 +168,19 @@ async function openPage(page: Page, path: string) {
   await expect(
     page.getByRole('main').locator(INTERACTIVE_SELECTOR).first(),
   ).toBeVisible();
+  // 「可見」不等於「畫完」：首頁卡片掛 animate-in fade-in（起始 opacity 0），
+  // toBeVisible 不看 opacity，但下面的掃描會把 opacity 0 的元素當隱藏跳過。
+  // WebKit 慢一點時，掃描落在動畫剛開始的那一刻，六張卡片全被跳過、
+  // scannedInMain 是 0——CI 上 mobile-safari 就是這樣間歇失敗。等有限次數
+  // 的動畫跑完再量；無限循環的（spinner）不等，否則永遠等不到。
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
 }
 
 /** 版面有沒有橫向溢出。手機上橫向捲動等於內容被切掉。 */
