@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, seedLiffMock, t, test } from './fixtures';
+import { stubKnowledgeReports } from './stubs';
 
 /**
  * 高齡可讀性守門。
@@ -381,5 +382,17 @@ test.describe('手機直式與桌面版面', () => {
     await authedPage.setViewportSize({ width: 1280, height: 900 });
     await expect(authedPage.getByRole('complementary')).toBeVisible();
     await expect(authedPage.getByRole('navigation', { name: '主要導覽' })).toBeHidden();
+  });
+});
+
+test.describe('對話框的內建關閉鈕', () => {
+  test('無障礙名稱跟著語系，不是寫死的英文 Close', async ({ authedPage }) => {
+    await stubKnowledgeReports(authedPage, []);
+    await authedPage.goto('/knowledge-reports/new');
+
+    const dialog = authedPage.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: t('common.close'), exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
   });
 });

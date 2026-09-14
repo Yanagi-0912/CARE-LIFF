@@ -147,7 +147,10 @@ export function ReminderFormDialog({
             （CSS Overflow 規範：兩軸只要一軸非 visible，另一軸的 visible 就變 auto），
             那會讓任何 1px 的橫向溢出變成裁切右緣＋長出水平 scrollbar。 */}
         <ScrollArea>
-          <form id={FORM_ID} onSubmit={(e) => void submit(e)}>
+          {/* noValidate：日期與時間一律交給 zod 檢查。結束日期的 min 只當日期選擇器的
+              提示；原生約束驗證若開著，會搶在 zod 之前擋下送出、只跳瀏覽器自己的
+              英文氣泡，dateOrderError 永遠到不了畫面。 */}
+          <form id={FORM_ID} noValidate onSubmit={(e) => void submit(e)}>
             <FieldGroup>
               {/* 複選欄位交給 Controller 管理陣列值 */}
               <Controller

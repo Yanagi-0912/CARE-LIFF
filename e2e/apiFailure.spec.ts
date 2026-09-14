@@ -99,11 +99,6 @@ test.describe('正常路徑下 console 不得出現錯誤', () => {
 
   for (const path of PAGES) {
     test(`${path}`, async ({ authedPage }) => {
-      if (path === '/nearby-hospitals') {
-        // 已知 bug：FacilityCard 的「撥打電話」「導航前往」用 <Button render={<a/>}>
-        // 卻沒設 nativeButton={false}，Base UI 每張卡片都往 console 丟 error。
-        test.fail(true, '已知 bug：FacilityCard 的連結型 Button 缺 nativeButton={false}');
-      }
       await seedLiffMock(authedPage, { isLoggedIn: true, isInClient: true, getIDToken: 'tok' });
       await stubLiffLogin(authedPage, { access_token: 'e2e-mock-access-token', line_user_id: LINE_USER_ID });
       await stubEverything(authedPage);

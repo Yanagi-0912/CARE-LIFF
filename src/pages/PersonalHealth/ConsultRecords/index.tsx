@@ -482,10 +482,10 @@ const ConsultRecordsPage: React.FC = () => {
             </Tabs>
             )}
 
-            {/* 手機滿版、桌機收成內容寬度。
+            {/* 手機滿版、桌機收成內容寬度；並排放不下時換行（特大字級 768px 就放不下）。
                 下載端點是本人限定（後端只認 downloadToken 裡的 user id），
                 查看家人時直接不顯示，而不是留一顆按下去必定失敗的按鈕。 */}
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 {!isViewingFamily && (
                     <Button
                         type="button"
@@ -515,7 +515,7 @@ const ConsultRecordsPage: React.FC = () => {
 
             {/* Dialog 取代原本手刻的遮罩＋div[role=dialog]：
                 焦點鎖定、Escape 關閉、關閉後焦點歸位、背景鎖捲皆由元件提供。
-                關閉鈕自己掛：內建那顆的 sr-only 文字寫死英文 "Close"。 */}
+                關閉鈕自己掛，用本頁的 consultRecord.closeModal 文案。 */}
             <Dialog open={selectedMessage !== null} onOpenChange={(open) => !open && setSelectedMessage(null)}>
                 <DialogContent
                     // 只讓內文捲動，否則 absolute 定位的關閉鈕會跟著捲走

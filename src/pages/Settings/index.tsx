@@ -224,12 +224,12 @@ const SettingsPage: React.FC = () => {
     navigate('/login');
   };
 
+  // 後端同步不能寫在 setSettings 的 updater 裡：updater 必須是純函式，
+  // StrictMode（dev）會把它執行兩次，每點一次開關就送出兩筆一樣的 PATCH。
   const toggle = (key: keyof typeof toggleFieldMap) => {
-    setSettings((prev) => {
-      const nextValue = !prev[key];
-      persistSettings({ [toggleFieldMap[key]]: nextValue });
-      return { ...prev, [key]: nextValue };
-    });
+    const nextValue = !settings[key];
+    setSettings((prev) => ({ ...prev, [key]: nextValue }));
+    persistSettings({ [toggleFieldMap[key]]: nextValue });
   };
 
   return (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import liff, { LIFF_AVAILABLE, initLiff } from '../../lib/liffClient'
 import { loginWithLiffIdToken } from '../../api/authApi'
@@ -18,14 +19,17 @@ import { Card, CardContent } from '@/components/ui/card'
 
 
 function LoginPage() {
+	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const location = useLocation()
 	const { markAuthenticated } = useLiffAuth()
-	const [statusText, setStatusText] = useState('正在初始化 LINE 登入...')
+	const [statusText, setStatusText] = useState(() => t('login.initializing'))
 	const [errorText, setErrorText] = useState('')
-	// 使用者主動登出後停在這裡等他自己按登入，不自動跳 LINE 授權頁
+	// 使用者主動登出、或登入失敗時停在這裡等他自己按登入，不自動跳 LINE 授權頁
 	const [needsManualLogin, setNeedsManualLogin] = useState(false)
 	const cancelledRef = useRef(false)
+	// liff.init() 成功過沒有：重試時若上一次連 init 都失敗，要先補做一次
+	const liffReadyRef = useRef(false)
 
 	useEffect(() => {
 		cancelledRef.current = false
@@ -33,6 +37,14 @@ function LoginPage() {
 			cancelledRef.current = true
 		}
 	}, [])
+
+	// 任何一步失敗都落到同一個畫面：狀態文字換成失敗說明（不能還掛著「登入成功」），
+	// 技術細節放錯誤框，並給一顆重新登入鈕——否則使用者只能關掉 LIFF 重開。
+	const showLoginFailure = useCallback((error: unknown) => {
+		setStatusText(t('login.failed'))
+		setErrorText(error instanceof Error ? error.message : '')
+		setNeedsManualLogin(true)
+	}, [t])
 
 	// liff.init() 之後的登入流程。自動流程與「重新登入」按鈕共用。
 	const runLogin = useCallback(async () => {
@@ -43,7 +55,7 @@ function LoginPage() {
 		}
 
 		if (!liff.isLoggedIn()) {
-			setStatusText('正在導向 LINE 官方登入頁...')
+			setStatusText(t('login.redirecting'))
 			const pending = fromQuery || peekRedirectUrl()
 			if (pending) {
 				saveRedirectUrl(pending)
@@ -58,11 +70,10 @@ function LoginPage() {
 
 		const idToken = liff.getIDToken()
 		if (!idToken) {
-			setErrorText('無法取得 LIFF ID token，請重新登入。')
-			return
+			throw new Error(t('login.noIdToken'))
 		}
 
-		setStatusText('登入成功，正在驗證身份...')
+		setStatusText(t('login.verifying'))
 		const authResult = await loginWithLiffIdToken(idToken)
 		if (cancelledRef.current) return
 		localStorage.setItem('CARE_AUTH_TOKEN', authResult.access_token)
@@ -70,30 +81,33 @@ function LoginPage() {
 		// 同步全域狀態，否則 ProtectedRoute 仍以為未登入，會把人踢回 /login
 		markAuthenticated()
 
-		setStatusText('驗證成功，正在返回...')
+		setStatusText(t('login.success'))
 		const redirectUrl = fromQuery || consumeRedirectUrl()
 		if (redirectUrl) {
 			navigate(resolveAppPath(redirectUrl), { replace: true })
 		} else {
 			navigate('/', { replace: true })
 		}
-	}, [location.search, navigate, markAuthenticated])
+	}, [location.search, navigate, markAuthenticated, t])
 
 	useEffect(() => {
 		// 區域函式名稱避開 lib/liffClient 的 initLiff（原本同名會把 import 遮掉）
 		const bootstrapAndLogin = async () => {
 			if (!LIFF_AVAILABLE) {
-				setErrorText('尚未設定 VITE_LIFF_ID，請先完成前端環境變數設定。')
+				// 設定問題，重試也沒用，所以不給按鈕；狀態文字清掉，免得還顯示「正在初始化」
+				setStatusText('')
+				setErrorText(t('login.notConfigured'))
 				return
 			}
 
 			try {
 				await initLiff()
+				liffReadyRef.current = true
 				if (cancelledRef.current) return
 
 				// 剛登出就別再自動換發 token 了，否則使用者會被瞬間登回去
 				if (hasLoggedOut()) {
-					setStatusText('您已登出，需要時可重新登入。')
+					setStatusText(t('login.loggedOut'))
 					setNeedsManualLogin(true)
 					return
 				}
@@ -101,24 +115,27 @@ function LoginPage() {
 				await runLogin()
 			} catch (error) {
 				if (cancelledRef.current) return
-				setErrorText(error instanceof Error ? error.message : 'LIFF 初始化失敗，請稍後再試。')
+				showLoginFailure(error)
 			}
 		}
 
 		void bootstrapAndLogin()
-	}, [runLogin])
+	}, [runLogin, showLoginFailure, t])
 
 	const handleManualLogin = async () => {
 		clearLoggedOutFlag()
 		setNeedsManualLogin(false)
 		setErrorText('')
-		setStatusText('正在導向 LINE 官方登入頁...')
+		setStatusText(t('login.redirecting'))
 		try {
+			if (!liffReadyRef.current) {
+				await initLiff()
+				liffReadyRef.current = true
+			}
 			await runLogin()
 		} catch (error) {
 			if (cancelledRef.current) return
-			setErrorText(error instanceof Error ? error.message : '登入失敗，請稍後再試。')
-			setNeedsManualLogin(true)
+			showLoginFailure(error)
 		}
 	}
 
@@ -126,11 +143,11 @@ function LoginPage() {
 		<Card className="animate-in fade-in slide-in-from-bottom-2 duration-300 mx-auto mt-14 max-w-[420px]">
 			<CardContent className="flex flex-col gap-4 text-center">
 				<Heartbeat tone="onLight" className="mx-auto max-w-[220px]" />
-				<h2 className="text-2xl font-extrabold">登入 CARE</h2>
-				<p className="text-muted-foreground">{statusText}</p>
+				<h2 className="text-2xl font-extrabold">{t('login.title')}</h2>
+				{statusText && <p className="text-muted-foreground">{statusText}</p>}
 				{needsManualLogin && (
 					<Button className="w-full rounded-full" onClick={() => void handleManualLogin()}>
-						使用 LINE 重新登入
+						{t('login.relogin')}
 					</Button>
 				)}
 				{errorText && (

@@ -11,7 +11,7 @@ import {
   shouldShowNextOpen,
 } from './businessStatus';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
@@ -185,20 +185,23 @@ export default function FacilityCard({ facility }: { facility: MedicalFacility }
 
         <ClinicHours facility={facility} />
 
+        {/* 兩顆都是連結（撥號、開地圖），直接用 <a> 套按鈕外觀，不經過 Button：
+            Button 以 render 換成 <a> 時，nativeButton 為 true 會對每張卡片丟 console.error，
+            設成 false 又會被補上 role="button"，兩種寫法都保不住連結語意。 */}
         <div className="flex flex-wrap gap-2">
           {phoneHref && (
-            <Button size="sm" variant="outline" render={<a href={phoneHref} />}>
+            <a href={phoneHref} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
               {t('nearby.call')}
-            </Button>
+            </a>
           )}
-          <Button
-            size="sm"
-            render={
-              <a href={navigationUrl(facility)} target="_blank" rel="noreferrer" />
-            }
+          <a
+            href={navigationUrl(facility)}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ size: 'sm' })}
           >
             {t('nearby.navigate')}
-          </Button>
+          </a>
         </div>
       </CardContent>
     </Card>

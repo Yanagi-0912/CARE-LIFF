@@ -296,9 +296,11 @@ function KnowledgeReportsPage() {
           >
             {/* 分類一律用自然寬度（flex-none）：這個 App 有六種語言，
                 讓它們平分寬度的話較長的語系會被截成「待審…」。
-                放不下時整條橫向捲動，而不是把字切掉。 */}
+                放不下時整條橫向捲動，而不是把字切掉。
+                ≥640px 的 w-fit 要配 max-w-full：少了它 TabsList 不受外層寬度限制，
+                overflow-x-auto 永遠不會觸發，放不下時直接撐破頁面、壓到排序選單。 */}
             <TabsList
-              className="w-full justify-start overflow-x-auto min-[640px]:w-fit [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="w-full max-w-full justify-start overflow-x-auto min-[640px]:w-fit [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               aria-label={t('knowledgeReports.filterLabel')}
             >
               {filters.map((filter) => (

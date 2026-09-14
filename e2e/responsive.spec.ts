@@ -72,21 +72,6 @@ const KNOWN_OVERFLOW = [
     width: 375,
     reason: '頁首右側「看診紀錄」「掃描藥袋」「新增」三顆按鈕的容器是 shrink-0 且不換行，24px 字級下寬 506px，頁面多 131px 橫向捲動；「新增」被推到視窗外',
   },
-  {
-    path: '/family',
-    width: 375,
-    reason: '成員卡片「您沒有查看這位家人資料的權限」徽章是 whitespace-nowrap 的 Badge，24px 字級下寬 302px，頁面多 50px 橫向捲動',
-  },
-  {
-    path: '/knowledge-reports',
-    width: 768,
-    reason: '篩選 TabsList 在 ≥640px 改為 w-fit，四個分頁+徽章寬 526px 超出側欄旁的內容欄，與排序 Select 重疊並撐出 22px 橫向捲動',
-  },
-  {
-    path: '/personalhealth/consult',
-    width: 768,
-    reason: '底部「下載所有摘要」「返回個人健康資料」在 sm 以上改成 flex-row 但不換行，內容欄放不下時溢出 4px',
-  },
 ] as const;
 
 const VIEWPORTS = [
@@ -178,9 +163,6 @@ test.describe('手機直式 375px 的 dialog', () => {
   });
 
   test('知識回報表單 dialog 在視窗內', async ({ authedPage }) => {
-    // 已知 bug：ReportFormDialog 沒有像其他 dialog 那樣設 max-h-[calc(100dvh-2rem)]
-    // 與內容區捲動，特大字級下高 791px > 667px，置中後標題與關閉鈕跑到視窗上方。
-    test.fail(true, '已知 bug：回報表單 dialog 沒有限高，特大字級在 375px 手機上被切掉');
     await authedPage.goto('/knowledge-reports/new');
     await expectDialogFits(authedPage);
   });

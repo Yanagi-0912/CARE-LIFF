@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyInvite, acceptInvite } from '../../api/familyApi';
 import { isAuthenticated } from '../../utils/auth';
 import { saveRedirectUrl } from '../../utils/redirect';
@@ -24,7 +25,9 @@ import { Spinner } from '@/components/ui/spinner';
 type PageState = 'verifying' | 'preview' | 'error' | 'already_member' | 'success';
 
 const JoinPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
 
@@ -32,13 +35,17 @@ const JoinPage: React.FC = () => {
   const [outcome, setOutcome] = useState<'already_member' | 'success' | null>(null);
   const [acceptError, setAcceptError] = useState<string>('');
 
-  // 未登入先導向登入頁（保留深連結）
+  // 未登入先導向登入頁（保留深連結）。
+  // 回跳網址取 render 當下的 location，不讀 window.location：StrictMode（dev）會把
+  // effect 跑兩次，第二次時網址已被第一次的 navigate 換成 /login。
+  // 導向時也帶 ?redirect=（同 ProtectedRoute）：LIFF OAuth 回來時 sessionStorage 可能已被清掉。
   useEffect(() => {
     if (!isAuthenticated()) {
-      saveRedirectUrl(window.location.href);
-      navigate('/login', { replace: true });
+      const target = `${location.pathname}${location.search}`;
+      saveRedirectUrl(target);
+      navigate(`/login?redirect=${encodeURIComponent(target)}`, { replace: true });
     }
-  }, [navigate]);
+  }, [location.pathname, location.search, navigate]);
 
   const inviteQuery = useQuery({
     queryKey: queryKeys.inviteVerification(code ?? ''),
@@ -60,7 +67,7 @@ const JoinPage: React.FC = () => {
       }
     },
     onError: (err: unknown) => {
-      setAcceptError(err instanceof Error ? err.message : '加入家族失敗');
+      setAcceptError(err instanceof Error ? err.message : t('family.join.error'));
     },
   });
 
@@ -72,11 +79,11 @@ const JoinPage: React.FC = () => {
     const err = inviteQuery.error;
     if (!err) return '';
     const message = err instanceof Error ? err.message : '';
-    if (message.includes('410') || message.includes('失效')) return '連結已失效或過期';
-    return message || '驗證邀請碼失敗';
+    if (message.includes('410') || message.includes('失效')) return t('family.join.expired');
+    return message || t('family.join.verifyError');
   })();
 
-  const error = acceptError || verifyErrorMessage || (!code ? '無效的邀請連結' : '');
+  const error = acceptError || verifyErrorMessage || (!code ? t('family.join.invalidCode') : '');
 
   const state: PageState = outcome
     ? outcome
@@ -112,7 +119,7 @@ const JoinPage: React.FC = () => {
                 <EmptyMedia>
                   <Spinner className="size-8" />
                 </EmptyMedia>
-                <EmptyTitle>正在驗證邀請資訊...</EmptyTitle>
+                <EmptyTitle>{t('family.join.processing')}</EmptyTitle>
               </EmptyHeader>
             </Empty>
           ) : state === 'preview' ? (
@@ -122,19 +129,21 @@ const JoinPage: React.FC = () => {
                   {inviteInfo?.inviter_display_name?.charAt(0) || '?'}
                 </AvatarFallback>
               </Avatar>
-              <h1 className="text-xl font-extrabold">家族邀請</h1>
+              <h1 className="text-xl font-extrabold">{t('family.join.title')}</h1>
+              {/* 名字與後半句分開放，才能單獨替名字加底線；六種語言都是
+                  「邀請人在前、動詞片語在後」的語序，拆開讀起來不會倒裝。 */}
               <p className="leading-relaxed text-muted-foreground">
                 <span className="font-bold text-foreground underline decoration-primary underline-offset-4">
                   {inviteInfo?.inviter_display_name}
                 </span>
-                {' '}邀請您加入他的家族族譜。
+                {' '}{t('family.join.invitedYou')}
               </p>
               <div className="flex w-full flex-col gap-2">
                 <Button type="button" size="lg" onClick={handleAccept} disabled={isAccepting}>
-                  {isAccepting ? '加入中...' : '確認加入'}
+                  {isAccepting ? t('family.join.accepting') : t('family.join.accept')}
                 </Button>
                 <Button type="button" variant="ghost" onClick={handleCancel}>
-                  取消
+                  {t('family.join.cancel')}
                 </Button>
               </div>
             </div>
@@ -144,12 +153,12 @@ const JoinPage: React.FC = () => {
                 <EmptyMedia variant="icon">
                   <InfoIcon />
                 </EmptyMedia>
-                <EmptyTitle>已是成員</EmptyTitle>
-                <EmptyDescription>您已經在此家族成員名單中。</EmptyDescription>
+                <EmptyTitle>{t('family.join.alreadyMemberTitle')}</EmptyTitle>
+                <EmptyDescription>{t('family.join.alreadyMemberDesc')}</EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <Button type="button" className="w-full" onClick={() => navigate('/family')}>
-                  前往家族頁面
+                  {t('family.join.goFamily')}
                 </Button>
               </EmptyContent>
             </Empty>
@@ -159,8 +168,8 @@ const JoinPage: React.FC = () => {
                 <EmptyMedia variant="icon" className="bg-success-soft text-success">
                   <CheckIcon />
                 </EmptyMedia>
-                <EmptyTitle>加入成功！</EmptyTitle>
-                <EmptyDescription>正在為您導向家族頁面...</EmptyDescription>
+                <EmptyTitle>{t('family.join.successTitle')}</EmptyTitle>
+                <EmptyDescription>{t('family.join.success')}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
@@ -169,12 +178,12 @@ const JoinPage: React.FC = () => {
                 <EmptyMedia variant="icon" className="bg-destructive-soft text-destructive">
                   <XIcon />
                 </EmptyMedia>
-                <EmptyTitle>連結無效</EmptyTitle>
+                <EmptyTitle>{t('family.join.invalidTitle')}</EmptyTitle>
                 <EmptyDescription>{error}</EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <Button type="button" className="w-full" onClick={() => navigate('/')}>
-                  回首頁
+                  {t('common.backHome')}
                 </Button>
               </EmptyContent>
             </Empty>

@@ -239,7 +239,9 @@ export function ReminderEditDialog({
             那會讓任何 1px 的橫向溢出變成裁切邊緣＋長出水平 scrollbar。
             新增提醒 dialog 已驗證過同一模式，這裡保持一致。 */}
         <ScrollArea>
-          <form id={FORM_ID} onSubmit={(e) => void submit(e)}>
+          {/* noValidate：理由同 ReminderFormDialog——結束日期的 min 只當提示，
+              先後順序交給 zod，才顯示得出 dateOrderError。 */}
+          <form id={FORM_ID} noValidate onSubmit={(e) => void submit(e)}>
             <FieldGroup>
               {/* 時段從唯讀改為可改。時段唯讀而時間可改時，使用者做得出
                   「早上 21:00」這種自相矛盾的提醒——推播文案說的是「早上該吃
