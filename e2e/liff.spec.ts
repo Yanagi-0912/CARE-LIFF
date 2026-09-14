@@ -88,10 +88,10 @@ test.describe('登入頁換發失敗', () => {
     await anonymousPage.goto('/settings');
 
     await expect(anonymousPage).toHaveURL(/\/login(\?|$)/);
-    const retry = anonymousPage.getByRole('button', { name: '使用 LINE 重新登入' });
+    const retry = anonymousPage.getByRole('button', { name: t('login.relogin') });
     await expect(retry).toBeVisible();
-    await expect(anonymousPage.getByText('登入沒有完成，請再試一次。')).toBeVisible();
-    await expect(anonymousPage.getByText('登入成功，正在驗證身份...')).toHaveCount(0);
+    await expect(anonymousPage.getByText(t('login.failed'))).toBeVisible();
+    await expect(anonymousPage.getByText(t('login.verifying'))).toHaveCount(0);
 
     // 後端恢復後按重新登入：換到憑證，並回到原本要去的頁面
     await stubLiffLogin(anonymousPage, { access_token: SERVER_TOKEN, line_user_id: LINE_USER_ID });
@@ -160,7 +160,7 @@ test.describe('主動登出後不得自動登回去', () => {
     await expect(authedPage).toHaveURL(/\/login(\?|$)/);
     // 停在這裡等使用者自己按，不自動跳 LINE 授權頁
     await expect(
-      authedPage.getByRole('button', { name: '使用 LINE 重新登入' }),
+      authedPage.getByRole('button', { name: t('login.relogin') }),
     ).toBeVisible();
 
     await expect
@@ -177,7 +177,7 @@ test.describe('主動登出後不得自動登回去', () => {
 
     await authedPage.goto('/settings');
     await authedPage.getByRole('button', { name: t('settings.logout') }).click();
-    await authedPage.getByRole('button', { name: '使用 LINE 重新登入' }).click();
+    await authedPage.getByRole('button', { name: t('login.relogin') }).click();
 
     await expect
       .poll(() => authedPage.evaluate(() => localStorage.getItem('CARE_AUTH_TOKEN')))

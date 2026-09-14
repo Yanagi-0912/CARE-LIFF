@@ -1,13 +1,9 @@
-import { expect, test } from './fixtures';
+import { expect, t, test } from './fixtures';
 import { stubApi } from './stubs';
 
 /**
  * 加入家庭（/join?code=…）：驗證中→預覽→接受→成功／已是成員／失敗，
  * 以及沒有 code、code 失效、未登入三種入口錯誤。
- *
- * 注意：這一頁的文案目前寫死在元件裡（src/pages/Join/index.tsx），沒有走
- * i18n，雖然 messages.ts 已經有 family.join.* 這組 key。這裡只能比對中文字串；
- * 等頁面改回 i18n 後請換成 t('family.join.…')。
  */
 
 const CODE = 'abc123';
@@ -17,9 +13,9 @@ test.describe('加入家庭', () => {
   test('沒有邀請碼直接顯示連結無效，回首頁鈕可用', async ({ authedPage }) => {
     await authedPage.goto('/join');
 
-    await expect(authedPage.getByText('連結無效')).toBeVisible();
-    await expect(authedPage.getByText('無效的邀請連結')).toBeVisible();
-    await authedPage.getByRole('button', { name: '回首頁' }).click();
+    await expect(authedPage.getByText(t('family.join.invalidTitle'))).toBeVisible();
+    await expect(authedPage.getByText(t('family.join.invalidCode'))).toBeVisible();
+    await authedPage.getByRole('button', { name: t('common.backHome') }).click();
     await expect(authedPage).toHaveURL(/\/$/);
   });
 
@@ -57,13 +53,13 @@ test.describe('加入家庭', () => {
 
     await authedPage.goto(`/join?code=${CODE}`);
 
-    await expect(authedPage.getByText('正在驗證邀請資訊...')).toBeVisible();
-    await expect(authedPage.getByText('家族邀請')).toBeVisible({ timeout: 5000 });
+    await expect(authedPage.getByText(t('family.join.processing'))).toBeVisible();
+    await expect(authedPage.getByText(t('family.join.title'))).toBeVisible({ timeout: 5000 });
     await expect(authedPage.getByText(INVITER.inviter_display_name)).toBeVisible();
 
-    await authedPage.getByRole('button', { name: '確認加入' }).click();
+    await authedPage.getByRole('button', { name: t('family.join.accept') }).click();
 
-    await expect(authedPage.getByText('加入成功！')).toBeVisible();
+    await expect(authedPage.getByText(t('family.join.successTitle'))).toBeVisible();
     expect(accepts[0].body).toEqual({ code: CODE });
     // 成功後 1.5 秒自動導向家庭頁
     await expect(authedPage).toHaveURL(/\/family$/, { timeout: 5000 });
@@ -82,10 +78,10 @@ test.describe('加入家庭', () => {
     });
 
     await authedPage.goto(`/join?code=${CODE}`);
-    await authedPage.getByRole('button', { name: '確認加入' }).click();
+    await authedPage.getByRole('button', { name: t('family.join.accept') }).click();
 
-    await expect(authedPage.getByText('已是成員')).toBeVisible();
-    await authedPage.getByRole('button', { name: '前往家族頁面' }).click();
+    await expect(authedPage.getByText(t('family.join.alreadyMemberTitle'))).toBeVisible();
+    await authedPage.getByRole('button', { name: t('family.join.goFamily') }).click();
     await expect(authedPage).toHaveURL(/\/family$/);
   });
 
@@ -98,8 +94,8 @@ test.describe('加入家庭', () => {
 
     await authedPage.goto(`/join?code=${CODE}`);
 
-    await expect(authedPage.getByText('連結無效')).toBeVisible();
-    await expect(authedPage.getByText('連結已失效或過期')).toBeVisible();
+    await expect(authedPage.getByText(t('family.join.invalidTitle'))).toBeVisible();
+    await expect(authedPage.getByText(t('family.join.expired'))).toBeVisible();
   });
 
   test('接受失敗時顯示後端錯誤訊息', async ({ authedPage }) => {
@@ -112,7 +108,7 @@ test.describe('加入家庭', () => {
     });
 
     await authedPage.goto(`/join?code=${CODE}`);
-    await authedPage.getByRole('button', { name: '確認加入' }).click();
+    await authedPage.getByRole('button', { name: t('family.join.accept') }).click();
 
     await expect(authedPage.getByText('無法加入自己的家族')).toBeVisible();
   });
@@ -121,7 +117,7 @@ test.describe('加入家庭', () => {
     await stubApi(authedPage, { path: `/api/family/invites/verify/${CODE}`, body: INVITER });
 
     await authedPage.goto(`/join?code=${CODE}`);
-    await authedPage.getByRole('button', { name: '取消' }).click();
+    await authedPage.getByRole('button', { name: t('family.join.cancel') }).click();
 
     await expect(authedPage).toHaveURL(/\/$/);
   });
