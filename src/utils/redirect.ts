@@ -1,11 +1,20 @@
 const REDIRECT_URL_KEY = 'CARE_REDIRECT_URL';
 
 /**
- * 儲存登入前的網址，以便登入後跳轉回來
+ * 是否指向登入頁本身。相對路徑、同站完整網址、liff.line.me 深連結都先換算成
+ * App 路徑再比對——只比對字串擋得住 '/login'，擋不住 'https://…/login'。
+ */
+function isLoginPath(url: string): boolean {
+  return resolveAppPath(url).split('?')[0] === '/login';
+}
+
+/**
+ * 儲存登入前的網址，以便登入後跳轉回來。
+ * 指向登入頁的一律忽略：回跳到登入頁沒有意義，還會蓋掉真正要回去的深連結。
  */
 export function saveRedirectUrl(url: string) {
   const normalized = (url || '').trim();
-  if (!normalized || normalized === '/login' || normalized.startsWith('/login?')) {
+  if (!normalized || isLoginPath(normalized)) {
     return;
   }
   sessionStorage.setItem(REDIRECT_URL_KEY, normalized);
@@ -33,7 +42,7 @@ export function redirectFromSearch(search: string): string | null {
   try {
     const decoded = decodeURIComponent(raw);
     if (!decoded.startsWith('/') || decoded.startsWith('//')) return null;
-    if (decoded === '/login' || decoded.startsWith('/login?')) return null;
+    if (isLoginPath(decoded)) return null;
     return decoded;
   } catch {
     return null;

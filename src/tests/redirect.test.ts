@@ -45,6 +45,19 @@ describe('save/consumeRedirectUrl', () => {
     saveRedirectUrl('/login');
     expect(peekRedirectUrl()).toBeNull();
   });
+
+  it('完整網址或 liff.line.me 深連結指向 /login 也要擋，不能蓋掉已存的深連結', () => {
+    saveRedirectUrl('/join?code=abc');
+    saveRedirectUrl(`${window.location.origin}/login`);
+    saveRedirectUrl(`${window.location.origin}/login?redirect=%2Fjoin`);
+    saveRedirectUrl('https://liff.line.me/2009177739-JJrPzjAn/login');
+    expect(peekRedirectUrl()).toBe('/join?code=abc');
+  });
+
+  it('完整網址指向其他頁面照常保存', () => {
+    saveRedirectUrl(`${window.location.origin}/settings`);
+    expect(peekRedirectUrl()).toBe(`${window.location.origin}/settings`);
+  });
 });
 
 describe('redirectFromSearch', () => {

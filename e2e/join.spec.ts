@@ -30,12 +30,8 @@ test.describe('加入家庭', () => {
   });
 
   test('未登入時保留 /join 深連結供登入後回跳', async ({ anonymousPage }) => {
-    // 已知問題：Join 的 effect 在 React StrictMode（dev）下會執行兩次，第二次
-    // window.location.href 已經是 /login，而 saveRedirectUrl 只擋路徑形式的
-    // '/login'、擋不住完整網址，於是深連結被 http://…/login 覆蓋。
-    // 正式建置不會重跑 effect，所以只在 dev server 上重現；修法是讓
-    // saveRedirectUrl 也辨識完整網址，或 Join 改存 pathname+search。
-    test.fail(true, '已知問題：StrictMode 下 CARE_REDIRECT_URL 被 /login 覆蓋');
+    // dev server 有 StrictMode，Join 的 effect 會跑兩次；第二次時網址已經是 /login，
+    // 這裡守的是深連結不會被 /login 蓋掉。
     await anonymousPage.goto(`/join?code=${CODE}`);
 
     await expect(anonymousPage).toHaveURL(/\/login(\?|$)/);

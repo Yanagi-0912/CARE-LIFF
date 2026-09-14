@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyInvite, acceptInvite } from '../../api/familyApi';
 import { isAuthenticated } from '../../utils/auth';
 import { saveRedirectUrl } from '../../utils/redirect';
@@ -25,6 +25,7 @@ type PageState = 'verifying' | 'preview' | 'error' | 'already_member' | 'success
 
 const JoinPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
 
@@ -32,13 +33,17 @@ const JoinPage: React.FC = () => {
   const [outcome, setOutcome] = useState<'already_member' | 'success' | null>(null);
   const [acceptError, setAcceptError] = useState<string>('');
 
-  // 未登入先導向登入頁（保留深連結）
+  // 未登入先導向登入頁（保留深連結）。
+  // 回跳網址取 render 當下的 location，不讀 window.location：StrictMode（dev）會把
+  // effect 跑兩次，第二次時網址已被第一次的 navigate 換成 /login。
+  // 導向時也帶 ?redirect=（同 ProtectedRoute）：LIFF OAuth 回來時 sessionStorage 可能已被清掉。
   useEffect(() => {
     if (!isAuthenticated()) {
-      saveRedirectUrl(window.location.href);
-      navigate('/login', { replace: true });
+      const target = `${location.pathname}${location.search}`;
+      saveRedirectUrl(target);
+      navigate(`/login?redirect=${encodeURIComponent(target)}`, { replace: true });
     }
-  }, [navigate]);
+  }, [location.pathname, location.search, navigate]);
 
   const inviteQuery = useQuery({
     queryKey: queryKeys.inviteVerification(code ?? ''),

@@ -80,6 +80,30 @@ test.describe('LINE 登入換發後端憑證', () => {
   });
 });
 
+test.describe('登入頁換發失敗', () => {
+  test('顯示失敗說明與重新登入鈕、不再說「登入成功」，按下後可重新換發', async ({ anonymousPage }) => {
+    await seedLiffMock(anonymousPage, { isLoggedIn: true, getIDToken: LINE_ID_TOKEN });
+    await stubLiffLogin(anonymousPage, { status: 401 });
+
+    await anonymousPage.goto('/settings');
+
+    await expect(anonymousPage).toHaveURL(/\/login(\?|$)/);
+    const retry = anonymousPage.getByRole('button', { name: '使用 LINE 重新登入' });
+    await expect(retry).toBeVisible();
+    await expect(anonymousPage.getByText('登入沒有完成，請再試一次。')).toBeVisible();
+    await expect(anonymousPage.getByText('登入成功，正在驗證身份...')).toHaveCount(0);
+
+    // 後端恢復後按重新登入：換到憑證，並回到原本要去的頁面
+    await stubLiffLogin(anonymousPage, { access_token: SERVER_TOKEN, line_user_id: LINE_USER_ID });
+    await retry.click();
+
+    await expect
+      .poll(() => anonymousPage.evaluate(() => localStorage.getItem('CARE_AUTH_TOKEN')))
+      .toBe(SERVER_TOKEN);
+    await expect(anonymousPage).toHaveURL(/\/settings$/);
+  });
+});
+
 test.describe('LINE 個人資料（liff.getProfile）', () => {
   const LINE_DISPLAY_NAME = '林阿嬤';
 
