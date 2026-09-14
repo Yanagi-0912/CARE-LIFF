@@ -77,16 +77,6 @@ const KNOWN_OVERFLOW = [
     width: 375,
     reason: '成員卡片「您沒有查看這位家人資料的權限」徽章是 whitespace-nowrap 的 Badge，24px 字級下寬 302px，頁面多 50px 橫向捲動',
   },
-  {
-    path: '/knowledge-reports',
-    width: 768,
-    reason: '篩選 TabsList 在 ≥640px 改為 w-fit，四個分頁+徽章寬 526px 超出側欄旁的內容欄，與排序 Select 重疊並撐出 22px 橫向捲動',
-  },
-  {
-    path: '/personalhealth/consult',
-    width: 768,
-    reason: '底部「下載所有摘要」「返回個人健康資料」在 sm 以上改成 flex-row 但不換行，內容欄放不下時溢出 4px',
-  },
 ] as const;
 
 const VIEWPORTS = [
