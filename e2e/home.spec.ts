@@ -8,11 +8,12 @@ import { expect, stubProfileApi, t, test } from './fixtures';
  * 否則 getByRole 會同時命中導覽列。
  */
 
-/** 一般使用者看得到的六張卡片，順序即畫面順序 */
+/** 一般使用者看得到的七張卡片，順序即畫面順序 */
 const FEATURE_CARDS = [
   { titleKey: 'home.nearbyHospitals', descKey: 'home.nearbyHospitalsDesc', path: '/nearby-hospitals' },
   { titleKey: 'home.personalHealth', descKey: 'home.personalHealthDesc', path: '/personalhealth' },
-  { titleKey: 'home.medications', descKey: 'home.medicationsDesc', path: '/medications' },
+  { titleKey: 'home.medications', descKey: 'home.medicationsDesc', path: '/reminders/medications' },
+  { titleKey: 'home.appointments', descKey: 'home.appointmentsDesc', path: '/reminders/appointments' },
   { titleKey: 'home.family', descKey: 'home.familyDesc', path: '/family' },
   { titleKey: 'home.knowledgeReports', descKey: 'home.knowledgeReportsDesc', path: '/knowledge-reports' },
   { titleKey: 'home.settings', descKey: 'home.settingsDesc', path: '/settings' },
@@ -30,7 +31,7 @@ test.describe('首頁 (Home)', () => {
     await expect(authedPage.getByText(t('home.subtitle'))).toBeVisible();
   });
 
-  test('渲染六張功能卡片，標題與描述都正確', async ({ authedPage }) => {
+  test('渲染七張功能卡片，標題與描述都正確', async ({ authedPage }) => {
     const features = authedPage.getByTestId('home-features');
     const cards = features.getByRole('button');
 

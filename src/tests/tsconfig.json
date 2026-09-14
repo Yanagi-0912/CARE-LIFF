@@ -1,0 +1,25 @@
+{
+  // 測試檔專用的型別設定，給編輯器用。
+  //
+  // tsconfig.app.json 排除了 src/tests（測試不進正式 bundle），結果是測試檔
+  // 沒有任何 tsconfig 認領：編輯器只能用預設設定猜，認不得 vitest 的全域函式
+  // （describe、it）與 jest-dom 的 matcher，整個檔案都是「沒有屬性
+  // toBeInTheDocument」這類假錯誤。放在這個資料夾、檔名叫 tsconfig.json，
+  // 編輯器會自動把它當成這裡每個檔案的設定。
+  //
+  // 刻意**不**掛進根目錄 tsconfig.json 的 references：那樣 `tsc -b`（也就是
+  // npm run build）會連測試一起檢查，而既有的測試檔目前還有型別錯誤（假資料
+  // 缺了後來新增的欄位），會讓建置失敗。要手動檢查測試的型別：
+  //   npx tsc -p src/tests --noEmit
+  //
+  // 繼承 app 的設定（同一套 strict、path alias），只多加測試需要的型別。
+  // jest-dom 的 matcher 型別由 setup.ts 匯入的 `@testing-library/jest-dom/vitest`
+  // 帶進來，所以 setup.ts 一定要在 include 裡。
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": ["."],
+  "exclude": []
+}

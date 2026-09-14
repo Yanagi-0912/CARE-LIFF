@@ -1,6 +1,5 @@
 import type {
-  FacilitySearchResponse,
-  NearbyHospitalsResponse,
+  FacilitySearchResponse, MedicalFacility, NearbyHospitalsResponse,
 } from '../types/medical';
 import { fetchWithAuth } from '../utils/auth';
 
@@ -91,4 +90,27 @@ export async function searchFacilitiesByName(
   }
 
   return (await res.json()) as FacilitySearchResponse;
+}
+
+/**
+ * 依 id 查單一院所，形狀與列表中的每一筆相同（`distance_meters` 一律 null）。
+ *
+ * 編輯掛號提醒時用它把 clinic_time 與 departments 抓回來：手上只有存下來的
+ * facility_id，拿名稱去打 keyword 搜尋會在同名連鎖診所之間查錯家。
+ *
+ * 後端的 repository 會把資料庫錯誤吞掉回 None，所以資料庫故障時這支回的是
+ * 404 而不是 503。呼叫端不要把 404 解讀成「院所已不存在」，只當作「這次查不到」。
+ */
+export async function fetchFacilityById(facilityId: string): Promise<MedicalFacility> {
+  const res = await fetchWithAuth(
+    `${BASE_URL}/api/medical/facilities/${encodeURIComponent(facilityId)}`,
+    { method: 'GET' },
+  );
+
+  if (!res.ok) {
+    if (res.status === 503) throw new Error(SERVICE_UNAVAILABLE_MESSAGE);
+    throw new Error(`查詢院所失敗：${res.status}`);
+  }
+
+  return (await res.json()) as MedicalFacility;
 }

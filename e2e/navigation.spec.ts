@@ -17,7 +17,8 @@ const SIDEBAR_ITEMS = [
   { labelKey: 'sidebar.home', path: '/' },
   { labelKey: 'sidebar.nearbyHospitals', path: '/nearby-hospitals' },
   { labelKey: 'sidebar.health', path: '/personalhealth' },
-  { labelKey: 'sidebar.medications', path: '/medications' },
+  { labelKey: 'sidebar.medications', path: '/reminders/medications' },
+  { labelKey: 'sidebar.appointments', path: '/reminders/appointments' },
   { labelKey: 'sidebar.knowledgeReports', path: '/knowledge-reports' },
   { labelKey: 'sidebar.family', path: '/family' },
   { labelKey: 'sidebar.settings', path: '/settings' },
@@ -27,7 +28,9 @@ const SIDEBAR_ITEMS = [
 const BOTTOM_TABS = [
   { labelKey: 'nav.home', path: '/' },
   { labelKey: 'nav.health', path: '/personalhealth' },
-  { labelKey: 'nav.meds', path: '/medications' },
+  // 「提醒」格導向 /reminders，再由 RemindersLayout 轉到上次看的子頁；
+  // 每個測試都是新的 session，所以落在預設的用藥
+  { labelKey: 'nav.reminders', path: '/reminders/medications' },
   { labelKey: 'nav.family', path: '/family' },
   { labelKey: 'nav.settings', path: '/settings' },
 ] as const;
@@ -124,6 +127,29 @@ test.describe('BottomNav 底部導覽（手機版面）', () => {
       await expect(button).toHaveAttribute('aria-current', 'page');
     });
   }
+});
+
+test.describe('舊路徑轉址', () => {
+  test('/medications 轉到 /reminders/medications，並保留 query string', async ({ authedPage }) => {
+    await authedPage.goto('/medications?from=richmenu');
+    await expect(authedPage).toHaveURL(/\/reminders\/medications\?from=richmenu$/);
+  });
+
+  test('/medications/visits 轉到提醒底下的看診紀錄，底部導覽與子分頁都停在用藥', async ({ authedPage }) => {
+    await authedPage.goto('/medications/visits');
+    await expect(authedPage).toHaveURL(/\/reminders\/medications\/visits$/);
+    await expect(authedPage.getByRole('heading', { name: t('visits.title'), level: 1 })).toBeVisible();
+    await expect(
+      authedPage
+        .getByRole('navigation', { name: t('reminders.subNavLabel') })
+        .getByRole('link', { name: t('reminders.tab.medications') }),
+    ).toHaveAttribute('aria-current', 'page');
+    await expect(
+      authedPage
+        .getByRole('navigation', { name: t('sidebar.mainNavAriaLabel') })
+        .getByRole('button', { name: t('nav.reminders') }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
 });
 
 test.describe('登出', () => {

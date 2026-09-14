@@ -53,12 +53,13 @@ export default function VisitsPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
+    // 寬度與置中由 RemindersLayout 負責，這裡不再自己限寬或加外距，免得與 layout 疊兩層
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/medications')}
+          onClick={() => navigate('/reminders/medications')}
           aria-label={t('visits.title')}
         >
           <ArrowLeftIcon />
