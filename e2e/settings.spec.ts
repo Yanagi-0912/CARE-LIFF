@@ -121,9 +121,14 @@ test.describe('各項設定', () => {
         name: t('settings.toggleAria', { label: t(labelKey) }),
       });
       const before = await toggle.isChecked();
+      const sent = patches.length;
       await toggle.click();
       await expect(toggle).toBeChecked({ checked: !before });
       await expect.poll(() => patches.map((c) => c.body)).toContainEqual({ [field]: !before });
+      // 每點一次只能送一筆。PATCH 若寫在 setSettings 的 updater 裡，StrictMode
+      // 會重跑 updater 而送出兩筆一樣的請求；第二筆稍晚才到，所以等一下再數。
+      await authedPage.waitForTimeout(300);
+      expect(patches, `${field} 點一次送了不只一筆 PATCH`).toHaveLength(sent + 1);
     }
   });
 
