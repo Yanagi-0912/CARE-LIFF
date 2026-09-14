@@ -177,3 +177,13 @@ test.describe('假登入狀態', () => {
     expect(token).toBe(AUTH_TOKEN);
   });
 });
+
+test.describe('未知路由', () => {
+  test('顯示 404 內容，且回首頁鈕可用', async ({ authedPage }) => {
+    await authedPage.goto('/this-page-does-not-exist');
+
+    await expect(authedPage.getByRole('heading', { name: t('notFound.title') })).toBeVisible();
+    await authedPage.getByRole('button', { name: t('common.backHome') }).click();
+    await expect(authedPage).toHaveURL(/\/$/);
+  });
+});

@@ -26,6 +26,7 @@ const AppointmentsPage = lazy(() => import('./pages/Appointments'));
 const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Loginpage'));
+const NotFoundPage = lazy(() => import('./pages/NotFound'));
 import { saveRedirectUrl } from './utils/redirect';
 import { ThemeProvider } from 'next-themes';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -147,6 +148,8 @@ function AppContent() {
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
             <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            {/* 未知路由：沒有這條時畫面只剩導覽列、中間一片空白 */}
+            <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
             </Routes>
           </Suspense>
           </ErrorBoundary>
