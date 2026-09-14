@@ -114,13 +114,15 @@ export function MemberCard({ member }: Props) {
               >
                 {relationLabel}
               </Badge>
-              {noAccess && (
-                <Badge variant="outline" className="gap-1">
-                  <LockIcon className="size-3.5 shrink-0" />
-                  {t('familyPermission.noAccess')}
-                </Badge>
-              )}
             </div>
+            {/* 這是一句說明、不是狀態標籤，所以不用 Badge：Badge 內建
+                whitespace-nowrap，特大字級下這句話會把 375px 的頁面撐出橫向捲動。 */}
+            {noAccess && (
+              <span className="flex items-start gap-1.5 text-sm text-muted-foreground">
+                <LockIcon className="mt-0.5 size-3.5 shrink-0" />
+                {t('familyPermission.noAccess')}
+              </span>
+            )}
           </ItemContent>
 
           <ChevronDownIcon className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[panel-open]/row:rotate-180" />

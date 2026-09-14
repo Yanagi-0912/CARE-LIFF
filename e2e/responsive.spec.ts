@@ -72,11 +72,6 @@ const KNOWN_OVERFLOW = [
     width: 375,
     reason: '頁首右側「看診紀錄」「掃描藥袋」「新增」三顆按鈕的容器是 shrink-0 且不換行，24px 字級下寬 506px，頁面多 131px 橫向捲動；「新增」被推到視窗外',
   },
-  {
-    path: '/family',
-    width: 375,
-    reason: '成員卡片「您沒有查看這位家人資料的權限」徽章是 whitespace-nowrap 的 Badge，24px 字級下寬 302px，頁面多 50px 橫向捲動',
-  },
 ] as const;
 
 const VIEWPORTS = [
