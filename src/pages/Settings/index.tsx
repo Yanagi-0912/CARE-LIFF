@@ -17,7 +17,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { SupportedLanguage } from '../../i18n/messages';
-import { isSupportedLanguage } from '../../i18n';
+import { isLanguageChoice, textLanguageOf, type LanguageChoice } from '../../i18n';
 import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
 import type { UpdateUserSettingsPayload } from '../../api/settingsApi';
 import { isAuthenticated } from '../../utils/auth';
@@ -102,8 +102,10 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-const languageOptions: Array<{ value: SettingsState['language']; label: string }> = [
+const languageOptions: Array<{ value: LanguageChoice; label: string }> = [
   { value: 'zh-TW', label: '繁體中文' },
+  // 台語只換語音：畫面文字維持繁體中文，LINE 語音訊息改用台語辨識、語音回覆念台語。
+  { value: 'nan-TW', label: '台語' },
   { value: 'en', label: 'English' },
   { value: 'id', label: 'Bahasa Indonesia' },
   { value: 'vi', label: 'Tiếng Việt' },
@@ -173,9 +175,12 @@ const SettingsPage: React.FC = () => {
         }));
 
         // language 存在資料庫的 settings.language 裡，用它來實際切換介面語言，
-        // 而不只是更新 select 的顯示值，確保多裝置登入後語言也會同步
-        if (apiSettings.language && isSupportedLanguage(apiSettings.language)) {
-          void i18n.changeLanguage(apiSettings.language);
+        // 而不只是更新 select 的顯示值，確保多裝置登入後語言也會同步。
+        // 台語的介面文字是繁體中文，select 要另外記住選的是台語。
+        const language = apiSettings.language;
+        if (language && isLanguageChoice(language)) {
+          setSettings((prev) => ({ ...prev, language }));
+          void i18n.changeLanguage(textLanguageOf(language));
         }
       })
       .catch((err) => {
@@ -191,10 +196,12 @@ const SettingsPage: React.FC = () => {
     });
   };
 
-  // 以 i18n 全域語言為準，確保下拉顯示與頁面語言一致
+  // 以 i18n 全域語言為準，確保下拉顯示與頁面語言一致（選台語時畫面是繁體中文，不算不一致）
   useEffect(() => {
     setSettings((prev) => (
-      prev.language === i18n.language ? prev : { ...prev, language: i18n.language as SupportedLanguage }
+      textLanguageOf(prev.language) === i18n.language
+        ? prev
+        : { ...prev, language: i18n.language as SupportedLanguage }
     ));
   }, [i18n.language]);
 
@@ -203,9 +210,9 @@ const SettingsPage: React.FC = () => {
     persistSettings({ font_size: size });
   };
 
-  const handleLanguage = (language: SettingsState['language']) => {
+  const handleLanguage = (language: LanguageChoice) => {
     setSettings((prev) => ({ ...prev, language }));
-    void i18n.changeLanguage(language);
+    void i18n.changeLanguage(textLanguageOf(language));
     persistSettings({ language });
   };
 

@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from '../i18n/messages';
+import type { LanguageChoice } from '../i18n';
 
 /**
  * 設定的型別、預設值與套用邏輯。
@@ -9,7 +9,8 @@ import type { SupportedLanguage } from '../i18n/messages';
  */
 export interface SettingsState {
   fontSize: 'normal' | 'large' | 'xlarge';
-  language: SupportedLanguage;
+  // 可能是台語（nan-TW）：只換語音，介面語言另由 i18n 決定（textLanguageOf）
+  language: LanguageChoice;
   highContrast: boolean;
   notifyReminder: boolean;
   notifyFamily: boolean;

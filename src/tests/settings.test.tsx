@@ -80,6 +80,50 @@ describe('設定頁語言行為', () => {
     expect(screen.getByRole('combobox', { name: 'Display Language' })).toHaveTextContent('English');
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
   });
+
+  // 台語只換語音：存的是 nan-TW，畫面維持繁體中文
+  it('選擇台語後，localStorage 存 nan-TW，畫面維持繁體中文', async () => {
+    await renderSettings();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('combobox', { name: '顯示語言' }));
+    await user.click(await screen.findByRole('option', { name: '台語' }));
+
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+      expect(saved.language).toBe('nan-TW');
+    });
+    expect(i18n.language).toBe('zh-TW');
+    expect(screen.getByRole('heading', { name: '設定' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '顯示語言' })).toHaveTextContent('台語');
+  });
+
+  // 畫面語言從英文換成中文時，同步選單的 effect 不能把台語蓋回「繁體中文」
+  it('從英文改選台語，畫面切回繁體中文且選單仍顯示台語', async () => {
+    localStorage.setItem('care-settings', JSON.stringify({ language: 'en' }));
+    await renderSettings(getInitialLanguage('care-settings'));
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('combobox', { name: 'Display Language' }));
+    await user.click(await screen.findByRole('option', { name: '台語' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '設定' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('combobox', { name: '顯示語言' })).toHaveTextContent('台語');
+    const saved = JSON.parse(localStorage.getItem('care-settings') || '{}');
+    expect(saved.language).toBe('nan-TW');
+  });
+
+  it('重新掛載後，選過台語仍顯示台語、畫面為繁體中文', async () => {
+    localStorage.setItem('care-settings', JSON.stringify({ language: 'nan-TW' }));
+    expect(getInitialLanguage('care-settings')).toBe('zh-TW');
+
+    await renderSettings(getInitialLanguage('care-settings'));
+
+    expect(screen.getByRole('combobox', { name: '顯示語言' })).toHaveTextContent('台語');
+    expect(screen.getByRole('heading', { name: '設定' })).toBeInTheDocument();
+  });
 });
 
 describe('設定頁語音區塊', () => {
