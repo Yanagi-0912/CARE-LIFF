@@ -515,7 +515,7 @@ const ConsultRecordsPage: React.FC = () => {
 
             {/* Dialog 取代原本手刻的遮罩＋div[role=dialog]：
                 焦點鎖定、Escape 關閉、關閉後焦點歸位、背景鎖捲皆由元件提供。
-                關閉鈕自己掛：內建那顆的 sr-only 文字寫死英文 "Close"。 */}
+                關閉鈕自己掛，用本頁的 consultRecord.closeModal 文案。 */}
             <Dialog open={selectedMessage !== null} onOpenChange={(open) => !open && setSelectedMessage(null)}>
                 <DialogContent
                     // 只讓內文捲動，否則 absolute 定位的關閉鈕會跟著捲走

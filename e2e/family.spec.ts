@@ -259,7 +259,9 @@ test.describe('邀請家人', () => {
     ).toBeEnabled();
     expect(invites).toHaveLength(1);
 
-    await dialog.getByRole('button', { name: t('family.inviteDialog.close') }).click();
+    // 右上角內建的 X 也念「關閉」（common.close），這裡點底部那顆；
+    // DialogContent 先渲染內容、最後才掛內建關閉鈕，所以底部那顆排第一。
+    await dialog.getByRole('button', { name: t('family.inviteDialog.close') }).first().click();
     await expect(authedPage.getByRole('dialog')).toHaveCount(0);
   });
 
@@ -318,8 +320,9 @@ test.describe('邀請家人', () => {
     await expect(
       dialog.getByRole('button', { name: t('family.inviteDialog.shareLine') }),
     ).toHaveCount(0);
+    // 同上：內建的 X 也念「關閉」，取底部那顆
     await expect(
-      dialog.getByRole('button', { name: t('family.inviteDialog.close') }),
+      dialog.getByRole('button', { name: t('family.inviteDialog.close') }).first(),
     ).toBeVisible();
   });
 
