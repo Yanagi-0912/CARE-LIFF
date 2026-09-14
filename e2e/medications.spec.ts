@@ -261,14 +261,9 @@ test.describe('新增提醒 dialog', () => {
     await dialog.locator('#endDate').fill('2026-09-01');
     await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
 
-    // 結束日期欄位帶 min={startDate}，瀏覽器的原生約束驗證會先擋下送出，
-    // zod 的 dateOrderError 文案因此永遠到不了畫面（見報告的發現）。
-    // 這裡守的是「不能送出」這個結果，而不是哪一層擋的。
-    await expect(dialog).toBeVisible();
-    expect(
-      await dialog.locator('#endDate').evaluate((el) => (el as HTMLInputElement).validity.rangeUnderflow),
-    ).toBe(true);
-    await authedPage.waitForTimeout(300);
+    // 表單關掉了原生約束驗證（結束日期的 min 只當日期選擇器的提示），
+    // 由 zod 擋下並顯示 dateOrderError，而不是瀏覽器自己的氣泡。
+    await expect(dialog.getByText(t('meds.add.dateOrderError'))).toBeVisible();
     expect(posts).toHaveLength(0);
   });
 
