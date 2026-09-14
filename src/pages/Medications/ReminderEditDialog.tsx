@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -50,6 +50,7 @@ import { Input } from '@/components/ui/input';
 import { ItemGroup } from '@/components/ui/item';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { MedicationAppearanceRow } from './MedicationAppearanceRow';
 import { nearestSlot } from './reminderSchedule';
 
@@ -220,13 +221,23 @@ export function ReminderEditDialog({
   };
 
   const busy = isSubmitting || deleting;
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   return (
     // Dialog 內建焦點鎖定、Escape、焦點歸位、背景鎖捲，關閉鈕用 DialogContent 內建那顆。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[420px]">
+      {/* 打開時先聚焦標題，不是第一個欄位。預設聚焦第一個 radio，瀏覽器會把表單捲到
+          那個 radio 完整可見為止——375×667、24px 字級下捲掉 16px，「用藥時段」的標題
+          被切掉上緣。WAI-ARIA APG 的 dialog pattern 對「內容長到聚焦第一個欄位會把
+          開頭捲走」的情況，建議先聚焦頂端的靜態元素（tabIndex=-1 的標題）。 */}
+      <DialogContent
+        initialFocus={titleRef}
+        className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[420px]"
+      >
         <DialogHeader>
-          <DialogTitle>{t('meds.edit.title')}</DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
+            {t('meds.edit.title')}
+          </DialogTitle>
           <DialogDescription>
             {t('meds.editAria', { slot: slotLabel, time: reminder.scheduled_time })}
           </DialogDescription>
@@ -425,13 +436,15 @@ export function ReminderEditDialog({
               )}
             </FieldGroup>
           </form>
-        </ScrollArea>
 
-        <DialogFooter>
-          {/* 刪除確認交給 AlertDialog（原本是自刻的 confirmingDelete 分支） */}
+          {/* 刪除放在表單最下方、以分隔線隔開，不放底部按鈕列（與掛號提醒
+              2026-09-12 拍板的做法相同）。底部列原本疊著刪除／取消／儲存三顆
+              整寬按鈕，375×667、24px 字級下佔掉 222px，表單能捲動的區域只剩
+              157px；刪除也不該緊貼著儲存。刪除確認交給 AlertDialog。 */}
+          <Separator className="my-6" />
           <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogTrigger
-              render={<Button variant="destructive" disabled={busy} className="sm:mr-auto" />}
+              render={<Button variant="destructive" disabled={busy} className="w-full" />}
             >
               {t('meds.edit.delete')}
             </AlertDialogTrigger>
@@ -454,11 +467,21 @@ export function ReminderEditDialog({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        </ScrollArea>
 
-          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+        {/* 取消與儲存並排、放不下才換行（flex-wrap＋grow）：手機上 DialogFooter
+            預設直向堆疊，兩顆就是兩列整寬按鈕的高度。 */}
+        <DialogFooter className="flex-row flex-wrap">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={busy}
+            className="grow"
+          >
             {t('meds.cancel')}
           </Button>
-          <Button type="submit" form={FORM_ID} disabled={busy}>
+          <Button type="submit" form={FORM_ID} disabled={busy} className="grow">
             {isSubmitting ? t('meds.edit.saving') : t('meds.edit.save')}
           </Button>
         </DialogFooter>

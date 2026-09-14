@@ -62,18 +62,6 @@ async function stubWithData(page: Page) {
 const overflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
-/**
- * 已知的版面問題（特大字級 24px 下量到的）。修好後對應的測試會從 fail 變 pass，
- * Playwright 會把「預期失敗卻通過」標成失敗，提醒把這裡的項目拿掉。
- */
-const KNOWN_OVERFLOW = [
-  {
-    path: '/medications',
-    width: 375,
-    reason: '頁首右側「看診紀錄」「掃描藥袋」「新增」三顆按鈕的容器是 shrink-0 且不換行，24px 字級下寬 506px，頁面多 131px 橫向捲動；「新增」被推到視窗外',
-  },
-] as const;
-
 const VIEWPORTS = [
   { name: '手機直式 375px', width: 375, height: 667 },
   { name: '平板 768px', width: 768, height: 1024 },
@@ -93,8 +81,6 @@ for (const viewport of VIEWPORTS) {
 
     for (const { path, ready } of PAGES) {
       test(`${path} 有資料且字級最大時不橫向溢出`, async ({ authedPage }) => {
-        const known = KNOWN_OVERFLOW.find((k) => k.path === path && k.width === viewport.width);
-        if (known) test.fail(true, `已知版面問題：${known.reason}`);
         await authedPage.addInitScript(() => {
           localStorage.setItem('care-settings', JSON.stringify({ language: 'zh-TW', fontSize: 'xlarge' }));
         });
@@ -130,36 +116,40 @@ test.describe('手機直式 375px 的 dialog', () => {
     expect(box!.y + box!.height).toBeLessThanOrEqual(667 + 1);
   }
 
-  test('新增用藥提醒表單：整個 dialog 在視窗內，底部按鈕看得到', async ({ authedPage }) => {
-    // 已知版面問題（同 KNOWN_OVERFLOW 的 /medications）：頁首三顆按鈕溢出，
-    // 「新增」被推到 375px 之外點不到。用 fixme 而非 fail：失敗形式是 click 等滿
-    // 30 秒逾時，fail 會讓每次跑都多等 30 秒。修好後把這行拿掉即可。
-    test.fixme(true, '已知版面問題：/medications 頁首按鈕在特大字級下溢出，「新增」點不到');
+  test('新增用藥提醒表單：整個 dialog 在視窗內，打開時從頂端開始，底部按鈕看得到', async ({ authedPage }) => {
     await authedPage.goto('/medications');
     await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
 
     await expectDialogFits(authedPage);
-    await expect(
-      authedPage.getByRole('dialog').getByRole('button', { name: t('meds.add.submit') }),
-    ).toBeInViewport();
+    const dialog = authedPage.getByRole('dialog');
+    // 焦點若落在表單裡的欄位，瀏覽器會把表單捲過去：曾一打開就捲掉 233px，
+    // 第一個欄位的標題整個在畫面外。
+    await expect(dialog.getByText(t('meds.add.slotsField'), { exact: true })).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(dialog.getByRole('button', { name: t('meds.add.submit') })).toBeInViewport();
   });
 
-  test('編輯用藥提醒表單：刪除／取消／儲存三顆按鈕都在視窗內', async ({ authedPage, browserName }) => {
-    // 已知 bug：編輯 dialog 在 24px 字級下寬 456px（375px 視窗置中後左右各溢出約 40px），
-    // 撐寬的是「用藥時段」四列 radio 的欄位內容，最小寬度沒有被 dialog 約束住。
-    // 只在 Chromium 溢出；WebKit 的字體度量不同、放得下，CI 上 mobile-safari 是過的，
-    // 所以 fail 標記要限定瀏覽器，否則「預期失敗卻通過」會被算成失敗。
-    test.fail(
-      browserName === 'chromium',
-      '已知 bug：編輯用藥提醒 dialog 特大字級在 375px 手機上寬 456px 超出視窗（Chromium）',
-    );
+  test('編輯用藥提醒表單：打開時從頂端開始，取消／儲存在視窗內，刪除捲得到', async ({ authedPage }) => {
+    // 這個 dialog 自己的最小內容寬只有約 240px，本來就放得進 375px。它曾在 Chromium
+    // 寬 458px，是被背後頁面撐寬的：頁首橫向溢出時 Chromium 會把 layout viewport
+    // 撐成內容寬度，寬度以視窗百分比計算的 position: fixed dialog 跟著變寬（WebKit
+    // 不會）。所以這一條同時守著「dialog 背後的用藥頁不能橫向溢出」。
     await authedPage.goto('/medications');
     await authedPage.getByText('08:00').first().click();
 
     await expectDialogFits(authedPage);
     const dialog = authedPage.getByRole('dialog');
+    // 「用藥時段」的標題曾在打開時被切掉上緣：焦點落在第一個 radio，表單被捲了 16px。
+    await expect(dialog.getByText(t('meds.edit.slot'), { exact: true })).toBeInViewport({
+      ratio: 1,
+    });
     await expect(dialog.getByRole('button', { name: t('meds.edit.save') })).toBeInViewport();
-    await expect(dialog.getByRole('button', { name: t('meds.edit.delete') })).toBeInViewport();
+    await expect(dialog.getByRole('button', { name: t('meds.cancel') })).toBeInViewport();
+    // 刪除放在表單最下方：捲到那裡要完整看得到、按得到。
+    const remove = dialog.getByRole('button', { name: t('meds.edit.delete') });
+    await remove.scrollIntoViewIfNeeded();
+    await expect(remove).toBeInViewport({ ratio: 1 });
   });
 
   test('知識回報表單 dialog 在視窗內', async ({ authedPage }) => {

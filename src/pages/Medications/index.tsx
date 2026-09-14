@@ -163,9 +163,20 @@ const MedicationsPage = () => {
       {/* 詳細設定取代清單區塊與頂端的新增／掃描入口，但對象 chips 與已載入的
           提醒資料都保留（design.md 決策 8）——換對象或返回清單都不必重打 API。 */}
       {view === 'list' && (
+        // 按鈕文字寬度隨語言與字級變動（六種語言 × 16/20/24px），固定欄數的 Grid
+        // 不是讓長譯文撐出格子、就是永遠單欄，所以按鈕群用可換行的 flex：每顆按鈕
+        // 維持單行文字，放不下才整顆換到下一行，並以 grow 佔滿所在的那一行。
+        // - < 768px：按鈕群自成一列、佔滿寬度（w-full）。375px＋24px 字級下是
+        //   「看診紀錄｜掃描藥袋」一行，主要動作「新增」獨佔下一行全寬。
+        // - ≥ 768px（md:w-auto）：放得下就與標題同列靠右，與原本相同；放不下
+        //   （768px＋24px 字級，側欄佔去 240px）才換到下一列，排法同手機。
+        // 原本按鈕群是 shrink-0 且不換行，24px 字級下寬 501px，「新增」被推出視窗外。
+        // 頁面一旦橫向溢出，Chromium 還會把 layout viewport 撐成內容寬度，寬度以
+        // 視窗百分比計算的 position: fixed dialog 會跟著變寬、一起超出畫面
+        // （Playwright 量到編輯提醒 dialog 因此寬 458px；WebKit 不會撐，仍是 327px）。
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold">{t('meds.title')}</h1>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex w-full flex-wrap gap-2 md:w-auto">
             {/* 看診紀錄入口。**不受 canEditSelected 影響**——那是寫入權，而看
                 紀錄是讀取行為；能看到這一頁的人就該看得到入口。權限不足時由
                 目標頁自己顯示「沒有權限」，比在這裡靜靜藏起入口好：使用者至少
@@ -173,7 +184,7 @@ const MedicationsPage = () => {
             <Button
               type="button"
               variant="outline"
-              className="rounded-full"
+              className="grow rounded-full"
               onClick={() => navigate('/reminders/medications/visits')}
             >
               <BuildingIcon data-icon="inline-start" />
@@ -186,7 +197,7 @@ const MedicationsPage = () => {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full"
+                className="grow rounded-full"
                 onClick={() => setScanning(true)}
               >
                 <ScanLineIcon data-icon="inline-start" />
@@ -194,7 +205,7 @@ const MedicationsPage = () => {
               </Button>
             )}
             {canEditSelected && (
-              <Button type="button" className="rounded-full" onClick={() => setAdding(true)}>
+              <Button type="button" className="grow rounded-full" onClick={() => setAdding(true)}>
                 <PlusIcon data-icon="inline-start" />
                 {t('meds.addButton')}
               </Button>

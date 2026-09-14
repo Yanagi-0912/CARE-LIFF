@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -130,12 +130,22 @@ export function ReminderFormDialog({
     }
   });
 
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
   return (
     // Dialog 內建焦點鎖定、Escape、焦點歸位、背景鎖捲，關閉鈕用 DialogContent 內建那顆。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[420px]">
+      {/* 打開時先聚焦標題，不是第一個欄位：預設聚焦的是第一個可勾選的 checkbox，
+          瀏覽器會把表單捲過去——375×667、24px 字級下一打開就捲掉 233px，第一個欄位
+          的標題整個在畫面外。做法與理由同 ReminderEditDialog（WAI-ARIA APG）。 */}
+      <DialogContent
+        initialFocus={titleRef}
+        className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[420px]"
+      >
         <DialogHeader>
-          <DialogTitle>{t('meds.add.title')}</DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
+            {t('meds.add.title')}
+          </DialogTitle>
           <DialogDescription>
             {t('meds.add.targetField')} <strong className="text-foreground">{targetName}</strong>
           </DialogDescription>
@@ -273,22 +283,37 @@ export function ReminderFormDialog({
           </form>
         </ScrollArea>
 
-        <DialogFooter>
-          {/* 詳細設定關掉這個 dialog、換成同一頁內的整頁檢視（design.md 決策 8），
-              不是另開路由——放在最左側，與「取消／建立」的送出動線分開。 */}
+        {/* 三顆按鈕橫排、放不下才換行（flex-wrap＋grow）。手機上 DialogFooter 預設
+            直向堆疊，375×667、24px 字級下三列整寬按鈕佔掉 222px，表單能捲動的區域
+            只剩 187px。橫排後一般字級一列放得下；特大字級是「詳細設定｜取消」一列、
+            「新增」獨佔一列。
+            詳細設定關掉這個 dialog、換成同一頁內的整頁檢視（design.md 決策 8），
+            不是另開路由——排在最前面，與「取消／新增」的送出動線分開。 */}
+        <DialogFooter className="flex-row flex-wrap">
           <Button
             type="button"
             variant="outline"
             onClick={onOpenDetailed}
             disabled={isSubmitting}
-            className="mr-auto"
+            className="grow"
           >
             {t('meds.add.detailed')}
           </Button>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="grow"
+          >
             {t('meds.cancel')}
           </Button>
-          <Button type="submit" form={FORM_ID} disabled={isSubmitting || allSlotsUsed}>
+          <Button
+            type="submit"
+            form={FORM_ID}
+            disabled={isSubmitting || allSlotsUsed}
+            className="grow"
+          >
             {isSubmitting ? t('meds.add.submitting') : t('meds.add.submit')}
           </Button>
         </DialogFooter>
