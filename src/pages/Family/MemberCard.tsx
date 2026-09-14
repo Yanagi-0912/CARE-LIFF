@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import {
   ChevronDownIcon,
   LockIcon,
@@ -9,8 +10,10 @@ import {
   PencilIcon,
   TriangleAlertIcon,
   UserIcon,
+  UserMinusIcon,
 } from 'lucide-react';
 
+import { removeFamilyMember } from '../../api/familyApi';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
@@ -21,9 +24,21 @@ import {
   canReadSensitive,
   hasNoAccess,
 } from '../../utils/familyPermissions';
+import { profileToFormValues } from '../PersonalHealth/healthForm';
 import { queryKeys } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,12 +56,9 @@ interface Props {
   member: FamilyMember;
 }
 
-/** 後端在使用者沒填過資料時會回一組佔位值，這些不算「有資料」 */
-const PLACEHOLDER_HEIGHT = 1.0;
-const PLACEHOLDER_WEIGHT = 1.0;
-
-const hasNumber = (value: number | undefined, placeholder: number) =>
-  value != null && value !== 0 && value !== placeholder;
+/** 移除家人時後端回 404：對方已經不在我的族譜裡 */
+const isAlreadyRemoved = (err: unknown) =>
+  err instanceof Error && (err as { status?: unknown }).status === 404;
 
 /**
  * 家人卡片 — 整列是 Collapsible 的 trigger，展開才去要健康資料。
@@ -57,8 +69,10 @@ const hasNumber = (value: number | undefined, placeholder: number) =>
 export function MemberCard({ member }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const displayName = member.display_name || member.user_id.slice(0, 8);
   const relationLabel = member.relationship_type
@@ -80,6 +94,42 @@ export function MemberCard({ member }: Props) {
     queryFn: () => getPersonalHealthProfile(member.user_id),
     enabled: open && showHealth,
   });
+
+  const removal = useMutation({
+    // 404 當成已完成：兩邊都能按移除，對方可能已經先按了，而這張卡片是快取裡
+    // （最多 30 秒前）的樣子。要的結果——彼此不再是家人——已經成立；當成失敗
+    // 的話，畫面會一直留著一張怎麼按都移除不掉的卡片。
+    mutationFn: async () => {
+      try {
+        await removeFamilyMember(member.user_id);
+      } catch (err) {
+        if (!isAlreadyRemoved(err)) throw err;
+      }
+    },
+    onSuccess: () =>
+      Promise.all([
+        // 族譜一重抓，這張卡片就會消失；用藥頁「替誰設定」的名單也吃同一份。
+        queryClient.invalidateQueries({ queryKey: queryKeys.familyTree }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.familyMemberRoles }),
+        // 只標記過期、不立刻重抓：關係已經切斷，現在去要只會拿到 403，
+        // 還可能在卡片消失前閃一下「無法載入健康資料」。
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.memberProfile(member.user_id),
+          refetchType: 'none',
+        }),
+      ]),
+  });
+
+  const handleRemove = async () => {
+    try {
+      await removal.mutateAsync();
+      toast.success(t('familyPermission.remove.success', { name: displayName }));
+    } catch {
+      toast.error(t('familyPermission.remove.error'));
+    } finally {
+      setConfirmingRemove(false);
+    }
+  };
 
   const rows = health ? buildRows(health, t) : [];
 
@@ -214,6 +264,69 @@ export function MemberCard({ member }: Props) {
               </p>
             )}
           </div>
+
+          {/* 移除家人：與健康資料無關、也不看權限——族譜裡的任何一方都能切斷
+              關係。用分隔線隔開，放在最下面，不跟日常會按的按鈕擠在一起。 */}
+          <Separator />
+          <div className="px-4 py-3.5">
+            <AlertDialog
+              open={confirmingRemove}
+              onOpenChange={(next) => {
+                // 送出中不讓 Esc 關掉：關掉之後使用者無從得知到底移除了沒
+                if (!removal.isPending) setConfirmingRemove(next);
+              }}
+            >
+              {/* h-auto + whitespace-normal：Button 內建 nowrap，特大字級下
+                  較長的譯文會把 375px 的頁面撐出橫向捲動 */}
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="h-auto min-h-11 w-full py-2 whitespace-normal"
+                  />
+                }
+              >
+                <UserMinusIcon data-icon="inline-start" />
+                {t('familyPermission.remove.button')}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                {/* 預設置中對齊；後果說明是好幾行的段落，靠左長輩比較好讀 */}
+                <AlertDialogHeader className="place-items-start text-left">
+                  <AlertDialogTitle>
+                    {t('familyPermission.remove.title', { name: displayName })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-base leading-relaxed text-pretty">
+                    {t('familyPermission.remove.desc', { name: displayName })}
+                    <span className="mt-2 block">{t('familyPermission.remove.rejoin')}</span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    disabled={removal.isPending}
+                    className="h-auto min-h-11 py-2 whitespace-normal"
+                  >
+                    {t('familyPermission.cancel')}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={removal.isPending}
+                    className="h-auto min-h-11 py-2 whitespace-normal"
+                    onClick={() => void handleRemove()}
+                  >
+                    {removal.isPending ? (
+                      <Spinner aria-hidden="true" data-icon="inline-start" />
+                    ) : (
+                      <UserMinusIcon data-icon="inline-start" />
+                    )}
+                    {removal.isPending
+                      ? t('familyPermission.remove.removing')
+                      : t('familyPermission.remove.confirm')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CollapsibleContent>
       </Item>
 
@@ -224,45 +337,50 @@ export function MemberCard({ member }: Props) {
   );
 }
 
-/** 把健康檔案攤平成要顯示的列；沒填的欄位直接不產生列，畫面才不會一堆「未設定」 */
+/**
+ * 把健康檔案攤平成要顯示的列；沒填的欄位直接不產生列，畫面才不會一堆「未設定」。
+ *
+ * 「什麼算沒填」（null、佔位值、gender unknown）與表單共用 profileToFormValues，
+ * 不在這裡另外判斷一次。
+ */
 function buildRows(health: HealthProfile, t: (key: string) => string) {
+  const filled = profileToFormValues(health);
   const rows: { label: string; value: string }[] = [];
 
-  if (health.age != null && health.age !== 0) {
+  if (filled.age) {
     rows.push({
       label: t('personalHealth.field.age'),
-      value: `${health.age} ${t('personalHealth.unit.age')}`,
+      value: `${filled.age} ${t('personalHealth.unit.age')}`,
     });
   }
 
   // 後端存的是與 i18n key 最後一段同名的 code，所以直接拼得出 key。
-  // 'unknown' 是建帳號時的預設值，代表還沒填，不產生列。
-  if (health.gender && health.gender !== 'unknown') {
+  if (filled.gender) {
     rows.push({
       label: t('personalHealth.gender'),
-      value: t(`personalHealth.gender.${health.gender}`),
+      value: t(`personalHealth.gender.${filled.gender}`),
     });
   }
 
-  if (hasNumber(health.height, PLACEHOLDER_HEIGHT)) {
+  if (filled.height) {
     rows.push({
       label: t('personalHealth.field.height'),
-      value: `${health.height} ${t('personalHealth.unit.height')}`,
+      value: `${filled.height} ${t('personalHealth.unit.height')}`,
     });
   }
 
-  if (hasNumber(health.weight, PLACEHOLDER_WEIGHT)) {
+  if (filled.weight) {
     rows.push({
       label: t('personalHealth.field.weight'),
-      value: `${health.weight} ${t('personalHealth.unit.weight')}`,
+      value: `${filled.weight} ${t('personalHealth.unit.weight')}`,
     });
   }
 
   // 固定選項是 code，翻成看的人的語言；自訂病名是使用者打的字，原文照用。
   // 兩者分開存，所以這裡不需要判斷哪一項是哪一種，接起來就好。
   const chronic = [
-    ...(health.chronic_diseases ?? []).map((code) => t(`personalHealth.chronic.${code}`)),
-    ...(health.chronic_custom ?? []),
+    ...filled.chronicDisease.map((code) => t(`personalHealth.chronic.${code}`)),
+    ...filled.customChronic,
   ];
   if (chronic.length > 0) {
     rows.push({
@@ -271,17 +389,17 @@ function buildRows(health: HealthProfile, t: (key: string) => string) {
     });
   }
 
-  if (health.major_illness_history) {
+  if (filled.majorIllness) {
     rows.push({
       label: t('personalHealth.majorIllness'),
-      value: health.major_illness_history,
+      value: filled.majorIllness,
     });
   }
 
-  if (health.surgery_history) {
+  if (filled.surgeryHistory) {
     rows.push({
       label: t('personalHealth.surgeryHistory'),
-      value: health.surgery_history,
+      value: filled.surgeryHistory,
     });
   }
 

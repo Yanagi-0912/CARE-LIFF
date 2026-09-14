@@ -142,6 +142,40 @@ export function stubFamily(
   });
 }
 
+/**
+ * 有狀態的族譜後端：GET /api/family/me 與 DELETE /api/family/members/{id} 共用
+ * 同一份成員清單，移除之後重抓族譜就看不到那個人——跟真後端一樣。
+ * 對方已不在清單裡時 DELETE 回 404（後端合約：不是家人）。
+ */
+export async function stubFamilyStore(
+  page: Page,
+  members: readonly { user_id: string }[],
+  roleAssignment: unknown = null,
+) {
+  const state = { members: [...members] };
+
+  const gets = await stubApi(page, {
+    path: '/api/family/me',
+    method: 'GET',
+    respond: () => ({ status: 200, body: familyTreeBody(state.members, roleAssignment) }),
+  });
+
+  const deletes = await stubApi(page, {
+    path: /^\/api\/family\/members\/[^/]+$/,
+    method: 'DELETE',
+    respond: (call) => {
+      const id = decodeURIComponent(call.url.pathname.split('/').pop() ?? '');
+      const before = state.members.length;
+      state.members = state.members.filter((member) => member.user_id !== id);
+      return state.members.length < before
+        ? { status: 200, body: { removed: true } }
+        : { status: 404, body: { detail: 'e2e: 不是家人' } };
+    },
+  });
+
+  return { state, gets, deletes };
+}
+
 /* ───────────── 用藥提醒 ───────────── */
 
 export type MealTiming = 'before_meal' | 'after_meal' | 'none';

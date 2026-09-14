@@ -8,11 +8,12 @@ import {
   familyTreeBody,
   stubApi,
   stubFamily,
+  stubFamilyStore,
 } from './stubs';
 
 /**
- * 家庭頁：族譜列表四態、成員卡片展開後的健康資料三態、邀請流程
- * （邀請 dialog：建立成功／失敗、分享到 LINE 成功／取消、外部瀏覽器 fallback）。
+ * 家庭頁：族譜列表四態、成員卡片展開後的健康資料三態、權限提示三態、移除家人、
+ * 邀請流程（邀請 dialog：建立成功／失敗、分享到 LINE 成功／取消、外部瀏覽器 fallback）。
  */
 
 const GRANDMA = FAMILY_MEMBERS[0];
@@ -154,25 +155,6 @@ test.describe('成員卡片展開', () => {
     expect(profileCalls).toHaveLength(1);
   });
 
-  test('還有家人未設定角色時顯示提示與管理入口', async ({ authedPage }) => {
-    await stubApi(authedPage, {
-      path: '/api/family/me',
-      body: familyTreeBody(FAMILY_MEMBERS, {
-        owner_id: 'me',
-        is_complete: false,
-        unassigned_member_ids: [FAMILY_MEMBERS[1].user_id],
-        rbac_migration_state: 'shadow',
-      }),
-    });
-    await openPage(authedPage);
-
-    // i18next 的複數 key：fixtures 的 t() 不做複數解析，直接取 _one
-    await expect(
-      authedPage.getByText(t('familyRole.unassignedNotice_one', { count: 1 })),
-    ).toBeVisible();
-    await expect(authedPage.getByRole('button', { name: t('familyRole.manage.open') })).toBeVisible();
-  });
-
   test('後端只有佔位值時視為尚無資料', async ({ authedPage }) => {
     await stubApi(authedPage, {
       path: `/api/profiles/${GRANDMA.user_id}`,
@@ -217,6 +199,127 @@ test.describe('成員卡片展開', () => {
     await expect(authedPage).toHaveURL(
       new RegExp(`/personalhealth/consult\\?user=${GRANDMA.user_id}$`),
     );
+  });
+});
+
+// 提示照「實際生效」的狀態講：rbac_migration_state 由後端算好（總閘打開且這位
+// 擁有者已切換才是 enforced）。shadow 時說「未設定的人以一般家人處理」是謊話。
+// i18next 的複數 key：fixtures 的 t() 不做複數解析，直接取 _one。
+test.describe('權限提示', () => {
+  const status = (overrides: Record<string, unknown>) => ({
+    owner_id: 'me',
+    is_complete: false,
+    unassigned_member_ids: [UNSET.user_id],
+    rbac_migration_state: 'shadow',
+    ...overrides,
+  });
+
+  async function openWith(page: Page, roleAssignment: unknown) {
+    await stubApi(page, {
+      path: '/api/family/me',
+      body: familyTreeBody(FAMILY_MEMBERS, roleAssignment),
+    });
+    await openPage(page);
+  }
+
+  test('還沒生效且有人沒設定：說在那之前所有家人都看得到，入口仍在', async ({ authedPage }) => {
+    await openWith(authedPage, status({}));
+
+    await expect(
+      authedPage.getByText(t('familyRole.shadowPendingNotice_one', { count: 1 })),
+    ).toBeVisible();
+    await expect(
+      authedPage.getByText(t('familyRole.unassignedNotice_one', { count: 1 })),
+    ).toHaveCount(0);
+    await expect(authedPage.getByRole('button', { name: t('familyRole.manage.open') })).toBeVisible();
+  });
+
+  test('已生效且有人沒設定：未設定的人以一般家人處理', async ({ authedPage }) => {
+    await openWith(authedPage, status({ rbac_migration_state: 'enforced' }));
+
+    await expect(
+      authedPage.getByText(t('familyRole.unassignedNotice_one', { count: 1 })),
+    ).toBeVisible();
+    await expect(
+      authedPage.getByText(t('familyRole.shadowPendingNotice_one', { count: 1 })),
+    ).toHaveCount(0);
+  });
+
+  test('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', async ({ authedPage }) => {
+    await openWith(authedPage, status({ is_complete: true, unassigned_member_ids: [] }));
+
+    await expect(authedPage.getByText(t('familyRole.shadowOffNotice'))).toBeVisible();
+  });
+});
+
+test.describe('移除家人', () => {
+  test('按下移除先確認；取消不送出，確定後從名單消失、人數跟著變', async ({ authedPage }) => {
+    const store = await stubFamilyStore(authedPage, FAMILY_MEMBERS);
+    await stubApi(authedPage, { path: `/api/profiles/${GRANDMA.user_id}`, status: 404, body: {} });
+    await openPage(authedPage);
+
+    await authedPage.getByRole('button', { name: GRANDMA.display_name }).click();
+    const removeButton = authedPage.getByRole('button', {
+      name: t('familyPermission.remove.button'),
+    });
+    await removeButton.click();
+
+    // 後果一次講完：雙向、看不到什麼、收不到通知、要重新邀請
+    const dialog = authedPage.getByRole('alertdialog');
+    await expect(dialog).toContainText(
+      t('familyPermission.remove.title', { name: GRANDMA.display_name }),
+    );
+    await expect(dialog).toContainText(
+      t('familyPermission.remove.desc', { name: GRANDMA.display_name }),
+    );
+    await expect(dialog).toContainText(t('familyPermission.remove.rejoin'));
+
+    await dialog.getByRole('button', { name: t('familyPermission.cancel') }).click();
+    await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
+    expect(store.deletes).toHaveLength(0);
+
+    await removeButton.click();
+    await authedPage
+      .getByRole('alertdialog')
+      .getByRole('button', { name: t('familyPermission.remove.confirm') })
+      .click();
+
+    await expect(
+      authedPage.getByText(t('familyPermission.remove.success', { name: GRANDMA.display_name })),
+    ).toBeVisible();
+    expect(store.deletes.map((call) => call.url.pathname)).toEqual([
+      `/api/family/members/${GRANDMA.user_id}`,
+    ]);
+    const list = authedPage.getByRole('main').getByRole('list');
+    await expect(list.getByRole('listitem')).toHaveCount(1);
+    await expect(list).not.toContainText(GRANDMA.display_name);
+    await expect(authedPage.getByText(t('family.memberCount', { n: 1 }))).toBeVisible();
+    await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
+  });
+
+  test('移除失敗時提示錯誤，家人還在名單上', async ({ authedPage }) => {
+    await stubFamily(authedPage, FAMILY_MEMBERS);
+    await stubApi(authedPage, { path: `/api/profiles/${GRANDMA.user_id}`, status: 404, body: {} });
+    const deletes = await stubApi(authedPage, {
+      path: `/api/family/members/${GRANDMA.user_id}`,
+      method: 'DELETE',
+      status: 500,
+      body: { detail: 'boom' },
+    });
+    await openPage(authedPage);
+
+    await authedPage.getByRole('button', { name: GRANDMA.display_name }).click();
+    await authedPage.getByRole('button', { name: t('familyPermission.remove.button') }).click();
+    await authedPage
+      .getByRole('alertdialog')
+      .getByRole('button', { name: t('familyPermission.remove.confirm') })
+      .click();
+
+    await expect(authedPage.getByText(t('familyPermission.remove.error'))).toBeVisible();
+    expect(deletes).toHaveLength(1);
+    await expect(
+      authedPage.getByRole('main').getByRole('list').getByRole('listitem'),
+    ).toHaveCount(2);
   });
 });
 

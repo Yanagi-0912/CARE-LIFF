@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import i18n from '../i18n';
-import { CHRONIC_OPTIONS, GENDER_OPTIONS, addCustomChronic } from '../pages/PersonalHealth/healthForm';
+import {
+  CHRONIC_OPTIONS,
+  GENDER_OPTIONS,
+  addCustomChronic,
+  defaultData,
+  profileToFormValues,
+} from '../pages/PersonalHealth/healthForm';
 
 const t = (key: string) => i18n.t(key);
 
@@ -95,5 +101,58 @@ describe('addCustomChronic', () => {
     addCustomChronic(selected, custom, '腦溢血', t);
     expect(selected).toEqual([]);
     expect(custom).toEqual([]);
+  });
+});
+
+describe('profileToFormValues', () => {
+  it('null（404，還沒建檔）與 undefined → 空白表單', () => {
+    expect(profileToFormValues(null)).toEqual(defaultData);
+    expect(profileToFormValues(undefined)).toEqual(defaultData);
+  });
+
+  it('空白表單的陣列是新的，改它不會汙染 defaultData', () => {
+    const values = profileToFormValues(null);
+    values.chronicDisease.push('asthma');
+    expect(defaultData.chronicDisease).toEqual([]);
+  });
+
+  it('舊資料的佔位值（age 0、height 1、weight 1、gender unknown）→ 空字串', () => {
+    expect(
+      profileToFormValues({ name: '王大明', gender: 'unknown', age: 0, height: 1, weight: 1 }),
+    ).toMatchObject({ name: '王大明', gender: '', age: '', height: '', weight: '' });
+  });
+
+  it('新版後端的 null → 空字串', () => {
+    expect(
+      profileToFormValues({ gender: 'female', age: null, height: null, weight: null }),
+    ).toMatchObject({ gender: 'female', age: '', height: '', weight: '' });
+  });
+
+  it('身高體重是 0 也當成沒填（下限分別是 30 與 1，0 不會是有效值）', () => {
+    expect(profileToFormValues({ height: 0, weight: 0 })).toMatchObject({
+      height: '',
+      weight: '',
+    });
+  });
+
+  it('真的數值轉成字串，小數保留', () => {
+    expect(
+      profileToFormValues({ gender: 'male', age: 72, height: 168.5, weight: 60.2 }),
+    ).toMatchObject({ gender: 'male', age: '72', height: '168.5', weight: '60.2' });
+  });
+
+  it('慢性病與病史照搬，缺欄位時是空的', () => {
+    expect(
+      profileToFormValues({
+        chronic_diseases: ['hypertension'],
+        chronic_custom: ['痛風'],
+        major_illness_history: '心導管手術',
+      }),
+    ).toMatchObject({
+      chronicDisease: ['hypertension'],
+      customChronic: ['痛風'],
+      majorIllness: '心導管手術',
+      surgeryHistory: '',
+    });
   });
 });

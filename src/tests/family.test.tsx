@@ -1,4 +1,5 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useSearchParams } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +8,7 @@ import FamilyPage from '../pages/Family';
 import * as profileApi from '../api/profileApi';
 import * as familyApi from '../api/familyApi';
 import type { FamilyMember } from '../types/family';
+import { queryKeys } from '@/lib/queryClient';
 import i18n from '../i18n';
 
 vi.mock('../api/profileApi', () => ({
@@ -16,6 +18,7 @@ vi.mock('../api/profileApi', () => ({
 vi.mock('../api/familyApi', () => ({
   createInvite: vi.fn(),
   fetchFamilyTree: vi.fn(),
+  removeFamilyMember: vi.fn(),
 }));
 
 vi.mock('../hooks/useLiff', () => ({
@@ -33,6 +36,7 @@ vi.mock('@line/liff', () => ({
 
 const familyState = {
   members: [] as FamilyMember[],
+  roleAssignment: null,
   loading: false,
   error: null as string | null,
   refetch: vi.fn(),
@@ -146,6 +150,38 @@ describe('FamilyPage', () => {
     // 固定選項翻成中文，自訂病名原文照用
     expect(screen.getByText('高血壓、痛風')).toBeInTheDocument();
     expect(screen.queryByText(/1 cm/)).not.toBeInTheDocument();
+  });
+
+  // 新版後端沒填就回 null；舊資料還留著建帳號時的佔位值。兩種都要當成沒填，
+  // 而且判斷與表單共用同一份定義（profileToFormValues），不會一邊濾掉一邊沒濾。
+  it.each([
+    ['舊資料的佔位值', { name: '', gender: 'unknown', age: 0, height: 1, weight: 1 }],
+    ['新版後端的 null', { name: '', gender: 'unknown', age: null, height: null, weight: null }],
+  ])('%s 整組都當成沒填，顯示尚無資料', async (_label, profile) => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(profile);
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
+
+    expect(await screen.findByText('這位家人還沒有填寫健康資料')).toBeInTheDocument();
+    expect(screen.queryByText(/0 歲/)).not.toBeInTheDocument();
+  });
+
+  it('數值欄位是 null 時只列出有填的欄位', async () => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({
+      gender: 'female',
+      age: null,
+      height: null,
+      weight: 52.5,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
+
+    expect(await screen.findByText('52.5 kg')).toBeInTheDocument();
+    expect(screen.getByText('女')).toBeInTheDocument();
+    expect(screen.queryByText(/歲/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cm/)).not.toBeInTheDocument();
   });
 
   // 這個測試就是這整件事的起點：家庭頁把後端的儲存值原樣印出來，
@@ -301,5 +337,109 @@ describe('FamilyPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /查看諮詢紀錄/ }));
 
     expect(await screen.findByTestId('consult-probe')).toHaveTextContent('U-mom');
+  });
+
+  // ── 移除家人 ───────────────────────────────────────────────────────────
+  //
+  // 雙向切斷、不能復原（要重新邀請），所以一定先確認，確認框要把後果講完。
+
+  describe('移除家人', () => {
+    beforeEach(() => {
+      vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
+    });
+
+    async function openRemoveDialog() {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
+      fireEvent.click(await screen.findByRole('button', { name: /移除這位家人/ }));
+      return screen.findByRole('alertdialog');
+    }
+
+    it('收合時看不到移除鈕', () => {
+      renderPage();
+
+      expect(screen.queryByRole('button', { name: /移除這位家人/ })).not.toBeInTheDocument();
+    });
+
+    it('按下先開確認框，把雙向、看不到什麼、收不到通知、要重新邀請都講出來；取消不送出', async () => {
+      const dialog = await openRemoveDialog();
+
+      expect(within(dialog).getByText('要移除 媽媽 嗎？')).toBeInTheDocument();
+      expect(dialog).toHaveTextContent('您和 媽媽 會同時從彼此的家人名單中移除');
+      expect(dialog).toHaveTextContent('健康資料、用藥、掛號與對話紀錄');
+      expect(dialog).toHaveTextContent('也不會再收到對方的提醒通知');
+      expect(dialog).toHaveTextContent('之後要再加入，需要重新邀請。');
+
+      fireEvent.click(within(dialog).getByRole('button', { name: '取消' }));
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+      expect(familyApi.removeFamilyMember).not.toHaveBeenCalled();
+    });
+
+    it('按「確定移除」才送出，送出中兩顆都停用；成功後失效族譜、角色清單與該成員的健康資料並提示', async () => {
+      let finishRemove!: (value: { removed: boolean }) => void;
+      vi.mocked(familyApi.removeFamilyMember).mockReturnValue(
+        new Promise((resolve) => {
+          finishRemove = resolve;
+        }),
+      );
+      const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+
+      const dialog = await openRemoveDialog();
+      fireEvent.click(within(dialog).getByRole('button', { name: '確定移除' }));
+
+      expect(await within(dialog).findByRole('button', { name: '移除中…' })).toBeDisabled();
+      expect(within(dialog).getByRole('button', { name: '取消' })).toBeDisabled();
+      expect(familyApi.removeFamilyMember).toHaveBeenCalledWith('U-mom');
+
+      await act(async () => {
+        finishRemove({ removed: true });
+      });
+
+      expect(await screen.findByText('已移除 媽媽')).toBeInTheDocument();
+      // 族譜重抓後這張卡片會消失，用藥頁「替誰設定」的名單也吃同一份
+      expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual(
+        expect.arrayContaining([
+          queryKeys.familyTree,
+          queryKeys.familyMemberRoles,
+          queryKeys.memberProfile('U-mom'),
+        ]),
+      );
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+      invalidate.mockRestore();
+    });
+
+    it('移除失敗時提示錯誤，卡片還在', async () => {
+      vi.mocked(familyApi.removeFamilyMember).mockRejectedValue(
+        Object.assign(new Error('boom'), { status: 500 }),
+      );
+
+      const dialog = await openRemoveDialog();
+      fireEvent.click(within(dialog).getByRole('button', { name: '確定移除' }));
+
+      expect(await screen.findByText('移除失敗，請稍後再試')).toBeInTheDocument();
+      expect(screen.queryByText('已移除 媽媽')).not.toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+      expect(screen.getByRole('button', { name: '媽媽' })).toBeInTheDocument();
+    });
+
+    // 兩邊都能按移除；對方先按了的話，這邊看到的是快取裡的舊卡片。
+    // 當成失敗會留下一張怎麼按都移除不掉的卡片。
+    it('對方已經先移除（404）時當成已完成：提示已移除並重抓族譜，不報錯', async () => {
+      vi.mocked(familyApi.removeFamilyMember).mockRejectedValue(
+        Object.assign(new Error('不是家人'), { status: 404 }),
+      );
+      const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+
+      const dialog = await openRemoveDialog();
+      fireEvent.click(within(dialog).getByRole('button', { name: '確定移除' }));
+
+      expect(await screen.findByText('已移除 媽媽')).toBeInTheDocument();
+      expect(screen.queryByText('移除失敗，請稍後再試')).not.toBeInTheDocument();
+      expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
+        queryKeys.familyTree,
+      );
+      invalidate.mockRestore();
+    });
   });
 });

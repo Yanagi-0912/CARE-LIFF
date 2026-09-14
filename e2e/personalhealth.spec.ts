@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, stubProfileApi, t, test } from './fixtures';
+import { stubApi } from './stubs';
 
 /**
  * 個人健康資料（三步驟表單）。
@@ -242,5 +243,71 @@ test.describe('已有健康檔案時', () => {
       t('personalHealth.genderPlaceholder'),
     );
     await expect(authedPage.getByRole('button', { name: STEP_NEXT() })).toBeDisabled();
+  });
+
+  test('後端只有佔位值（age 0、height 1、weight 1）時欄位是空白，不帶入 0 與 1', async ({ authedPage }) => {
+    await stubProfileApi(authedPage, {
+      name: '王大明',
+      gender: 'unknown',
+      age: 0,
+      height: 1,
+      weight: 1,
+    });
+
+    await openPage(authedPage);
+
+    await expect(authedPage.locator('#name')).toHaveValue('王大明');
+    await expect(authedPage.locator('#age')).toHaveValue('');
+    await authedPage.locator('#age').fill('72');
+    await selectGender(authedPage);
+    await goNext(authedPage);
+
+    await expect(authedPage.locator('#height')).toHaveValue('');
+    await expect(authedPage.locator('#weight')).toHaveValue('');
+  });
+});
+
+// 後端 PUT /me/update 是整份覆寫。讀取失敗時若照樣給一張空白表單，
+// 使用者按一次儲存就會清掉原本的慢性病與病史。
+test.describe('讀取健康檔案失敗時', () => {
+  test('不顯示表單，只有錯誤說明與重新載入；重新載入成功後才能編輯', async ({ authedPage }) => {
+    // 用旗標而不是「前 N 次失敗」：這支查詢與側欄共用，頁面是 lazy 載入的，
+    // 晚一步掛上的元件可能多觸發一次請求，次數算不準。
+    let healthy = false;
+    await stubApi(authedPage, {
+      path: '/api/profiles/me',
+      method: 'GET',
+      respond: () =>
+        healthy
+          ? {
+              status: 200,
+              body: {
+                name: '王大明',
+                gender: 'male',
+                age: 72,
+                height: 168,
+                weight: 60,
+                chronic_diseases: ['hypertension'],
+                chronic_custom: [],
+              },
+            }
+          : { status: 500, body: { detail: 'e2e: profile failed' } },
+    });
+
+    await authedPage.goto('/personalhealth');
+
+    await expect(authedPage.getByText(t('personalHealth.loadError'))).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(authedPage.getByText(t('personalHealth.loadErrorGuard'))).toBeVisible();
+    await expect(authedPage.locator('#personalHealthForm')).toHaveCount(0);
+    await expect(authedPage.getByRole('button', { name: STEP_SAVE() })).toHaveCount(0);
+
+    healthy = true;
+    await authedPage.getByRole('button', { name: t('personalHealth.retry') }).click();
+
+    await expect(authedPage.locator('#personalHealthForm')).toBeVisible();
+    await expect(authedPage.locator('#name')).toHaveValue('王大明');
+    await expect(authedPage.locator('#age')).toHaveValue('72');
   });
 });

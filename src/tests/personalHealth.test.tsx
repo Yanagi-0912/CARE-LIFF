@@ -1,5 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderWithToaster } from './testUtils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import liff from '@line/liff';
@@ -8,6 +9,8 @@ import liff from '@line/liff';
 import * as api from '../api/profileApi';
 import type { HealthProfile } from '../api/profileApi';
 import PersonalHealthPage from '../pages/PersonalHealth/index.tsx';
+import { queryKeys } from '@/lib/queryClient';
+import { Toaster } from '@/components/ui/sonner';
 import i18n from '../i18n';
 
 // 2. 直接在 mock 內部定義 mock 函式
@@ -20,7 +23,7 @@ vi.mock('../api/profileApi', () => ({
 vi.mock('@line/liff', () => ({
     default: {
         init: vi.fn(() => Promise.resolve()),
-        getProfile: vi.fn(() => Promise.resolve({ displayName: 'LINE User', pictureUrl: 'https://line.me/avatar.png' })),
+        getProfile: vi.fn(() => Promise.resolve({ displayName: 'LINE User', pictureUrl: 'https://line.me/avatar.png', userId: 'U-line-user' })),
         isLoggedIn: vi.fn(() => true),
     },
 }));
@@ -37,7 +40,7 @@ function setupApiMocks(profile: HealthProfile | null = null) {
     vi.mocked(liff.init).mockResolvedValue(undefined);
     vi.mocked(liff.getProfile).mockResolvedValue({
         displayName: 'LINE User',
-        pictureUrl: 'https://line.me/avatar.png',
+        pictureUrl: 'https://line.me/avatar.png', userId: 'U-line-user',
     });
     vi.mocked(liff.isLoggedIn).mockReturnValue(true);
 }
@@ -55,8 +58,21 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         vi.mocked(liff.isLoggedIn).mockReset();
     });
 
+    /**
+     * 等表單出現、而且 LINE 的顯示名稱已經補進姓名欄。
+     *
+     * 姓名欄的值由伺服器資料與 LIFF 名稱「算出來」，LIFF 名稱晚一步回來時表單會
+     * 重新同步一次（沒動過的欄位會補上，驗證訊息也會清掉）。先等它到位，後面的
+     * 輸入與驗證斷言才不會跟那次同步搶先後。
+     */
+    const waitForFormReady = async (name = 'LINE User') => {
+        const nameInput = await screen.findByLabelText('姓名');
+        await waitFor(() => expect(nameInput).toHaveValue(name));
+        return nameInput;
+    };
+
     const completeBasicStep = async (gender: '男' | '女' = '男') => {
-        fireEvent.change(await screen.findByLabelText('姓名'), {
+        fireEvent.change(await waitForFormReady(), {
             target: { value: '張小明' },
         });
         fireEvent.change(screen.getByLabelText('年齡'), {
@@ -112,7 +128,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         setupApiMocks();
         renderWithToaster(<PersonalHealthPage />);
 
-        fireEvent.change(await screen.findByLabelText('姓名'), {
+        fireEvent.change(await waitForFormReady(), {
             target: { value: '張小明' },
         });
         const ageInput = screen.getByPlaceholderText('請輸入年齡');
@@ -358,11 +374,133 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         });
     });
 
+    it('儲存成功後讓 myProfile 快取失效（首頁與側欄共用同一份）', async () => {
+        const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+        setupApiMocks();
+        renderWithToaster(<PersonalHealthPage />);
+        await reachHealthHistoryStep('男');
+
+        fireEvent.click(screen.getByRole('button', { name: '儲存紀錄' }));
+
+        expect(await screen.findByText('已成功儲存個人健康資料')).toBeInTheDocument();
+        expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
+            queryKeys.myProfile,
+        );
+        invalidate.mockRestore();
+    });
+
     // ==========================================
-    // 案例 7：載入既有資料回填表單
+    // 案例 6：讀取狀態——讀到之前、讀取失敗時都不給表單
     // ==========================================
+    // 後端 PUT /me/update 是整份覆寫。讀取失敗時若照樣顯示空白表單，
+    // 使用者按一次儲存就會把原本的慢性病與病史清掉。
+    describe('案例 6：讀取健康檔案', () => {
+        it('資料回來之前不渲染表單，只顯示讀取中', () => {
+            setupApiMocks();
+            vi.mocked(api.getPersonalHealthProfile).mockReturnValue(new Promise(() => {}));
+            renderWithToaster(<PersonalHealthPage />);
+
+            expect(screen.getByRole('status')).toHaveTextContent('正在讀取您的健康資料…');
+            expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: '下一步' })).not.toBeInTheDocument();
+        });
+
+        it('讀取失敗時不渲染表單，只有錯誤說明與重新載入；重新載入成功後才出現表單並帶入資料', async () => {
+            setupApiMocks();
+            vi.mocked(api.getPersonalHealthProfile)
+                .mockRejectedValueOnce(new Error('取得個人資料失敗:500'))
+                .mockResolvedValue({
+                    name: '王大錘',
+                    gender: 'male',
+                    age: 72,
+                    height: 168,
+                    weight: 60,
+                    chronic_diseases: ['hypertension'],
+                    chronic_custom: [],
+                });
+            renderWithToaster(<PersonalHealthPage />);
+
+            expect(await screen.findByText('取得個人資料失敗，請稍後再試。')).toBeInTheDocument();
+            expect(
+                screen.getByText('為了不蓋掉您原本填過的內容，要先讀取成功才能編輯。'),
+            ).toBeInTheDocument();
+            expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: '下一步' })).not.toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: '重新載入' }));
+
+            await waitForFormReady('王大錘');
+            expect(screen.getByLabelText('年齡')).toHaveValue(72);
+            expect(api.upsertPersonalHealthProfile).not.toHaveBeenCalled();
+        });
+
+        it('還沒建檔（404 → null）照常顯示空白表單', async () => {
+            setupApiMocks(null);
+            renderWithToaster(<PersonalHealthPage />);
+
+            await waitForFormReady();
+            expect(screen.getByLabelText('年齡')).toHaveValue(null);
+        });
+
+        it.each([
+            ['舊資料的佔位值', { name: '王大錘', gender: 'unknown', age: 0, height: 1, weight: 1 }],
+            ['新版後端的 null', { name: '王大錘', gender: 'unknown', age: null, height: null, weight: null }],
+        ])('%s 顯示成空白，不帶入 0 與 1', async (_label, profile) => {
+            setupApiMocks(profile);
+            renderWithToaster(<PersonalHealthPage />);
+
+            await waitForFormReady('王大錘');
+            const ageInput = screen.getByLabelText('年齡');
+            expect(ageInput).toHaveValue(null);
+            expect(screen.getByRole('combobox', { name: /性別/ })).toHaveTextContent('請選擇性別');
+
+            // 填了年齡、選了性別才看得到第二步的身高體重
+            fireEvent.change(ageInput, { target: { value: '72' } });
+            const user = userEvent.setup();
+            await user.click(screen.getByRole('combobox', { name: /性別/ }));
+            await user.click(await screen.findByRole('option', { name: '男' }));
+            fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
+            expect(await screen.findByLabelText('身高 (cm)')).toHaveValue(null);
+            expect(screen.getByLabelText('體重 (kg)')).toHaveValue(null);
+        });
+
+        it('背景重抓回來時不蓋掉正在打的字，但會補上沒動過的欄位', async () => {
+            setupApiMocks({ name: '王大錘', gender: 'male', age: 72, height: 168, weight: 60 });
+            // 自己建 client，才能模擬「快取被背景重抓的結果換掉」
+            const client = new QueryClient({
+                defaultOptions: { queries: { retry: false, staleTime: 30_000 } },
+            });
+            render(
+                <QueryClientProvider client={client}>
+                    <PersonalHealthPage />
+                    <Toaster />
+                </QueryClientProvider>,
+            );
+
+            await waitForFormReady('王大錘');
+            const ageInput = screen.getByLabelText('年齡');
+            expect(ageInput).toHaveValue(72);
+            fireEvent.change(ageInput, { target: { value: '73' } });
+
+            // 另一支裝置改了姓名與年齡，背景重抓帶回新資料
+            act(() => {
+                client.setQueryData(queryKeys.myProfile, {
+                    name: '王大鎚',
+                    gender: 'male',
+                    age: 80,
+                    height: 168,
+                    weight: 60,
+                });
+            });
+
+            await waitFor(() => expect(screen.getByLabelText('姓名')).toHaveValue('王大鎚'));
+            expect(ageInput).toHaveValue(73);
+        });
+    });
+
     // ==========================================
-    // 正確的案例 7：姓名優先順序驗證
+    // 案例 7：姓名優先順序驗證
     // ==========================================
     describe('案例 7：姓名優先順序驗證', () => {
         it('A. 當資料庫有姓名時 → 應以資料庫姓名為主，不被 LIFF 的 displayName 覆蓋', async () => {
@@ -380,14 +518,14 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             // 模擬 LIFF 回傳名稱為 "LINE User"
             vi.mocked(liff.getProfile).mockResolvedValue({
                 displayName: 'LINE User',
-                pictureUrl: 'https://line.me/avatar.png'
+                pictureUrl: 'https://line.me/avatar.png', userId: 'U-line-user'
             });
 
             renderWithToaster(<PersonalHealthPage />);
 
             // 驗證輸入框與標題最終顯示的是資料庫的 "王大錘"
             const nameInput = await screen.findByLabelText('姓名');
-            expect(nameInput).toHaveValue('王大錘');
+            await waitFor(() => expect(nameInput).toHaveValue('王大錘'));
             expect(screen.getByText('王大錘 的健康資料')).toBeInTheDocument();
         });
 
@@ -398,7 +536,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             // 模擬 LIFF 回傳名稱為 "LINE User"
             vi.mocked(liff.getProfile).mockResolvedValue({
                 displayName: 'LINE User',
-                pictureUrl: 'https://line.me/avatar.png'
+                pictureUrl: 'https://line.me/avatar.png', userId: 'U-line-user'
             });
 
             renderWithToaster(<PersonalHealthPage />);

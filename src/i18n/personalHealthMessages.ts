@@ -59,6 +59,9 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.genderRequired': '請先選擇性別',
     'personalHealth.fieldErrorToast': '欄位輸入有誤，請檢查下方提示',
     'personalHealth.loadError': '取得個人資料失敗，請稍後再試。',
+    'personalHealth.loadErrorGuard': '為了不蓋掉您原本填過的內容，要先讀取成功才能編輯。',
+    'personalHealth.loading': '正在讀取您的健康資料…',
+    'personalHealth.retry': '重新載入',
     'personalHealth.field.age': '年齡',
     'personalHealth.field.height': '身高',
     'personalHealth.field.weight': '體重',
@@ -133,6 +136,10 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.genderRequired': 'Please select a gender first',
     'personalHealth.fieldErrorToast': 'Some fields are invalid. Check the hints below.',
     'personalHealth.loadError': 'Failed to load your profile. Please try again later.',
+    'personalHealth.loadErrorGuard':
+      'Your profile has to load first, so nothing you filled in before gets overwritten.',
+    'personalHealth.loading': 'Loading your health profile…',
+    'personalHealth.retry': 'Reload',
     'personalHealth.field.age': 'Age',
     'personalHealth.field.height': 'Height',
     'personalHealth.field.weight': 'Weight',
@@ -207,6 +214,10 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.genderRequired': 'Pilih jenis kelamin terlebih dahulu',
     'personalHealth.fieldErrorToast': 'Beberapa kolom tidak valid. Periksa petunjuk di bawah.',
     'personalHealth.loadError': 'Gagal memuat profil. Coba lagi nanti.',
+    'personalHealth.loadErrorGuard':
+      'Profil Anda harus dimuat dulu agar isian yang sudah ada tidak tertimpa.',
+    'personalHealth.loading': 'Memuat profil kesehatan Anda…',
+    'personalHealth.retry': 'Muat ulang',
     'personalHealth.field.age': 'Usia',
     'personalHealth.field.height': 'Tinggi',
     'personalHealth.field.weight': 'Berat',
@@ -284,6 +295,10 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.fieldErrorToast':
       'Một số trường không hợp lệ. Hãy kiểm tra gợi ý bên dưới.',
     'personalHealth.loadError': 'Không tải được hồ sơ. Vui lòng thử lại sau.',
+    'personalHealth.loadErrorGuard':
+      'Cần tải được hồ sơ trước rồi mới chỉnh sửa, để không ghi đè nội dung bạn đã điền.',
+    'personalHealth.loading': 'Đang tải hồ sơ sức khỏe của bạn…',
+    'personalHealth.retry': 'Tải lại',
     'personalHealth.field.age': 'Tuổi',
     'personalHealth.field.height': 'Chiều cao',
     'personalHealth.field.weight': 'Cân nặng',
@@ -359,6 +374,10 @@ export const personalHealthFeatureMessages: Record<
     'personalHealth.genderRequired': 'กรุณาเลือกเพศก่อน',
     'personalHealth.fieldErrorToast': 'บางช่องไม่ถูกต้อง โปรดดูคำแนะนำด้านล่าง',
     'personalHealth.loadError': 'โหลดโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่ภายหลัง',
+    'personalHealth.loadErrorGuard':
+      'ต้องโหลดข้อมูลเดิมให้ได้ก่อนจึงจะแก้ไขได้ เพื่อไม่ให้ทับข้อมูลที่ท่านกรอกไว้แล้ว',
+    'personalHealth.loading': 'กำลังโหลดข้อมูลสุขภาพของท่าน…',
+    'personalHealth.retry': 'โหลดใหม่',
     'personalHealth.field.age': 'อายุ',
     'personalHealth.field.height': 'ส่วนสูง',
     'personalHealth.field.weight': 'น้ำหนัก',
@@ -435,6 +454,10 @@ export const personalHealthFeatureMessages: Record<
       '入力に誤りがあります。下の案内を確認してください。',
     'personalHealth.loadError':
       'プロフィールの取得に失敗しました。後でもう一度お試しください。',
+    'personalHealth.loadErrorGuard':
+      'すでに入力した内容を上書きしないよう、読み込みが終わってから編集できます。',
+    'personalHealth.loading': '健康データを読み込んでいます…',
+    'personalHealth.retry': '再読み込み',
     'personalHealth.field.age': '年齢',
     'personalHealth.field.height': '身長',
     'personalHealth.field.weight': '体重',

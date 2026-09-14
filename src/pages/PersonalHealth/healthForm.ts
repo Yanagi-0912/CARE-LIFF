@@ -1,6 +1,7 @@
 /*個人健康表單的選項與驗證規則。
   從頁面抽出來的理由：這些都是不依賴 React 的純資料與純函式，放在這裡才測得到。
  */
+import type { HealthProfile } from '../../api/profileApi';
 
 // value對應後端nodes.py中定義的_CHRONIC_CODE_LABELS
 export const GENDER_OPTIONS = [
@@ -47,7 +48,9 @@ export const defaultData: HealthData = {
 
 export const numericFieldMeta = {
     age: {
-        min: 0,
+        // 下限 1 而不是 0：0 是舊的佔位值，讀進來會被當成沒填（見 PROFILE_PLACEHOLDER），
+        // 允許輸入 0 等於讓使用者存了一個下次打開就消失的值。後端的驗證同為 1。
+        min: 1,
         max: 130,
         labelKey: 'personalHealth.field.age',
         unitKey: 'personalHealth.unit.age',
@@ -129,4 +132,46 @@ export function addCustomChronic(
 
     if (custom.includes(name)) return { selected, custom, status: 'duplicate' };
     return { selected, custom: [...custom, name], status: 'added' };
+}
+
+/**
+ * 舊版後端建帳號時塞進去的佔位值。新版沒填就回 null，但既有資料還留著這些值，
+ * 讀進來一律當成「沒填」。
+ *
+ * 數值欄位的 0 也算沒填：身高下限 30、體重下限 1（見 numericFieldMeta），
+ * 0 不會是有效值；年齡的佔位值本身就是 0。
+ */
+export const PROFILE_PLACEHOLDER = {
+    age: 0,
+    height: 1,
+    weight: 1,
+    gender: 'unknown',
+} as const;
+
+const numericToField = (value: number | null | undefined, placeholder: number) =>
+    value == null || value === 0 || value === placeholder ? '' : String(value);
+
+/**
+ * 後端的健康檔案 → 表單值（全部是字串，沒填就是空字串）。
+ *
+ * 「我自己」那一頁、代填對話框、家人卡片都走這一支，「什麼算沒填」只有這一份
+ * 定義。以前各寫一份：家人卡片早就會濾掉 height 1，自己那一頁卻把 1 帶進輸入框，
+ * 使用者得先把「身高 1」改掉才按得了下一步；年齡 0 則會被原樣存回去。
+ *
+ * `null`（404，還沒建檔）與 `undefined` 都回傳空白表單。
+ */
+export function profileToFormValues(profile: HealthProfile | null | undefined): HealthData {
+    if (!profile) return { ...defaultData, chronicDisease: [], customChronic: [] };
+    return {
+        name: profile.name ?? '',
+        gender:
+            !profile.gender || profile.gender === PROFILE_PLACEHOLDER.gender ? '' : profile.gender,
+        age: numericToField(profile.age, PROFILE_PLACEHOLDER.age),
+        height: numericToField(profile.height, PROFILE_PLACEHOLDER.height),
+        weight: numericToField(profile.weight, PROFILE_PLACEHOLDER.weight),
+        chronicDisease: profile.chronic_diseases ?? [],
+        customChronic: profile.chronic_custom ?? [],
+        majorIllness: profile.major_illness_history ?? '',
+        surgeryHistory: profile.surgery_history ?? '',
+    };
 }

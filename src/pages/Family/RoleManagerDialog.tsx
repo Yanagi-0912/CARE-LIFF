@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { InfoIcon, TriangleAlertIcon, UserIcon } from 'lucide-react';
+import { TriangleAlertIcon, UserIcon } from 'lucide-react';
 
 import { fetchMemberRoles, setFamilyRole } from '../../api/familyApi';
+import { useFamily } from '../../hooks/useFamily';
 import type { FamilyRole, FamilyRoleEntry } from '../../types/family';
 import { ASSIGNABLE_FAMILY_ROLES, FAMILY_ROLE_LABEL_KEY } from '../../types/family';
 import { queryKeys } from '@/lib/queryClient';
+import { RoleAssignmentNotice } from './RoleAssignmentNotice';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -46,13 +48,19 @@ const EXPLAIN_KEY: Record<FamilyRole, string> = {
  *   沒有可修改的對象。
  * - **未設定與「設為一般家人」分開顯示。** 直接把未設定畫成已選中的一般家人，
  *   擁有者會以為自己設定過了，於是永遠不會去設定。
- * - **未設定的成員要明說會以什麼權限處理。** 沉默的預設值在這裡特別危險：
- *   他以為沒做的事等於沒有後果，實際上他正把某個人留在最低權限。
+ * - **頂端的提示照實際生效的狀態講。** 權限生效（enforced）時要明說未設定的
+ *   人會以什麼權限處理；還沒生效（shadow）時要明說「現在每位家人都看得到」，
+ *   而每個角色的說明要讀得出那是生效後的樣子。
  */
 export function RoleManagerDialog({ onClose }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  // 與族譜頁同一個 query key，命中快取不會多打一次。下面指派成功後會失效
+  // familyTree：最後一位設定完、後端切成 enforced 時，提示會跟著換掉或消失。
+  const { roleAssignment } = useFamily();
+  const notYetEnforced = roleAssignment?.rbac_migration_state === 'shadow';
 
   const { data: entries, isPending, isError } = useQuery({
     queryKey: queryKeys.familyMemberRoles,
@@ -63,8 +71,8 @@ export function RoleManagerDialog({ onClose }: Props) {
     mutationFn: ({ memberId, role }: { memberId: string; role: FamilyRole }) =>
       setFamilyRole(memberId, role),
     onSuccess: async (_data, variables) => {
-      // 角色一變，族譜頁的 my_permissions 與該成員的健康資料快取都可能過期。
-      // 不失效的話，畫面會停在舊權限上，直到 staleTime 過去。
+      // 角色一變，族譜頁的 my_permissions、指派狀態與該成員的健康資料快取都可能
+      // 過期。不失效的話，畫面會停在舊權限與舊提示上，直到 staleTime 過去。
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.familyTree }),
         queryClient.invalidateQueries({ queryKey: queryKeys.familyMemberRoles }),
@@ -90,8 +98,6 @@ export function RoleManagerDialog({ onClose }: Props) {
     }
   };
 
-  const unassignedCount = (entries ?? []).filter((e) => !e.family_role).length;
-
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-[560px]">
@@ -99,6 +105,8 @@ export function RoleManagerDialog({ onClose }: Props) {
           <DialogTitle>{t('familyRole.manage.title')}</DialogTitle>
           <DialogDescription>{t('familyRole.manage.desc')}</DialogDescription>
         </DialogHeader>
+
+        <RoleAssignmentNotice status={roleAssignment} />
 
         {isPending ? (
           <ItemGroup className="gap-3" aria-busy="true">
@@ -120,74 +128,68 @@ export function RoleManagerDialog({ onClose }: Props) {
             <AlertDescription>{t('familyRole.manage.loadError')}</AlertDescription>
           </Alert>
         ) : (
-          <>
-            {unassignedCount > 0 && (
-              // 「還有幾位沒設定，他們現在是什麼權限」要講出來。
-              <Alert>
-                <InfoIcon />
-                <AlertDescription>
-                  {t('familyRole.unassignedNotice', { count: unassignedCount })}
-                </AlertDescription>
-              </Alert>
-            )}
+          <ItemGroup className="gap-3">
+            {(entries ?? []).map((entry) => {
+              const name = entry.display_name || entry.user_id.slice(0, 8);
+              const busy = savingId === entry.user_id;
+              return (
+                <Item key={entry.user_id} variant="outline" className="flex-col items-stretch gap-3">
+                  <div className="flex items-center gap-3.5">
+                    <ItemMedia>
+                      <Avatar className="size-12">
+                        <AvatarImage src={undefined} alt="" />
+                        <AvatarFallback>
+                          <UserIcon className="size-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle className="text-base">{name}</ItemTitle>
+                      {!entry.family_role && (
+                        <p className="text-sm text-muted-foreground">
+                          {t('familyRole.unassigned')}
+                        </p>
+                      )}
+                    </ItemContent>
+                    {busy && <Spinner />}
+                  </div>
 
-            <ItemGroup className="gap-3">
-              {(entries ?? []).map((entry) => {
-                const name = entry.display_name || entry.user_id.slice(0, 8);
-                const busy = savingId === entry.user_id;
-                return (
-                  <Item key={entry.user_id} variant="outline" className="flex-col items-stretch gap-3">
-                    <div className="flex items-center gap-3.5">
-                      <ItemMedia>
-                        <Avatar className="size-12">
-                          <AvatarImage src={undefined} alt="" />
-                          <AvatarFallback>
-                            <UserIcon className="size-5" />
-                          </AvatarFallback>
-                        </Avatar>
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle className="text-base">{name}</ItemTitle>
-                        {!entry.family_role && (
-                          <p className="text-sm text-muted-foreground">
-                            {t('familyRole.unassigned')}
-                          </p>
-                        )}
-                      </ItemContent>
-                      {busy && <Spinner />}
-                    </div>
+                  {/* 單選：一位成員只會有一個角色。用 ToggleGroup 而非一排
+                      aria-pressed 的按鈕，方向鍵可在群組內移動焦點。
+                      未設定時 value 為空陣列——不預先選中任何一個，
+                      否則擁有者會以為已經設定過。 */}
+                  <ToggleGroup
+                    variant="primary"
+                    className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3"
+                    value={entry.family_role ? [entry.family_role] : []}
+                    onValueChange={(next) => {
+                      const role = next[0] as FamilyRole | undefined;
+                      if (role) void handleChange(entry, role);
+                    }}
+                    aria-label={t('familyRole.manage.title')}
+                  >
+                    {ASSIGNABLE_FAMILY_ROLES.map((role) => (
+                      <ToggleGroupItem key={role} value={role} disabled={busy}>
+                        {t(FAMILY_ROLE_LABEL_KEY[role])}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
 
-                    {/* 單選：一位成員只會有一個角色。用 ToggleGroup 而非一排
-                        aria-pressed 的按鈕，方向鍵可在群組內移動焦點。
-                        未設定時 value 為空陣列——不預先選中任何一個，
-                        否則擁有者會以為已經設定過。 */}
-                    <ToggleGroup
-                      variant="primary"
-                      className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3"
-                      value={entry.family_role ? [entry.family_role] : []}
-                      onValueChange={(next) => {
-                        const role = next[0] as FamilyRole | undefined;
-                        if (role) void handleChange(entry, role);
-                      }}
-                      aria-label={t('familyRole.manage.title')}
-                    >
-                      {ASSIGNABLE_FAMILY_ROLES.map((role) => (
-                        <ToggleGroupItem key={role} value={role} disabled={busy}>
-                          {t(FAMILY_ROLE_LABEL_KEY[role])}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-
-                    {entry.family_role && (
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        {t(EXPLAIN_KEY[entry.family_role])}
-                      </p>
-                    )}
-                  </Item>
-                );
-              })}
-            </ItemGroup>
-          </>
+                  {/* 說明寫的是生效後的權限。還沒生效時照原句會變成謊話
+                      （例如「一般家人看不到健康狀況」），所以前面標上「生效後」。 */}
+                  {entry.family_role && (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {notYetEnforced
+                        ? t('familyRole.explain.pending', {
+                            text: t(EXPLAIN_KEY[entry.family_role]),
+                          })
+                        : t(EXPLAIN_KEY[entry.family_role])}
+                    </p>
+                  )}
+                </Item>
+              );
+            })}
+          </ItemGroup>
         )}
 
         <DialogClose render={<Button type="button" variant="ghost" className="mt-4 w-full" />}>

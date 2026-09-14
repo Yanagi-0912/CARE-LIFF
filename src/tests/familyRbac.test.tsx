@@ -1,12 +1,19 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithToaster } from './testUtils';
 import FamilyPage from '../pages/Family';
 import * as profileApi from '../api/profileApi';
 import * as familyApi from '../api/familyApi';
-import type { FamilyMember, FamilyPermissions, FamilyRole } from '../types/family';
+import type {
+  FamilyMember,
+  FamilyPermissions,
+  FamilyRole,
+  FamilyRoleAssignmentStatus,
+  FamilyRoleEntry,
+  GetFamilyTreeResponse,
+} from '../types/family';
 import i18n from '../i18n';
 
 vi.mock('../api/profileApi', () => ({
@@ -19,6 +26,7 @@ vi.mock('../api/familyApi', () => ({
   fetchFamilyTree: vi.fn(),
   fetchMemberRoles: vi.fn(),
   setFamilyRole: vi.fn(),
+  removeFamilyMember: vi.fn(),
 }));
 
 vi.mock('../hooks/useLiff', () => ({
@@ -31,15 +39,27 @@ vi.mock('@line/liff', () => ({
 
 const familyState = {
   members: [] as FamilyMember[],
-  roleAssignment: null as { complete: boolean; unassigned_member_ids: string[] } | null,
+  roleAssignment: null as FamilyRoleAssignmentStatus | null,
   loading: false,
   error: null as string | null,
   refetch: vi.fn(),
 };
 
-vi.mock('../hooks/useFamily', () => ({
-  useFamily: () => familyState,
-}));
+/**
+ * 預設回傳上面那份手動控制的 familyState。`familyMode.real` 打開時改用真的
+ * useFamily（資料來自被 mock 的 fetchFamilyTree），給「指派 → 失效 familyTree →
+ * 重抓 → 提示換掉」這條路徑用：那條路徑只有真的 hook 走得到。
+ * 同一次 render 裡模式不會變，hook 的呼叫順序因此是固定的。
+ */
+const familyMode = { real: false };
+function pickFamily(realHook: () => unknown) {
+  return familyMode.real ? realHook() : familyState;
+}
+
+vi.mock('../hooks/useFamily', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useFamily')>();
+  return { useFamily: () => pickFamily(actual.useFamily) };
+});
 
 /**
  * 後端在 enforced 狀態下對四種角色回的 `my_permissions`。
@@ -64,6 +84,22 @@ function memberAs(role: FamilyRole | null): FamilyMember {
     my_permissions: role ? PERMISSIONS[role] : undefined,
   };
 }
+
+function assignment(
+  overrides: Partial<FamilyRoleAssignmentStatus> = {},
+): FamilyRoleAssignmentStatus {
+  return {
+    owner_id: 'U-me',
+    is_complete: false,
+    unassigned_member_ids: [],
+    rbac_migration_state: 'shadow',
+    ...overrides,
+  };
+}
+
+/** shadow 且還有人沒設定時的提示（中文沒有單複數之分，_one／_other 同一句） */
+const shadowPending = (count: number) =>
+  `還有 ${count} 位家人尚未設定權限。全部設定好之前，所有家人都看得到您的健康狀況與對話紀錄；設定好後權限才會生效。`;
 
 function renderPage() {
   return renderWithToaster(
@@ -139,6 +175,14 @@ describe('家人卡片依角色降級', () => {
     expect(profileApi.getPersonalHealthProfile).not.toHaveBeenCalled();
   });
 
+  it('沒有任何權限也能移除：切斷關係不看對方給了什麼權限', async () => {
+    familyState.members = [memberAs(null)];
+    renderPage();
+    await expandCard();
+
+    expect(screen.getByRole('button', { name: /移除這位家人/ })).toBeInTheDocument();
+  });
+
   it('影子模式下（後端回滿權限）介面與變更前完全相同', async () => {
     // 遷移狀態只存在後端一處。前端不判斷 shadow／enforced，只照著回來的
     // my_permissions 渲染——所以「未生效」在這裡的樣子，就是收到滿權限的樣子。
@@ -171,8 +215,11 @@ describe('引導式角色指派', () => {
     await i18n.changeLanguage('zh-TW');
   });
 
-  it('有未設定的家人時，族譜頁直接說還有幾位以及現在算什麼權限', () => {
-    familyState.roleAssignment = { complete: false, unassigned_member_ids: ['U-a', 'U-b'] };
+  it('權限已生效（enforced）且有未設定的家人：說還有幾位、現在以一般家人處理', () => {
+    familyState.roleAssignment = assignment({
+      rbac_migration_state: 'enforced',
+      unassigned_member_ids: ['U-a', 'U-b'],
+    });
     renderPage();
 
     expect(
@@ -180,20 +227,86 @@ describe('引導式角色指派', () => {
     ).toBeInTheDocument();
   });
 
-  it('全部設定完就不再顯示提示，但入口仍在', () => {
-    familyState.roleAssignment = { complete: true, unassigned_member_ids: [] };
+  it('還沒生效（shadow）且有人沒設定：講明在那之前所有家人都看得到，不說「以一般家人處理」', () => {
+    familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-a', 'U-b'] });
+    renderPage();
+
+    expect(screen.getByText(shadowPending(2))).toBeInTheDocument();
+    // 舊文案在 shadow 時是謊話：角色沒有作用，未設定的人並不是以一般家人處理
+    expect(screen.queryByText(/目前會以「一般家人」處理/)).not.toBeInTheDocument();
+  });
+
+  it('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', () => {
+    familyState.roleAssignment = assignment({ is_complete: true });
+    renderPage();
+
+    expect(
+      screen.getByText('權限設定目前沒有生效，所有家人都看得到您的健康狀況與對話紀錄。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/尚未設定權限/)).not.toBeInTheDocument();
+  });
+
+  it('權限已生效且全部設定完：不顯示提示，但入口仍在', () => {
+    familyState.roleAssignment = assignment({
+      is_complete: true,
+      rbac_migration_state: 'enforced',
+    });
     renderPage();
 
     expect(screen.queryByText(/尚未設定權限/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/沒有生效/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /設定家人權限/ })).toBeInTheDocument();
+  });
+
+  it('shadow 時對話框頂端也說明，角色說明前面標上「權限生效後」', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'CAREGIVER', effective_family_role: 'CAREGIVER' },
+      { user_id: 'U-dad', display_name: '爸爸', family_role: null, effective_family_role: 'MEMBER' },
+    ]);
+    familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-dad'] });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText(shadowPending(1))).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText(
+        '權限生效後：看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('enforced 時角色說明就是現況，不加前綴', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'MEMBER', effective_family_role: 'MEMBER' },
+    ]);
+    familyState.roleAssignment = assignment({
+      is_complete: true,
+      rbac_migration_state: 'enforced',
+    });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(
+      await within(dialog).findByText('只看得到用藥時間與藥名，看不到健康狀況與對話紀錄。'),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/權限生效後/)).not.toBeInTheDocument();
   });
 
   it('未設定的成員不預先選中任何角色，選了才送出並顯示說明', async () => {
     vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: null },
+      { user_id: 'U-mom', display_name: '媽媽', family_role: null, effective_family_role: 'MEMBER' },
     ]);
-    vi.mocked(familyApi.setFamilyRole).mockResolvedValue(undefined);
-    familyState.roleAssignment = { complete: false, unassigned_member_ids: ['U-mom'] };
+    vi.mocked(familyApi.setFamilyRole).mockResolvedValue({
+      user_id: 'U-me',
+      family_members: [],
+      created_at: '',
+      updated_at: '',
+    });
+    familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-mom'] });
     renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
@@ -207,5 +320,65 @@ describe('引導式角色指派', () => {
     await waitFor(() =>
       expect(familyApi.setFamilyRole).toHaveBeenCalledWith('U-mom', 'CAREGIVER'),
     );
+  });
+});
+
+// 後端在擁有者替最後一位家人指派角色時自動切成 enforced。前端要做的只有一件事：
+// 指派成功後讓 familyTree 失效，重抓回來的 role_assignment 自然會換掉提示。
+// 這條路徑要用真的 useFamily 才走得到。
+describe('指派完最後一位家人後，提示跟著後端的狀態走', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    familyMode.real = true;
+    await i18n.changeLanguage('zh-TW');
+  });
+
+  afterEach(() => {
+    familyMode.real = false;
+  });
+
+  it('後端切成 enforced 後，族譜頁與對話框的提示都消失，角色說明拿掉「生效後」', async () => {
+    let assigned = false;
+    const tree = (): GetFamilyTreeResponse => ({
+      family_tree: {
+        user_id: 'U-me',
+        family_members: [memberAs('GUARDIAN')],
+        created_at: '',
+        updated_at: '',
+      },
+      role_assignment: assigned
+        ? assignment({ is_complete: true, rbac_migration_state: 'enforced' })
+        : assignment({ unassigned_member_ids: ['U-mom'] }),
+    });
+    const roles = (): FamilyRoleEntry[] => [
+      {
+        user_id: 'U-mom',
+        display_name: '媽媽',
+        family_role: assigned ? 'CAREGIVER' : null,
+        effective_family_role: assigned ? 'CAREGIVER' : 'MEMBER',
+      },
+    ];
+    vi.mocked(familyApi.fetchFamilyTree).mockImplementation(async () => tree());
+    vi.mocked(familyApi.fetchMemberRoles).mockImplementation(async () => roles());
+    vi.mocked(familyApi.setFamilyRole).mockImplementation(async () => {
+      assigned = true;
+      return tree().family_tree;
+    });
+
+    renderPage();
+    expect(await screen.findByText(shadowPending(1))).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(shadowPending(1))).toBeInTheDocument();
+
+    fireEvent.click(await within(dialog).findByRole('button', { name: '協助照顧者' }));
+
+    await waitFor(() => expect(screen.queryByText(shadowPending(1))).not.toBeInTheDocument());
+    expect(
+      await within(dialog).findByText('看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/權限生效後/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/目前會以「一般家人」處理/)).not.toBeInTheDocument();
   });
 });

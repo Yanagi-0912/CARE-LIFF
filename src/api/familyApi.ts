@@ -14,8 +14,11 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 /**
  * 輔助函式：解析錯誤訊息
+ *
+ * HTTP 狀態碼掛在錯誤上一起丟出去（`status`）：有些呼叫端要分得出「其實已經
+ * 成立」與真正的失敗，例如移除家人時對方早已不在族譜裡，後端回 404。
  */
-async function parseError(res: Response): Promise<Error> {
+async function parseError(res: Response): Promise<Error & { status: number }> {
   let message = `API 請求失敗：${res.status}`;
   try {
     const data = await res.json();
@@ -27,7 +30,7 @@ async function parseError(res: Response): Promise<Error> {
   } catch {
     // ignore parse error
   }
-  return new Error(message);
+  return Object.assign(new Error(message), { status: res.status });
 }
 
 /**
@@ -123,6 +126,24 @@ export async function fetchMemberRoles(): Promise<FamilyRoleEntry[]> {
 /** 8. 查詢引導式角色指派的完成狀態（由後端依族譜資料判定） */
 export async function fetchRoleAssignmentStatus(): Promise<FamilyRoleAssignmentStatus> {
   const res = await fetchWithAuth(`${BASE_URL}/api/family/role-assignment-status`);
+  if (!res.ok) throw await parseError(res);
+  return res.json();
+}
+
+/**
+ * 9. 移除家人（雙向切斷）
+ *
+ * 後端同時把對方從我的族譜、把我從對方的族譜移除。之後雙方都讀不到對方的
+ * 健康資料、用藥、掛號與對話紀錄，也不再收到對方的提醒；要再加入得重新邀請。
+ * 族譜裡任何一方都能呼叫，不限擁有者。
+ *
+ * 404：對方已經不是家人。400：對象是自己。
+ */
+export async function removeFamilyMember(memberId: string): Promise<{ removed: boolean }> {
+  const res = await fetchWithAuth(
+    `${BASE_URL}/api/family/members/${encodeURIComponent(memberId)}`,
+    { method: 'DELETE' },
+  );
   if (!res.ok) throw await parseError(res);
   return res.json();
 }

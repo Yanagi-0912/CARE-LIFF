@@ -4,12 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { RotateCwIcon, TriangleAlertIcon } from 'lucide-react';
 import { z } from 'zod';
 
 import { getPersonalHealthProfile, proxyUpsertHealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
 import { queryKeys } from '@/lib/queryClient';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,6 +36,7 @@ import {
   GENDER_OPTIONS,
   addCustomChronic,
   defaultData,
+  profileToFormValues,
   validateNumericField,
   type HealthData,
   type NumericFieldName,
@@ -47,9 +50,9 @@ interface Props {
 /**
  * 代填家人的健康資料。
  *
- * 與「我自己」那一頁共用欄位元件（HealthField／ChronicDiseaseField）與驗證
- * 規則，但**資料流是分開的**：那一頁從 LIFF profile 帶入姓名頭像、走三步驟
- * Stepper、寫 `/me/update`；這裡是一次填完的對話框、寫
+ * 與「我自己」那一頁共用欄位元件（HealthField／ChronicDiseaseField）、驗證規則
+ * 與 profileToFormValues，但**資料流是分開的**：那一頁從 LIFF profile 帶入姓名
+ * 頭像、走三步驟 Stepper、寫 `/me/update`；這裡是一次填完的對話框、寫
  * `PUT /api/profiles/{userId}`。共用元件是為了兩邊的欄位規則不會漂移，
  * 不是為了把兩種情境擠進同一個表單。
  *
@@ -90,28 +93,18 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
   // 的是**快取**，`queryFn` 根本不會執行。填表的邏輯因此 SHALL NOT 寫在
   // `queryFn` 裡——那條路徑在最常見的操作順序（展開卡片 → 按代填）下不會跑到，
   // 表單會是空的，而使用者會把空白當成「還沒填」，一路覆蓋掉既有資料。
-  const { data: profile, isPending } = useQuery({
+  const { data: profile, isError, isFetching, refetch } = useQuery({
     queryKey: queryKeys.memberProfile(member.user_id),
     queryFn: () => getPersonalHealthProfile(member.user_id),
   });
 
   // 由資料驅動表單值，不由請求的生命週期驅動。`values` 在拿到（或換掉）資料時
   // 自行同步，快取命中與實際發出請求兩條路徑因此收斂到同一個結果。
-  const values = useMemo<HealthData | undefined>(() => {
-    if (!profile) return undefined;
-    return {
-      ...defaultData,
-      name: profile.name || '',
-      gender: profile.gender === 'unknown' ? '' : profile.gender || '',
-      height: profile.height?.toString() || '',
-      weight: profile.weight?.toString() || '',
-      age: profile.age?.toString() || '',
-      chronicDisease: profile.chronic_diseases ?? [],
-      customChronic: profile.chronic_custom ?? [],
-      majorIllness: profile.major_illness_history || '',
-      surgeryHistory: profile.surgery_history || '',
-    };
-  }, [profile]);
+  // keepDirtyValues：背景重抓回來時只補使用者還沒動過的欄位，不蓋掉正在打的字。
+  const values = useMemo<HealthData | undefined>(
+    () => (profile === undefined ? undefined : profileToFormValues(profile)),
+    [profile],
+  );
 
   const {
     register,
@@ -123,11 +116,18 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
     resolver: zodResolver(schema),
     defaultValues: defaultData,
     values,
+    resetOptions: { keepDirtyValues: true },
     mode: 'onBlur',
     reValidateMode: 'onChange',
   });
 
   const form = watch();
+
+  // 讀到了才給表單（null＝對方還沒建檔，也算讀到）。讀取失敗時給表單的話，
+  // 使用者看到一片空白、以為對方還沒填，送出就把長輩原本的病史整份清掉——
+  // PUT /api/profiles/{userId} 是整份覆寫。背景重抓失敗但手上已有資料時照常
+  // 顯示，那份資料是真的。
+  const loadState = profile !== undefined ? 'ready' : isError ? 'error' : 'loading';
 
   const handleAddChronic = () => {
     // 與「我自己」那一頁走同一支純函式：使用者打的是當前語系的病名
@@ -139,8 +139,8 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
       t,
     );
     if (result.status === 'added' || result.status === 'matchedFixed') {
-      setValue('chronicDisease', result.selected, { shouldValidate: true });
-      setValue('customChronic', result.custom, { shouldValidate: true });
+      setValue('chronicDisease', result.selected, { shouldValidate: true, shouldDirty: true });
+      setValue('customChronic', result.custom, { shouldValidate: true, shouldDirty: true });
     }
     if (result.status !== 'empty') setCustomDraft('');
   };
@@ -187,14 +187,42 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        {isPending ? (
+        {loadState === 'loading' ? (
           <p
             className="flex items-center gap-2 py-6 text-base text-muted-foreground"
             role="status"
           >
-            <Spinner />
+            <Spinner aria-hidden="true" />
             {t('family.healthLoading')}
           </p>
+        ) : loadState === 'error' ? (
+          <div className="flex flex-col gap-3">
+            <Alert variant="destructive">
+              <TriangleAlertIcon />
+              <AlertTitle>{t('family.healthError')}</AlertTitle>
+              <AlertDescription>
+                {t('familyPermission.proxyEditLoadGuard', { name: displayName })}
+              </AlertDescription>
+            </Alert>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-auto min-h-12 py-2 whitespace-normal"
+              disabled={isFetching}
+              onClick={() => void refetch()}
+            >
+              {isFetching ? (
+                <Spinner aria-hidden="true" data-icon="inline-start" />
+              ) : (
+                <RotateCwIcon data-icon="inline-start" />
+              )}
+              {t('family.retry')}
+            </Button>
+            <DialogClose render={<Button type="button" variant="ghost" />}>
+              {t('familyPermission.cancel')}
+            </DialogClose>
+          </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)}>
             <FieldGroup>
@@ -205,7 +233,9 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
               >
                 <Select
                   value={form.gender}
-                  onValueChange={(value) => setValue('gender', value ?? '')}
+                  onValueChange={(value) =>
+                    setValue('gender', value ?? '', { shouldDirty: true })
+                  }
                 >
                   <SelectTrigger id="proxy-gender" className="w-full">
                     <SelectValue placeholder={t('personalHealth.genderPlaceholder')} />
@@ -270,6 +300,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                     form.chronicDisease.includes(code)
                       ? form.chronicDisease.filter((item) => item !== code)
                       : [...form.chronicDisease, code],
+                    { shouldDirty: true },
                   )
                 }
                 onAddCustom={handleAddChronic}
@@ -277,6 +308,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                   setValue(
                     'customChronic',
                     form.customChronic.filter((item) => item !== name),
+                    { shouldDirty: true },
                   )
                 }
               />

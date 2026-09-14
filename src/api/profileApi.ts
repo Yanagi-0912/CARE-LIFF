@@ -27,13 +27,18 @@ export type UpsertPersonalHealthPayload = {
     health_consultations: Record<string, unknown>
 }
 
-/** 後端回傳的個人健康檔案（所有欄位可能為空） */
+/** 後端回傳的個人健康檔案（所有欄位可能為空）
+ *
+ * age／height／weight 沒填過時是 null。舊資料可能還留著建帳號時的佔位值
+ * （age 0、height 1、weight 1），所以讀進表單或畫面一律經過
+ * `pages/PersonalHealth/healthForm.ts` 的 profileToFormValues，不要各自判斷。
+ */
 export type HealthProfile = {
     name?: string
     gender?: string
-    height?: number
-    weight?: number
-    age?: number
+    height?: number | null
+    weight?: number | null
+    age?: number | null
     chronic_diseases?: string[]
     chronic_custom?: string[]
     major_illness_history?: string
@@ -102,7 +107,8 @@ export async function upsertPersonalHealthProfile(
     return res.json()
 }
 
-export async function getPersonalHealthProfile(userId?: string) {
+/** 404（還沒建檔）回 null；其他錯誤丟出去，讓呼叫端分得出「沒資料」與「讀不到」 */
+export async function getPersonalHealthProfile(userId?: string): Promise<HealthProfile | null> {
     const url = userId
         ? `${BASE_URL}/api/profiles/${encodeURIComponent(userId)}`
         : `${BASE_URL}/api/profiles/me`

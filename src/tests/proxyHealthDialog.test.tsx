@@ -59,7 +59,11 @@ describe('ProxyHealthDialog', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(PROFILE);
-    vi.mocked(profileApi.proxyUpsertHealthProfile).mockResolvedValue(undefined);
+    vi.mocked(profileApi.proxyUpsertHealthProfile).mockResolvedValue({
+      user_id: 'U-mom',
+      updated: true,
+      skipped_fields: [],
+    });
     await i18n.changeLanguage('zh-TW');
   });
 
@@ -101,5 +105,47 @@ describe('ProxyHealthDialog', () => {
     expect(payload).not.toHaveProperty('name');
     expect(payload.age).toBe(79);
     expect(payload.chronic_custom).toEqual(['痛風']);
+  });
+
+  // PUT /api/profiles/{userId} 是整份覆寫。讀取失敗時若照樣給一張空白表單，
+  // 家人會以為長輩還沒填，送出就把原本的病史整份清掉。
+  it('讀取失敗時不給表單，只有錯誤說明與重新載入；讀到之後才能代填', async () => {
+    vi.mocked(profileApi.getPersonalHealthProfile)
+      .mockRejectedValueOnce(new Error('取得個人資料失敗:500'))
+      .mockResolvedValue(PROFILE);
+
+    renderDialog(false);
+
+    expect(await screen.findByText('無法載入健康資料')).toBeInTheDocument();
+    expect(
+      screen.getByText('要先讀到 媽媽 原本的資料才能代填，以免蓋掉已經填好的內容。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('年齡')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '儲存' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '重新載入' }));
+
+    await waitFor(() => expect(screen.getByLabelText('年齡')).toHaveValue(79));
+    expect(profileApi.proxyUpsertHealthProfile).not.toHaveBeenCalled();
+  });
+
+  it('佔位值（age 0、height 1、gender unknown）與 null 都顯示成空白', async () => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({
+      ...PROFILE,
+      gender: 'unknown',
+      age: 0,
+      height: 1,
+      weight: null,
+    });
+
+    renderDialog(false);
+
+    // 慢性病勾起來代表資料已經同步進表單，這時再看數值欄位
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: /高血壓/ })).toBeChecked(),
+    );
+    expect(screen.getByLabelText('年齡')).toHaveValue(null);
+    expect(screen.getByLabelText('身高')).toHaveValue(null);
+    expect(screen.getByLabelText('體重')).toHaveValue(null);
   });
 });

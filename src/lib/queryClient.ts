@@ -28,6 +28,9 @@ export const queryKeys = {
   /** 本人的健康檔案。Sidebar 與 AdminRoute 都靠它判斷管理員身分，
       共用同一個 key 才不會各抓一次。 */
   myProfile: ['my-profile'] as const,
+  /** LINE 的顯示名稱與頭像（liff.getProfile），個人健康頁拿來預填姓名。
+      一次 session 內不會變，所以不重抓。 */
+  liffProfile: ['liff-profile'] as const,
   /** 家人的健康檔案，展開成員卡片時才會用到 */
   memberProfile: (userId: string) => ['member-profile', userId] as const,
   medications: (targetUserId?: string) => ['medications', targetUserId ?? 'self'] as const,
