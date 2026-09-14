@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -28,10 +29,16 @@ import {
   type KnowledgeReportReason,
 } from '@/api/knowledgeReportsApi';
 
+/** 表單在可捲動的本體裡、送出鈕在 DialogFooter，靠 form 屬性連回來 */
+const FORM_ID = 'knowledge-report-form';
+
 // 本頁其餘元件一律 inline Tailwind（見 components.tsx），這裡沿用同一種寫法，
 // 只把重複超過一次的組合收成常數。
 const formStyles = {
-  dialogContent: 'max-w-[520px]',
+  // 寬度一定要帶 sm:：不帶會蓋掉 DialogContent 在手機上保留左右各 1rem 的
+  // max-w-[calc(100%-2rem)]，而 ≥640px 時又輸給內建的 sm:max-w-md，520px 從沒生效過。
+  dialogContent:
+    'max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[520px]',
   form: 'flex flex-col gap-4',
   field: 'flex flex-col gap-2',
   hint: 'text-sm text-muted-foreground',
@@ -114,7 +121,11 @@ export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) 
           <DialogTitle>{t('knowledgeReports.form.title')}</DialogTitle>
         </DialogHeader>
 
-        <form className={formStyles.form} onSubmit={handleSubmit}>
+        {/* 與新增／編輯提醒 dialog 同一套：只讓表單本體捲動，標題、右上關閉鈕與
+            底部按鈕固定。特大字級下表單比手機視窗高，沒限高時整個 dialog 置中後
+            標題與關閉鈕會跑到視窗上方，捲也捲不到。 */}
+        <ScrollArea>
+        <form id={FORM_ID} className={formStyles.form} onSubmit={handleSubmit}>
           <div className={formStyles.field}>
             <Label htmlFor="knowledge-report-url">
               {t('knowledgeReports.form.urlLabel')}
@@ -170,21 +181,22 @@ export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) 
           </div>
 
           {error ? <FormError error={error} /> : null}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={mutation.isPending}
-            >
-              {t('knowledgeReports.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {t('knowledgeReports.form.submit')}
-            </Button>
-          </DialogFooter>
         </form>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={mutation.isPending}
+          >
+            {t('knowledgeReports.form.cancel')}
+          </Button>
+          <Button type="submit" form={FORM_ID} disabled={!canSubmit}>
+            {t('knowledgeReports.form.submit')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

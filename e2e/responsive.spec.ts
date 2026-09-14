@@ -178,9 +178,6 @@ test.describe('手機直式 375px 的 dialog', () => {
   });
 
   test('知識回報表單 dialog 在視窗內', async ({ authedPage }) => {
-    // 已知 bug：ReportFormDialog 沒有像其他 dialog 那樣設 max-h-[calc(100dvh-2rem)]
-    // 與內容區捲動，特大字級下高 791px > 667px，置中後標題與關閉鈕跑到視窗上方。
-    test.fail(true, '已知 bug：回報表單 dialog 沒有限高，特大字級在 375px 手機上被切掉');
     await authedPage.goto('/knowledge-reports/new');
     await expectDialogFits(authedPage);
   });
