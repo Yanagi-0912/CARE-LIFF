@@ -321,6 +321,51 @@ describe('引導式角色指派', () => {
       expect(familyApi.setFamilyRole).toHaveBeenCalledWith('U-mom', 'CAREGIVER'),
     );
   });
+
+  it('一位家人一頁：只有一位時不畫導覽列', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+    ]);
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    await waitFor(() => expect(screen.getByText('媽媽')).toBeInTheDocument());
+
+    expect(screen.queryByRole('button', { name: '下一位家人' })).not.toBeInTheDocument();
+    expect(screen.queryByText('第 1 位，共 1 位')).not.toBeInTheDocument();
+  });
+
+  it('多位家人時用上一位／下一位切換，計數跟著走，兩端按鈕停用', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+      { user_id: 'U-son', display_name: '大兒子', family_role: null },
+      { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
+    ]);
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+
+    const prev = screen.getByRole('button', { name: '上一位家人' });
+    const next = screen.getByRole('button', { name: '下一位家人' });
+    expect(prev).toBeDisabled();
+    expect(next).toBeEnabled();
+
+    fireEvent.click(next);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+    expect(prev).toBeEnabled();
+
+    fireEvent.click(next);
+    expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
+    expect(next).toBeDisabled();
+
+    fireEvent.click(prev);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    // 每位家人的角色群組各自以名字標示，按到的一定是眼前這位的
+    const sonGroup = screen.getByRole('group', { name: '大兒子 的權限' });
+    expect(sonGroup).toBeInTheDocument();
+  });
 });
 
 // 後端在擁有者替最後一位家人指派角色時自動切成 enforced。前端要做的只有一件事：
