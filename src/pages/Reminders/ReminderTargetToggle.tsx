@@ -27,7 +27,9 @@ export function ReminderTargetToggle({
   return (
     <ToggleGroup
       variant="primary"
-      className="mb-4 flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      // flex-wrap 而非橫向捲動：捲軸被藏起來時，第四個家人就靜靜地被裁在畫面外，
+      // 長輩不會知道要往右滑。多一列 chips 比看不見的人便宜。
+      className="mb-4 flex w-full flex-wrap gap-2"
       value={[selectedUserId ?? 'self']}
       onValueChange={(groupValue) => {
         const next = groupValue[0];

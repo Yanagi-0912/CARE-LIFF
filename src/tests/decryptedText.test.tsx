@@ -37,8 +37,10 @@ describe('DecryptedText', () => {
       vi.advanceTimersByTime(60);
     });
 
-    expect(
-      originalText.parentElement?.querySelectorAll('.decrypted-text__revealed'),
-    ).toHaveLength(4);
+    // 動畫結束後只剩一個純文字節點，不再逐字拆 span（WebKit 逐字 span 找不到
+    // CJK 換行點，見 DecryptedText 的說明）；內容必須是完整的原文。
+    const revealed = originalText.parentElement?.querySelectorAll('.decrypted-text__revealed');
+    expect(revealed).toHaveLength(1);
+    expect(revealed?.[0]).toHaveTextContent('CARE');
   });
 });

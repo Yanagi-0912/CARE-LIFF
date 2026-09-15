@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { createMedication, fetchMedications } from '../../api/medicationApi';
 import { getLineUserId } from '../../utils/auth';
 import { queryKeys } from '@/lib/queryClient';
@@ -21,6 +22,7 @@ interface UseMedicationListReturn {
  * 藥品清單不受提醒的時段／時間變動影響。
  */
 export function useMedicationList(targetUserId?: string): UseMedicationListReturn {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = queryKeys.medicationList(targetUserId);
 
@@ -42,7 +44,7 @@ export function useMedicationList(targetUserId?: string): UseMedicationListRetur
   return {
     medications: data ?? [],
     loading: isPending,
-    error: error ? (error instanceof Error ? error.message : '載入藥品清單失敗') : null,
+    error: error ? (error instanceof Error ? error.message : t('meds.detailed.medsLoadError')) : null,
     addMedication: (name) => addMutation.mutateAsync(name),
   };
 }

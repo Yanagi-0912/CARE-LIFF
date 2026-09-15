@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -56,6 +56,9 @@ export function RoleManagerDialog({ onClose }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
+  // 打開時先聚焦標題。實測預設會聚焦到最下面的「取消」，整個 dialog 因此
+  // 一開就捲掉 150px，標題與最上面的權限提示都在畫面外。
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   // 與族譜頁同一個 query key，命中快取不會多打一次。下面指派成功後會失效
   // familyTree：最後一位設定完、後端切成 enforced 時，提示會跟著換掉或消失。
@@ -100,9 +103,11 @@ export function RoleManagerDialog({ onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-[560px]">
+      <DialogContent initialFocus={titleRef} className="max-h-[85dvh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>{t('familyRole.manage.title')}</DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
+            {t('familyRole.manage.title')}
+          </DialogTitle>
           <DialogDescription>{t('familyRole.manage.desc')}</DialogDescription>
         </DialogHeader>
 
@@ -192,7 +197,7 @@ export function RoleManagerDialog({ onClose }: Props) {
           </ItemGroup>
         )}
 
-        <DialogClose render={<Button type="button" variant="ghost" className="mt-4 w-full" />}>
+        <DialogClose render={<Button type="button" variant="outline" className="mt-4 w-full" />}>
           {t('familyPermission.cancel')}
         </DialogClose>
       </DialogContent>

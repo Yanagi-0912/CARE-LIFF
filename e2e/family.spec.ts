@@ -67,7 +67,7 @@ test.describe('族譜列表', () => {
     const list = authedPage.getByRole('main').getByRole('list');
     await expect(list.getByRole('listitem')).toHaveCount(2);
     await expect(list).toContainText(GRANDMA.display_name);
-    // RELATIONSHIP_LABEL.parent
+    // RELATIONSHIP_LABEL_KEY.parent（family.relation.parent）
     await expect(list).toContainText('父/母');
     await expect(list).toContainText(t('familyRole.guardian'));
     await expect(list).toContainText(UNSET.display_name);

@@ -278,7 +278,8 @@ describe('MedicationsPage', () => {
       entries: [{ meal_timing: 'none', scheduled_time: morning.scheduled_time, medication_ids: [med.id] }],
     };
     vi.mocked(medicationApi.fetchReminders).mockResolvedValue([evening, morningWithMeds]);
-    const { medications: _dropped, ...withoutMedications } = morningWithMeds;
+    const withoutMedications: MedicationReminder = { ...morningWithMeds };
+    delete withoutMedications.medications;
     vi.mocked(medicationApi.updateReminder).mockResolvedValue({
       ...withoutMedications,
       enabled: false,

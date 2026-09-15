@@ -104,13 +104,13 @@ const Home = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-[1200px] p-4">
+    <div className="mx-auto max-w-[1200px]">
       <Card className="animate-in fade-in slide-in-from-bottom-3 zoom-in-95 fill-mode-both duration-500 mb-6 bg-primary text-primary-foreground">
         <CardContent>
           {/* text-inherit 不可省：@layer base 的 h1{color:var(--ink)} 是直接規則，
               永遠贏過從 Card 的 text-primary-foreground 繼承下來的顏色，
               少了它標題會變成墨色壓在深綠底上（實測 1.6:1）。 */}
-          <h1 className="text-[1.7rem] font-extrabold tracking-[0.01em] text-inherit sm:text-[2rem]">
+          <h1 className="text-[1.7rem] font-extrabold tracking-[0.01em] text-balance text-inherit sm:text-[2rem]">
             <DecryptedText
               text={t('home.title')}
               speed={36}
@@ -135,7 +135,7 @@ const Home = () => {
           <Item
             key={f.path}
             variant="outline"
-            className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 cursor-pointer transition-colors hover:bg-muted/40"
+            className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 cursor-pointer text-left transition-colors hover:bg-muted/40"
             // 瀑布式進場：依序延遲。原 CSS 以 nth-child(1)~(6) 寫死，第 7 張卡
             // 沒延遲、反而最先出現；改用 index 公式讓整排一致。
             style={{ animationDelay: `${60 + index * 70}ms` }}
@@ -153,7 +153,7 @@ const Home = () => {
             </ItemMedia>
             <ItemContent>
               <ItemTitle className="text-lg">{f.title}</ItemTitle>
-              <ItemDescription>{f.desc}</ItemDescription>
+              <ItemDescription className="line-clamp-none">{f.desc}</ItemDescription>
             </ItemContent>
             <ItemActions>
               <ChevronRightIcon className="size-5 text-muted-foreground" />

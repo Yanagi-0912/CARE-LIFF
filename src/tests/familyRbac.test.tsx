@@ -137,7 +137,7 @@ describe('家人卡片依角色降級', () => {
       expect(profileApi.getPersonalHealthProfile).toHaveBeenCalledWith('U-mom'),
     );
     expect(screen.getByRole('button', { name: /查看諮詢紀錄/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /幫他填健康資料/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /幫忙填健康資料/ })).toBeInTheDocument();
   });
 
   it('CAREGIVER 看得到健康狀況，但沒有對話紀錄、也不能代填', async () => {
@@ -150,7 +150,7 @@ describe('家人卡片依角色降級', () => {
     );
     expect(screen.getByText('您沒有查看對話紀錄的權限')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /查看諮詢紀錄/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /幫他填健康資料/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /幫忙填健康資料/ })).not.toBeInTheDocument();
   });
 
   it('MEMBER 連健康資料的請求都不發出去', async () => {

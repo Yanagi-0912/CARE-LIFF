@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { useFamily } from '../../../hooks/useFamily';
 import { getLineUserId } from '../../../utils/auth';
 import { canReadSensitive } from '../../../utils/familyPermissions';
+import { ReminderTargetToggle } from '../../Reminders/ReminderTargetToggle';
+import type { ReminderTarget } from '../../Reminders/useReminderTargets';
 import { useVisits } from './useVisits';
 import { VisitList } from './VisitList';
 
@@ -25,6 +27,9 @@ function readSelfUserId(): string | undefined {
  * 不同：那一頁的主體（藥名、時段）是 GENERAL，這一頁的主體（看診機構）是
  * SENSITIVE。列出沒有權限的對象，使用者選了只會拿到 403——不如一開始就不列，
  * 而且列出來本身就洩漏了「他有幾個家人」之外的資訊。
+ *
+ * 對象切換用與用藥／掛號頁同一個 ReminderTargetToggle：同一個 App 裡「替誰看」
+ * 的長相與操作要一致。看診紀錄沒有寫入動作，canWrite 一律 false。
  */
 export default function VisitsPage() {
   const { t } = useTranslation();
@@ -34,21 +39,22 @@ export default function VisitsPage() {
   const [selfUserId] = useState(readSelfUserId);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(selfUserId);
 
-  const options = useMemo(() => {
-    const self = { userId: selfUserId, name: t('visits.title') };
-    const family = (members ?? [])
+  const targets = useMemo<ReminderTarget[]>(() => {
+    const self: ReminderTarget = { userId: selfUserId, name: t('meds.self'), canWrite: false };
+    const family = members
       .filter((member) => canReadSensitive(member))
-      .map((member) => ({
-        userId: member.user_id as string | undefined,
+      .filter((member) => member.user_id && member.user_id !== selfUserId)
+      .map<ReminderTarget>((member) => ({
+        userId: member.user_id,
         name: member.display_name || t('family.unset'),
-      }))
-      .filter((option) => option.userId && option.userId !== selfUserId);
+        canWrite: false,
+      }));
     return [self, ...family];
   }, [members, selfUserId, t]);
 
   const isSelf = !selectedUserId || selectedUserId === selfUserId;
-  const selectedName = options.find((o) => o.userId === selectedUserId)?.name ?? '';
-  const { visits, loading, error, forbidden } = useVisits(
+  const selectedName = targets.find((target) => target.userId === selectedUserId)?.name ?? '';
+  const { visits, loading, error, forbidden, refetch } = useVisits(
     isSelf ? undefined : selectedUserId,
   );
 
@@ -60,34 +66,34 @@ export default function VisitsPage() {
           variant="ghost"
           size="icon"
           onClick={() => navigate('/reminders/medications')}
-          aria-label={t('visits.title')}
+          aria-label={t('meds.detailed.back')}
         >
           <ArrowLeftIcon />
         </Button>
         <div>
-          <h1 className="text-lg font-semibold">
+          <h1 className="text-2xl font-extrabold">
             {isSelf ? t('visits.title') : t('visits.titleForMember', { name: selectedName })}
           </h1>
           <p className="text-muted-foreground text-sm">{t('visits.description')}</p>
         </div>
       </div>
 
-      {options.length > 1 ? (
-        <div className="flex flex-wrap gap-2">
-          {options.map((option) => (
-            <Button
-              key={option.userId ?? 'self'}
-              size="sm"
-              variant={option.userId === selectedUserId ? 'default' : 'outline'}
-              onClick={() => setSelectedUserId(option.userId)}
-            >
-              {option.name}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      {targets.length > 1 && (
+        <ReminderTargetToggle
+          targets={targets}
+          selectedUserId={selectedUserId}
+          selfUserId={selfUserId}
+          onSelect={setSelectedUserId}
+        />
+      )}
 
-      <VisitList visits={visits} loading={loading} error={error} forbidden={forbidden} />
+      <VisitList
+        visits={visits}
+        loading={loading}
+        error={error}
+        forbidden={forbidden}
+        onRetry={() => void refetch()}
+      />
     </div>
   );
 }

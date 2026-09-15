@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 /** 瀏覽器 Geolocation 結果（精準 GPS，需使用者同意） */
 export interface GeoPosition {
   latitude: number;
@@ -51,19 +53,15 @@ export function isSecureGeolocationContext(): boolean {
 function mapPositionError(error: GeolocationPositionError): GeolocationError {
   switch (error.code) {
     case error.PERMISSION_DENIED:
-      return new GeolocationError(
-        'permission_denied',
-        '您已拒絕位置權限，請在系統或 LINE 瀏覽器設定中允許後再試',
-      );
+      return new GeolocationError('permission_denied', i18n.t('nearby.geo.permissionDenied'));
     case error.POSITION_UNAVAILABLE:
-      return new GeolocationError(
-        'unavailable',
-        '無法取得位置資訊，請確認裝置定位已開啟',
-      );
+      return new GeolocationError('unavailable', i18n.t('nearby.geo.unavailable'));
     case error.TIMEOUT:
-      return new GeolocationError('timeout', '定位逾時，請再試一次');
+      return new GeolocationError('timeout', i18n.t('nearby.geo.timeout'));
     default:
-      return new GeolocationError('unknown', error.message || '定位失敗');
+      // 瀏覽器給的 message 是英文技術句，留給 console，畫面上講人話
+      console.error('定位失敗', error.code, error.message);
+      return new GeolocationError('unknown', i18n.t('nearby.geo.failed'));
   }
 }
 
@@ -88,14 +86,13 @@ function requestOnce(options: PositionOptions): Promise<GeoPosition> {
 
 function assertCanRequestPosition(): void {
   if (!isGeolocationSupported()) {
-    throw new GeolocationError('unsupported', '此環境不支援瀏覽器定位');
+    throw new GeolocationError('unsupported', i18n.t('nearby.geo.unsupported'));
   }
 
   if (!isSecureGeolocationContext()) {
-    throw new GeolocationError(
-      'insecure',
-      '定位需要 HTTPS（或本機 localhost）。請透過正式 LIFF 網址開啟',
-    );
+    // 非安全上下文（非 HTTPS／localhost）拿不到定位。對使用者只說「從 LINE 開」就好，
+    // HTTPS 是開發者才需要知道的原因。
+    throw new GeolocationError('insecure', i18n.t('nearby.geo.insecure'));
   }
 }
 

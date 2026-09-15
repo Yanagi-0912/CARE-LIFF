@@ -17,7 +17,7 @@ import { removeFamilyMember } from '../../api/familyApi';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
-import { FAMILY_ROLE_LABEL_KEY, RELATIONSHIP_LABEL } from '../../types/family';
+import { FAMILY_ROLE_LABEL_KEY, RELATIONSHIP_LABEL_KEY } from '../../types/family';
 import {
   canProxyEditHealth,
   canReadPrivate,
@@ -77,8 +77,14 @@ export function MemberCard({ member }: Props) {
   const displayName = member.display_name || member.user_id.slice(0, 8);
   // 稱謂目前沒有介面能設定，透過邀請加入的家人一律是 null。以前沒設就印「未設定」，
   // 擁有者剛在「設定家人權限」設好角色，回來看到它以為沒存到。沒設就不顯示。
+  // 稱謂文案在 i18n 的 family.relation.*；後端沒列的值原樣顯示。
+  const relationKey = member.relationship_type
+    ? RELATIONSHIP_LABEL_KEY[member.relationship_type]
+    : undefined;
   const relationLabel = member.relationship_type
-    ? RELATIONSHIP_LABEL[member.relationship_type] || member.relationship_type
+    ? relationKey
+      ? t(relationKey)
+      : member.relationship_type
     : null;
   // family_role 是「他對我的資料」的角色，也就是我在「設定家人權限」裡替他選的那個
   const roleLabel = member.family_role

@@ -393,8 +393,9 @@ function AdminKnowledgeReportsPage() {
           value={activeFilter}
           onValueChange={(value) => setActiveFilter(value as QueueFilter)}
         >
+          {/* 放不下就換行，不橫向捲動（理由同使用者端的 KnowledgeReports） */}
           <TabsList
-            className="w-full justify-start overflow-x-auto min-[640px]:w-fit [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="h-auto w-full flex-wrap justify-start min-[640px]:w-fit"
             aria-label={t('adminKnowledgeReports.filterLabel')}
           >
             {filters.map((filter) => (

@@ -142,7 +142,7 @@ const JoinPage: React.FC = () => {
                 <Button type="button" size="lg" onClick={handleAccept} disabled={isAccepting}>
                   {isAccepting ? t('family.join.accepting') : t('family.join.accept')}
                 </Button>
-                <Button type="button" variant="ghost" onClick={handleCancel}>
+                <Button type="button" variant="outline" onClick={handleCancel}>
                   {t('family.join.cancel')}
                 </Button>
               </div>

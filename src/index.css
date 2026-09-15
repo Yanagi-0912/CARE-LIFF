@@ -278,9 +278,12 @@
   }
 }
 
-/* 手機版內容區收窄（原混在 Family 區塊的 media query 裡，屬 App 骨架、保留） */
+/* 手機版：左右留 16px，各頁不要再自己加 p-4（規範 §4：留白由骨架統一給）。
+   原本只有 5px，卡片幾乎貼著螢幕邊，而 Home／Nearby 等頁又各自補了 p-4，
+   於是用藥頁 5px、首頁 21px、健康頁 17px——同一個 App 每頁邊距都不一樣。
+   底部 24px 即可：BottomNav 是 sticky、本身就佔版面，不必再預留整條導覽列的高度。 */
 @media (max-width: 640px) {
   .content-area {
-    padding: 5px 5px;
+    padding: 16px 16px var(--sp-5);
   }
 }

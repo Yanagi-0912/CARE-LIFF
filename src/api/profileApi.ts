@@ -1,3 +1,4 @@
+import i18n from '../i18n'
 import { fetchWithAuth } from '../utils/auth'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -47,6 +48,15 @@ export type HealthProfile = {
     role?: 'admin' | 'user'
 }
 
+/** 422 回報的欄位名 → 表單上同一個欄位的標籤（i18n key），錯誤訊息才對得上畫面 */
+const VALIDATION_FIELD_LABEL_KEY: Record<string, string> = {
+    age: 'personalHealth.age',
+    height: 'personalHealth.height',
+    weight: 'personalHealth.weight',
+    name: 'personalHealth.name',
+    gender: 'personalHealth.gender',
+}
+
 export async function upsertPersonalHealthProfile(
     payload: UpsertPersonalHealthPayload,
 ) {
@@ -57,51 +67,26 @@ export async function upsertPersonalHealthProfile(
 
     if (!res.ok) {
         const text = await res.text().catch(() => '')
+        // 狀態碼與後端原文留給 console；畫面上只講使用者看得懂的一句話
+        console.error('個人資料儲存失敗', res.status, text)
         if (res.status === 422 && text) {
-
-            let body: { detail?: ValidationErrorDetail[] }
+            let body: { detail?: ValidationErrorDetail[] } | null = null
             try {
                 body = JSON.parse(text)
+            } catch {
+                body = null
             }
-
-            catch (error) {
-                if (error instanceof SyntaxError) {
-                    const errorMessage = text ? ` : ${text}` : ''
-                    throw new Error(
-                        `個人資料儲存失敗:${res.status}${errorMessage}`,
-                    )
-                }
-
-                throw error
-            }
-
-            const firstDetail = body.detail?.[0]
-            const loc = firstDetail?.loc
+            const loc = body?.detail?.[0]?.loc
             const fieldKey = loc?.[loc.length - 1]
-
-            let fieldLabel: string | undefined
-            if (fieldKey === 'age') {
-                fieldLabel = '年齡'
-            } else if (fieldKey === 'height') {
-                fieldLabel = '身高'
-            } else if (fieldKey === 'weight') {
-                fieldLabel = '體重'
-            } else if (fieldKey === 'name') {
-                fieldLabel = '姓名'
-            } else if (fieldKey === 'gender') {
-                fieldLabel = '性別'
-            }
-
-            const detailMessage = firstDetail?.msg || '資料格式不正確'
+            const fieldLabelKey =
+                typeof fieldKey === 'string' ? VALIDATION_FIELD_LABEL_KEY[fieldKey] : undefined
             throw new Error(
-                fieldLabel
-                    ? `個人資料欄位驗證失敗（${fieldLabel}):${detailMessage}`
-                    : `個人資料欄位驗證失敗:${detailMessage}`,
+                fieldLabelKey
+                    ? i18n.t('personalHealth.validationFailedField', { field: i18n.t(fieldLabelKey) })
+                    : i18n.t('personalHealth.validationFailed'),
             )
         }
-
-        const errorDetail = text ? ' - ' + text : ''
-        throw new Error('個人資料儲存失敗:' + res.status + errorDetail)
+        throw new Error(i18n.t('personalHealth.saveError'))
     }
 
     return res.json()
@@ -123,7 +108,8 @@ export async function getPersonalHealthProfile(userId?: string): Promise<HealthP
 
     if (!res.ok) {
         const text = await res.text().catch(() => '')
-        throw new Error(`取得個人資料失敗:${res.status}${text ? ` - ${text}` : ''}`)
+        console.error('取得個人資料失敗', res.status, text)
+        throw new Error(i18n.t('personalHealth.loadError'))
     }
 
     return res.json()
@@ -155,7 +141,10 @@ export async function proxyUpsertHealthProfile(
 
     if (!res.ok) {
         const text = await res.text().catch(() => '')
-        throw new Error(`代填健康資料失敗:${res.status}${text ? ` - ${text}` : ''}`)
+        console.error('代填健康資料失敗', res.status, text)
+        throw new Error(
+            i18n.t(res.status === 403 ? 'familyPermission.proxyEditForbidden' : 'familyPermission.proxyEditError'),
+        )
     }
 
     return res.json() as Promise<{

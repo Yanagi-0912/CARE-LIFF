@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GeolocationError,
   getCurrentPositionWithFallback,
@@ -19,6 +20,7 @@ interface UseGeolocationReturn {
  * 精確位置需使用者同意後才能取得；請在按鈕 onClick 呼叫 requestPosition。
  */
 export function useGeolocation(): UseGeolocationReturn {
+  const { t } = useTranslation();
   const [position, setPosition] = useState<GeoPosition | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorCode, setErrorCode] = useState<GeoErrorCode | null>(null);
@@ -44,13 +46,13 @@ export function useGeolocation(): UseGeolocationReturn {
         setErrorMessage(err.message);
       } else {
         setErrorCode('unknown');
-        setErrorMessage(err instanceof Error ? err.message : '定位失敗');
+        setErrorMessage(err instanceof Error ? err.message : t('nearby.geo.failed'));
       }
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   return {
     position,

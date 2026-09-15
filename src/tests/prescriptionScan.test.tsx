@@ -37,7 +37,15 @@ vi.mock('../api/settingsApi', () => ({
 
 vi.mock('../hooks/useFamily', () => ({
   useFamily: () => ({
-    members: [{ user_id: 'U-mom', relationship_type: 'parent', display_name: '媽' }],
+    // 核對畫面只列有 GENERAL WRITE 的家人（canManageMedications），假資料要帶上權限
+    members: [
+      {
+        user_id: 'U-mom',
+        relationship_type: 'parent',
+        display_name: '媽',
+        my_permissions: { general: ['READ', 'WRITE'], sensitive: [], private: [] },
+      },
+    ],
     loading: false,
     error: null,
     refetch: vi.fn(),

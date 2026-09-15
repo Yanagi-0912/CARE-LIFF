@@ -116,7 +116,7 @@ test.describe('諮詢紀錄（本人）', () => {
 
     await authedPage.getByRole('tab', { name: t('consultRecord.tabSummary') }).click();
     // consultationApi 對 503 的固定文案
-    await expect(authedPage.getByText('資料庫暫時不可用，請稍後再試')).toBeVisible();
+    await expect(authedPage.getByText('資料暫時無法讀取，請稍後再試')).toBeVisible();
   });
 
   test('「返回個人健康資料」導向 /personalhealth', async ({ authedPage }) => {
@@ -175,7 +175,7 @@ test.describe('下載摘要', () => {
 
     await authedPage.getByRole('button', { name: t('consultRecord.downloadAll') }).click();
 
-    await expect(authedPage.getByText('取得摘要下載token失敗：500')).toBeVisible();
+    await expect(authedPage.getByText(t('consultRecord.downloadTokenError'))).toBeVisible();
   });
 });
 

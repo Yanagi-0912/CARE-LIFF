@@ -1,4 +1,5 @@
-import { authHeaders } from '../utils/auth';
+import i18n from '../i18n';
+import { fetchWithAuth } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
@@ -125,7 +126,7 @@ export function isStalePreviewError(error: unknown): boolean {
 }
 
 async function parseError(res: Response): Promise<Error> {
-  let message = `API 請求失敗：${res.status}`;
+  let message = i18n.t('common.requestFailed', { status: res.status });
   let code: string | undefined;
   try {
     const data = await res.json();
@@ -161,9 +162,7 @@ async function parseError(res: Response): Promise<Error> {
 }
 
 export async function fetchKnowledgeReports(): Promise<KnowledgeReportListResponse> {
-  const res = await fetch(`${BASE_URL}/api/knowledge-reports`, {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(`${BASE_URL}/api/knowledge-reports`);
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
@@ -229,9 +228,8 @@ async function parseCreateError(res: Response): Promise<KnowledgeReportRequestEr
 export async function createKnowledgeReport(
   body: CreateKnowledgeReportBody,
 ): Promise<{ report_id: string }> {
-  const res = await fetch(`${BASE_URL}/api/knowledge-reports`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/knowledge-reports`, {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw await parseCreateError(res);
@@ -257,9 +255,7 @@ export async function fetchAdminKnowledgeReports(
   if (query.offset !== undefined) {
     url.searchParams.set('offset', String(query.offset));
   }
-  const res = await fetch(url.toString(), {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(url.toString());
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
@@ -275,11 +271,10 @@ export async function startKnowledgeReportPreview(
   reportId: string,
   body?: StartContentPreviewBody,
 ): Promise<ContentPreviewDto> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/preview`,
     {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify(body ?? {}),
     },
   );
@@ -291,9 +286,8 @@ export async function startKnowledgeReportPreview(
 export async function fetchKnowledgeReportPreview(
   reportId: string,
 ): Promise<ContentPreviewDto | null> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/preview`,
-    { headers: authHeaders() },
   );
   if (res.status === 404) return null;
   if (!res.ok) throw await parseError(res);
@@ -314,11 +308,10 @@ export async function approveKnowledgeReport(
   reportId: string,
   body?: ApproveKnowledgeReportBody,
 ): Promise<KnowledgeReportDto> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/approve`,
     {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify(body ?? {}),
     },
   );
@@ -335,11 +328,10 @@ export async function rejectKnowledgeReport(
   reportId: string,
   body?: RejectKnowledgeReportBody,
 ): Promise<KnowledgeReportDto> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/admin/knowledge-reports/${encodeURIComponent(reportId)}/reject`,
     {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify(body ?? {}),
     },
   );

@@ -52,9 +52,9 @@ export const familyRoleMessages: Record<
     'familyPermission.noPrivate': '您沒有查看對話紀錄的權限',
     'familyPermission.askOwner': '需要的話，請家人在他的「家人的權限」裡調整。',
 
-    'familyPermission.proxyEdit': '幫他填健康資料',
+    'familyPermission.proxyEdit': '幫忙填健康資料',
     'familyPermission.proxyEditTitle': '幫 {{name}} 填健康資料',
-    'familyPermission.proxyEditDesc': '這些資料會存進他的健康檔案。姓名與照片由他本人設定，這裡不會更動。',
+    'familyPermission.proxyEditDesc': '這些資料會存進 {{name}} 的健康檔案。姓名與照片由本人設定，這裡不會更動。',
     'familyPermission.proxyEditSaved': '已更新 {{name}} 的健康資料',
     'familyPermission.proxyEditError': '代填失敗，請稍後再試',
     'familyPermission.proxyEditLoadGuard': '要先讀到 {{name}} 原本的資料才能代填，以免蓋掉已經填好的內容。',
@@ -106,7 +106,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'Fill in their health information',
     'familyPermission.proxyEditTitle': "Fill in {{name}}'s health information",
-    'familyPermission.proxyEditDesc': 'This is saved to their health record. Their name and photo are set by them and are not changed here.',
+    'familyPermission.proxyEditDesc': "This is saved to {{name}}'s health record. Their name and photo are set by them and are not changed here.",
     'familyPermission.proxyEditSaved': "Updated {{name}}'s health information",
     'familyPermission.proxyEditError': 'Could not save. Please try again later.',
     'familyPermission.proxyEditLoadGuard': "{{name}}'s current information has to load first, so nothing already filled in gets overwritten.",
@@ -158,7 +158,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'Isikan data kesehatannya',
     'familyPermission.proxyEditTitle': 'Isi data kesehatan {{name}}',
-    'familyPermission.proxyEditDesc': 'Data ini disimpan ke catatan kesehatannya. Nama dan fotonya diatur olehnya sendiri dan tidak diubah di sini.',
+    'familyPermission.proxyEditDesc': 'Data ini disimpan ke catatan kesehatan {{name}}. Nama dan foto diatur oleh yang bersangkutan dan tidak diubah di sini.',
     'familyPermission.proxyEditSaved': 'Data kesehatan {{name}} diperbarui',
     'familyPermission.proxyEditError': 'Gagal menyimpan. Coba lagi nanti.',
     'familyPermission.proxyEditLoadGuard': 'Data {{name}} yang sudah ada harus dimuat dulu agar isian yang sudah ada tidak tertimpa.',
@@ -210,7 +210,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'Điền dữ liệu sức khoẻ giúp họ',
     'familyPermission.proxyEditTitle': 'Điền dữ liệu sức khoẻ cho {{name}}',
-    'familyPermission.proxyEditDesc': 'Dữ liệu này được lưu vào hồ sơ sức khoẻ của họ. Tên và ảnh do chính họ thiết lập, ở đây không thay đổi.',
+    'familyPermission.proxyEditDesc': 'Dữ liệu này được lưu vào hồ sơ sức khoẻ của {{name}}. Tên và ảnh do chính người đó thiết lập, ở đây không thay đổi.',
     'familyPermission.proxyEditSaved': 'Đã cập nhật dữ liệu sức khoẻ của {{name}}',
     'familyPermission.proxyEditError': 'Lưu không thành công. Vui lòng thử lại sau.',
     'familyPermission.proxyEditLoadGuard': 'Cần tải được dữ liệu hiện có của {{name}} trước rồi mới điền giúp được, để không ghi đè nội dung đã điền.',
@@ -262,7 +262,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'ช่วยกรอกข้อมูลสุขภาพให้',
     'familyPermission.proxyEditTitle': 'กรอกข้อมูลสุขภาพให้ {{name}}',
-    'familyPermission.proxyEditDesc': 'ข้อมูลนี้จะถูกบันทึกลงในระเบียนสุขภาพของเขา ชื่อและรูปภาพเจ้าตัวเป็นผู้ตั้งค่า และจะไม่ถูกแก้ไขที่นี่',
+    'familyPermission.proxyEditDesc': 'ข้อมูลนี้จะถูกบันทึกลงในระเบียนสุขภาพของ {{name}} ชื่อและรูปภาพเจ้าตัวเป็นผู้ตั้งค่า และจะไม่ถูกแก้ไขที่นี่',
     'familyPermission.proxyEditSaved': 'อัปเดตข้อมูลสุขภาพของ {{name}} แล้ว',
     'familyPermission.proxyEditError': 'บันทึกไม่สำเร็จ กรุณาลองใหม่ภายหลัง',
     'familyPermission.proxyEditLoadGuard': 'ต้องโหลดข้อมูลเดิมของ {{name}} ให้ได้ก่อนจึงจะกรอกแทนได้ เพื่อไม่ให้ทับข้อมูลที่กรอกไว้แล้ว',
@@ -314,7 +314,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': '健康情報を代わりに入力',
     'familyPermission.proxyEditTitle': '{{name}} さんの健康情報を入力',
-    'familyPermission.proxyEditDesc': 'この内容はご本人の健康記録に保存されます。お名前と写真はご本人が設定するもので、ここでは変更されません。',
+    'familyPermission.proxyEditDesc': 'この内容は{{name}}さんの健康記録に保存されます。お名前と写真はご本人が設定するもので、ここでは変更されません。',
     'familyPermission.proxyEditSaved': '{{name}} さんの健康情報を更新しました',
     'familyPermission.proxyEditError': '保存できませんでした。しばらくしてからお試しください。',
     'familyPermission.proxyEditLoadGuard': 'すでに入力されている内容を上書きしないよう、{{name}} さんの現在の情報を読み込めてから入力できます。',
