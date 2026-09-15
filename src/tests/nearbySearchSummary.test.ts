@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import type { NearbyHospitalsResponse } from '../types/medical';
+import type {
+  BusinessStatus,
+  MedicalFacility,
+  NearbyHospitalsResponse,
+} from '../types/medical';
 import {
   buildEmptyStateMessage,
   buildResultSummary,
@@ -32,6 +36,23 @@ function makeResult(
     unresolved_facility_type: null,
     pharmacy_data_gap_meters: null,
     ...overrides,
+  };
+}
+
+function makeFacility({
+  hasEmergency,
+  status = 'closed_today',
+}: {
+  hasEmergency: boolean;
+  status?: BusinessStatus;
+}): MedicalFacility {
+  return {
+    name: hasEmergency ? '急診醫院' : '夜間診所',
+    latitude: 25.0,
+    longitude: 121.5,
+    address: '台北市測試路 1 號',
+    type: hasEmergency ? '綜合醫院' : '西醫診所',
+    business_status: { status, next_open: null, note: null, has_emergency: hasEmergency },
   };
 }
 
@@ -93,6 +114,36 @@ describe('搜尋結果說明句', () => {
     );
 
     expect(lines[0]).toEqual({ key: 'nearby.summary.openNowNone' });
+  });
+
+  it('要求營業中、結果全是急診時不講「目前營業中」——卡片上的門診狀態是今日已結束', () => {
+    const lines = buildResultSummary(
+      makeResult({
+        open_now_requested: true,
+        count: 2,
+        facilities: [makeFacility({ hasEmergency: true }), makeFacility({ hasEmergency: true })],
+      }),
+    );
+
+    expect(lines[0]).toEqual({
+      key: 'nearby.summary.openNowEmergencyOnly',
+      params: { count: 2 },
+    });
+  });
+
+  it('要求營業中、有一家真的在看診，就照常講營業中', () => {
+    const lines = buildResultSummary(
+      makeResult({
+        open_now_requested: true,
+        count: 2,
+        facilities: [
+          makeFacility({ hasEmergency: false, status: 'open' }),
+          makeFacility({ hasEmergency: true }),
+        ],
+      }),
+    );
+
+    expect(lines[0]).toEqual({ key: 'nearby.summary.openNowFound', params: { count: 2 } });
   });
 
   it('科別是別名時追加對應說明', () => {

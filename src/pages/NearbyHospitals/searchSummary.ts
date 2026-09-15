@@ -38,16 +38,28 @@ export function formatDistance(meters?: number | null): string | null {
 }
 
 /**
+ * 結果是否全是設有急診的院所。深夜要求營業中時多半如此：卡片上的門診狀態是
+ * 「今日已結束」，這時再講「目前營業中」會和卡片打架，資料也沒說急診幾點開。
+ */
+function isEmergencyOnly(result: NearbyHospitalsResponse): boolean {
+  return (
+    result.facilities.length > 0 &&
+    result.facilities.every((facility) => facility.business_status.has_emergency)
+  );
+}
+
+/**
  * 有結果時的說明句。
  *
  * 順序即優先序，與後端一致：
  * 1. 要求營業中卻一家都沒開 —— 比搜尋範圍重要，先講。
- * 2. 要求營業中且有開的。
- * 3. 湊不滿目標筆數 —— 重點是「我已經找到這麼遠了」，所以報搜尋上限。
- * 4. 曾放寬到第一級以外 —— 報最遠院所的實際距離而非階梯級距：階梯跳到 50 公里
+ * 2. 要求營業中，結果全是設有急診的院所 —— 照實講附近診所現在都沒在看診。
+ * 3. 要求營業中且有開的。
+ * 4. 湊不滿目標筆數 —— 重點是「我已經找到這麼遠了」，所以報搜尋上限。
+ * 5. 曾放寬到第一級以外 —— 報最遠院所的實際距離而非階梯級距：階梯跳到 50 公里
  *    不代表使用者真的要跑 50 公里，實際最遠可能只有 27 公里，講級距會讓人
  *    高估交通成本。
- * 5. 第一級內就湊滿。
+ * 6. 第一級內就湊滿。
  *
  * 之後再視情況追加科別別名與藥局資料缺口兩句補充。
  */
@@ -57,6 +69,8 @@ export function buildResultSummary(result: NearbyHospitalsResponse): SummaryLine
 
   if (result.open_now_fallback) {
     lines.push({ key: 'nearby.summary.openNowNone' });
+  } else if (result.open_now_requested && isEmergencyOnly(result)) {
+    lines.push({ key: 'nearby.summary.openNowEmergencyOnly', params: { count } });
   } else if (result.open_now_requested) {
     lines.push({ key: 'nearby.summary.openNowFound', params: { count } });
   } else if (!result.satisfied) {
