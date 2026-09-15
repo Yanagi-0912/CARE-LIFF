@@ -237,6 +237,8 @@ describe('引導式角色指派', () => {
   });
 
   it('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', () => {
+    // 「都設定好了」代表卡片上的家人也有角色，否則卡片會顯示「尚未設定權限」
+    familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({ is_complete: true });
     renderPage();
 
@@ -247,6 +249,7 @@ describe('引導式角色指派', () => {
   });
 
   it('權限已生效且全部設定完：不顯示提示，但入口仍在', () => {
+    familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({
       is_complete: true,
       rbac_migration_state: 'enforced',

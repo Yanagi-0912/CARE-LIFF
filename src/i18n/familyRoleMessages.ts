@@ -24,6 +24,8 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': '協助照顧者',
     'familyRole.member': '一般家人',
     'familyRole.unassigned': '尚未設定',
+    // 家人卡片上的角色徽章。卡片沒有「權限」的上下文，只寫「尚未設定」會看不出是什麼沒設定
+    'familyRole.cardUnassigned': '尚未設定權限',
 
     'familyRole.manage.title': '家人的權限',
     'familyRole.manage.desc': '您可以決定每位家人能看到、能幫您設定哪些資料。',
@@ -75,6 +77,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'Assisting caregiver',
     'familyRole.member': 'Family member',
     'familyRole.unassigned': 'Not set yet',
+    'familyRole.cardUnassigned': 'Access not set yet',
 
     'familyRole.manage.title': "Your family's access",
     'familyRole.manage.desc': 'You decide what each family member can see and help you manage.',
@@ -126,6 +129,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'Pengasuh pendamping',
     'familyRole.member': 'Anggota keluarga',
     'familyRole.unassigned': 'Belum diatur',
+    'familyRole.cardUnassigned': 'Akses belum diatur',
 
     'familyRole.manage.title': 'Akses keluarga Anda',
     'familyRole.manage.desc': 'Anda menentukan apa yang dapat dilihat dan dibantu oleh setiap anggota keluarga.',
@@ -177,6 +181,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'Người hỗ trợ chăm sóc',
     'familyRole.member': 'Thành viên gia đình',
     'familyRole.unassigned': 'Chưa thiết lập',
+    'familyRole.cardUnassigned': 'Chưa thiết lập quyền',
 
     'familyRole.manage.title': 'Quyền của người thân',
     'familyRole.manage.desc': 'Bạn quyết định mỗi người thân được xem và giúp bạn thiết lập những gì.',
@@ -228,6 +233,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'ผู้ช่วยดูแล',
     'familyRole.member': 'สมาชิกครอบครัว',
     'familyRole.unassigned': 'ยังไม่ได้ตั้งค่า',
+    'familyRole.cardUnassigned': 'ยังไม่ได้ตั้งค่าสิทธิ์',
 
     'familyRole.manage.title': 'สิทธิ์ของคนในครอบครัว',
     'familyRole.manage.desc': 'ท่านเป็นผู้กำหนดว่าแต่ละคนดูอะไรได้ และช่วยตั้งค่าอะไรให้ท่านได้',
@@ -279,6 +285,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': '介護の補助者',
     'familyRole.member': 'ご家族',
     'familyRole.unassigned': '未設定',
+    'familyRole.cardUnassigned': '権限が未設定',
 
     'familyRole.manage.title': 'ご家族の権限',
     'familyRole.manage.desc': 'どのご家族が何を見られるか、何を代わりに設定できるかを決められます。',

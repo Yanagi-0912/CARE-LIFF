@@ -59,7 +59,7 @@ test.describe('族譜列表', () => {
     await expect(authedPage.getByText(t('family.errorTitle'))).toHaveCount(0);
   });
 
-  test('有成員時列出名字、稱謂與人數，邀請鈕移到標題列', async ({ authedPage }) => {
+  test('有成員時列出名字、稱謂、角色與人數，邀請鈕移到標題列', async ({ authedPage }) => {
     await stubFamily(authedPage, FAMILY_MEMBERS);
     await openPage(authedPage);
 
@@ -69,8 +69,10 @@ test.describe('族譜列表', () => {
     await expect(list).toContainText(GRANDMA.display_name);
     // RELATIONSHIP_LABEL.parent
     await expect(list).toContainText('父/母');
+    await expect(list).toContainText(t('familyRole.guardian'));
     await expect(list).toContainText(UNSET.display_name);
-    await expect(list).toContainText(t('family.unset'));
+    // 稱謂與角色都沒設：只講權限未設定，不再印一個看不出是什麼的「未設定」
+    await expect(list).toContainText(t('familyRole.cardUnassigned'));
 
     await expect(authedPage.getByRole('button', { name: t('family.inviteBtn') })).toHaveCount(1);
     await expect(authedPage.getByText(t('family.emptyTitle'))).toHaveCount(0);

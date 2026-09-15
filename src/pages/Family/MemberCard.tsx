@@ -17,7 +17,7 @@ import { removeFamilyMember } from '../../api/familyApi';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
-import { RELATIONSHIP_LABEL } from '../../types/family';
+import { FAMILY_ROLE_LABEL_KEY, RELATIONSHIP_LABEL } from '../../types/family';
 import {
   canProxyEditHealth,
   canReadPrivate,
@@ -75,9 +75,15 @@ export function MemberCard({ member }: Props) {
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const displayName = member.display_name || member.user_id.slice(0, 8);
+  // 稱謂目前沒有介面能設定，透過邀請加入的家人一律是 null。以前沒設就印「未設定」，
+  // 擁有者剛在「設定家人權限」設好角色，回來看到它以為沒存到。沒設就不顯示。
   const relationLabel = member.relationship_type
     ? RELATIONSHIP_LABEL[member.relationship_type] || member.relationship_type
-    : t('family.unset');
+    : null;
+  // family_role 是「他對我的資料」的角色，也就是我在「設定家人權限」裡替他選的那個
+  const roleLabel = member.family_role
+    ? t(FAMILY_ROLE_LABEL_KEY[member.family_role])
+    : t('familyRole.cardUnassigned');
 
   // 權限一律問 familyPermissions，不在這裡解讀 my_permissions 的字串。
   // 這些值是後端回的「實際生效」權限（已套用對方家庭的遷移狀態），前端不重算
@@ -158,11 +164,19 @@ export function MemberCard({ member }: Props) {
 
           <ItemContent>
             <ItemTitle className="text-base">{displayName}</ItemTitle>
+            {/* h-auto + whitespace-normal：Badge 內建 h-5 與 nowrap，角色譯文比稱謂長
+                （越南文近 20 字），特大字級下會把 375px 的頁面撐出橫向捲動 */}
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
+              {relationLabel && (
+                <Badge variant="secondary" className="h-auto text-sm whitespace-normal">
+                  {relationLabel}
+                </Badge>
+              )}
               <Badge
-                variant={member.relationship_type ? 'secondary' : 'outline'}
+                variant={member.family_role ? 'secondary' : 'outline'}
+                className="h-auto text-sm whitespace-normal"
               >
-                {relationLabel}
+                {roleLabel}
               </Badge>
             </div>
             {/* 這是一句說明、不是狀態標籤，所以不用 Badge：Badge 內建
