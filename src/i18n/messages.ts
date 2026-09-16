@@ -3,6 +3,7 @@ import { medicationFeatureMessages } from './medicationMessages';
 import { appointmentFeatureMessages } from './appointmentMessages';
 import { personalHealthFeatureMessages } from './personalHealthMessages';
 import { consultRecordMessages } from './consultRecordMessages';
+import { clinicVisitMessages } from './clinicVisitMessages';
 import { visitMessages } from './visitMessages';
 import { familyRoleMessages } from './familyRoleMessages';
 import { adminKnowledgeFeatureMessages } from './adminKnowledgeMessages';
@@ -528,6 +529,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...appointmentFeatureMessages['zh-TW'],
     ...consultRecordMessages['zh-TW'],
     ...visitMessages['zh-TW'],
+    ...clinicVisitMessages['zh-TW'],
     ...familyRoleMessages['zh-TW'],
     ...adminKnowledgeFeatureMessages['zh-TW'],
     ...systemMessages['zh-TW'],
@@ -663,6 +665,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...appointmentFeatureMessages.en,
     ...consultRecordMessages.en,
     ...visitMessages.en,
+    ...clinicVisitMessages.en,
     ...familyRoleMessages.en,
     ...adminKnowledgeFeatureMessages.en,
     ...systemMessages.en,
@@ -797,6 +800,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...appointmentFeatureMessages.id,
     ...consultRecordMessages.id,
     ...visitMessages.id,
+    ...clinicVisitMessages.id,
     ...familyRoleMessages.id,
     ...adminKnowledgeFeatureMessages.id,
     ...systemMessages.id,
@@ -931,6 +935,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...appointmentFeatureMessages.vi,
     ...consultRecordMessages.vi,
     ...visitMessages.vi,
+    ...clinicVisitMessages.vi,
     ...familyRoleMessages.vi,
     ...adminKnowledgeFeatureMessages.vi,
     ...systemMessages.vi,
@@ -1065,6 +1070,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...appointmentFeatureMessages.th,
     ...consultRecordMessages.th,
     ...visitMessages.th,
+    ...clinicVisitMessages.th,
     ...familyRoleMessages.th,
     ...adminKnowledgeFeatureMessages.th,
     ...systemMessages.th,
@@ -1199,6 +1205,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...appointmentFeatureMessages.ja,
     ...consultRecordMessages.ja,
     ...visitMessages.ja,
+    ...clinicVisitMessages.ja,
     ...familyRoleMessages.ja,
     ...adminKnowledgeFeatureMessages.ja,
     ...systemMessages.ja,
