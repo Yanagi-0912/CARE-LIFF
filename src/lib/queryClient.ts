@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import type { MeasurementKind } from '../types/health';
 
 /**
  * 全站共用的 QueryClient。
@@ -66,4 +67,15 @@ export const queryKeys = {
     ['consultation-summaries', userId ?? 'self'] as const,
   consultationRaw: (userId?: string) => ['consultation-raw', userId ?? 'self'] as const,
   inviteVerification: (code: string) => ['invite-verification', code] as const,
+  /** 血壓／血糖量測。kind 省略代表兩者都要，需要各自成一筆快取，
+      否則切換篩選會沿用上一組的結果。 */
+  healthMeasurements: (userId?: string, kind?: MeasurementKind) =>
+    ['health-measurements', userId ?? 'self', kind ?? 'all'] as const,
+  /** 血壓／血糖提醒範圍 */
+  healthAlertThresholds: (userId?: string) =>
+    ['health-alert-thresholds', userId ?? 'self'] as const,
+  /** 經期紀錄。PERSONAL 分類、只有本人看得到，key 不帶使用者對象。 */
+  menstrualRecords: () => ['menstrual-records'] as const,
+  /** 每日步數彙總 */
+  stepCounts: (userId?: string) => ['step-counts', userId ?? 'self'] as const,
 };
