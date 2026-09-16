@@ -44,6 +44,27 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/family');
   });
 
+  it('健康紀錄與個人健康各有入口，點了導到健康紀錄頁', () => {
+    renderAt('/');
+
+    // 兩者是不同的東西：累積的量測數字 vs 偶爾更新的基本資料，側欄要分得開
+    expect(screen.getByRole('button', { name: '個人健康' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '健康紀錄' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/health-records');
+  });
+
+  it('在健康紀錄頁時標記為目前頁面', () => {
+    renderAt('/health-records');
+
+    expect(screen.getByRole('button', { name: '健康紀錄' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    // startsWith 判斷不能讓「個人健康」也跟著亮起來
+    expect(screen.getByRole('button', { name: '個人健康' })).not.toHaveAttribute('aria-current');
+  });
+
   it('首頁只在路徑正好是 / 時才算目前頁面', () => {
     // '/' 若用 startsWith 判斷會對所有路徑成立，這裡確保它是完全比對
     renderAt('/settings');
