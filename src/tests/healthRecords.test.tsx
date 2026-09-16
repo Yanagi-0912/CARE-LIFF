@@ -442,6 +442,39 @@ describe('9.4 經期分頁：事後補上結束日期', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByLabelText('結束日期')).toHaveValue('2026-01-05');
   });
+
+  it('進行中的紀錄（還沒有結束日期）不會出現「恢復為進行中」——沒有值可清除', async () => {
+    renderHealthRecords();
+    const tab = await screen.findByRole('tab', { name: /經期/ });
+    fireEvent.click(tab);
+
+    fireEvent.click(await screen.findByRole('button', { name: '設定結束日期' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: '恢復為進行中' })).not.toBeInTheDocument();
+  });
+
+  it('已有結束日期的紀錄可以「恢復為進行中」：送出 end_date: null，畫面改回顯示進行中（決策：允許復原）', async () => {
+    const completedRecord = { ...ongoingRecord, end_date: '2026-01-05', period_length_days: 5 };
+    vi.mocked(healthApi.fetchMenstrualRecords)
+      .mockResolvedValueOnce([completedRecord])
+      // 失效後重抓：後端已經把結束日期清掉，紀錄重新變回進行中。
+      .mockResolvedValueOnce([ongoingRecord]);
+    vi.mocked(healthApi.updateMenstrualRecord).mockResolvedValue({ ...ongoingRecord });
+
+    renderHealthRecords();
+    const tab = await screen.findByRole('tab', { name: /經期/ });
+    fireEvent.click(tab);
+
+    fireEvent.click(await screen.findByRole('button', { name: '修改結束日期' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '恢復為進行中' }));
+
+    await waitFor(() =>
+      expect(healthApi.updateMenstrualRecord).toHaveBeenCalledWith('m-ongoing', { end_date: null }),
+    );
+    expect(await screen.findByText(/進行中/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '設定結束日期' })).toBeInTheDocument();
+  });
 });
 
 // ── 步數分頁：載入失敗要有重試（其餘分頁都有，步數不該是唯一沒有的） ──────

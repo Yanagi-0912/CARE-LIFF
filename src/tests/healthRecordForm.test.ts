@@ -192,6 +192,15 @@ describe('menstrualSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('新增表單的結束日期本來就選填，留空仍合法（與 menstrualEndDateSchema 共用天數計算後，這條規則不受影響）', () => {
+    const result = menstrualSchema(t).safeParse({
+      ...menstrualDefaults,
+      startDate: '2026-01-01',
+      endDate: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('todayTaipei 回傳 YYYY-MM-DD 格式', () => {
     expect(todayTaipei()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });

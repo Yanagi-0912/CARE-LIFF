@@ -101,6 +101,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.editEndDate': '修改結束日期',
     'health.menstrual.editEndDateHint': '設定從 {{start}} 開始的這筆經期紀錄的結束日期。',
     'health.menstrual.updateSuccess': '已更新經期紀錄',
+    'health.menstrual.clearEndDate': '恢復為進行中',
+    'health.menstrual.clearEndDateHint': '移除已設定的結束日期，把這筆紀錄改回進行中。',
     'health.menstrual.genderGateTitle': '尚未設定性別',
     'health.menstrual.genderGateDesc': '請先在個人健康頁設定性別為女性，才能使用經期紀錄。',
     'health.menstrual.genderGateLink': '前往個人健康頁設定',
@@ -240,6 +242,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.editEndDate': 'Edit end date',
     'health.menstrual.editEndDateHint': 'Set the end date for this record that started on {{start}}.',
     'health.menstrual.updateSuccess': 'Menstrual record updated',
+    'health.menstrual.clearEndDate': 'Mark as ongoing again',
+    'health.menstrual.clearEndDateHint': 'Remove the end date and reopen this record as ongoing.',
     'health.menstrual.genderGateTitle': 'Gender not set',
     'health.menstrual.genderGateDesc':
       'Please set your gender to female on the personal health page to use menstrual records.',
@@ -381,6 +385,9 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.editEndDate': 'Ubah tanggal selesai',
     'health.menstrual.editEndDateHint': 'Atur tanggal selesai untuk catatan yang mulai pada {{start}}.',
     'health.menstrual.updateSuccess': 'Catatan haid berhasil diperbarui',
+    'health.menstrual.clearEndDate': 'Tandai sedang berlangsung lagi',
+    'health.menstrual.clearEndDateHint':
+      'Hapus tanggal selesai dan buka kembali catatan ini sebagai sedang berlangsung.',
     'health.menstrual.genderGateTitle': 'Jenis kelamin belum diatur',
     'health.menstrual.genderGateDesc':
       'Silakan atur jenis kelamin menjadi perempuan di halaman kesehatan pribadi untuk menggunakan catatan haid.',
@@ -522,6 +529,9 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.editEndDate': 'Sửa ngày kết thúc',
     'health.menstrual.editEndDateHint': 'Đặt ngày kết thúc cho bản ghi bắt đầu từ {{start}}.',
     'health.menstrual.updateSuccess': 'Đã cập nhật bản ghi kinh nguyệt',
+    'health.menstrual.clearEndDate': 'Đánh dấu lại là đang diễn ra',
+    'health.menstrual.clearEndDateHint':
+      'Xóa ngày kết thúc và mở lại bản ghi này ở trạng thái đang diễn ra.',
     'health.menstrual.genderGateTitle': 'Chưa thiết lập giới tính',
     'health.menstrual.genderGateDesc':
       'Vui lòng thiết lập giới tính là nữ trên trang sức khỏe cá nhân để sử dụng bản ghi kinh nguyệt.',
@@ -661,6 +671,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.editEndDate': 'แก้ไขวันที่สิ้นสุด',
     'health.menstrual.editEndDateHint': 'ตั้งวันที่สิ้นสุดของบันทึกที่เริ่มเมื่อ {{start}}',
     'health.menstrual.updateSuccess': 'อัปเดตบันทึกรอบเดือนแล้ว',
+    'health.menstrual.clearEndDate': 'ทำเครื่องหมายว่ากำลังดำเนินอยู่อีกครั้ง',
+    'health.menstrual.clearEndDateHint': 'ลบวันที่สิ้นสุดและเปิดบันทึกนี้อีกครั้งเป็นสถานะกำลังดำเนินอยู่',
     'health.menstrual.genderGateTitle': 'ยังไม่ได้ตั้งค่าเพศ',
     'health.menstrual.genderGateDesc':
       'กรุณาตั้งค่าเพศเป็นหญิงในหน้าสุขภาพส่วนตัวก่อน จึงจะใช้บันทึกรอบเดือนได้',
@@ -800,6 +812,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.editEndDate': '終了日を修正',
     'health.menstrual.editEndDateHint': '{{start}} から始まったこの記録の終了日を設定します。',
     'health.menstrual.updateSuccess': '生理記録を更新しました',
+    'health.menstrual.clearEndDate': '進行中に戻す',
+    'health.menstrual.clearEndDateHint': '終了日を削除し、この記録を進行中に戻します。',
     'health.menstrual.genderGateTitle': '性別が未設定です',
     'health.menstrual.genderGateDesc':
       '生理記録を使うには、個人健康ページで性別を「女性」に設定してください。',

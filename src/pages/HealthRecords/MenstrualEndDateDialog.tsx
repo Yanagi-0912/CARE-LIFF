@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
+import { Undo2Icon } from 'lucide-react';
 
 import type { MenstrualRecord, UpdateMenstrualRecordRequest } from '../../types/health';
 import {
@@ -31,16 +32,25 @@ interface MenstrualEndDateDialogProps {
 
 /**
  * 事後補上或修改一筆既有經期紀錄的結束日期（menstrual-cycle-log 規格
- * 「事後補上結束日期」）。只有這一個欄位——開始日期、血量、備註不是這裡
- * 要解決的情境，維持最小的補完動作，同一顆對話框無論「補上」或「修改」
- * 都用得到（差別只在按鈕文字與是否已經有預設值，見 MenstrualTab.tsx）。
+ * 「事後補上結束日期或修正紀錄」）。只有這一個欄位——開始日期、血量、備註
+ * 不是這裡要解決的情境，維持最小的補完動作，同一顆對話框無論「補上」或
+ * 「修改」都用得到（差別只在按鈕文字與是否已經有預設值，見
+ * MenstrualTab.tsx）。
  *
  * 驗證規則同新增表單：結束日期不得早於開始日期、天數不得超過上限，最終仍
  * 以後端 422 為準（`healthRecordForm.ts` 的 `menstrualEndDateSchema`）。
+ *
+ * 已經有結束日期時另外提供「恢復為進行中」：後端 PATCH 明確支援
+ * `end_date: null` 重新打開一筆紀錄（app/routers/users/health.py 的
+ * docstring），現實情境是使用者標記結束後經期又持續，這是唯一能修正的
+ * 方法。這個動作**不**走 `menstrualEndDateSchema`／`handleSubmit`——它送出
+ * 的是固定的 `{ end_date: null }`，不是使用者輸入的文字，沒有欄位需要驗證；
+ * 「設定／修正」那顆 Save 鈕的必填規則維持不變，兩個動作各自獨立。
  */
 export function MenstrualEndDateDialog({ record, onClose, onSubmit }: MenstrualEndDateDialogProps) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   const schema = useMemo(() => menstrualEndDateSchema(t, record.start_date), [t, record.start_date]);
@@ -67,7 +77,20 @@ export function MenstrualEndDateDialog({ record, onClose, onSubmit }: MenstrualE
     }
   });
 
+  const handleClear = async () => {
+    setSubmitError('');
+    setClearing(true);
+    try {
+      await onSubmit({ end_date: null });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : t('health.form.genericError'));
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const title = record.end_date ? t('health.menstrual.editEndDate') : t('health.menstrual.setEndDate');
+  const busy = saving || clearing;
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
@@ -95,6 +118,12 @@ export function MenstrualEndDateDialog({ record, onClose, onSubmit }: MenstrualE
             </HealthField>
           </FieldGroup>
 
+          {record.end_date && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              {t('health.menstrual.clearEndDateHint')}
+            </p>
+          )}
+
           {submitError && (
             <p role="alert" className="mt-4 text-sm text-destructive">
               {submitError}
@@ -102,11 +131,29 @@ export function MenstrualEndDateDialog({ record, onClose, onSubmit }: MenstrualE
           )}
 
           <div className="mt-6 flex flex-col gap-2">
-            <Button type="submit" size="lg" disabled={saving}>
+            <Button type="submit" size="lg" disabled={busy}>
               {saving ? <Spinner aria-hidden="true" /> : null}
               {saving ? t('health.form.saving') : t('health.form.save')}
             </Button>
-            <DialogClose render={<Button type="button" variant="ghost" />}>
+            {/* 只有已經有結束日期時才出現：進行中的紀錄本來就沒有值可清除，
+                顯示這顆按鈕只會讓人以為還要再按一次才算數（§8 反 slop：不要
+                給一個永遠沒有作用的動作）。 */}
+            {record.end_date && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void handleClear()}
+              >
+                {clearing ? (
+                  <Spinner aria-hidden="true" data-icon="inline-start" />
+                ) : (
+                  <Undo2Icon data-icon="inline-start" />
+                )}
+                {clearing ? t('health.form.saving') : t('health.menstrual.clearEndDate')}
+              </Button>
+            )}
+            <DialogClose render={<Button type="button" variant="ghost" disabled={busy} />}>
               {t('health.form.cancel')}
             </DialogClose>
           </div>
