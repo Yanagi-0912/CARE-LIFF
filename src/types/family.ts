@@ -137,13 +137,13 @@ export const FAMILY_ROLE_LABEL_KEY: Record<FamilyRole, string> = {
   MEMBER: 'familyRole.member',
 };
 
-/** 稱謂中文對照表 */
-export const RELATIONSHIP_LABEL: Record<string, string> = {
-  parent:      '父/母',
-  child:       '子/女',
-  spouse:      '配偶',
-  sibling:     '兄弟姊妹',
-  grandparent: '祖父母',
-  grandchild:  '孫子女',
-  other:       '其他',
+/** 稱謂 → i18n key（文案在 i18n/systemMessages.ts 的 family.relation.*）。後端沒列的值原樣顯示。 */
+export const RELATIONSHIP_LABEL_KEY: Record<string, string> = {
+  parent: 'family.relation.parent',
+  child: 'family.relation.child',
+  spouse: 'family.relation.spouse',
+  sibling: 'family.relation.sibling',
+  grandparent: 'family.relation.grandparent',
+  grandchild: 'family.relation.grandchild',
+  other: 'family.relation.other',
 };

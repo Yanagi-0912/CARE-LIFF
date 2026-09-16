@@ -55,16 +55,17 @@ export function MedicationIndicationSection({ medication }: { medication: Medica
         <div className="rounded-lg bg-muted/50 p-2.5">
           <p className="font-medium text-muted-foreground">{t('meds.indication.spcLabel')}</p>
           <p className="break-words">{spcPrimary}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{t('meds.indication.spcHint')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('meds.indication.spcHint')}</p>
 
           {hasOriginalToExpand && (
             <Collapsible open={open} onOpenChange={setOpen}>
-              <CollapsibleTrigger className="mt-1.5 inline-flex items-center gap-1 text-xs underline underline-offset-2">
+              {/* min-h-11：展開鈕也是觸控目標，不能因為是文字連結就縮成 12px 一行 */}
+              <CollapsibleTrigger className="mt-1 inline-flex min-h-11 items-center gap-1 text-sm underline underline-offset-2">
                 {open ? t('meds.indication.collapse') : t('meds.indication.expand')}
-                {open ? <ChevronUpIcon className="size-3" /> : <ChevronDownIcon className="size-3" />}
+                {open ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <p className="mt-1.5 break-words whitespace-pre-line text-xs text-muted-foreground">
+                <p className="mt-1 break-words whitespace-pre-line text-sm text-muted-foreground">
                   {spcText}
                 </p>
               </CollapsibleContent>

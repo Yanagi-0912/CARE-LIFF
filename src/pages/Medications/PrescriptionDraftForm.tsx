@@ -7,6 +7,7 @@ import type { TFunction } from 'i18next';
 import { TriangleAlertIcon } from 'lucide-react';
 import { useFamily } from '../../hooks/useFamily';
 import { getLineUserId } from '../../utils/auth';
+import { canManageMedications } from '../../utils/familyPermissions';
 import { commitPrescriptionDraft } from '../../api/medicationApi';
 import { SLOT_LABEL_KEY, SLOT_TYPES, type MedicationSlotType } from '../../types/medication';
 import {
@@ -227,7 +228,11 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
     () =>
       [
         { userId: selfUserId, name: t('meds.self') },
-        ...members.map((member) => ({ userId: member.user_id, name: member.display_name || t('family.unset') })),
+        // 只列有寫入權的家人，與用藥頁的新增／掃描入口同一條規則（canManageMedications）：
+        // 列出沒權限的人，使用者選了只會在送出時收到 403。
+        ...members
+          .filter((member) => canManageMedications(member))
+          .map((member) => ({ userId: member.user_id, name: member.display_name || t('family.unset') })),
       ].filter((target): target is { userId: string; name: string } => Boolean(target.userId)),
     [selfUserId, members, t],
   );
@@ -399,7 +404,7 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
                   <FieldLegend variant="label">{t('meds.scan.draft.targetField')}</FieldLegend>
                   <ToggleGroup
                     variant="primary"
-                    className="flex w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="flex w-full flex-wrap gap-2"
                     value={field.value ? [field.value] : []}
                     onValueChange={(next) => next[0] && field.onChange(next[0])}
                     aria-label={t('meds.scan.draft.targetField')}

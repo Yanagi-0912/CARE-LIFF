@@ -69,7 +69,6 @@ function ClinicHours({ facility }: { facility: MedicalFacility }) {
     <div>
       <Button
         variant="ghost"
-        size="sm"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
         className="px-0"
@@ -87,7 +86,7 @@ function ClinicHours({ facility }: { facility: MedicalFacility }) {
                 <dd>
                   {slots.length === 0
                     ? t('nearby.dayClosed')
-                    : slots.map((slot) => `${slot.open}–${slot.close}`).join('、')}
+                    : slots.map((slot) => `${slot.open}–${slot.close}`).join(t('personalHealth.listSeparator'))}
                 </dd>
               </div>
             );
@@ -116,7 +115,6 @@ function DepartmentChips({ departments }: { departments: string[] }) {
       {hiddenCount > 0 && (
         <Button
           variant="ghost"
-          size="xs"
           onClick={() => setExpanded(true)}
           aria-expanded={false}
         >
@@ -190,7 +188,7 @@ export default function FacilityCard({ facility }: { facility: MedicalFacility }
             設成 false 又會被補上 role="button"，兩種寫法都保不住連結語意。 */}
         <div className="flex flex-wrap gap-2">
           {phoneHref && (
-            <a href={phoneHref} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
+            <a href={phoneHref} className={buttonVariants({ variant: 'outline' })}>
               {t('nearby.call')}
             </a>
           )}
@@ -198,7 +196,7 @@ export default function FacilityCard({ facility }: { facility: MedicalFacility }
             href={navigationUrl(facility)}
             target="_blank"
             rel="noreferrer"
-            className={buttonVariants({ size: 'sm' })}
+            className={buttonVariants()}
           >
             {t('nearby.navigate')}
           </a>

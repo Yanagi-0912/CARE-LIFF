@@ -121,7 +121,7 @@ export function HospitalStep({
                     key={hospital.key}
                     variant="outline"
                     size="sm"
-                    className="cursor-pointer transition-colors hover:bg-muted/40"
+                    className="cursor-pointer text-left transition-colors hover:bg-muted/40"
                     render={
                       <button
                         type="button"
@@ -333,7 +333,7 @@ function FacilityPicker({ onPick, onManual, onCancel, disabled }: FacilityPicker
                 key={facility.id ?? `${facility.name}-${facility.latitude}`}
                 variant="outline"
                 size="sm"
-                className="cursor-pointer transition-colors hover:bg-muted/40"
+                className="cursor-pointer text-left transition-colors hover:bg-muted/40"
                 render={
                   <button type="button" disabled={disabled} onClick={() => onPick(facility)} />
                 }
@@ -475,6 +475,7 @@ export function VisitStep({
             次專科（「心臟內科」），院所資料可能只登記到「內科」。 */}
         <Input
           id="appt-department"
+          placeholder={t('appt.form.departmentPlaceholder')}
           maxLength={LIMITS.department}
           aria-invalid={Boolean(errors.department)}
           disabled={busy}
@@ -604,7 +605,11 @@ export function VisitStep({
   );
 }
 
-const HOURS = Array.from({ length: 24 }, (_, h) => `${h}`.padStart(2, '0'));
+// 06 時排最前、凌晨 00–05 放最後：門診幾乎都在白天，長輩打開選單不必先滑過八個凌晨選項。
+const HOURS = [
+  ...Array.from({ length: 18 }, (_, h) => h + 6),
+  ...Array.from({ length: 6 }, (_, h) => h),
+].map((h) => `${h}`.padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, m) => `${m}`.padStart(2, '0'));
 
 interface TimeOfDaySelectProps {

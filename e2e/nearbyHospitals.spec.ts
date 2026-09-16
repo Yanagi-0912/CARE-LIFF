@@ -34,7 +34,7 @@ test.describe('附近搜尋（已授權定位）', () => {
 
     await expect(authedPage.getByText(t('nearby.currentLocation'))).toBeVisible();
     await expect(
-      authedPage.getByText(t('nearby.coords', { lat: '25.03300', lng: '121.56540', accuracy: 0 })),
+      authedPage.getByText(t('nearby.coords', { accuracy: 0 })),
     ).toBeVisible();
 
     expect(calls).toHaveLength(1);
@@ -69,7 +69,9 @@ test.describe('附近搜尋（已授權定位）', () => {
   test('篩選條件（類型、科別、營業中）以中文原文進 query string', async ({ authedPage }) => {
     const calls = await stubNearby(
       authedPage,
-      nearbyResponse([FACILITIES[1]], {
+      // 用沒有急診的那一家：be78e3d 起「只看營業中、結果全是急診」會改說
+      // 附近診所都沒在看診，這條測的是 query string，說明句要維持「找到營業中」。
+      nearbyResponse([FACILITIES[0]], {
         open_now_requested: true,
         department: { requested: '內科', canonical: '內科', is_alias: false },
         facility_type: { requested: '醫院', category: '醫院', is_alias: false },
@@ -163,16 +165,16 @@ test.describe('附近搜尋（已授權定位）', () => {
     await expect(authedPage.getByText(t('nearby.empty.pharmacyNone', { radiusKm: 50 }))).toBeVisible();
   });
 
-  test('服務暫停（503）顯示專屬訊息；其他失敗顯示狀態碼', async ({ authedPage }) => {
+  test('服務暫停（503）顯示專屬訊息；其他失敗顯示一般訊息', async ({ authedPage }) => {
     await stubNearby(authedPage, { status: 503 });
     await openPage(authedPage);
     await searchButton(authedPage).click();
-    await expect(authedPage.getByText('醫療院所查詢暫時不可用，請稍後再試')).toBeVisible();
+    await expect(authedPage.getByText('院所查詢暫時無法使用，請稍後再試')).toBeVisible();
 
     await stubNearby(authedPage, { status: 500 });
     await searchButton(authedPage).click();
-    await expect(authedPage.getByText('搜尋附近醫院失敗：500')).toBeVisible();
-    await expect(authedPage.getByText('醫療院所查詢暫時不可用，請稍後再試')).toHaveCount(0);
+    await expect(authedPage.getByText('搜尋附近醫院失敗')).toBeVisible();
+    await expect(authedPage.getByText('院所查詢暫時無法使用，請稍後再試')).toHaveCount(0);
   });
 });
 

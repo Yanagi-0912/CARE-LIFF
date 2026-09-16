@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import liff from '@line/liff';
@@ -49,6 +49,8 @@ export function InviteDialog({ invite, liffReady, onShared, onError, onClose }: 
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  // 打開時先聚焦標題，不聚焦最下面的「關閉」（理由同 RoleManagerDialog）
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   const data = invite.data;
   // 後端沒設 LIFF_ID 時才會走到這個 fallback。站台網址在外部瀏覽器開得起來，
@@ -98,9 +100,11 @@ export function InviteDialog({ invite, liffReady, onShared, onError, onClose }: 
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-[420px]">
+      <DialogContent initialFocus={titleRef} className="max-h-[85dvh] overflow-y-auto sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>{t('family.inviteDialog.title')}</DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
+            {t('family.inviteDialog.title')}
+          </DialogTitle>
           <DialogDescription>{t('family.inviteDialog.desc')}</DialogDescription>
         </DialogHeader>
 
@@ -176,7 +180,7 @@ export function InviteDialog({ invite, liffReady, onShared, onError, onClose }: 
           </div>
         )}
 
-        <DialogClose render={<Button type="button" variant="ghost" className="mt-2 w-full" />}>
+        <DialogClose render={<Button type="button" variant="outline" className="mt-2 w-full" />}>
           {t('family.inviteDialog.close')}
         </DialogClose>
       </DialogContent>

@@ -58,6 +58,9 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-4xl bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // 關閉鈕是 absolute 定位在右上角（size-11 + right-4），標題區要讓出這塊：
+          // 特大字級下「幫 一個名字很長…的家人成員 填健康資料」會直接壓在 X 底下。
+          showCloseButton && "[&_[data-slot=dialog-header]]:pr-14",
           className
         )}
         {...props}
@@ -70,7 +73,7 @@ function DialogContent({
               <Button
                 variant="ghost"
                 className="absolute top-4 right-4"
-                size="icon-sm"
+                size="icon"
               />
             }
           >

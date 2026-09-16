@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -188,11 +189,13 @@ const SettingsPage: React.FC = () => {
       });
   }, [i18n]);
 
-  // 變更即寫入後端；未登入或失敗時只記錄，不中斷畫面操作
+  // 變更即寫入後端；未登入時不送。失敗時本機已經改了、伺服器沒改，不講的話
+  // 使用者以為設好了，換裝置登入才發現又變回舊值——所以要提示，但不中斷畫面操作。
   const persistSettings = (partial: UpdateUserSettingsPayload) => {
     if (!isAuthenticated()) return;
     updateUserSettings(partial).catch((err) => {
       console.error('同步設定到伺服器失敗', err);
+      toast.error(t('settings.syncFailed'));
     });
   };
 
@@ -240,7 +243,8 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[720px] px-3 pt-3 pb-[116px] min-[480px]:p-4 min-[480px]:pb-[120px]">
+    // 四周留白（含底部避開導覽列）由 .content-area 統一給（規範 §4），這裡不再重複加。
+    <div className="mx-auto w-full max-w-[720px]">
       <h2 className="mb-3 text-2xl font-extrabold min-[480px]:mb-4">{t('settings.title')}</h2>
 
       {/* ── 字體大小 ── */}

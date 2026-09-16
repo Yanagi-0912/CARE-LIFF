@@ -64,7 +64,7 @@ const STATUS_ICON: Record<KnowledgeReportStatus, ComponentType<{ className?: str
  */
 export function KnowledgePage({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto flex w-full max-w-[900px] flex-col gap-4 max-[640px]:px-2">
+    <div className="mx-auto flex w-full max-w-[900px] flex-col gap-4">
       {children}
     </div>
   );
@@ -221,10 +221,10 @@ export function ReportRow({
       </ItemMedia>
 
       <ItemContent>
-        <ItemTitle className="line-clamp-2 w-full text-base font-bold">{question}</ItemTitle>
-        <ItemDescription>
-          <span className="font-semibold text-foreground/70">{reviewLabel}</span>
-          {'　'}
+        <ItemTitle className="line-clamp-3 w-full text-base font-bold">{question}</ItemTitle>
+        {/* 標籤自成一行：大字級下「標籤＋全形空白＋內文」會在標籤中間斷行 */}
+        <ItemDescription className="line-clamp-3">
+          <span className="block font-semibold text-foreground/70">{reviewLabel}</span>
           {reviewText}
         </ItemDescription>
       </ItemContent>

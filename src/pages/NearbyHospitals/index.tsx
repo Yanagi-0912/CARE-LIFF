@@ -33,7 +33,6 @@ function FilterChip({
   return (
     <Button
       type="button"
-      size="sm"
       variant={active ? 'default' : 'outline'}
       aria-pressed={active}
       onClick={onClick}
@@ -131,7 +130,7 @@ const NearbyHospitalsPage = () => {
   const facilities = nearbyResult?.facilities ?? nameResult?.facilities ?? [];
 
   return (
-    <div className="mx-auto flex max-w-[720px] flex-col gap-4 p-4">
+    <div className="mx-auto flex max-w-[720px] flex-col gap-4">
       <Card className="bg-primary text-primary-foreground">
         <CardContent>
           <p className="text-xs tracking-wide uppercase opacity-85">{t('nearby.eyebrow')}</p>
@@ -152,7 +151,7 @@ const NearbyHospitalsPage = () => {
       </Card>
 
       <Tabs value={mode} onValueChange={(value) => setMode(value as SearchMode)}>
-        <TabsList>
+        <TabsList className="w-full">
           <TabsTrigger value="nearby">{t('nearby.tabNearby')}</TabsTrigger>
           <TabsTrigger value="name">{t('nearby.tabByName')}</TabsTrigger>
         </TabsList>
@@ -265,11 +264,8 @@ const NearbyHospitalsPage = () => {
           <CardContent>
             <h2 className="mb-1 text-base font-bold">{t('nearby.currentLocation')}</h2>
             <p className="text-muted-foreground">
-              {t('nearby.coords', {
-                lat: position.latitude.toFixed(5),
-                lng: position.longitude.toFixed(5),
-                accuracy: Math.round(position.accuracy),
-              })}
+              {/* 不顯示經緯度：長輩看不懂也用不到，只要知道「已定位、大概多準」 */}
+              {t('nearby.coords', { accuracy: Math.round(position.accuracy) })}
             </p>
           </CardContent>
         </Card>

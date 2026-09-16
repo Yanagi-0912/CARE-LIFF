@@ -108,6 +108,21 @@ describe('FamilyPage', () => {
     expect(screen.getByText('共 1 位家人')).toBeInTheDocument();
   });
 
+  it('卡片顯示角色；沒設稱謂時不印「未設定」，沒設角色時講明是權限未設定', () => {
+    familyState.members = [
+      { ...mom, family_role: 'CAREGIVER' },
+      { ...mom, user_id: 'U-son', display_name: '兒子', relationship_type: null, family_role: null },
+    ];
+    renderPage();
+
+    const [momCard, sonCard] = screen.getAllByRole('listitem');
+    expect(within(momCard).getByText('協助照顧者')).toBeInTheDocument();
+    expect(within(momCard).getByText('父/母')).toBeInTheDocument();
+    // 以前稱謂沒設就印「未設定」，擁有者剛設好角色回來看到它，以為沒存到
+    expect(within(sonCard).getByText('尚未設定權限')).toBeInTheDocument();
+    expect(within(sonCard).queryByText('未設定')).not.toBeInTheDocument();
+  });
+
   it('沒有成員時顯示空狀態，邀請按鈕就在空狀態卡片裡', () => {
     familyState.members = [];
     renderPage();

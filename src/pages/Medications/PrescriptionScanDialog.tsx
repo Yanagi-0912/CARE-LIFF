@@ -131,7 +131,12 @@ export function PrescriptionScanDialog({
           </Button>
         )}
 
+        {/* DialogFooter 在手機是 flex-col-reverse：DOM 先寫取消，畫面上「改為手動建立」才在上、
+            「取消」在最下面，與其他 dialog 的順序一致；取消也用同一種外框膠囊，不用純文字。 */}
         <DialogFooter>
+          <Button type="button" variant="outline" disabled={status === 'uploading'} onClick={onClose}>
+            {t('meds.cancel')}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -139,9 +144,6 @@ export function PrescriptionScanDialog({
             onClick={onManualFallback}
           >
             {t('meds.scan.manualFallback')}
-          </Button>
-          <Button type="button" variant="ghost" disabled={status === 'uploading'} onClick={onClose}>
-            {t('meds.cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>

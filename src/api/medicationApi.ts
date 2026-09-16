@@ -12,7 +12,8 @@ import type {
   PrescriptionDraft,
   PrescriptionScanFailureReason,
 } from '../types/prescription';
-import { authHeaders } from '../utils/auth';
+import i18n from '../i18n';
+import { fetchWithAuth } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
@@ -20,7 +21,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
  * 輔助函式：解析錯誤訊息
  */
 async function parseError(res: Response): Promise<Error> {
-  let message = `API 請求失敗：${res.status}`;
+  let message = i18n.t('common.requestFailed', { status: res.status });
   try {
     const data = await res.json();
     if (data.detail) {
@@ -90,23 +91,13 @@ async function parseScanError(res: Response): Promise<PrescriptionScanError> {
   return new PrescriptionScanError('service_unavailable', '辨識服務暫時無法使用，請稍後再試');
 }
 
-/** 帶認證的 multipart 上傳標頭。authHeaders() 固定帶 application/json，
- *  瀏覽器組 multipart body 時要自己補 boundary，Content-Type 不能沿用。 */
-function multipartAuthHeaders(): HeadersInit {
-  const headers = { ...(authHeaders() as Record<string, string>) };
-  delete headers['Content-Type'];
-  return headers;
-}
-
 /**
  * 1. 查詢某位使用者的用藥提醒列表
  * 後端一次只吃一個 target_user_id；省略則回傳本人的提醒。
  */
 export async function fetchReminders(targetUserId?: string): Promise<MedicationReminder[]> {
   const query = targetUserId ? `?target_user_id=${encodeURIComponent(targetUserId)}` : '';
-  const res = await fetch(`${BASE_URL}/api/medications/reminders${query}`, {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(`${BASE_URL}/api/medications/reminders${query}`);
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
@@ -120,9 +111,8 @@ export async function fetchReminders(targetUserId?: string): Promise<MedicationR
 export async function createReminders(
   req: CreateRemindersRequest,
 ): Promise<MedicationReminder[]> {
-  const res = await fetch(`${BASE_URL}/api/medications/reminders`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/medications/reminders`, {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(req),
   });
   if (!res.ok) throw await parseError(res);
@@ -136,11 +126,10 @@ export async function updateReminder(
   reminderId: string,
   req: UpdateReminderRequest,
 ): Promise<MedicationReminder> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/medications/reminders/${encodeURIComponent(reminderId)}`,
     {
       method: 'PUT',
-      headers: authHeaders(),
       body: JSON.stringify(req),
     },
   );
@@ -152,11 +141,10 @@ export async function updateReminder(
  * 4. 刪除用藥提醒
  */
 export async function deleteReminder(reminderId: string): Promise<{ ok: boolean }> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/medications/reminders/${encodeURIComponent(reminderId)}`,
     {
       method: 'DELETE',
-      headers: authHeaders(),
     },
   );
   if (!res.ok) throw await parseError(res);
@@ -169,9 +157,7 @@ export async function deleteReminder(reminderId: string): Promise<{ ok: boolean 
  */
 export async function fetchMedications(targetUserId?: string): Promise<Medication[]> {
   const query = targetUserId ? `?user_id=${encodeURIComponent(targetUserId)}` : '';
-  const res = await fetch(`${BASE_URL}/api/medications${query}`, {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(`${BASE_URL}/api/medications${query}`);
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
@@ -180,9 +166,8 @@ export async function fetchMedications(targetUserId?: string): Promise<Medicatio
  * 6. 手動新增一種藥品（source 固定為 manual）
  */
 export async function createMedication(req: CreateMedicationRequest): Promise<Medication> {
-  const res = await fetch(`${BASE_URL}/api/medications`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/medications`, {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(req),
   });
   if (!res.ok) throw await parseError(res);
@@ -198,9 +183,8 @@ export async function createMedication(req: CreateMedicationRequest): Promise<Me
 export async function scanPrescription(file: File): Promise<PrescriptionDraft> {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${BASE_URL}/api/medications/prescription-scan`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/medications/prescription-scan`, {
     method: 'POST',
-    headers: multipartAuthHeaders(),
     body: formData,
   });
   if (!res.ok) throw await parseScanError(res);
@@ -211,9 +195,8 @@ export async function scanPrescription(file: File): Promise<PrescriptionDraft> {
  * 8. 查詢先前掃描產生的草稿，供核對畫面重新載入時使用。
  */
 export async function getPrescriptionDraft(draftId: string): Promise<PrescriptionDraft> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/medications/prescription-drafts/${encodeURIComponent(draftId)}`,
-    { headers: authHeaders() },
   );
   if (!res.ok) throw await parseError(res);
   return res.json();
@@ -226,11 +209,10 @@ export async function commitPrescriptionDraft(
   draftId: string,
   req: CommitPrescriptionDraftRequest,
 ): Promise<PrescriptionCommitResult> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${BASE_URL}/api/medications/prescription-drafts/${encodeURIComponent(draftId)}/commit`,
     {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify(req),
     },
   );
@@ -247,9 +229,7 @@ export async function commitPrescriptionDraft(
  */
 export async function fetchVisits(targetUserId?: string): Promise<MedicationVisit[]> {
   const query = targetUserId ? `?target_user_id=${encodeURIComponent(targetUserId)}` : '';
-  const res = await fetch(`${BASE_URL}/api/medications/visits${query}`, {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(`${BASE_URL}/api/medications/visits${query}`);
   if (res.status === 403) throw new VisitsForbiddenError();
   if (!res.ok) throw await parseError(res);
   const data = await res.json();

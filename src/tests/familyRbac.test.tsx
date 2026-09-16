@@ -137,7 +137,7 @@ describe('家人卡片依角色降級', () => {
       expect(profileApi.getPersonalHealthProfile).toHaveBeenCalledWith('U-mom'),
     );
     expect(screen.getByRole('button', { name: /查看諮詢紀錄/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /幫他填健康資料/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /幫忙填健康資料/ })).toBeInTheDocument();
   });
 
   it('CAREGIVER 看得到健康狀況，但沒有對話紀錄、也不能代填', async () => {
@@ -150,7 +150,7 @@ describe('家人卡片依角色降級', () => {
     );
     expect(screen.getByText('您沒有查看對話紀錄的權限')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /查看諮詢紀錄/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /幫他填健康資料/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /幫忙填健康資料/ })).not.toBeInTheDocument();
   });
 
   it('MEMBER 連健康資料的請求都不發出去', async () => {
@@ -237,6 +237,8 @@ describe('引導式角色指派', () => {
   });
 
   it('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', () => {
+    // 「都設定好了」代表卡片上的家人也有角色，否則卡片會顯示「尚未設定權限」
+    familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({ is_complete: true });
     renderPage();
 
@@ -247,6 +249,7 @@ describe('引導式角色指派', () => {
   });
 
   it('權限已生效且全部設定完：不顯示提示，但入口仍在', () => {
+    familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({
       is_complete: true,
       rbac_migration_state: 'enforced',

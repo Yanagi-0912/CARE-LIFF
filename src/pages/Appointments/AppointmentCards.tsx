@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   BanIcon, BellIcon, BellOffIcon, CalendarClockIcon, ChevronRightIcon, CircleAlertIcon,
   CircleCheckIcon, FootprintsIcon, HospitalIcon, type LucideIcon, RotateCcwIcon, StethoscopeIcon,
@@ -20,6 +21,16 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+
+/**
+ * 醫師那一行。使用者常把稱謂一起打進去（「王醫師」「Dr. Wang」），再套
+ * `appt.doctorLine` 會變成「王醫師 醫師」——已經帶稱謂的就原樣顯示。
+ */
+const DOCTOR_HONORIFIC = /^(dr|bs|dokter|bác sĩ|แพทย์|หมอ)\.?\s|(醫師|醫生|大夫|医師|先生)$/iu;
+function formatDoctorLine(t: TFunction, name: string): string {
+  const trimmed = name.trim();
+  return DOCTOR_HONORIFIC.test(trimmed) ? trimmed : t('appt.doctorLine', { name: trimmed });
+}
 
 /**
  * 掛號卡片：即將到來的門診、過去的門診，以及卡片與新增流程確認頁共用的內容區。
@@ -61,8 +72,9 @@ export function AppointmentCard({
 
   // notify_at 固定 3 筆 [T-1h, T+0, T+30] 或 0 筆。第三筆只發給家屬，
   // 文案因此寫成「還沒回報到診會通知家人」，不能寫成「會在三個時間提醒你」。
+  // 推播關閉時整句不顯示：卡片上已經標著「提醒已關閉」，再說「會在 09:30 提醒」是自相矛盾。
   const notifyLine =
-    parts && reminder.notify_at.length === 3
+    parts && reminder.enabled && reminder.notify_at.length === 3
       ? t('appt.notifyPlan', {
           first: formatNotifyTime(reminder.notify_at[0], parts.date),
           second: formatNotifyTime(reminder.notify_at[1], parts.date),
@@ -241,7 +253,7 @@ export function PastAppointmentCard({
   const when = describeAppointmentAt(t, reminder.appointment_at);
   const subline = [
     reminder.department,
-    reminder.doctor_name ? t('appt.doctorLine', { name: reminder.doctor_name }) : null,
+    reminder.doctor_name ? formatDoctorLine(t, reminder.doctor_name) : null,
   ]
     .filter(Boolean)
     .join(' · ');

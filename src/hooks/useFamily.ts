@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { fetchFamilyTree } from '../api/familyApi';
 import { queryKeys } from '@/lib/queryClient';
 import type {
@@ -30,6 +31,7 @@ interface UseFamilyReturn {
  * 呼叫端（Family 頁、Medications 的對象清單）不需改動。
  */
 export function useFamily(): UseFamilyReturn {
+  const { t } = useTranslation();
   const { data, isPending, error, refetch } = useQuery({
     queryKey: queryKeys.familyTree,
     queryFn: async () => {
@@ -45,7 +47,7 @@ export function useFamily(): UseFamilyReturn {
     members: data?.members ?? [],
     roleAssignment: data?.roleAssignment ?? null,
     loading: isPending,
-    error: error ? (error instanceof Error ? error.message : '載入族譜失敗') : null,
+    error: error ? (error instanceof Error ? error.message : t('family.loadError')) : null,
     refetch,
   };
 }

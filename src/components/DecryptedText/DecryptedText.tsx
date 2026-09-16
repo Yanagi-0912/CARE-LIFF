@@ -252,11 +252,18 @@ function DecryptedTextInstance({
     return () => observer.disconnect();
   }, [animateOn, triggerDecrypt]);
 
+  // 動畫結束後直接輸出純文字，不再每個字一個 <span>：WebKit（iOS LINE 的
+  // WKWebView）在逐字 span 的結構裡找不到 CJK 的換行點，「一起讓醫療資訊更可靠」
+  // 會撐成一行、右邊被卡片裁掉（Chromium 沒這個問題，實測只在 WebKit 重現）。
+  // 動畫期間仍是逐字 span，靠容器的 overflow-wrap:anywhere 讓 WebKit 願意在字間換行，
+  // 兩個階段的斷行位置才一致、不會結束時跳一下。
+  const settled = !isAnimating && isDecrypted;
+
   return (
     <motion.span
       {...motionProps}
       ref={containerRef}
-      className={cn('relative cursor-default', parentClassName)}
+      className={cn('relative cursor-default [overflow-wrap:anywhere]', parentClassName)}
       style={{ ...style, display: 'inline-block', whiteSpace: 'pre-wrap' }}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
@@ -265,20 +272,26 @@ function DecryptedTextInstance({
       {/* decrypted-text__sr-only 保留作為測試定位點（decryptedText.test.tsx 以此選取），
           視覺隱藏改用 Tailwind 內建的 sr-only，不再自刻 clip 那套 */}
       <span className="decrypted-text__sr-only sr-only">{text}</span>
-      <span aria-hidden="true">
-        {displayText.split('').map((character, index) => {
-          const revealed = revealedIndices.has(index) || (!isAnimating && isDecrypted);
-          return (
-            <span
-              // Character positions are stable for the lifetime of this keyed instance.
-              key={index}
-              className={revealed ? className : encryptedClassName}
-            >
-              {character}
-            </span>
-          );
-        })}
-      </span>
+      {settled ? (
+        <span aria-hidden="true" className={className}>
+          {text}
+        </span>
+      ) : (
+        <span aria-hidden="true">
+          {displayText.split('').map((character, index) => {
+            const revealed = revealedIndices.has(index);
+            return (
+              <span
+                // Character positions are stable for the lifetime of this keyed instance.
+                key={index}
+                className={revealed ? className : encryptedClassName}
+              >
+                {character}
+              </span>
+            );
+          })}
+        </span>
+      )}
     </motion.span>
   );
 }

@@ -1,11 +1,12 @@
 import type {
   FacilitySearchResponse, MedicalFacility, NearbyHospitalsResponse,
 } from '../types/medical';
+import i18n from '../i18n';
 import { fetchWithAuth } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
-const SERVICE_UNAVAILABLE_MESSAGE = '醫療院所查詢暫時不可用，請稍後再試';
+const serviceUnavailable = () => new Error(i18n.t('nearby.serviceUnavailable'));
 
 export interface NearbySearchFilters {
   /** 只看現在營業中。設有急診者後端一律保留。 */
@@ -47,8 +48,9 @@ export async function fetchNearbyHospitals(
   });
 
   if (!res.ok) {
-    if (res.status === 503) throw new Error(SERVICE_UNAVAILABLE_MESSAGE);
-    throw new Error(`搜尋附近醫院失敗：${res.status}`);
+    if (res.status === 503) throw serviceUnavailable();
+    console.error('搜尋附近醫院失敗', res.status);
+    throw new Error(i18n.t('nearby.searchError'));
   }
 
   return (await res.json()) as NearbyHospitalsResponse;
@@ -85,8 +87,9 @@ export async function searchFacilitiesByName(
   });
 
   if (!res.ok) {
-    if (res.status === 503) throw new Error(SERVICE_UNAVAILABLE_MESSAGE);
-    throw new Error(`查詢院所失敗：${res.status}`);
+    if (res.status === 503) throw serviceUnavailable();
+    console.error('查詢院所失敗', res.status);
+    throw new Error(i18n.t('nearby.facilityLookupError'));
   }
 
   return (await res.json()) as FacilitySearchResponse;
@@ -108,8 +111,9 @@ export async function fetchFacilityById(facilityId: string): Promise<MedicalFaci
   );
 
   if (!res.ok) {
-    if (res.status === 503) throw new Error(SERVICE_UNAVAILABLE_MESSAGE);
-    throw new Error(`查詢院所失敗：${res.status}`);
+    if (res.status === 503) throw serviceUnavailable();
+    console.error('查詢院所失敗', res.status);
+    throw new Error(i18n.t('nearby.facilityLookupError'));
   }
 
   return (await res.json()) as MedicalFacility;

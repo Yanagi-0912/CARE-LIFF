@@ -54,10 +54,10 @@ vi.mock('@line/liff', () => ({
 // 個別測試可以透過 overrides 覆寫想要的行為（resolve 或 reject）
 // ==========================================
 type ApiMockOverrides = {
-    getAllSummaries?: ReturnType<typeof vi.fn>
-    fetchConsultationRaw?: ReturnType<typeof vi.fn>
-    getConsultationSummaryDownloadToken?: ReturnType<typeof vi.fn>
-    buildConsultationSummaryDownloadUrl?: ReturnType<typeof vi.fn>
+    getAllSummaries?: typeof api.getAllSummaries
+    fetchConsultationRaw?: typeof api.fetchConsultationRaw
+    getConsultationSummaryDownloadToken?: typeof api.getConsultationSummaryDownloadToken
+    buildConsultationSummaryDownloadUrl?: typeof api.buildConsultationSummaryDownloadUrl
 }
 
 function setupApiMocks(overrides: ApiMockOverrides = {}) {
@@ -68,10 +68,10 @@ function setupApiMocks(overrides: ApiMockOverrides = {}) {
     vi.mocked(api.buildConsultationSummaryDownloadUrl).mockReturnValue('https://download.test/file.pdf')
 
     // 套用個別測試想要的 override
-    if (overrides.getAllSummaries) vi.mocked(api.getAllSummaries).mockImplementation(overrides.getAllSummaries as any)
-    if (overrides.fetchConsultationRaw) vi.mocked(api.fetchConsultationRaw).mockImplementation(overrides.fetchConsultationRaw as any)
-    if (overrides.getConsultationSummaryDownloadToken) vi.mocked(api.getConsultationSummaryDownloadToken).mockImplementation(overrides.getConsultationSummaryDownloadToken as any)
-    if (overrides.buildConsultationSummaryDownloadUrl) vi.mocked(api.buildConsultationSummaryDownloadUrl).mockImplementation(overrides.buildConsultationSummaryDownloadUrl as any)
+    if (overrides.getAllSummaries) vi.mocked(api.getAllSummaries).mockImplementation(overrides.getAllSummaries)
+    if (overrides.fetchConsultationRaw) vi.mocked(api.fetchConsultationRaw).mockImplementation(overrides.fetchConsultationRaw)
+    if (overrides.getConsultationSummaryDownloadToken) vi.mocked(api.getConsultationSummaryDownloadToken).mockImplementation(overrides.getConsultationSummaryDownloadToken)
+    if (overrides.buildConsultationSummaryDownloadUrl) vi.mocked(api.buildConsultationSummaryDownloadUrl).mockImplementation(overrides.buildConsultationSummaryDownloadUrl)
 }
 
 describe('ConsultRecordsPage測試', () => {

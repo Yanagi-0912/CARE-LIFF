@@ -125,15 +125,15 @@ export function ChronicDiseaseField({
                             {/* 自行輸入疾病的Badge*/}
                             <Badge
                                 variant="secondary"
-                                className="h-auto min-h-11 gap-2 py-1 pr-1 pl-4 text-base"
+                                className="h-auto min-h-11 gap-2 py-0 pr-0 pl-4 text-base"
                             >
                                 {name}
                                 {/* 刪除按鈕*/}
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon-sm"
-                                    className="bg-background/70 hover:bg-background"
+                                    size="icon"
+                                    className="rounded-full bg-background/70 hover:bg-background"
                                     aria-label={t('personalHealth.chronicOtherRemove', { name })}
                                     onClick={() => onRemoveCustom(name)}
                                 >

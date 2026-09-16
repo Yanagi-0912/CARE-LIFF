@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import { z } from 'zod';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
@@ -450,6 +450,9 @@ export function AppointmentFormDialog({
 
   const busy = isSubmitting || acting;
   const title = t(isEdit ? 'appt.form.editTitle' : seed ? 'appt.form.rebookTitle' : 'appt.form.addTitle');
+  // 打開時先聚焦標題。編輯時直接進確認頁，預設會聚焦到「修改醫院」那顆按鈕，
+  // 捲動區因此一開就捲掉 249px，「請對照掛號單」與門診時間都在畫面外。
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const progressText = t('appt.step.progress', { current: stepIndex + 1, total: STEPS.length });
   const previewAt =
     date && time ? buildAppointmentAt(date, time, offsetFor(original, date, time)) : null;
@@ -461,14 +464,19 @@ export function AppointmentFormDialog({
   return (
     // Dialog 內建焦點鎖定、Escape、焦點歸位、背景鎖捲，關閉鈕用 DialogContent 內建那顆。
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[480px]">
+      <DialogContent
+        initialFocus={titleRef}
+        className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[480px]"
+      >
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
+            {title}
+          </DialogTitle>
           <DialogDescription>
             {t('appt.form.targetField')} <strong className="text-foreground">{targetName}</strong>
           </DialogDescription>
           {/* 進度放在不會捲動的標題區：隨時看得到自己在第幾步、這一步要做什麼 */}
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="mt-1 flex flex-col gap-1.5">
             {/* 已到診只剩備註可改，沒有「第幾步」可言 */}
             {!attendedLocked && (
               <>
@@ -476,7 +484,7 @@ export function AppointmentFormDialog({
                 <p className="text-sm font-semibold text-muted-foreground">{progressText}</p>
               </>
             )}
-            <h3 className="text-xl leading-tight font-extrabold">
+            <h3 className="text-lg leading-tight font-extrabold">
               {attendedLocked && step === 'details' ? t('appt.card.note') : t(`appt.step.${step}`)}
             </h3>
           </div>
