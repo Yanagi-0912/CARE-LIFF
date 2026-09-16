@@ -14,8 +14,45 @@ import { fetchWithAuth } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
+/** Pydantic 的 model_validator 以 `raise ValueError(msg)` 表達的跨欄位錯誤，
+ *  FastAPI 沒有自訂例外處理器時會原樣包成 `f"Value error, {msg}"`；
+ *  這個前綴是實作細節，不是給使用者看的文字，顯示前先剝除。 */
+const PYDANTIC_VALUE_ERROR_PREFIX = /^Value error,\s*/;
+
 /**
- * 輔助函式：解析錯誤訊息（同 familyApi.ts 的慣例）。
+ * 從 FastAPI／Pydantic 422 的 `detail` 陣列取出可讀訊息。
+ *
+ * 這個 change 最常撞到的三個驗證——收縮壓須大於舒張壓
+ * （`CreateBloodPressureRequest._validate_systolic_greater_than_diastolic`）、
+ * 提醒範圍上限須大於下限
+ * （`UpdateHealthAlertThresholdRequest._validate_upper_greater_than_lower`）、
+ * 經期天數不得超過上限（`CreateMenstrualRecordRequest._validate_end_date_range`）
+ * ——都是在 model_validator 裡 `raise ValueError(...)`，這裡沒有自訂例外處理器，
+ * 422 body 的形狀固定是 `{"detail": [{"type": "value_error", "msg": "Value error, ...", ...}]}`，
+ * 不是字串。原樣顯示會是一串 JSON，對長輩使用者沒有意義。
+ *
+ * 每個項目的 `msg` 皆為字串時逐一取出、去掉前綴、以「；」串接；任何一項取不到
+ * 可讀文字就整體視為失敗（回傳 null），交由呼叫端使用既有的通用後備訊息
+ * ——同 `appointmentApi.ts` 的 `parseError`：detail 不是可用字串時就不硬湊，
+ * 讓建構式的通用訊息接手，不額外發明新的使用者可見文字。
+ */
+function extractValidationMessages(detail: unknown[]): string | null {
+  if (detail.length === 0) return null;
+  const messages: string[] = [];
+  for (const item of detail) {
+    const msg =
+      item && typeof item === 'object' && 'msg' in item && typeof item.msg === 'string'
+        ? item.msg.replace(PYDANTIC_VALUE_ERROR_PREFIX, '').trim()
+        : '';
+    if (!msg) return null;
+    messages.push(msg);
+  }
+  return messages.join('；');
+}
+
+/**
+ * 輔助函式：解析錯誤訊息（同 familyApi.ts 的慣例，422 陣列的處理另見
+ * `extractValidationMessages`）。
  *
  * HTTP 狀態碼掛在錯誤上一起丟出去：422 是後端範圍與跨欄位驗證（收縮壓須
  * 大於舒張壓、上限須大於下限、經期天數上限等）的權威判定，前端表單只是
@@ -26,8 +63,10 @@ async function parseError(res: Response): Promise<Error & { status: number }> {
   let message = `API 請求失敗：${res.status}`;
   try {
     const data = await res.json();
-    if (data.detail) {
-      message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+    if (typeof data.detail === 'string') {
+      message = data.detail;
+    } else if (Array.isArray(data.detail)) {
+      message = extractValidationMessages(data.detail) ?? message;
     } else if (data.message) {
       message = data.message;
     }

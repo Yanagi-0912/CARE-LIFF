@@ -107,7 +107,13 @@ export function canManageAppointments(member: FamilyMember): boolean {
   return strictPermissionsOf(member).general.includes('WRITE');
 }
 
-/** 我可以代這位成員填健康資料嗎。 */
+/**
+ * 我可以代這位成員填健康資料嗎。
+ *
+ * 看的是寬鬆權限（`my_permissions`）。個人健康紀錄（血壓血糖量測、提醒
+ * 範圍）改用嚴格判定的 `canRecordHealthFor`——MemberCard 目前呼叫的仍是
+ * 這支，Task 11 會把它遷移過去。
+ */
 export function canProxyEditHealth(member: FamilyMember): boolean {
   return canWriteSensitive(member);
 }
