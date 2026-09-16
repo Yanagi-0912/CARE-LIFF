@@ -14,6 +14,7 @@ import { applyTheme, defaultSettings, STORAGE_KEY, type SettingsState } from '@/
 // 影響最大——切開後首屏只需載入實際用到的那一頁。
 const Home = lazy(() => import('./pages/Home'));
 const PersonalHealth = lazy(() => import('./pages/PersonalHealth'));
+const HealthRecordsPage = lazy(() => import('./pages/HealthRecords'));
 const Family = lazy(() => import('./pages/Family'));
 const JoinPage = lazy(() => import('./pages/Join'));
 const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultRecords'));
@@ -119,6 +120,7 @@ function AppContent() {
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
+            <Route path="/health-records" element={<ProtectedRoute><HealthRecordsPage /></ProtectedRoute>} />
             {/* 用藥與掛號收在同一個「提醒」分頁底下，子頁切換由 RemindersLayout 負責。
                 /reminders 本身與未知子路徑都由 layout 導回上次看的子頁。 */}
             <Route path="/reminders" element={<ProtectedRoute><RemindersLayout /></ProtectedRoute>}>

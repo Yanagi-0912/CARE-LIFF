@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ShieldCheckIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
+import { HeartPulseIcon, ShieldCheckIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
 
 import { useLiff } from '../../hooks/useLiff';
 import { useFamily } from '../../hooks/useFamily';
@@ -24,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const FamilyPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { liffReady } = useLiff();
   const { members, loading, error, refetch, roleAssignment } = useFamily();
   const [managingRoles, setManagingRoles] = useState(false);
@@ -55,6 +57,18 @@ const FamilyPage = () => {
           />
         )}
       </header>
+
+      {/* 「我的健康紀錄」入口：不看族譜有沒有成員，一律顯示——這是查看自己的
+          血壓、血糖、經期、步數，與底下的成員卡片（查看家人）是兩件事。 */}
+      <Button
+        type="button"
+        variant="outline"
+        className="mb-5 w-full"
+        onClick={() => navigate('/health-records')}
+      >
+        <HeartPulseIcon data-icon="inline-start" />
+        {t('family.myHealthRecords')}
+      </Button>
 
       {/* 引導式角色指派的入口與提示。
           提示照「實際生效」的狀態講話（見 RoleAssignmentNotice）：沉默或說錯的

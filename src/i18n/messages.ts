@@ -6,6 +6,7 @@ import { consultRecordMessages } from './consultRecordMessages';
 import { visitMessages } from './visitMessages';
 import { familyRoleMessages } from './familyRoleMessages';
 import { adminKnowledgeFeatureMessages } from './adminKnowledgeMessages';
+import { healthRecordFeatureMessages } from './healthRecordMessages';
 export type SupportedLanguage = 'zh-TW' | 'en' | 'id' | 'vi' | 'th' | 'ja';
 
 export const fallbackLanguage: SupportedLanguage = 'zh-TW';
@@ -528,6 +529,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...visitMessages['zh-TW'],
     ...familyRoleMessages['zh-TW'],
     ...adminKnowledgeFeatureMessages['zh-TW'],
+    ...healthRecordFeatureMessages['zh-TW'],
     'nav.home': '首頁',
     'nav.health': '健康',
     'nav.family': '家庭',
@@ -660,6 +662,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...visitMessages.en,
     ...familyRoleMessages.en,
     ...adminKnowledgeFeatureMessages.en,
+    ...healthRecordFeatureMessages.en,
     'nav.home': 'Home',
     'nav.health': 'Health',
     'nav.family': 'Family',
@@ -791,6 +794,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...visitMessages.id,
     ...familyRoleMessages.id,
     ...adminKnowledgeFeatureMessages.id,
+    ...healthRecordFeatureMessages.id,
     'nav.home': 'Beranda',
     'nav.health': 'Kesehatan',
     'nav.family': 'Keluarga',
@@ -922,6 +926,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...visitMessages.vi,
     ...familyRoleMessages.vi,
     ...adminKnowledgeFeatureMessages.vi,
+    ...healthRecordFeatureMessages.vi,
     'nav.home': 'Trang chủ',
     'nav.health': 'Sức khỏe',
     'nav.family': 'Gia đình',
@@ -1053,6 +1058,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...visitMessages.th,
     ...familyRoleMessages.th,
     ...adminKnowledgeFeatureMessages.th,
+    ...healthRecordFeatureMessages.th,
     'nav.home': 'หน้าหลัก',
     'nav.health': 'สุขภาพ',
     'nav.family': 'ครอบครัว',
@@ -1184,6 +1190,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...visitMessages.ja,
     ...familyRoleMessages.ja,
     ...adminKnowledgeFeatureMessages.ja,
+    ...healthRecordFeatureMessages.ja,
     'nav.home': 'ホーム',
     'nav.health': '健康',
     'nav.family': '家族',
