@@ -27,6 +27,8 @@ const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Loginpage'));
 const NotFoundPage = lazy(() => import('./pages/NotFound'));
+const LostSharePage = lazy(() => import('./pages/Lost/SharePage'));
+const LostWatchPage = lazy(() => import('./pages/Lost/WatchPage'));
 import { saveRedirectUrl } from './utils/redirect';
 import { ThemeProvider } from 'next-themes';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -69,7 +71,12 @@ function AppContent() {
   // 2. 取得當前路徑，用來判斷是否要顯示導覽列
   const location = useLocation();
   const { t } = useTranslation();
-  const isStandalonePage = location.pathname === '/login' || location.pathname === '/join';
+  // 走失求救的定位頁也是獨立頁：長輩正在慌，畫面上只留要他做的事，導覽列一點
+  // 下去就離開了定位頁，位置也跟著停止上傳。
+  const isStandalonePage =
+    location.pathname === '/login' ||
+    location.pathname === '/join' ||
+    location.pathname === '/lost/share';
 
   useEffect(() => {
     let settings: SettingsState = defaultSettings;
@@ -147,6 +154,9 @@ function AppContent() {
             />
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
             <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
+            {/* 走失求救：從 LINE 卡片的按鈕打開（後端 lost_location_service 組網址） */}
+            <Route path="/lost/share" element={<ProtectedRoute><LostSharePage /></ProtectedRoute>} />
+            <Route path="/lost/watch" element={<ProtectedRoute><LostWatchPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             {/* 未知路由：沒有這條時畫面只剩導覽列、中間一片空白 */}
             <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />

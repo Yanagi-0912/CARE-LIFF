@@ -7,6 +7,7 @@ import { visitMessages } from './visitMessages';
 import { familyRoleMessages } from './familyRoleMessages';
 import { adminKnowledgeFeatureMessages } from './adminKnowledgeMessages';
 import { systemMessages } from './systemMessages';
+import { lostMessages } from './lostMessages';
 export type SupportedLanguage = 'zh-TW' | 'en' | 'id' | 'vi' | 'th' | 'ja';
 
 export const fallbackLanguage: SupportedLanguage = 'zh-TW';
@@ -530,6 +531,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...familyRoleMessages['zh-TW'],
     ...adminKnowledgeFeatureMessages['zh-TW'],
     ...systemMessages['zh-TW'],
+    ...lostMessages['zh-TW'],
     'nav.home': '首頁',
     'nav.health': '健康',
     'nav.family': '家庭',
@@ -664,6 +666,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...familyRoleMessages.en,
     ...adminKnowledgeFeatureMessages.en,
     ...systemMessages.en,
+    ...lostMessages.en,
     'nav.home': 'Home',
     'nav.health': 'Health',
     'nav.family': 'Family',
@@ -797,6 +800,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...familyRoleMessages.id,
     ...adminKnowledgeFeatureMessages.id,
     ...systemMessages.id,
+    ...lostMessages.id,
     'nav.home': 'Beranda',
     'nav.health': 'Kesehatan',
     'nav.family': 'Keluarga',
@@ -930,6 +934,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...familyRoleMessages.vi,
     ...adminKnowledgeFeatureMessages.vi,
     ...systemMessages.vi,
+    ...lostMessages.vi,
     'nav.home': 'Trang chủ',
     'nav.health': 'Sức khỏe',
     'nav.family': 'Gia đình',
@@ -1063,6 +1068,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...familyRoleMessages.th,
     ...adminKnowledgeFeatureMessages.th,
     ...systemMessages.th,
+    ...lostMessages.th,
     'nav.home': 'หน้าหลัก',
     'nav.health': 'สุขภาพ',
     'nav.family': 'ครอบครัว',
@@ -1196,6 +1202,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...familyRoleMessages.ja,
     ...adminKnowledgeFeatureMessages.ja,
     ...systemMessages.ja,
+    ...lostMessages.ja,
     'nav.home': 'ホーム',
     'nav.health': '健康',
     'nav.family': '家族',

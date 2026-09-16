@@ -150,3 +150,37 @@ export async function getCurrentPositionWithFallback(
     }
   }
 }
+
+/** 持續定位：走失求救時長輩的定位頁用。maximumAge 短，家人看到的才是現在的位置 */
+const WATCH_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  timeout: 30_000,
+  maximumAge: 10_000,
+};
+
+/**
+ * 持續回報位置，回傳停止函式。
+ *
+ * 逾時與暫時無法取得位置不停止：人在騎樓下、地下道裡，走出來就又有訊號，
+ * 瀏覽器會繼續回報。只有權限被拒（再等也不會變）才由呼叫端決定要不要停，
+ * 這裡照樣把錯誤交出去。
+ */
+export function watchPositionUpdates(
+  onPosition: (position: GeoPosition) => void,
+  onError: (error: GeolocationError) => void,
+  options: PositionOptions = WATCH_OPTIONS,
+): () => void {
+  try {
+    assertCanRequestPosition();
+  } catch (err) {
+    onError(err as GeolocationError);
+    return () => {};
+  }
+
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => onPosition(toGeoPosition(position)),
+    (error) => onError(mapPositionError(error)),
+    { ...WATCH_OPTIONS, ...options },
+  );
+  return () => navigator.geolocation.clearWatch(watchId);
+}

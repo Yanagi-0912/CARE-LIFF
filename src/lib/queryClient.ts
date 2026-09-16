@@ -66,4 +66,8 @@ export const queryKeys = {
     ['consultation-summaries', userId ?? 'self'] as const,
   consultationRaw: (userId?: string) => ['consultation-raw', userId ?? 'self'] as const,
   inviteVerification: (code: string) => ['invite-verification', code] as const,
+  /** 長輩自己的走失求救狀態（定位頁用來決定要不要開始上傳） */
+  lostSelf: ['lost-self'] as const,
+  /** 家人查看某位長輩的即時位置；對象要進 key，理由同 consultationSummaries */
+  lostSession: (userId: string) => ['lost-session', userId] as const,
 };

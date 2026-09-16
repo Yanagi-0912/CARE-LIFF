@@ -17,6 +17,8 @@ const APP_PATHS = new Set([
   '/admin/knowledge-reports',
   '/nearby-hospitals',
   '/join',
+  '/lost/share',
+  '/lost/watch',
 ]);
 
 /**
