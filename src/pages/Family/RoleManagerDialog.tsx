@@ -232,11 +232,19 @@ interface PagerProps {
  *
  * 捲動距離用容器的 clientWidth 而不是固定值：對話框在手機與桌機上寬度不同，
  * 字級 24px 時也會撐寬，每一頁都是「容器目前的寬度」。
+ *
+ * 按鈕觸發的平滑捲動途中，scroll 事件算出來的仍是舊那一頁——才剛開始捲，
+ * Math.round 還落在原頁——於是把按鈕剛設好的頁數蓋回去，計數與兩側按鈕的停用
+ * 狀態會閃一下（WebKit 與 Chromium 實測皆然，約 0.05 秒）。所以按鈕先記下這次
+ * 要去哪一頁，捲到之前不接受由捲動位置推算的結果；手指或滾輪中途接手時清掉它，
+ * 否則使用者自己滑的那幾頁就不會更新計數。
  */
 function MemberPager({ entries, children }: PagerProps) {
   const { t } = useTranslation();
   const trackRef = useRef<HTMLDivElement>(null);
   const [rawIndex, setIndex] = useState(0);
+  /** 按鈕這次要捲去的頁；捲到之前不接受由捲動位置推算的頁數，見上方說明。 */
+  const pendingRef = useRef<number | null>(null);
   const total = entries.length;
 
   // 角色存檔後 entries 會重抓，人數理論上不變；但若真的變少（例如同時在別處
@@ -258,14 +266,24 @@ function MemberPager({ entries, children }: PagerProps) {
 
   const go = (next: number) => {
     const clamped = Math.min(Math.max(next, 0), total - 1);
+    pendingRef.current = clamped;
     setIndex(clamped);
     scrollToPage(clamped);
+  };
+
+  /** 手指或滾輪中途接手：這次捲動不再屬於按鈕，之後照捲動位置更新頁數。 */
+  const releasePending = () => {
+    pendingRef.current = null;
   };
 
   const handleScroll = () => {
     const el = trackRef.current;
     if (!el || el.clientWidth === 0) return;
     const next = Math.round(el.scrollLeft / el.clientWidth);
+    if (pendingRef.current !== null) {
+      if (next !== pendingRef.current) return;
+      pendingRef.current = null;
+    }
     if (next !== index && next >= 0 && next < total) setIndex(next);
   };
 
@@ -325,6 +343,8 @@ function MemberPager({ entries, children }: PagerProps) {
       <div
         ref={trackRef}
         onScroll={handleScroll}
+        onPointerDown={releasePending}
+        onWheel={releasePending}
         role="group"
         aria-roledescription="carousel"
         aria-label={t('familyRole.manage.title')}

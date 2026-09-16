@@ -369,6 +369,40 @@ describe('引導式角色指派', () => {
     const sonGroup = screen.getByRole('group', { name: '大兒子 的權限' });
     expect(sonGroup).toBeInTheDocument();
   });
+
+  it('平滑捲動途中的 scroll 事件不會把計數推回舊頁，捲到之後照常跟著手指走', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+      { user_id: 'U-son', display_name: '大兒子', family_role: null },
+      { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
+    ]);
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+
+    // jsdom 沒有排版，clientWidth 預設 0；給它一個寬度才能模擬捲動位置
+    const track = screen.getByRole('group', { name: '家人的權限' });
+    Object.defineProperty(track, 'clientWidth', { configurable: true, value: 300 });
+
+    fireEvent.click(screen.getByRole('button', { name: '下一位家人' }));
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    // 平滑捲動剛開始：位置還在第 1 頁附近，四捨五入回推會得到第 1 頁。
+    // 這是先前會讓計數與按鈕閃一下的來源，現在要被擋掉。
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 12 });
+    fireEvent.scroll(track);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    // 捲到目的地之後，手指自己滑到第 3 頁仍然要更新計數
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 300 });
+    fireEvent.scroll(track);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 600 });
+    fireEvent.scroll(track);
+    expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
+  });
 });
 
 // 後端在擁有者替最後一位家人指派角色時自動切成 enforced。前端要做的只有一件事：
