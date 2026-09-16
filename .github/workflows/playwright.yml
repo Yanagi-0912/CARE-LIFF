@@ -6,7 +6,10 @@ on:
     branches: [ main, master ]
 jobs:
   test:
-    timeout-minutes: 20
+    # 20 分不夠：單 worker 時整套 e2e 要 17 分半，PR #50 合併後超過上限，
+    # 測試跑到一半被 GitHub 依上限取消（run 35049398102，不是測試失敗）。
+    # 併同 playwright.config.ts 改成 2 個 worker，預估約 10 分，這裡留 30 分緩衝。
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
