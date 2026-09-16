@@ -376,6 +376,30 @@ describe('9.4 經期分頁：男性、未設定、女性三種情形', () => {
     expect(await screen.findByText(/週期 28 天/)).toBeInTheDocument();
     expect(screen.getByText(/經期 5 天/)).toBeInTheDocument();
   });
+
+  /**
+   * 迴歸：這三個欄位原本是 type="text"，於是使用者打的字串被直接拿去跟
+   * todayTaipei() 做字串比較——`9/17`（'9' > '2'）、`2026/09/17`（'/' > '-'）
+   * 都大於 `2026-09-17`，任何日期都會被判成「晚於今天」；同一行的 max 對文字
+   * 框也毫無作用。型別檢查抓不到（type="text" 完全合法），只能靠這裡守住。
+   */
+  it('新增經期的日期欄位是原生日期控制項，開始日期的 max 真的擋得住未來', async () => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ gender: 'female' });
+    vi.mocked(healthApi.fetchMenstrualRecords).mockResolvedValue([]);
+
+    renderHealthRecords();
+    fireEvent.click(await screen.findByRole('tab', { name: /經期/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '新增經期紀錄' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const startInput = within(dialog).getByLabelText('開始日期');
+    expect(startInput).toHaveAttribute('type', 'date');
+    // max 只有在日期欄位上才有意義；值本身由 todayTaipei() 提供，這裡只確認它
+    // 確實帶上了一個合法的日曆日，不重寫一份時區換算。
+    expect(startInput.getAttribute('max')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    expect(within(dialog).getByLabelText('結束日期')).toHaveAttribute('type', 'date');
+  });
 });
 
 // ── 經期：事後補上／修改結束日期（menstrual-cycle-log「事後補上結束日期」）──
