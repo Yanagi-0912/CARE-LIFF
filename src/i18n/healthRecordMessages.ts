@@ -127,6 +127,7 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.stepCounter.unsupportedTitle': '這個裝置無法計步',
     'health.stepCounter.unsupportedDesc':
       '偵測不到動作感測器的資料，這個裝置或瀏覽器可能不支援，暫時無法使用計步功能。',
+    'health.stepCounter.retry': '重試',
 
     'home.healthRecords': '健康紀錄',
     'home.healthRecordsDesc': '血壓、血糖、經期與步數',
@@ -256,6 +257,7 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.stepCounter.unsupportedTitle': "This device can't count steps",
     'health.stepCounter.unsupportedDesc':
       'No motion sensor data is available. This device or browser may not support step counting right now.',
+    'health.stepCounter.retry': 'Retry',
 
     'home.healthRecords': 'Health Records',
     'home.healthRecordsDesc': 'Blood pressure, glucose, menstrual cycle, and steps',
@@ -385,6 +387,7 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.stepCounter.unsupportedTitle': 'Perangkat ini tidak bisa menghitung langkah',
     'health.stepCounter.unsupportedDesc':
       'Tidak ada data sensor gerak yang terdeteksi. Perangkat atau browser ini mungkin belum mendukung fitur penghitung langkah.',
+    'health.stepCounter.retry': 'Coba lagi',
 
     'home.healthRecords': 'Catatan Kesehatan',
     'home.healthRecordsDesc': 'Tekanan darah, gula darah, siklus haid, dan langkah',
@@ -514,6 +517,7 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.stepCounter.unsupportedTitle': 'Thiết bị này không thể đếm bước',
     'health.stepCounter.unsupportedDesc':
       'Không phát hiện được dữ liệu cảm biến chuyển động. Thiết bị hoặc trình duyệt này có thể chưa hỗ trợ tính năng đếm bước.',
+    'health.stepCounter.retry': 'Thử lại',
 
     'home.healthRecords': 'Hồ sơ sức khỏe',
     'home.healthRecordsDesc': 'Huyết áp, đường huyết, kinh nguyệt và số bước',
@@ -641,6 +645,7 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.stepCounter.unsupportedTitle': 'อุปกรณ์นี้นับก้าวไม่ได้',
     'health.stepCounter.unsupportedDesc':
       'ตรวจไม่พบข้อมูลจากเซ็นเซอร์การเคลื่อนไหว อุปกรณ์หรือเบราว์เซอร์นี้อาจยังไม่รองรับฟังก์ชันนับก้าว',
+    'health.stepCounter.retry': 'ลองอีกครั้ง',
 
     'home.healthRecords': 'บันทึกสุขภาพ',
     'home.healthRecordsDesc': 'ความดันโลหิต น้ำตาล รอบเดือน และจำนวนก้าว',
@@ -768,6 +773,7 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.stepCounter.unsupportedTitle': 'この端末では計測できません',
     'health.stepCounter.unsupportedDesc':
       'モーションセンサーのデータを検出できません。この端末またはブラウザは歩数計測に対応していない可能性があります。',
+    'health.stepCounter.retry': '再試行',
 
     'home.healthRecords': '健康記録',
     'home.healthRecordsDesc': '血圧、血糖値、生理周期、歩数',

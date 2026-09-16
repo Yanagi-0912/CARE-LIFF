@@ -1,5 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import { FootprintsIcon, InfoIcon, LockIcon, PlayIcon, SquareIcon, TriangleAlertIcon } from 'lucide-react';
+import {
+  FootprintsIcon,
+  InfoIcon,
+  LockIcon,
+  PlayIcon,
+  RotateCcwIcon,
+  SquareIcon,
+  TriangleAlertIcon,
+} from 'lucide-react';
 
 import { useStepCounter, type UseStepCounterResult } from '@/hooks/useStepCounter';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,7 +24,10 @@ import { Button } from '@/components/ui/button';
  *   實際的暫停/恢復邏輯在 `useStepCounter` 裡。
  * - 「感測器權限與不支援的裝置」：拒絕與不支援各自有獨立說明，且兩種情形
  *   都不渲染步數數字（`useStepCounter` 在這兩種狀態下 `todaySteps` 是
- *   `null`，不是 0）。
+ *   `null`，不是 0）。不支援是 4 秒沒收到任何感測資料就判定的猜測值，
+ *   有可能誤判到訊號比較慢的裝置，所以「重試」鈕會留著、呼叫
+ *   `start()`（本來就支援從任何狀態重新開始），不會把使用者卡在只能重新
+ *   整理頁面的死角。
  *
  * 拆成 `StepCounterView`（純呈現，只吃 hook 的回傳值）＋`StepCounterPanel`
  * （接上真正的 hook）兩層：測試可以直接把各種狀態的 props 餵給
@@ -70,23 +81,26 @@ export function StepCounterView({ status, todaySteps, start, stop }: UseStepCoun
         </div>
       )}
 
-      {status !== 'unsupported' && (
-        <div>
-          {isActive ? (
-            <Button type="button" variant="outline" onClick={stop}>
-              <SquareIcon data-icon="inline-start" aria-hidden="true" />
-              {t('health.stepCounter.stop')}
-            </Button>
-          ) : (
-            <Button type="button" onClick={start} disabled={status === 'requesting'}>
-              <PlayIcon data-icon="inline-start" aria-hidden="true" />
-              {status === 'requesting'
-                ? t('health.stepCounter.requesting')
-                : t('health.stepCounter.start')}
-            </Button>
-          )}
-        </div>
-      )}
+      <div>
+        {isActive ? (
+          <Button type="button" variant="outline" onClick={stop}>
+            <SquareIcon data-icon="inline-start" aria-hidden="true" />
+            {t('health.stepCounter.stop')}
+          </Button>
+        ) : status === 'unsupported' ? (
+          <Button type="button" onClick={start}>
+            <RotateCcwIcon data-icon="inline-start" aria-hidden="true" />
+            {t('health.stepCounter.retry')}
+          </Button>
+        ) : (
+          <Button type="button" onClick={start} disabled={status === 'requesting'}>
+            <PlayIcon data-icon="inline-start" aria-hidden="true" />
+            {status === 'requesting'
+              ? t('health.stepCounter.requesting')
+              : t('health.stepCounter.start')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

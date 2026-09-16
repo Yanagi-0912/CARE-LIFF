@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -16,9 +16,8 @@ import type { StepCount, StepSessionSyncRequest } from '../types/health';
  *   午夜換新工作階段）用 `renderHook` 搭配注入的假 deps 直接驗證，不
  *   monkeypatch 任何全域物件——時鐘、感測器訂閱、同步函式都是 hook 的參數
  *   （task-10-brief.md「Note on testability」）。
- * - `StepCounterPanel` 這個 UI 元件用 `vi.mock('../hooks/useStepCounter')`
- *   替換整支 hook 回傳值，驗證介面在各種狀態下顯示的文字（同專案其他
- *   元件測試的既有慣例，例如 healthRecords.test.tsx 對 api 模組的做法）。
+ * - `StepCounterView`（`StepCounterPanel` 拆出來的純呈現元件）直接餵各種
+ *   狀態的 props，驗證介面顯示的文字，不需要 mock 整支 hook 模組。
  */
 
 // ── hook：注入假 deps 的測試工具 ──────────────────────────────────────────
@@ -172,6 +171,34 @@ describe('10.2 useStepCounter：權限與裝置支援', () => {
     expect(result.current.todaySteps).toBeNull();
   });
 
+  it('逾時判定為不支援後，使用者可以再次呼叫 start() 重試，不需要重新整理頁面', async () => {
+    // 4 秒是個猜測值，感測器啟動比較慢的裝置可能誤判——不支援狀態不能是
+    // 沒有回頭路的死角，start() 本來就支援從任何狀態重新呼叫。
+    const harness = createTestDeps({ noDataTimeoutMs: 5_000 });
+    const { result } = renderHook(() => useStepCounter(harness.deps));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await harness.advance(5_001);
+    });
+    expect(result.current.status).toBe('unsupported');
+
+    // 重試：這次感測器準時送出資料，應該能正常回到計步中，且是一個全新的
+    // 工作階段（不是卡在舊的、已經逾時的那個）。
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(result.current.status).toBe('counting');
+    expect(harness.createSessionId).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await walkOneStep(harness, 100_000);
+    });
+    expect(result.current.todaySteps).toBe(1);
+  });
+
   it('權限通過且持續收到樣本時正常計步，步數不是 0（有實際的動作樣本）', async () => {
     const harness = createTestDeps();
     const { result } = renderHook(() => useStepCounter(harness.deps));
@@ -314,6 +341,59 @@ describe('10.2 useStepCounter：跨台北時區午夜換新工作階段', () => 
     expect(finalSync?.[0]).toBe(newSessionId);
     expect(finalSync?.[1].steps).toBe(1);
   });
+
+  it('跨日換新工作階段後，延遲送達的舊工作階段同步結果不會覆蓋新工作階段的基準點（不會讓顯示步數變成離譜的值，包含負值）', async () => {
+    // 舊工作階段（session-1）的同步刻意卡住，晚一點才手動 resolve，且回傳的
+    // total（50）遠高於它自己送出的 steps（1）——模擬「這一天稍早已經有別的
+    // 工作階段走了很多步，伺服器端的權威總數比這個工作階段自己知道的高很多」。
+    // 舊版沒有 session 防護時，這個延遲回應會被拿來更新基準點，讓新工作階段
+    // （session-2）的顯示值變成 `50 + (新的即時累計 − 1)`，跟新工作階段實際
+    // 走的步數完全對不上，數字甚至可能是負的（review 給的例子：total=1、
+    // oldSessionSteps=5、newSessionSteps=0 → −4）。
+    let resolveOldSync: ((value: StepCount) => void) | null = null;
+    const oldSyncPromise = new Promise<StepCount>((resolve) => {
+      resolveOldSync = resolve;
+    });
+    const sync = vi.fn(async (sessionId: string, body: StepSessionSyncRequest): Promise<StepCount> => {
+      if (sessionId === 'session-1') return oldSyncPromise;
+      return { user_id: 'U-me', date: '2026-03-11', steps: body.steps };
+    });
+
+    const startTime = Date.parse('2026-03-10T23:59:50+08:00');
+    const harness = createTestDeps({ initialNow: startTime, sync });
+    const { result } = renderHook(() => useStepCounter(harness.deps));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await walkOneStep(harness, startTime); // session-1 累計 1 步
+    });
+
+    // 跨過午夜：對 session-1 送出最後一次同步（卡住，還沒 resolve），並開始
+    // session-2。
+    await act(async () => {
+      await harness.advance(11_000);
+    });
+    expect(result.current.todaySteps).toBe(0); // session-2 剛開始，還沒走
+
+    // session-2 自己走一步。
+    await act(async () => {
+      await walkOneStep(harness, startTime + 12_000);
+    });
+    expect(result.current.todaySteps).toBe(1);
+
+    // 現在才讓卡住的 session-1 同步 resolve。
+    await act(async () => {
+      resolveOldSync?.({ user_id: 'U-me', date: '2026-03-10', steps: 50 });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // 顯示值必須還是 session-2 自己的即時計數，不能被 session-1 的延遲回應
+    // 汙染——不是 50、也不是任何依賴 50 算出來的數字。
+    expect(result.current.todaySteps).toBe(1);
+  });
 });
 
 describe('10.2 useStepCounter：每 30 秒定期同步', () => {
@@ -360,6 +440,42 @@ describe('10.2 useStepCounter：停止計步', () => {
     expect(result.current.status).toBe('idle');
     expect(result.current.todaySteps).toBeNull();
     expect(harness.releaseWakeLock).toHaveBeenCalled();
+  });
+});
+
+describe('10.2 useStepCounter：元件卸載時送出最後一次同步', () => {
+  it('卸載時（例如 LIFF 內 SPA 換頁，document 仍是 visible、不會觸發 visibilitychange）仍會 keepalive 同步已走的步數', async () => {
+    const harness = createTestDeps();
+    const { result, unmount } = renderHook(() => useStepCounter(harness.deps));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await walkOneStep(harness, 1000);
+    });
+    expect(result.current.todaySteps).toBe(1);
+
+    const syncCallsBefore = harness.sync.mock.calls.length;
+    await act(async () => {
+      unmount();
+      await Promise.resolve();
+    });
+
+    expect(harness.sync.mock.calls.length).toBeGreaterThan(syncCallsBefore);
+    const finalSync = harness.sync.mock.calls.at(-1);
+    expect(finalSync?.[1].steps).toBe(1);
+    expect(finalSync?.[2]).toEqual({ keepalive: true });
+  });
+
+  it('卸載前沒有任何工作階段（從沒按過開始）時，不會呼叫同步', async () => {
+    const harness = createTestDeps();
+    const { unmount } = renderHook(() => useStepCounter(harness.deps));
+
+    unmount();
+    await Promise.resolve();
+
+    expect(harness.sync).not.toHaveBeenCalled();
   });
 });
 
@@ -419,18 +535,26 @@ describe('10.3 StepCounterView：介面狀態', () => {
     expect(screen.queryByText(/^\d+ 步$/)).not.toBeInTheDocument();
   });
 
-  it('裝置不支援：顯示原因，不出現任何步數，也不顯示開始鈕', async () => {
+  it('裝置不支援：顯示原因、不出現任何步數，但保留可以重試的按鈕（不是死路只能重新整理頁面）', async () => {
+    const start = vi.fn();
     await renderView({
       status: 'unsupported',
       todaySteps: null,
       wakeLockActive: false,
-      start: vi.fn(),
+      start,
       stop: vi.fn(),
     });
 
     expect(screen.getByText('這個裝置無法計步')).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ 步$/)).not.toBeInTheDocument();
+    // 「開始計步」這個第一次啟動用的字樣不該出現在這個狀態；「重試」才是
+    // 對應「逾時誤判」情境的正確用詞。
     expect(screen.queryByRole('button', { name: '開始計步' })).not.toBeInTheDocument();
+
+    const retryButton = screen.getByRole('button', { name: '重試' });
+    expect(retryButton).not.toBeDisabled();
+    fireEvent.click(retryButton);
+    expect(start).toHaveBeenCalledTimes(1);
   });
 
   it('請求權限中：開始鈕停用並顯示請求中的文字', async () => {

@@ -211,6 +211,15 @@ function createStepCounterEngine(depsRef: DepsRef, callbacks: EngineCallbacks) {
   // 重新賦值，會把 await 之前的窄化類型一路帶到 await 之後，這裡改用一個
   // 獨立的計數器，語意更精準也不必依賴 TS 的窄化分析。
   let permissionRequestGeneration = 0;
+  // 每個工作階段一個編號：`syncNow()` 的 await 期間，工作階段可能已經換掉
+  // （跨午夜換新工作階段、或使用者停止又重新開始）。同步結果回來時只有
+  // 「還是同一個工作階段」才能拿來更新基準點，否則舊工作階段的權威值會
+  // 蓋掉新工作階段剛歸零的即時計數，算出離譜的（甚至負的）步數
+  // （review：舊 session 的 `{total, sessionSteps}` 套在新 session 的即時
+  // 累計上，`total + (newSessionSteps - oldSessionSteps)` 沒有防護時可能是
+  // 負值）。同一顆 guard 也涵蓋 `stop()`：停止之後又重新開始，舊工作階段
+  // 遲來的同步一樣不該影響新工作階段。
+  let sessionToken = 0;
 
   function setStatus(next: StepCounterStatus) {
     status = next;
@@ -269,12 +278,18 @@ function createStepCounterEngine(depsRef: DepsRef, callbacks: EngineCallbacks) {
    *  就固定下來的 started_at（後端只採用第一次的值，見 step_service.py）。 */
   async function syncNow(options: { keepalive?: boolean } = {}) {
     if (!sessionId || sessionStartedAt === null || !detector) return;
+    const requestSessionId = sessionId;
+    const requestToken = sessionToken;
     const body: StepSessionSyncRequest = {
       steps: detector.steps,
       started_at: new Date(sessionStartedAt).toISOString(),
     };
     try {
-      const result = await depsRef.current.sync(sessionId, body, options);
+      const result = await depsRef.current.sync(requestSessionId, body, options);
+      // 送出之後、回應回來之前，工作階段可能已經換掉（跨日、或使用者停止
+      // 又重新開始）——這種情況下這次回應已經是舊工作階段的了，不能拿來
+      // 更新現在這個工作階段的基準點（見上面 `sessionToken` 的說明）。
+      if (destroyed || sessionToken !== requestToken) return;
       // 記下這次同步的基準點：伺服器回的權威總數，配上「送出當下」本地的
       // 即時累計值。兩次同步之間，畫面用這個基準點＋之後新增的即時步數
       // 往前推算，不會停滯在這個舊值上（見 `StepCounterBaseline` 的說明）。
@@ -286,6 +301,7 @@ function createStepCounterEngine(depsRef: DepsRef, callbacks: EngineCallbacks) {
   }
 
   function startNewSessionState() {
+    sessionToken += 1;
     const startedAt = depsRef.current.now();
     sessionId = depsRef.current.createSessionId();
     sessionStartedAt = startedAt;
@@ -413,6 +429,7 @@ function createStepCounterEngine(depsRef: DepsRef, callbacks: EngineCallbacks) {
     if (status !== 'counting' && status !== 'paused') return;
     teardownActiveSession();
     void syncNow({ keepalive: false });
+    sessionToken += 1; // 作廢這次 syncNow 之後才會換上的新工作階段的基準點
     sessionId = null;
     sessionStartedAt = null;
     sessionDate = null;
@@ -432,6 +449,13 @@ function createStepCounterEngine(depsRef: DepsRef, callbacks: EngineCallbacks) {
     destroyed = true;
     permissionRequestGeneration++; // 作廢任何還在等待中的權限請求
     teardownActiveSession();
+    // 元件卸載（例如 LIFF 內 SPA 換頁）時 `document.visibilityState` 通常還是
+    // visible，不會觸發 visibilitychange，`pauseForHidden` 那條「隱藏時送出
+    // keepalive 同步」的路徑因此完全不會跑——如果這裡不主動補一次，卸載前
+    // 已經走的步數就會靜靜地遺失，下一次開啟這個頁面又是全新的 session id，
+    // 這些步數永遠不會送到後端。`syncNow` 內部已經會檢查有沒有活躍中的
+    // session（沒有的話直接是 no-op），這裡不需要另外判斷狀態。
+    void syncNow({ keepalive: true });
   }
 
   return { start, stop, handleVisibilityChange, destroy };
