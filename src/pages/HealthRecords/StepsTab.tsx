@@ -9,6 +9,7 @@ import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StepCounterPanel } from './StepCounterPanel';
 
 interface StepsTabProps {
   targetUserId?: string;
@@ -18,11 +19,11 @@ interface StepsTabProps {
 }
 
 /**
- * 步數分頁（9.1 的第四個分頁）。這裡只負責歷史每日步數的**唯讀**列表；
+ * 步數分頁（9.1 的第四個分頁）。這裡負責歷史每日步數的**唯讀**列表；
  * 「開始計步」的感測器讀取、工作階段同步、Wake Lock 等即時計步 UI 是
- * Task 10 的範圍（task-8-11-dispatch-notes.md「Task 10」），故意留白、
- * 不在這裡實作，避免與 Task 10 的檔案（`src/hooks/useStepCounter.ts` 等）
- * 重疊或衝突。`data-testid="steps-counter-slot"` 是留給那段 UI 掛載的位置。
+ * Task 10 的範圍（task-8-11-dispatch-notes.md「Task 10」），實作在
+ * `src/hooks/useStepCounter.ts`／`StepCounterPanel.tsx`，只在
+ * `data-testid="steps-counter-slot"` 這個位置掛載，不重寫本頁其餘部分。
  */
 export function StepsTab({ targetUserId, canRead, isSelf }: StepsTabProps) {
   const { t } = useTranslation();
@@ -50,10 +51,9 @@ export function StepsTab({ targetUserId, canRead, isSelf }: StepsTabProps) {
   return (
     <div className="flex flex-col gap-4">
       {isSelf && (
-        // Task 10 掛載即時計步 UI（開始／停止、目前累計、Wake Lock 狀態、
-        // 使用者需求同意提示與估算揭露）的位置。這裡不放任何字串或行為，
-        // 避免與那段 UI 的 i18n key／互動邏輯衝突。
-        <div data-testid="steps-counter-slot" />
+        <div data-testid="steps-counter-slot">
+          <StepCounterPanel />
+        </div>
       )}
 
       <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

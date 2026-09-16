@@ -114,6 +114,20 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.steps.emptyTitle': '還沒有步數紀錄',
     'health.steps.stepsValue': '{{count}} 步',
 
+    'health.stepCounter.estimateDisclaimer': '步數為估算值，可能與手機內建的計步器不同。',
+    'health.stepCounter.foregroundOnly':
+      '只在這個頁面開啟並顯示在最前面時才會計步，切到其他畫面或螢幕鎖定時會暫停，不會在背景繼續計步。',
+    'health.stepCounter.start': '開始計步',
+    'health.stepCounter.requesting': '請求權限中…',
+    'health.stepCounter.stop': '停止計步',
+    'health.stepCounter.todayLabel': '今天已走',
+    'health.stepCounter.deniedTitle': '沒有動作感測權限',
+    'health.stepCounter.deniedDesc':
+      '計步需要動作感測權限，請到瀏覽器或 LINE 的網站權限設定中重新允許「動作與方向」，再重新整理這個頁面。',
+    'health.stepCounter.unsupportedTitle': '這個裝置無法計步',
+    'health.stepCounter.unsupportedDesc':
+      '偵測不到動作感測器的資料，這個裝置或瀏覽器可能不支援，暫時無法使用計步功能。',
+
     'home.healthRecords': '健康紀錄',
     'home.healthRecordsDesc': '血壓、血糖、經期與步數',
     'family.myHealthRecords': '我的健康紀錄',
@@ -227,6 +241,21 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.steps.historyTitle': 'Daily Steps',
     'health.steps.emptyTitle': 'No step records yet',
     'health.steps.stepsValue': '{{count}} steps',
+
+    'health.stepCounter.estimateDisclaimer':
+      "Step counts are estimates and may differ from your phone's built-in pedometer.",
+    'health.stepCounter.foregroundOnly':
+      'Steps are only counted while this page is open and in front. Switching to another screen or locking your phone pauses counting — it never continues in the background.',
+    'health.stepCounter.start': 'Start counting',
+    'health.stepCounter.requesting': 'Requesting permission…',
+    'health.stepCounter.stop': 'Stop counting',
+    'health.stepCounter.todayLabel': 'Steps today',
+    'health.stepCounter.deniedTitle': 'Motion permission not granted',
+    'health.stepCounter.deniedDesc':
+      "Step counting needs motion sensor permission. Please allow \"Motion & Orientation\" again in your browser or LINE's site settings, then reload this page.",
+    'health.stepCounter.unsupportedTitle': "This device can't count steps",
+    'health.stepCounter.unsupportedDesc':
+      'No motion sensor data is available. This device or browser may not support step counting right now.',
 
     'home.healthRecords': 'Health Records',
     'home.healthRecordsDesc': 'Blood pressure, glucose, menstrual cycle, and steps',
@@ -342,6 +371,21 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.steps.emptyTitle': 'Belum ada catatan langkah',
     'health.steps.stepsValue': '{{count}} langkah',
 
+    'health.stepCounter.estimateDisclaimer':
+      'Jumlah langkah adalah perkiraan dan bisa berbeda dari pedometer bawaan ponsel Anda.',
+    'health.stepCounter.foregroundOnly':
+      'Langkah hanya dihitung saat halaman ini terbuka dan berada di depan. Berpindah ke layar lain atau mengunci ponsel akan menjeda penghitungan — tidak pernah berlanjut di latar belakang.',
+    'health.stepCounter.start': 'Mulai menghitung',
+    'health.stepCounter.requesting': 'Meminta izin…',
+    'health.stepCounter.stop': 'Hentikan penghitungan',
+    'health.stepCounter.todayLabel': 'Langkah hari ini',
+    'health.stepCounter.deniedTitle': 'Izin sensor gerak belum diberikan',
+    'health.stepCounter.deniedDesc':
+      'Penghitung langkah memerlukan izin sensor gerak. Izinkan kembali "Gerak & Orientasi" di pengaturan situs browser atau LINE Anda, lalu muat ulang halaman ini.',
+    'health.stepCounter.unsupportedTitle': 'Perangkat ini tidak bisa menghitung langkah',
+    'health.stepCounter.unsupportedDesc':
+      'Tidak ada data sensor gerak yang terdeteksi. Perangkat atau browser ini mungkin belum mendukung fitur penghitung langkah.',
+
     'home.healthRecords': 'Catatan Kesehatan',
     'home.healthRecordsDesc': 'Tekanan darah, gula darah, siklus haid, dan langkah',
     'family.myHealthRecords': 'Catatan Kesehatan Saya',
@@ -456,6 +500,21 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.steps.emptyTitle': 'Chưa có dữ liệu số bước',
     'health.steps.stepsValue': '{{count}} bước',
 
+    'health.stepCounter.estimateDisclaimer':
+      'Số bước là con số ước tính, có thể khác với máy đếm bước tích hợp sẵn trên điện thoại.',
+    'health.stepCounter.foregroundOnly':
+      'Chỉ đếm bước khi trang này đang mở và hiển thị phía trước. Chuyển sang màn hình khác hoặc khóa máy sẽ tạm dừng đếm — không bao giờ tiếp tục đếm ở chế độ nền.',
+    'health.stepCounter.start': 'Bắt đầu đếm bước',
+    'health.stepCounter.requesting': 'Đang yêu cầu quyền…',
+    'health.stepCounter.stop': 'Dừng đếm bước',
+    'health.stepCounter.todayLabel': 'Số bước hôm nay',
+    'health.stepCounter.deniedTitle': 'Chưa được cấp quyền cảm biến chuyển động',
+    'health.stepCounter.deniedDesc':
+      'Đếm bước cần quyền truy cập cảm biến chuyển động. Vui lòng cấp lại quyền "Chuyển động & Hướng" trong cài đặt trang web của trình duyệt hoặc LINE, sau đó tải lại trang này.',
+    'health.stepCounter.unsupportedTitle': 'Thiết bị này không thể đếm bước',
+    'health.stepCounter.unsupportedDesc':
+      'Không phát hiện được dữ liệu cảm biến chuyển động. Thiết bị hoặc trình duyệt này có thể chưa hỗ trợ tính năng đếm bước.',
+
     'home.healthRecords': 'Hồ sơ sức khỏe',
     'home.healthRecordsDesc': 'Huyết áp, đường huyết, kinh nguyệt và số bước',
     'family.myHealthRecords': 'Hồ sơ sức khỏe của tôi',
@@ -568,6 +627,21 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.steps.emptyTitle': 'ยังไม่มีข้อมูลจำนวนก้าว',
     'health.steps.stepsValue': '{{count}} ก้าว',
 
+    'health.stepCounter.estimateDisclaimer':
+      'จำนวนก้าวเป็นค่าประมาณ อาจแตกต่างจากเครื่องนับก้าวในตัวของโทรศัพท์',
+    'health.stepCounter.foregroundOnly':
+      'จะนับก้าวเฉพาะตอนที่เปิดหน้านี้อยู่และแสดงอยู่ด้านหน้าเท่านั้น หากสลับไปหน้าจออื่นหรือล็อกหน้าจอ การนับจะหยุดชั่วคราว โดยจะไม่นับต่อในพื้นหลังเด็ดขาด',
+    'health.stepCounter.start': 'เริ่มนับก้าว',
+    'health.stepCounter.requesting': 'กำลังขอสิทธิ์…',
+    'health.stepCounter.stop': 'หยุดนับก้าว',
+    'health.stepCounter.todayLabel': 'ก้าววันนี้',
+    'health.stepCounter.deniedTitle': 'ยังไม่ได้รับสิทธิ์เซ็นเซอร์การเคลื่อนไหว',
+    'health.stepCounter.deniedDesc':
+      'การนับก้าวต้องใช้สิทธิ์เซ็นเซอร์การเคลื่อนไหว กรุณาอนุญาต "การเคลื่อนไหวและทิศทาง" อีกครั้งในการตั้งค่าเว็บไซต์ของเบราว์เซอร์หรือ LINE แล้วโหลดหน้านี้ใหม่',
+    'health.stepCounter.unsupportedTitle': 'อุปกรณ์นี้นับก้าวไม่ได้',
+    'health.stepCounter.unsupportedDesc':
+      'ตรวจไม่พบข้อมูลจากเซ็นเซอร์การเคลื่อนไหว อุปกรณ์หรือเบราว์เซอร์นี้อาจยังไม่รองรับฟังก์ชันนับก้าว',
+
     'home.healthRecords': 'บันทึกสุขภาพ',
     'home.healthRecordsDesc': 'ความดันโลหิต น้ำตาล รอบเดือน และจำนวนก้าว',
     'family.myHealthRecords': 'บันทึกสุขภาพของฉัน',
@@ -679,6 +753,21 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.steps.historyTitle': '1日の歩数',
     'health.steps.emptyTitle': 'まだ歩数の記録がありません',
     'health.steps.stepsValue': '{{count}} 歩',
+
+    'health.stepCounter.estimateDisclaimer':
+      '歩数は推定値です。スマートフォン内蔵の歩数計とは異なる場合があります。',
+    'health.stepCounter.foregroundOnly':
+      'このページを開いて最前面に表示しているときだけ歩数を計測します。他の画面に切り替えたり画面をロックすると一時停止し、バックグラウンドで計測し続けることはありません。',
+    'health.stepCounter.start': '計測を開始',
+    'health.stepCounter.requesting': '権限をリクエスト中…',
+    'health.stepCounter.stop': '計測を停止',
+    'health.stepCounter.todayLabel': '今日の歩数',
+    'health.stepCounter.deniedTitle': 'モーションセンサーの権限がありません',
+    'health.stepCounter.deniedDesc':
+      '歩数計測にはモーションセンサーの権限が必要です。ブラウザまたはLINEのサイト設定で「モーションと方向」を再度許可し、このページを再読み込みしてください。',
+    'health.stepCounter.unsupportedTitle': 'この端末では計測できません',
+    'health.stepCounter.unsupportedDesc':
+      'モーションセンサーのデータを検出できません。この端末またはブラウザは歩数計測に対応していない可能性があります。',
 
     'home.healthRecords': '健康記録',
     'home.healthRecordsDesc': '血圧、血糖値、生理周期、歩数',
