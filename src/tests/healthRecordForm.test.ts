@@ -7,12 +7,13 @@ import {
   bloodPressureSchema,
   formValuesToThresholdPayload,
   menstrualDefaults,
+  menstrualEndDateSchema,
   menstrualSchema,
   thresholdDefaults,
   thresholdSchema,
   thresholdToFormValues,
-  todayTaipei,
 } from '../pages/HealthRecords/healthRecordForm';
+import { todayTaipei } from '../lib/taipeiCalendar';
 
 const t = (key: string, options?: Record<string, string | number>) => i18n.t(key, options);
 
@@ -53,17 +54,17 @@ describe('健康紀錄頁 i18n：六語系 key 完全一致（9.5）', () => {
 
 describe('bloodPressureSchema', () => {
   it('收縮壓、舒張壓為必填', () => {
-    const result = bloodPressureSchema(t).safeParse({ systolic: '', diastolic: '', pulse: '', measuredAt: '' });
+    const result = bloodPressureSchema(t).safeParse({ systolic: '', diastolic: '', pulse: '' });
     expect(result.success).toBe(false);
   });
 
   it('超出範圍（收縮壓 50–300）時回報錯誤', () => {
-    const result = bloodPressureSchema(t).safeParse({ systolic: '301', diastolic: '80', pulse: '', measuredAt: '' });
+    const result = bloodPressureSchema(t).safeParse({ systolic: '301', diastolic: '80', pulse: '' });
     expect(result.success).toBe(false);
   });
 
   it('收縮壓必須大於舒張壓，相等也不合法', () => {
-    const result = bloodPressureSchema(t).safeParse({ systolic: '90', diastolic: '90', pulse: '', measuredAt: '' });
+    const result = bloodPressureSchema(t).safeParse({ systolic: '90', diastolic: '90', pulse: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe('收縮壓必須大於舒張壓');
@@ -71,25 +72,25 @@ describe('bloodPressureSchema', () => {
   });
 
   it('脈搏選填，留空時合法', () => {
-    const result = bloodPressureSchema(t).safeParse({ systolic: '120', diastolic: '80', pulse: '', measuredAt: '' });
+    const result = bloodPressureSchema(t).safeParse({ systolic: '120', diastolic: '80', pulse: '' });
     expect(result.success).toBe(true);
   });
 
   it('合法輸入通過驗證', () => {
-    const result = bloodPressureSchema(t).safeParse({ systolic: '120', diastolic: '80', pulse: '70', measuredAt: '' });
+    const result = bloodPressureSchema(t).safeParse({ systolic: '120', diastolic: '80', pulse: '70' });
     expect(result.success).toBe(true);
   });
 });
 
 describe('bloodGlucoseSchema', () => {
   it('血糖必填且需在 20–800 之間', () => {
-    expect(bloodGlucoseSchema(t).safeParse({ glucose: '', mealContext: 'fasting', measuredAt: '' }).success).toBe(false);
-    expect(bloodGlucoseSchema(t).safeParse({ glucose: '801', mealContext: 'fasting', measuredAt: '' }).success).toBe(false);
-    expect(bloodGlucoseSchema(t).safeParse({ glucose: '100', mealContext: 'fasting', measuredAt: '' }).success).toBe(true);
+    expect(bloodGlucoseSchema(t).safeParse({ glucose: '', mealContext: 'fasting' }).success).toBe(false);
+    expect(bloodGlucoseSchema(t).safeParse({ glucose: '801', mealContext: 'fasting' }).success).toBe(false);
+    expect(bloodGlucoseSchema(t).safeParse({ glucose: '100', mealContext: 'fasting' }).success).toBe(true);
   });
 
   it('量測情境必填', () => {
-    const result = bloodGlucoseSchema(t).safeParse({ glucose: '100', mealContext: '', measuredAt: '' });
+    const result = bloodGlucoseSchema(t).safeParse({ glucose: '100', mealContext: '' });
     expect(result.success).toBe(false);
   });
 });
@@ -193,5 +194,27 @@ describe('menstrualSchema', () => {
 
   it('todayTaipei 回傳 YYYY-MM-DD 格式', () => {
     expect(todayTaipei()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('menstrualEndDateSchema：事後補上／修改結束日期', () => {
+  it('結束日期必填', () => {
+    const result = menstrualEndDateSchema(t, '2026-01-01').safeParse({ endDate: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('不得早於開始日期', () => {
+    const result = menstrualEndDateSchema(t, '2026-01-10').safeParse({ endDate: '2026-01-05' });
+    expect(result.success).toBe(false);
+  });
+
+  it('天數不得超過 15 天', () => {
+    const result = menstrualEndDateSchema(t, '2026-01-01').safeParse({ endDate: '2026-01-20' });
+    expect(result.success).toBe(false);
+  });
+
+  it('合法的結束日期通過驗證', () => {
+    const result = menstrualEndDateSchema(t, '2026-01-01').safeParse({ endDate: '2026-01-05' });
+    expect(result.success).toBe(true);
   });
 });

@@ -3,12 +3,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { CalendarHeartIcon, PlusIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react';
+import {
+  CalendarClockIcon,
+  CalendarHeartIcon,
+  PlusIcon,
+  RotateCwIcon,
+  TriangleAlertIcon,
+} from 'lucide-react';
 
-import { createMenstrualRecord, fetchMenstrualRecords } from '../../api/healthApi';
+import { createMenstrualRecord, fetchMenstrualRecords, updateMenstrualRecord } from '../../api/healthApi';
 import { getPersonalHealthProfile } from '../../api/profileApi';
-import type { CreateMenstrualRecordRequest } from '../../types/health';
+import type {
+  CreateMenstrualRecordRequest,
+  MenstrualRecord,
+  UpdateMenstrualRecordRequest,
+} from '../../types/health';
 import { queryKeys } from '@/lib/queryClient';
+import { MenstrualEndDateDialog } from './MenstrualEndDateDialog';
 import { MenstrualFormDialog } from './MenstrualFormDialog';
 
 import { Alert, AlertTitle } from '@/components/ui/alert';
@@ -31,6 +42,7 @@ export function MenstrualTab() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [editingEndDateOf, setEditingEndDateOf] = useState<MenstrualRecord | null>(null);
 
   const { data: profile } = useQuery({
     queryKey: queryKeys.myProfile,
@@ -52,6 +64,20 @@ export function MenstrualTab() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.menstrualRecords() });
       toast.success(t('health.menstrual.addSuccess'));
       setAdding(false);
+    },
+  });
+
+  // 事後補上／修改結束日期（menstrual-cycle-log 規格「事後補上結束日期」）：
+  // 沒有這個入口，「進行中」的紀錄永遠沒有結束日期，health-alerts 規格裡
+  // 「經期天數 > 8 天」這半段異常判定也就永遠算不出來（period_length_days
+  // 由後端從 start_date／end_date 算出，沒有 end_date 就沒有這個值）。
+  const updateEndDateMutation = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateMenstrualRecordRequest }) =>
+      updateMenstrualRecord(id, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.menstrualRecords() });
+      toast.success(t('health.menstrual.updateSuccess'));
+      setEditingEndDateOf(null);
     },
   });
 
@@ -144,6 +170,17 @@ export function MenstrualTab() {
                     <span>{t('health.menstrual.periodLength', { days: record.period_length_days })}</span>
                   )}
                 </p>
+                {/* 事後補上／修改結束日期：進行中的紀錄沒有這個入口就永遠補不上
+                    結束日期（見上面 updateEndDateMutation 的說明）。 */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 w-fit"
+                  onClick={() => setEditingEndDateOf(record)}
+                >
+                  <CalendarClockIcon data-icon="inline-start" />
+                  {record.end_date ? t('health.menstrual.editEndDate') : t('health.menstrual.setEndDate')}
+                </Button>
               </ItemContent>
             </Item>
           ))}
@@ -155,6 +192,16 @@ export function MenstrualTab() {
           onClose={() => setAdding(false)}
           onSubmit={async (body) => {
             await createMutation.mutateAsync(body);
+          }}
+        />
+      )}
+
+      {editingEndDateOf && (
+        <MenstrualEndDateDialog
+          record={editingEndDateOf}
+          onClose={() => setEditingEndDateOf(null)}
+          onSubmit={async (body) => {
+            await updateEndDateMutation.mutateAsync({ id: editingEndDateOf.id, body });
           }}
         />
       )}

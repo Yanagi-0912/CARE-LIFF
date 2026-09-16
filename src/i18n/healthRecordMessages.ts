@@ -12,7 +12,6 @@ import type { SupportedLanguage } from './messages';
  */
 export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<string, string>> = {
   'zh-TW': {
-    'health.self': '我自己',
     'health.title': '健康紀錄',
     'health.titleForMember': '{{name}} 的健康紀錄',
     'health.description': '血壓、血糖、經期與步數的紀錄',
@@ -98,6 +97,10 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.addTitle': '新增經期紀錄',
     'health.menstrual.addHint': '開始日期必填，格式 YYYY-MM-DD；結束日期、血量與備註都可以先不填。',
     'health.menstrual.addSuccess': '已新增經期紀錄',
+    'health.menstrual.setEndDate': '設定結束日期',
+    'health.menstrual.editEndDate': '修改結束日期',
+    'health.menstrual.editEndDateHint': '設定從 {{start}} 開始的這筆經期紀錄的結束日期。',
+    'health.menstrual.updateSuccess': '已更新經期紀錄',
     'health.menstrual.genderGateTitle': '尚未設定性別',
     'health.menstrual.genderGateDesc': '請先在個人健康頁設定性別為女性，才能使用經期紀錄。',
     'health.menstrual.genderGateLink': '前往個人健康頁設定',
@@ -112,7 +115,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
 
     'health.steps.historyTitle': '每日步數',
     'health.steps.emptyTitle': '還沒有步數紀錄',
-    'health.steps.stepsValue': '{{count}} 步',
+    'health.steps.stepsValue_one': '{{count, number}} 步',
+    'health.steps.stepsValue_other': '{{count, number}} 步',
 
     'health.stepCounter.estimateDisclaimer': '步數為估算值，可能與手機內建的計步器不同。',
     'health.stepCounter.foregroundOnly':
@@ -141,7 +145,6 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'family.healthRecords.proxyEntry': '幫他記錄健康紀錄',
   },
   en: {
-    'health.self': 'Myself',
     'health.title': 'Health Records',
     'health.titleForMember': "{{name}}'s Health Records",
     'health.description': 'Blood pressure, blood glucose, menstrual cycle, and steps',
@@ -233,6 +236,10 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.addHint':
       'Start date is required (YYYY-MM-DD); end date, flow, and note can be left blank for now.',
     'health.menstrual.addSuccess': 'Menstrual record added',
+    'health.menstrual.setEndDate': 'Set end date',
+    'health.menstrual.editEndDate': 'Edit end date',
+    'health.menstrual.editEndDateHint': 'Set the end date for this record that started on {{start}}.',
+    'health.menstrual.updateSuccess': 'Menstrual record updated',
     'health.menstrual.genderGateTitle': 'Gender not set',
     'health.menstrual.genderGateDesc':
       'Please set your gender to female on the personal health page to use menstrual records.',
@@ -248,7 +255,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
 
     'health.steps.historyTitle': 'Daily Steps',
     'health.steps.emptyTitle': 'No step records yet',
-    'health.steps.stepsValue': '{{count}} steps',
+    'health.steps.stepsValue_one': '{{count, number}} step',
+    'health.steps.stepsValue_other': '{{count, number}} steps',
 
     'health.stepCounter.estimateDisclaimer':
       "Step counts are estimates and may differ from your phone's built-in pedometer.",
@@ -278,7 +286,6 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'family.healthRecords.proxyEntry': 'Log health records for them',
   },
   id: {
-    'health.self': 'Saya sendiri',
     'health.title': 'Catatan Kesehatan',
     'health.titleForMember': 'Catatan Kesehatan {{name}}',
     'health.description': 'Tekanan darah, gula darah, siklus haid, dan langkah kaki',
@@ -370,6 +377,10 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.addHint':
       'Tanggal mulai wajib diisi (YYYY-MM-DD); tanggal selesai, jumlah darah, dan catatan boleh dikosongkan dulu.',
     'health.menstrual.addSuccess': 'Catatan haid berhasil ditambahkan',
+    'health.menstrual.setEndDate': 'Atur tanggal selesai',
+    'health.menstrual.editEndDate': 'Ubah tanggal selesai',
+    'health.menstrual.editEndDateHint': 'Atur tanggal selesai untuk catatan yang mulai pada {{start}}.',
+    'health.menstrual.updateSuccess': 'Catatan haid berhasil diperbarui',
     'health.menstrual.genderGateTitle': 'Jenis kelamin belum diatur',
     'health.menstrual.genderGateDesc':
       'Silakan atur jenis kelamin menjadi perempuan di halaman kesehatan pribadi untuk menggunakan catatan haid.',
@@ -385,7 +396,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
 
     'health.steps.historyTitle': 'Langkah Harian',
     'health.steps.emptyTitle': 'Belum ada catatan langkah',
-    'health.steps.stepsValue': '{{count}} langkah',
+    'health.steps.stepsValue_one': '{{count, number}} langkah',
+    'health.steps.stepsValue_other': '{{count, number}} langkah',
 
     'health.stepCounter.estimateDisclaimer':
       'Jumlah langkah adalah perkiraan dan bisa berbeda dari pedometer bawaan ponsel Anda.',
@@ -415,7 +427,6 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'family.healthRecords.proxyEntry': 'Catatkan data kesehatan untuknya',
   },
   vi: {
-    'health.self': 'Bản thân tôi',
     'health.title': 'Hồ sơ sức khỏe',
     'health.titleForMember': 'Hồ sơ sức khỏe của {{name}}',
     'health.description': 'Huyết áp, đường huyết, chu kỳ kinh nguyệt và số bước chân',
@@ -507,6 +518,10 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.addHint':
       'Ngày bắt đầu là bắt buộc (YYYY-MM-DD); ngày kết thúc, lượng kinh và ghi chú có thể để trống trước.',
     'health.menstrual.addSuccess': 'Đã thêm bản ghi kinh nguyệt',
+    'health.menstrual.setEndDate': 'Đặt ngày kết thúc',
+    'health.menstrual.editEndDate': 'Sửa ngày kết thúc',
+    'health.menstrual.editEndDateHint': 'Đặt ngày kết thúc cho bản ghi bắt đầu từ {{start}}.',
+    'health.menstrual.updateSuccess': 'Đã cập nhật bản ghi kinh nguyệt',
     'health.menstrual.genderGateTitle': 'Chưa thiết lập giới tính',
     'health.menstrual.genderGateDesc':
       'Vui lòng thiết lập giới tính là nữ trên trang sức khỏe cá nhân để sử dụng bản ghi kinh nguyệt.',
@@ -522,7 +537,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
 
     'health.steps.historyTitle': 'Số bước mỗi ngày',
     'health.steps.emptyTitle': 'Chưa có dữ liệu số bước',
-    'health.steps.stepsValue': '{{count}} bước',
+    'health.steps.stepsValue_one': '{{count, number}} bước',
+    'health.steps.stepsValue_other': '{{count, number}} bước',
 
     'health.stepCounter.estimateDisclaimer':
       'Số bước là con số ước tính, có thể khác với máy đếm bước tích hợp sẵn trên điện thoại.',
@@ -552,7 +568,6 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'family.healthRecords.proxyEntry': 'Ghi hồ sơ sức khỏe giúp họ',
   },
   th: {
-    'health.self': 'ตัวฉันเอง',
     'health.title': 'บันทึกสุขภาพ',
     'health.titleForMember': 'บันทึกสุขภาพของ {{name}}',
     'health.description': 'ความดันโลหิต น้ำตาลในเลือด รอบเดือน และจำนวนก้าว',
@@ -642,6 +657,10 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.addHint':
       'วันที่เริ่มต้องกรอก (YYYY-MM-DD) ส่วนวันที่สิ้นสุด ปริมาณ และหมายเหตุยังไม่กรอกก็ได้',
     'health.menstrual.addSuccess': 'เพิ่มบันทึกรอบเดือนแล้ว',
+    'health.menstrual.setEndDate': 'ตั้งวันที่สิ้นสุด',
+    'health.menstrual.editEndDate': 'แก้ไขวันที่สิ้นสุด',
+    'health.menstrual.editEndDateHint': 'ตั้งวันที่สิ้นสุดของบันทึกที่เริ่มเมื่อ {{start}}',
+    'health.menstrual.updateSuccess': 'อัปเดตบันทึกรอบเดือนแล้ว',
     'health.menstrual.genderGateTitle': 'ยังไม่ได้ตั้งค่าเพศ',
     'health.menstrual.genderGateDesc':
       'กรุณาตั้งค่าเพศเป็นหญิงในหน้าสุขภาพส่วนตัวก่อน จึงจะใช้บันทึกรอบเดือนได้',
@@ -657,7 +676,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
 
     'health.steps.historyTitle': 'จำนวนก้าวรายวัน',
     'health.steps.emptyTitle': 'ยังไม่มีข้อมูลจำนวนก้าว',
-    'health.steps.stepsValue': '{{count}} ก้าว',
+    'health.steps.stepsValue_one': '{{count, number}} ก้าว',
+    'health.steps.stepsValue_other': '{{count, number}} ก้าว',
 
     'health.stepCounter.estimateDisclaimer':
       'จำนวนก้าวเป็นค่าประมาณ อาจแตกต่างจากเครื่องนับก้าวในตัวของโทรศัพท์',
@@ -687,7 +707,6 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'family.healthRecords.proxyEntry': 'ช่วยบันทึกสุขภาพให้',
   },
   ja: {
-    'health.self': '自分',
     'health.title': '健康記録',
     'health.titleForMember': '{{name}}さんの健康記録',
     'health.description': '血圧、血糖値、生理周期、歩数の記録',
@@ -777,6 +796,10 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'health.menstrual.addHint':
       '開始日は必須です（YYYY-MM-DD）。終了日・経血量・メモは後からでも構いません。',
     'health.menstrual.addSuccess': '生理記録を追加しました',
+    'health.menstrual.setEndDate': '終了日を設定',
+    'health.menstrual.editEndDate': '終了日を修正',
+    'health.menstrual.editEndDateHint': '{{start}} から始まったこの記録の終了日を設定します。',
+    'health.menstrual.updateSuccess': '生理記録を更新しました',
     'health.menstrual.genderGateTitle': '性別が未設定です',
     'health.menstrual.genderGateDesc':
       '生理記録を使うには、個人健康ページで性別を「女性」に設定してください。',
@@ -792,7 +815,8 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
 
     'health.steps.historyTitle': '1日の歩数',
     'health.steps.emptyTitle': 'まだ歩数の記録がありません',
-    'health.steps.stepsValue': '{{count}} 歩',
+    'health.steps.stepsValue_one': '{{count, number}} 歩',
+    'health.steps.stepsValue_other': '{{count, number}} 歩',
 
     'health.stepCounter.estimateDisclaimer':
       '歩数は推定値です。スマートフォン内蔵の歩数計とは異なる場合があります。',

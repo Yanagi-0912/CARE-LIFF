@@ -13,6 +13,7 @@ import type {
   MenstrualFlow,
   UpdateHealthAlertThresholdRequest,
 } from '../../types/health';
+import { todayTaipei } from '@/lib/taipeiCalendar';
 
 export type TranslateFn = (
   key: string,
@@ -66,14 +67,12 @@ export interface BloodPressureFormValues {
   systolic: string;
   diastolic: string;
   pulse: string;
-  measuredAt: string;
 }
 
 export const bloodPressureDefaults: BloodPressureFormValues = {
   systolic: '',
   diastolic: '',
   pulse: '',
-  measuredAt: '',
 };
 
 export function bloodPressureSchema(t: TranslateFn) {
@@ -97,7 +96,6 @@ export function bloodPressureSchema(t: TranslateFn) {
         max: PULSE_MAX,
         required: false,
       }),
-      measuredAt: z.string(),
     })
     .superRefine((values, ctx) => {
       const systolic = Number(values.systolic.trim());
@@ -126,13 +124,11 @@ export interface BloodGlucoseFormValues {
    *  不narrow 成聯集型別——同 PersonalHealth/healthForm.ts 的 gender 欄位，
    *  避免 RHF 的 Resolver 型別與這裡的表單型別對不上。 */
   mealContext: string;
-  measuredAt: string;
 }
 
 export const bloodGlucoseDefaults: BloodGlucoseFormValues = {
   glucose: '',
   mealContext: '',
-  measuredAt: '',
 };
 
 export function bloodGlucoseSchema(t: TranslateFn) {
@@ -144,7 +140,6 @@ export function bloodGlucoseSchema(t: TranslateFn) {
       required: true,
     }),
     mealContext: z.string().min(1, t('health.validation.mealContextRequired')),
-    measuredAt: z.string(),
   });
 }
 
@@ -291,20 +286,6 @@ export function formValuesToThresholdPayload(
   };
 }
 
-/** 七項是否至少有一項已設定——用來判斷要不要顯示「尚未設定任何提醒範圍」 */
-export function hasAnyThresholdSet(threshold: HealthAlertThreshold | null | undefined): boolean {
-  if (!threshold) return false;
-  return (
-    threshold.systolic_high != null ||
-    threshold.systolic_low != null ||
-    threshold.diastolic_high != null ||
-    threshold.diastolic_low != null ||
-    threshold.glucose_fasting_high != null ||
-    threshold.glucose_nonfasting_high != null ||
-    threshold.glucose_low != null
-  );
-}
-
 // ── 經期 ────────────────────────────────────────────────────────────────
 
 export interface MenstrualFormValues {
@@ -322,9 +303,12 @@ export const menstrualDefaults: MenstrualFormValues = {
   note: '',
 };
 
-/** 台北時區的今天（YYYY-MM-DD），與後端 `_today_taipei_str` 同一個時區 */
-export function todayTaipei(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+/** 兩個 YYYY-MM-DD 之間的天數是否超過經期天數上限；呼叫端已先確認 end >= start。 */
+function spanExceedsMax(startDate: string, endDate: string): boolean {
+  const start = new Date(`${startDate}T00:00:00Z`).getTime();
+  const end = new Date(`${endDate}T00:00:00Z`).getTime();
+  const days = Math.round((end - start) / 86_400_000);
+  return days > MENSTRUAL_MAX_SPAN_DAYS;
 }
 
 export function menstrualSchema(t: TranslateFn) {
@@ -355,18 +339,53 @@ export function menstrualSchema(t: TranslateFn) {
             message: t('health.menstrual.endBeforeStart'),
             path: ['endDate'],
           });
-        } else {
-          const start = new Date(`${values.startDate}T00:00:00Z`).getTime();
-          const end = new Date(`${values.endDate}T00:00:00Z`).getTime();
-          const days = Math.round((end - start) / 86_400_000);
-          if (days > MENSTRUAL_MAX_SPAN_DAYS) {
-            ctx.addIssue({
-              code: 'custom',
-              message: t('health.menstrual.spanTooLong', { max: MENSTRUAL_MAX_SPAN_DAYS }),
-              path: ['endDate'],
-            });
-          }
+        } else if (spanExceedsMax(values.startDate, values.endDate)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: t('health.menstrual.spanTooLong', { max: MENSTRUAL_MAX_SPAN_DAYS }),
+            path: ['endDate'],
+          });
         }
+      }
+    });
+}
+
+// 事後補上／修改一筆既有紀錄的結束日期（menstrual-cycle-log 規格「事後補上結束
+// 日期」）；與 menstrualSchema 分開，因為這裡的 startDate 是既有紀錄的值、不是
+// 使用者輸入，不需要再驗證一次「不得晚於今天」。驗證規則同新增表單的結束日期：
+// 不得早於開始日期、天數不得超過上限，後端 422 是最終判定。
+
+export interface MenstrualEndDateFormValues {
+  endDate: string;
+}
+
+export const menstrualEndDateDefaults: MenstrualEndDateFormValues = {
+  endDate: '',
+};
+
+export function menstrualEndDateSchema(t: TranslateFn, startDate: string) {
+  return z
+    .object({
+      endDate: z
+        .string()
+        .min(1, t('health.validation.required', { label: t('health.menstrual.endDate') })),
+    })
+    .superRefine((values, ctx) => {
+      // 空字串已經被上面的 required 檔住，這裡不用再疊加一次比較日期字串
+      // 大小的錯誤（空字串在字典序上必然「早於」任何實際日期）。
+      if (!values.endDate) return;
+      if (values.endDate < startDate) {
+        ctx.addIssue({
+          code: 'custom',
+          message: t('health.menstrual.endBeforeStart'),
+          path: ['endDate'],
+        });
+      } else if (spanExceedsMax(startDate, values.endDate)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: t('health.menstrual.spanTooLong', { max: MENSTRUAL_MAX_SPAN_DAYS }),
+          path: ['endDate'],
+        });
       }
     });
 }

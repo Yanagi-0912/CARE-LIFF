@@ -75,6 +75,14 @@ export interface UseStepCounterDeps {
   /** 傳給 `detectSteps`／`createStepDetectorStream` 的參數，測試可覆寫成
    *  更容易觸發的門檻。 */
   detectorOptions?: DetectStepsOptions;
+  /** 每次同步成功後呼叫（不含失敗的那幾次）。這支 hook 刻意不依賴
+   *  queryClient——同步與快取失效是兩件事，混在一起會讓這支 hook 在沒有
+   *  QueryClientProvider 的情境下（例如未來要重用在別的地方）也得帶著它。
+   *  呼叫端（`StepCounterPanel`）用這個 callback 去失效
+   *  `queryKeys.stepCounts`，讓同一頁「每日步數」的歷史列表跟著同步結果
+   *  更新，不會停在工作階段開始前的舊值（review：計步中即時數字往上跳，
+   *  下方的每日步數列表卻是舊的，同一頁兩個數字對不上）。 */
+  onSynced?: () => void;
 }
 
 export interface UseStepCounterResult {
@@ -165,6 +173,7 @@ function resolveDeps(overrides: Partial<UseStepCounterDeps>): UseStepCounterDeps
     syncIntervalMs: overrides.syncIntervalMs ?? DEFAULT_SYNC_INTERVAL_MS,
     noDataTimeoutMs: overrides.noDataTimeoutMs ?? DEFAULT_NO_DATA_TIMEOUT_MS,
     detectorOptions: overrides.detectorOptions,
+    onSynced: overrides.onSynced,
   };
 }
 
@@ -294,6 +303,7 @@ function createStepCounterEngine(depsRef: DepsRef, callbacks: EngineCallbacks) {
       // 即時累計值。兩次同步之間，畫面用這個基準點＋之後新增的即時步數
       // 往前推算，不會停滯在這個舊值上（見 `StepCounterBaseline` 的說明）。
       callbacks.setBaseline({ total: result.steps, sessionSteps: body.steps });
+      depsRef.current.onSynced?.();
     } catch {
       // 行動網路常斷線重送；累計值仍在本地 detector 裡不會遺失，下一次
       // 30 秒週期或下次隱藏時會再試一次同步。

@@ -420,6 +420,49 @@ describe('10.2 useStepCounter：每 30 秒定期同步', () => {
   });
 });
 
+describe('10.2 useStepCounter：同步成功後呼叫 onSynced（Task review：步數快取失效的注入點）', () => {
+  it('同步成功時呼叫 onSynced，讓呼叫端（StepCounterPanel）能失效步數快取', async () => {
+    const onSynced = vi.fn();
+    const harness = createTestDeps({ onSynced, syncIntervalMs: 30_000 });
+    const { result } = renderHook(() => useStepCounter(harness.deps));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await walkOneStep(harness, 1000);
+    });
+    expect(onSynced).not.toHaveBeenCalled(); // 還沒有任何一次同步完成過
+
+    await act(async () => {
+      await harness.advance(30_000); // 觸發一次定期同步
+    });
+
+    expect(onSynced).toHaveBeenCalledTimes(1);
+  });
+
+  it('同步失敗時不會呼叫 onSynced：快取沒有理由跟著一次失敗的同步失效', async () => {
+    const onSynced = vi.fn();
+    const sync = vi.fn(async () => {
+      throw new Error('network error');
+    });
+    const harness = createTestDeps({ onSynced, sync, syncIntervalMs: 30_000 });
+    const { result } = renderHook(() => useStepCounter(harness.deps));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await walkOneStep(harness, 1000);
+    });
+    await act(async () => {
+      await harness.advance(30_000);
+    });
+
+    expect(onSynced).not.toHaveBeenCalled();
+  });
+});
+
 describe('10.2 useStepCounter：停止計步', () => {
   it('stop() 送出最後一次同步並回到 idle', async () => {
     const harness = createTestDeps();

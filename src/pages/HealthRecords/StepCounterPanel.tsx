@@ -1,3 +1,5 @@
+import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   FootprintsIcon,
@@ -10,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { useStepCounter, type UseStepCounterResult } from '@/hooks/useStepCounter';
+import { queryKeys } from '@/lib/queryClient';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
@@ -106,6 +109,16 @@ export function StepCounterView({ status, todaySteps, start, stop }: UseStepCoun
 }
 
 export function StepCounterPanel() {
-  const result = useStepCounter();
+  const queryClient = useQueryClient();
+  // 這個面板掛載在 StepsTab 裡，下方「每日步數」列表用的就是
+  // `queryKeys.stepCounts()`（本人一律省略 userId）這把 key，兩者在同一頁
+  // 共用快取。失效後 React Query 預設會重抓正掛載中的查詢，所以每次同步
+  // 成功，畫面上方即時累計與下方的每日列表會在同一次 30 秒週期內對齊，
+  // 不會停在工作階段開始前的舊值（review：兩個數字對不上）。
+  const onSynced = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.stepCounts() });
+  }, [queryClient]);
+
+  const result = useStepCounter({ onSynced });
   return <StepCounterView {...result} />;
 }

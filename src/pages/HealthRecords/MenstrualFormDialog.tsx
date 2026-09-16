@@ -8,9 +8,9 @@ import {
   FLOW_OPTIONS,
   menstrualDefaults,
   menstrualSchema,
-  todayTaipei,
   type MenstrualFormValues,
 } from './healthRecordForm';
+import { todayTaipei } from '@/lib/taipeiCalendar';
 
 import { Button } from '@/components/ui/button';
 import {

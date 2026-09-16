@@ -16,7 +16,7 @@ import type {
   GetFamilyTreeResponse,
 } from '../types/family';
 import type { HealthMeasurement, StepCount } from '../types/health';
-import { todayTaipei } from '../pages/HealthRecords/healthRecordForm';
+import { todayTaipei } from '../lib/taipeiCalendar';
 import i18n from '../i18n';
 
 vi.mock('../api/profileApi', () => ({
@@ -312,8 +312,25 @@ describe('家人卡片的健康紀錄區塊（血壓、血糖、步數，Task 11
     await expandCard();
 
     await waitFor(() => expect(healthApi.fetchStepCounts).toHaveBeenCalledWith('U-mom'));
+    // 讀取權只讀不寫，血壓血糖的查詢仍要照樣打出去——不能只驗證步數，否則
+    // 唯讀角色的血壓／血糖查詢壞掉也不會被這條測試抓到（Task 12 review）。
+    expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', { kind: 'blood_pressure' });
+    expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', { kind: 'blood_glucose' });
     expect(await screen.findByText('62 步')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /幫他記錄健康紀錄/ })).not.toBeInTheDocument();
+  });
+
+  it('沒有今天的步數紀錄時顯示「尚無紀錄」，不會顯示成 0 步（review：步數不能把「沒資料」說成「走了 0 步」）', async () => {
+    vi.mocked(healthApi.fetchStepCounts).mockResolvedValue([]);
+    familyState.members = [memberWithStrict('GUARDIAN', 'GUARDIAN')];
+    renderPage();
+    await expandCard();
+
+    await waitFor(() => expect(healthApi.fetchStepCounts).toHaveBeenCalledWith('U-mom'));
+    const stepsRow = (await screen.findByText('今日步數')).closest('div');
+    expect(stepsRow).not.toBeNull();
+    expect(within(stepsRow as HTMLElement).getByText('尚無紀錄')).toBeInTheDocument();
+    expect(screen.queryByText(/0 步/)).not.toBeInTheDocument();
   });
 
   it('MEMBER（嚴格判定皆無）：整段健康紀錄不渲染，連請求都不發', async () => {

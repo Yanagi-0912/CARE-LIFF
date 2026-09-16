@@ -8,6 +8,8 @@ import {
   FootprintsIcon,
   HeartPulseIcon,
   LockIcon,
+  RotateCwIcon,
+  TriangleAlertIcon,
 } from 'lucide-react';
 
 import { useFamily } from '../../hooks/useFamily';
@@ -19,6 +21,8 @@ import { MeasurementTab } from './MeasurementTab';
 import { MenstrualTab } from './MenstrualTab';
 import { StepsTab } from './StepsTab';
 
+import { Alert, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -49,7 +53,7 @@ export default function HealthRecordsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selfUserId] = useState(readSelfUserId);
-  const { members, loading: familyLoading } = useFamily();
+  const { members, loading: familyLoading, error: familyError, refetch: refetchFamily } = useFamily();
 
   const requestedUserId = searchParams.get('user')?.trim() || '';
   const targetUserId =
@@ -58,17 +62,27 @@ export default function HealthRecordsPage() {
 
   const requestedMember = members.find((member) => member.user_id === requestedUserId);
 
+  // 族譜抓失敗（`familyError`）跟「這位家人沒有把權限開給我」是兩件事：
+  // 前者要講「載入失敗，請重試」，後者才是「沒有權限」。抓失敗時 `members`
+  // 是空陣列，一定找不到 requestedMember，若不特別分辨會被下面的
+  // fail-closed 邏輯一併吃成「沒有權限」——對一個網路不穩、剛好重新整理就
+  // 會好的使用者來說，這是一句沒有出路的假話（review：no retry path）。
+  const familyLoadFailed = isViewingFamily && !familyLoading && Boolean(familyError);
+
   // fail-closed：族譜還沒載完、或找不到這位成員時，一律當成沒有權限——
   // 同 familyPermissions.ts 的方向，寧可少顯示，不要先打了必定 403 的請求。
   const canReadTarget =
     !isViewingFamily || Boolean(requestedMember && canReadHealthRecords(requestedMember));
   const canWriteTarget =
     !isViewingFamily || Boolean(requestedMember && canRecordHealthFor(requestedMember));
-  const deniedByPermission = isViewingFamily && !familyLoading && !canReadTarget;
+  const deniedByPermission =
+    isViewingFamily && !familyLoading && !familyLoadFailed && !canReadTarget;
 
-  const targetName = isViewingFamily
-    ? requestedMember?.display_name || requestedUserId.slice(0, 8)
-    : t('health.self');
+  // 只有 isViewingFamily 時下面的標題才會用到 targetName（health.title 走
+  // 另一支不帶名字的文案）；!isViewingFamily 時這裡算出什麼都不影響畫面，
+  // 不需要另外一個「我自己」的字串分支（同一原因移除了原本的
+  // `health.self` key——那個分支的值從來沒有被渲染過）。
+  const targetName = requestedMember?.display_name || t('family.unset');
 
   // 性別只在看自己時才需要查——經期是 PERSONAL 分類，沒有代看，這支查詢
   // 與首頁、側欄共用同一個 key，多半已經有快取。
@@ -122,6 +136,25 @@ export default function HealthRecordsPage() {
           <Spinner aria-hidden="true" />
           {t('health.loading')}
         </p>
+      ) : familyLoadFailed ? (
+        // 族譜抓失敗：講「載入失敗」並給重試，不要落到下面的「沒有權限」
+        // ——那會告訴使用者一件沒有發生過的事，還沒有出路（見上面的說明）。
+        // 同樣 fail-closed：失敗時不顯示任何健康資料或分頁。
+        <div className="flex flex-col gap-3 py-6">
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertTitle>{t('health.loadError')}</AlertTitle>
+          </Alert>
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            onClick={() => void refetchFamily()}
+          >
+            <RotateCwIcon data-icon="inline-start" />
+            {t('health.retry')}
+          </Button>
+        </div>
       ) : deniedByPermission ? (
         // 沒有權限就不渲染分頁與內容：見頁面頂端的說明，這裡也 SHALL NOT
         // 送出任何健康資料請求。

@@ -5,11 +5,10 @@ import { HEALTH_LEVEL_META } from './healthLevelMeta';
 
 interface HealthLevelBadgeProps {
   level: HealthLevel;
-  className?: string;
 }
 
 /** 血壓／血糖一筆紀錄的等級徽章：顏色＋圖示＋文字三重呈現，不能只靠顏色。 */
-export function HealthLevelBadge({ level, className }: HealthLevelBadgeProps) {
+export function HealthLevelBadge({ level }: HealthLevelBadgeProps) {
   const { t } = useTranslation();
   const meta = HEALTH_LEVEL_META[level];
   const Icon = meta.icon;
@@ -18,7 +17,6 @@ export function HealthLevelBadge({ level, className }: HealthLevelBadgeProps) {
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold',
         meta.className,
-        className,
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden="true" />

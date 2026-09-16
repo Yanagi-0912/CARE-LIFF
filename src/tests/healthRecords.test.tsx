@@ -31,7 +31,12 @@ vi.mock('../api/healthApi', () => ({
   updateAlertThresholds: vi.fn(),
   fetchMenstrualRecords: vi.fn(),
   createMenstrualRecord: vi.fn(),
+  updateMenstrualRecord: vi.fn(),
   fetchStepCounts: vi.fn(),
+  // StepCounterPanel（isSelf 時掛載在步數分頁）用得到，即使這個測試檔案不
+  // 會真的按下開始計步——useStepCounter 的預設 deps 在模組載入時就會解析
+  // 到這支函式，沒有它整個 mock 模組會缺一個匯出而炸掉。
+  syncStepSession: vi.fn(),
 }));
 
 vi.mock('../api/profileApi', () => ({
@@ -181,6 +186,20 @@ describe('9.1 路由與入口', () => {
     expect(screen.getByRole('tab', { name: /血壓/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /經期/ })).not.toBeInTheDocument();
   });
+
+  it('看家人時族譜抓取失敗：講「載入失敗」並提供重試，不會誤說成沒有權限（review）', async () => {
+    familyState.members = [];
+    familyState.error = '載入族譜失敗';
+    renderHealthRecords('/health-records?user=U-mom');
+
+    expect(await screen.findByText('載入失敗')).toBeInTheDocument();
+    expect(screen.queryByText('您沒有查看健康狀況的權限')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /血壓/ })).not.toBeInTheDocument();
+    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: '重新載入' }));
+    expect(familyState.refetch).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ── 9.2 等級呈現與輸入錯誤 ─────────────────────────────────────────────
@@ -219,11 +238,6 @@ describe('9.2 血壓／血糖：四種等級的呈現', () => {
     expect(screen.getByText('未設定範圍')).toBeInTheDocument();
     expect(screen.getByText(/還沒有設定提醒範圍/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '去設定' })).toBeInTheDocument();
-
-    // 顏色以外還有圖示與文字：四個徽章文字互不相同，語意不是只靠顏色（§2 硬底線）
-    const badgeTexts = ['正常範圍', '高於範圍', '低於範圍', '未設定範圍'];
-    const uniqueTexts = new Set(badgeTexts);
-    expect(uniqueTexts.size).toBe(4);
   });
 });
 
@@ -361,5 +375,88 @@ describe('9.4 經期分頁：男性、未設定、女性三種情形', () => {
 
     expect(await screen.findByText(/週期 28 天/)).toBeInTheDocument();
     expect(screen.getByText(/經期 5 天/)).toBeInTheDocument();
+  });
+});
+
+// ── 經期：事後補上／修改結束日期（menstrual-cycle-log「事後補上結束日期」）──
+
+describe('9.4 經期分頁：事後補上結束日期', () => {
+  const ongoingRecord: MenstrualRecord = {
+    id: 'm-ongoing', user_id: 'U-me', start_date: '2026-01-01', end_date: null,
+    flow: null, note: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+    cycle_length_days: null, period_length_days: null,
+  };
+
+  beforeEach(() => {
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ gender: 'female' });
+    vi.mocked(healthApi.fetchMenstrualRecords).mockResolvedValue([ongoingRecord]);
+  });
+
+  it('進行中的紀錄可以設定結束日期，成功後失效紀錄清單並提示成功', async () => {
+    vi.mocked(healthApi.updateMenstrualRecord).mockResolvedValue({
+      ...ongoingRecord,
+      end_date: '2026-01-05',
+      period_length_days: 5,
+    });
+    renderHealthRecords();
+    const tab = await screen.findByRole('tab', { name: /經期/ });
+    fireEvent.click(tab);
+
+    expect(await screen.findByText(/進行中/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '設定結束日期' }));
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('結束日期'), { target: { value: '2026-01-05' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }));
+
+    await waitFor(() =>
+      expect(healthApi.updateMenstrualRecord).toHaveBeenCalledWith('m-ongoing', { end_date: '2026-01-05' }),
+    );
+    expect(await screen.findByText('已更新經期紀錄')).toBeInTheDocument();
+  });
+
+  it('結束日期早於開始日期時顯示前端預先檢查的錯誤，不會送出請求', async () => {
+    renderHealthRecords();
+    const tab = await screen.findByRole('tab', { name: /經期/ });
+    fireEvent.click(tab);
+
+    fireEvent.click(await screen.findByRole('button', { name: '設定結束日期' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('結束日期'), { target: { value: '2025-12-31' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }));
+
+    expect(await within(dialog).findByText('結束日期不得早於開始日期')).toBeInTheDocument();
+    expect(healthApi.updateMenstrualRecord).not.toHaveBeenCalled();
+  });
+
+  it('已有結束日期的紀錄改顯示「修改結束日期」，並帶出既有值', async () => {
+    vi.mocked(healthApi.fetchMenstrualRecords).mockResolvedValue([
+      { ...ongoingRecord, end_date: '2026-01-05', period_length_days: 5 },
+    ]);
+    renderHealthRecords();
+    const tab = await screen.findByRole('tab', { name: /經期/ });
+    fireEvent.click(tab);
+
+    const editButton = await screen.findByRole('button', { name: '修改結束日期' });
+    fireEvent.click(editButton);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByLabelText('結束日期')).toHaveValue('2026-01-05');
+  });
+});
+
+// ── 步數分頁：載入失敗要有重試（其餘分頁都有，步數不該是唯一沒有的） ──────
+
+describe('步數分頁：載入失敗時提供重試', () => {
+  it('載入失敗顯示錯誤與重試鈕，按下後重新查詢', async () => {
+    vi.mocked(healthApi.fetchStepCounts).mockRejectedValueOnce(new Error('network'));
+    renderHealthRecords('/health-records?tab=steps');
+
+    expect(await screen.findByText('載入失敗')).toBeInTheDocument();
+    const retryButton = screen.getByRole('button', { name: '重新載入' });
+
+    vi.mocked(healthApi.fetchStepCounts).mockResolvedValueOnce([]);
+    fireEvent.click(retryButton);
+
+    expect(await screen.findByText('還沒有步數紀錄')).toBeInTheDocument();
   });
 });

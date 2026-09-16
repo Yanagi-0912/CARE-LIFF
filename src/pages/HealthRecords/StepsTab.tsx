@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { FootprintsIcon, LockIcon, TriangleAlertIcon } from 'lucide-react';
+import { FootprintsIcon, LockIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react';
 
 import { fetchStepCounts } from '../../api/healthApi';
 import { queryKeys } from '@/lib/queryClient';
 
 import { Alert, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,7 +29,7 @@ interface StepsTabProps {
 export function StepsTab({ targetUserId, canRead, isSelf }: StepsTabProps) {
   const { t } = useTranslation();
 
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, isFetching, refetch } = useQuery({
     queryKey: queryKeys.stepCounts(targetUserId),
     queryFn: () => fetchStepCounts(targetUserId),
     enabled: canRead,
@@ -74,10 +75,21 @@ export function StepsTab({ targetUserId, canRead, isSelf }: StepsTabProps) {
           ))}
         </ItemGroup>
       ) : isError ? (
-        <Alert variant="destructive">
-          <TriangleAlertIcon />
-          <AlertTitle>{t('health.loadError')}</AlertTitle>
-        </Alert>
+        <div className="flex flex-col gap-3">
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertTitle>{t('health.loadError')}</AlertTitle>
+          </Alert>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? null : <RotateCwIcon data-icon="inline-start" />}
+            {t('health.retry')}
+          </Button>
+        </div>
       ) : (data ?? []).length === 0 ? (
         <Empty className="border border-dashed">
           <EmptyHeader>

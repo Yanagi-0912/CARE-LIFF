@@ -29,9 +29,9 @@ import {
   hasNoAccess,
 } from '../../utils/familyPermissions';
 import { profileToFormValues } from '../PersonalHealth/healthForm';
-import { todayTaipei } from '../HealthRecords/healthRecordForm';
 import { HealthLevelBadge } from '../HealthRecords/HealthLevelBadge';
 import { queryKeys } from '@/lib/queryClient';
+import { todayTaipei } from '@/lib/taipeiCalendar';
 import { cn } from '@/lib/utils';
 
 import {
@@ -131,11 +131,31 @@ export function MemberCard({ member }: Props) {
     enabled: open && showHealthRecords,
   });
 
-  const recordsPending = bloodPressure.isPending || bloodGlucose.isPending || steps.isPending;
-  const recordsError = bloodPressure.isError || bloodGlucose.isError || steps.isError;
   const latestBloodPressure = bloodPressure.data?.[0];
   const latestBloodGlucose = bloodGlucose.data?.[0];
-  const todayStepCount = steps.data?.find((entry) => entry.date === todayTaipei())?.steps ?? 0;
+  const todayStepEntry = steps.data?.find((entry) => entry.date === todayTaipei());
+
+  // 三個查詢各自獨立呈現 pending／error：其中一個失敗（例如步數）不該把另外
+  // 兩個已經成功載入的數字也一起蓋掉（review：ORing 三者的 pending/error
+  // 會讓一個失敗的查詢遮住其餘已經有結果的讀數）。呼叫端只在
+  // `isPending || isError` 為真時才會用到這個函式，所以這裡只要分辨
+  // pending／error 兩種情形即可。
+  function recordRowStatus(isPending: boolean) {
+    if (isPending) {
+      return (
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+          {t('family.healthLoading')}
+        </span>
+      );
+    }
+    return (
+      <span className="flex items-center gap-2 text-sm text-destructive">
+        <TriangleAlertIcon className="size-4 shrink-0" />
+        {t('family.healthError')}
+      </span>
+    );
+  }
 
   const removal = useMutation({
     // 404 當成已完成：兩邊都能按移除，對方可能已經先按了，而這張卡片是快取裡
@@ -319,74 +339,76 @@ export function MemberCard({ member }: Props) {
                   {t('family.healthRecords.title')}
                 </p>
 
-                {recordsPending ? (
-                  <p className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
-                    <Spinner />
-                    {t('family.healthLoading')}
-                  </p>
-                ) : recordsError ? (
-                  <p className="flex items-center gap-2 py-1 text-sm text-destructive">
-                    <TriangleAlertIcon className="size-4 shrink-0" />
-                    {t('family.healthError')}
-                  </p>
-                ) : (
-                  <dl className="grid gap-2">
-                    <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
-                      <dt className="text-sm text-muted-foreground">
-                        {t('family.healthRecords.latestBloodPressure')}
-                      </dt>
-                      <dd className="flex flex-wrap items-center gap-2">
-                        {latestBloodPressure ? (
-                          <>
-                            <span className="num text-base font-semibold">
-                              {latestBloodPressure.systolic}/{latestBloodPressure.diastolic}{' '}
-                              <span className="text-sm font-normal text-muted-foreground">
-                                mmHg
-                              </span>
+                <dl className="grid gap-2">
+                  <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
+                    <dt className="text-sm text-muted-foreground">
+                      {t('family.healthRecords.latestBloodPressure')}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      {bloodPressure.isPending || bloodPressure.isError ? (
+                        recordRowStatus(bloodPressure.isPending)
+                      ) : latestBloodPressure ? (
+                        <>
+                          <span className="num text-base font-semibold">
+                            {latestBloodPressure.systolic}/{latestBloodPressure.diastolic}{' '}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              mmHg
                             </span>
-                            <HealthLevelBadge level={latestBloodPressure.level} />
-                          </>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {t('family.healthRecords.noRecord')}
                           </span>
-                        )}
-                      </dd>
-                    </div>
+                          <HealthLevelBadge level={latestBloodPressure.level} />
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {t('family.healthRecords.noRecord')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
 
-                    <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
-                      <dt className="text-sm text-muted-foreground">
-                        {t('family.healthRecords.latestBloodGlucose')}
-                      </dt>
-                      <dd className="flex flex-wrap items-center gap-2">
-                        {latestBloodGlucose ? (
-                          <>
-                            <span className="num text-base font-semibold">
-                              {latestBloodGlucose.glucose_mg_dl}{' '}
-                              <span className="text-sm font-normal text-muted-foreground">
-                                mg/dL
-                              </span>
+                  <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
+                    <dt className="text-sm text-muted-foreground">
+                      {t('family.healthRecords.latestBloodGlucose')}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      {bloodGlucose.isPending || bloodGlucose.isError ? (
+                        recordRowStatus(bloodGlucose.isPending)
+                      ) : latestBloodGlucose ? (
+                        <>
+                          <span className="num text-base font-semibold">
+                            {latestBloodGlucose.glucose_mg_dl}{' '}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              mg/dL
                             </span>
-                            <HealthLevelBadge level={latestBloodGlucose.level} />
-                          </>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {t('family.healthRecords.noRecord')}
                           </span>
-                        )}
-                      </dd>
-                    </div>
+                          <HealthLevelBadge level={latestBloodGlucose.level} />
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {t('family.healthRecords.noRecord')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
 
-                    <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
-                      <dt className="text-sm text-muted-foreground">
-                        {t('family.healthRecords.todaySteps')}
-                      </dt>
-                      <dd className="num text-base font-semibold">
-                        {t('health.steps.stepsValue', { count: todayStepCount })}
-                      </dd>
-                    </div>
-                  </dl>
-                )}
+                  <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
+                    <dt className="text-sm text-muted-foreground">
+                      {t('family.healthRecords.todaySteps')}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      {steps.isPending || steps.isError ? (
+                        recordRowStatus(steps.isPending)
+                      ) : todayStepEntry ? (
+                        <span className="num text-base font-semibold">
+                          {t('health.steps.stepsValue', { count: todayStepEntry.steps })}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {t('family.healthRecords.noRecord')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
 
                 {/* 代記健康紀錄：只有對這位家人的血壓血糖／步數有嚴格寫入權的人
                     看得到，連到 /health-records 頁去新增量測、設定提醒範圍。

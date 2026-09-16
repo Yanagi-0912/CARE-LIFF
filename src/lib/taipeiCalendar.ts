@@ -23,6 +23,12 @@ export function taipeiDateOf(epochMs: number): string {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
+/** 台北時區的今天（YYYY-MM-DD），與後端 `_today_taipei_str` 同一個時區。
+ *  唯一實作，見檔案頂端「為什麼不用 Intl」的說明；不要在別處重寫一份。 */
+export function todayTaipei(): string {
+  return taipeiDateOf(Date.now());
+}
+
 /** 下一個台北時區午夜（00:00）對應的 epoch 毫秒；剛好是午夜時回傳下一天的午夜
  *  （用來排程「從現在算起，多久後跨日」的計時器，不會排出 0 或負的延遲）。 */
 export function nextTaipeiMidnightEpochMs(epochMs: number): number {
