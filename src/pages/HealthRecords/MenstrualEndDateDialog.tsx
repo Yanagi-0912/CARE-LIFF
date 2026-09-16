@@ -110,8 +110,10 @@ export function MenstrualEndDateDialog({ record, onClose, onSubmit }: MenstrualE
             >
               <HealthInput
                 id="menstrual-end-date-only"
-                type="text"
-                placeholder="YYYY-MM-DD"
+                // 同 MenstrualFormDialog：純文字框會讓格式不合的輸入變成字串比較
+                // 的誤判。min 帶開始日期，選不到比開始日期還早的日子。
+                type="date"
+                min={record.start_date}
                 invalid={Boolean(errors.endDate)}
                 register={register('endDate')}
               />

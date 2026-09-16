@@ -85,8 +85,11 @@ export function MenstrualFormDialog({ onClose, onSubmit }: MenstrualFormDialogPr
             >
               <HealthInput
                 id="menstrual-start"
-                type="text"
-                placeholder="YYYY-MM-DD"
+                // 一定要 type="date"：純文字框會把使用者打的任何字串直接拿去跟
+                // todayTaipei() 做字串比較，`9/17` 或 `2026/09/17` 都會大於
+                // `2026-09-17`（'/' > '-'），於是任何日期都被誤判成「晚於今天」。
+                // 原生日期欄位只會吐 YYYY-MM-DD，下面的 max 也才真的擋得住未來。
+                type="date"
                 max={todayTaipei()}
                 invalid={Boolean(errors.startDate)}
                 register={register('startDate')}
@@ -100,8 +103,9 @@ export function MenstrualFormDialog({ onClose, onSubmit }: MenstrualFormDialogPr
             >
               <HealthInput
                 id="menstrual-end"
-                type="text"
-                placeholder="YYYY-MM-DD"
+                // 與開始日期同樣的理由：純文字框會讓 `end < start`、天數上限這些
+                // 檢查都建立在使用者剛好打對格式的前提上。
+                type="date"
                 invalid={Boolean(errors.endDate)}
                 register={register('endDate')}
               />
