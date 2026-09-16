@@ -132,6 +132,13 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'home.healthRecords': '健康紀錄',
     'home.healthRecordsDesc': '血壓、血糖、經期與步數',
     'family.myHealthRecords': '我的健康紀錄',
+
+    'family.healthRecords.title': '健康紀錄',
+    'family.healthRecords.latestBloodPressure': '最新血壓',
+    'family.healthRecords.latestBloodGlucose': '最新血糖',
+    'family.healthRecords.todaySteps': '今日步數',
+    'family.healthRecords.noRecord': '尚無紀錄',
+    'family.healthRecords.proxyEntry': '幫他記錄健康紀錄',
   },
   en: {
     'health.self': 'Myself',
@@ -262,6 +269,13 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'home.healthRecords': 'Health Records',
     'home.healthRecordsDesc': 'Blood pressure, glucose, menstrual cycle, and steps',
     'family.myHealthRecords': 'My Health Records',
+
+    'family.healthRecords.title': 'Health Records',
+    'family.healthRecords.latestBloodPressure': 'Latest blood pressure',
+    'family.healthRecords.latestBloodGlucose': 'Latest blood glucose',
+    'family.healthRecords.todaySteps': "Today's steps",
+    'family.healthRecords.noRecord': 'No record yet',
+    'family.healthRecords.proxyEntry': 'Log health records for them',
   },
   id: {
     'health.self': 'Saya sendiri',
@@ -392,6 +406,13 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'home.healthRecords': 'Catatan Kesehatan',
     'home.healthRecordsDesc': 'Tekanan darah, gula darah, siklus haid, dan langkah',
     'family.myHealthRecords': 'Catatan Kesehatan Saya',
+
+    'family.healthRecords.title': 'Catatan Kesehatan',
+    'family.healthRecords.latestBloodPressure': 'Tekanan darah terbaru',
+    'family.healthRecords.latestBloodGlucose': 'Gula darah terbaru',
+    'family.healthRecords.todaySteps': 'Langkah hari ini',
+    'family.healthRecords.noRecord': 'Belum ada catatan',
+    'family.healthRecords.proxyEntry': 'Catatkan data kesehatan untuknya',
   },
   vi: {
     'health.self': 'Bản thân tôi',
@@ -522,6 +543,13 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'home.healthRecords': 'Hồ sơ sức khỏe',
     'home.healthRecordsDesc': 'Huyết áp, đường huyết, kinh nguyệt và số bước',
     'family.myHealthRecords': 'Hồ sơ sức khỏe của tôi',
+
+    'family.healthRecords.title': 'Hồ sơ sức khỏe',
+    'family.healthRecords.latestBloodPressure': 'Huyết áp gần nhất',
+    'family.healthRecords.latestBloodGlucose': 'Đường huyết gần nhất',
+    'family.healthRecords.todaySteps': 'Số bước hôm nay',
+    'family.healthRecords.noRecord': 'Chưa có chỉ số',
+    'family.healthRecords.proxyEntry': 'Ghi hồ sơ sức khỏe giúp họ',
   },
   th: {
     'health.self': 'ตัวฉันเอง',
@@ -650,6 +678,13 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'home.healthRecords': 'บันทึกสุขภาพ',
     'home.healthRecordsDesc': 'ความดันโลหิต น้ำตาล รอบเดือน และจำนวนก้าว',
     'family.myHealthRecords': 'บันทึกสุขภาพของฉัน',
+
+    'family.healthRecords.title': 'บันทึกสุขภาพ',
+    'family.healthRecords.latestBloodPressure': 'ความดันโลหิตล่าสุด',
+    'family.healthRecords.latestBloodGlucose': 'น้ำตาลในเลือดล่าสุด',
+    'family.healthRecords.todaySteps': 'จำนวนก้าววันนี้',
+    'family.healthRecords.noRecord': 'ยังไม่มีบันทึก',
+    'family.healthRecords.proxyEntry': 'ช่วยบันทึกสุขภาพให้',
   },
   ja: {
     'health.self': '自分',
@@ -778,5 +813,12 @@ export const healthRecordFeatureMessages: Record<SupportedLanguage, Record<strin
     'home.healthRecords': '健康記録',
     'home.healthRecordsDesc': '血圧、血糖値、生理周期、歩数',
     'family.myHealthRecords': '自分の健康記録',
+
+    'family.healthRecords.title': '健康記録',
+    'family.healthRecords.latestBloodPressure': '最新の血圧',
+    'family.healthRecords.latestBloodGlucose': '最新の血糖値',
+    'family.healthRecords.todaySteps': '今日の歩数',
+    'family.healthRecords.noRecord': 'まだ記録がありません',
+    'family.healthRecords.proxyEntry': '健康記録を代わりに記録',
   },
 };
