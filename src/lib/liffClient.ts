@@ -91,4 +91,78 @@ export async function initLiff(): Promise<void> {
   await liff.init({ liffId: LIFF_ID });
 }
 
+/**
+ * ID token 在到期前這麼久就當作過期。token 是在手機上判斷、在 LINE 伺服器上
+ * 驗證，兩邊時鐘差一點，就會出現「這裡看還沒過期、送過去已經過期」。
+ */
+const ID_TOKEN_EXPIRY_MARGIN_MS = 60_000;
+
+/**
+ * 換新之後至少隔這麼久才會再換一次。手機時鐘快了幾分鐘時，剛換到的新 token
+ * 在這裡看起來仍是過期，沒有這道限制會無限登出、登入、重新整理。
+ */
+const ID_TOKEN_REFRESH_COOLDOWN_MS = 5 * 60_000;
+const ID_TOKEN_REFRESH_AT_KEY = 'CARE_LIFF_ID_TOKEN_REFRESH_AT';
+
+function idTokenExpired(now: number): boolean {
+  const exp = liff.getDecodedIDToken()?.exp;
+  return typeof exp === 'number' && exp * 1000 - ID_TOKEN_EXPIRY_MARGIN_MS <= now;
+}
+
+function refreshedRecently(now: number): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(ID_TOKEN_REFRESH_AT_KEY));
+    return Number.isFinite(last) && now - last < ID_TOKEN_REFRESH_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+
+export type IdTokenResult =
+  | { status: 'ready'; idToken: string | null }
+  | { status: 'refreshing' };
+
+/** 這次頁面載入已經開始換新了。Provider 與登入頁會同時呼叫，只換一次。 */
+let refreshStarted = false;
+
+/**
+ * 取得還能送給後端驗證的 ID token；已過期時換新，回傳 refreshing（頁面會被導走）。
+ *
+ * ID token 發出後一小時內有效（LIFF API reference），但 SDK 把它快取在
+ * localStorage、不會自己換新，`liff.isLoggedIn()` 也照樣回 true。放著不管，
+ * 開過一小時的 LIFF 每次都拿舊 token 去後端，LINE 回「IdToken expired」、
+ * 後端回 401，連「重新登入」鈕送的也是同一張過期 token。
+ *
+ * 換新的做法是先 `liff.logout()` 清掉快取：外部瀏覽器再 `liff.login()`；
+ * LINE 內建瀏覽器不能呼叫 `liff.login()`（`liff.init()` 會自動登入），
+ * 改成重新整理頁面。
+ */
+export function getFreshIdToken(redirectUri: string): IdTokenResult {
+  if (refreshStarted) {
+    return { status: 'refreshing' };
+  }
+  const now = Date.now();
+  if (!idTokenExpired(now) || refreshedRecently(now)) {
+    return { status: 'ready', idToken: liff.getIDToken() };
+  }
+  refreshStarted = true;
+  try {
+    sessionStorage.setItem(ID_TOKEN_REFRESH_AT_KEY, String(now));
+  } catch {
+    // 寫不進去就少了防重複換新的保護，但這次仍然要換
+  }
+  liff.logout();
+  if (liff.isInClient()) {
+    window.location.reload();
+  } else {
+    liff.login({ redirectUri });
+  }
+  return { status: 'refreshing' };
+}
+
+/** 測試用：重設「這次頁面載入已開始換新」的狀態。 */
+export function resetIdTokenRefreshForTest(): void {
+  refreshStarted = false;
+}
+
 export default liff;
