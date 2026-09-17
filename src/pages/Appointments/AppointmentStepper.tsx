@@ -172,7 +172,7 @@ export function HospitalStep({
           <Button
             type="button"
             variant="link"
-            className="h-auto min-h-11 self-start px-0 whitespace-normal"
+            className="h-auto min-h-11 max-w-full self-start px-0 whitespace-normal"
             disabled={busy}
             onClick={() => onViewChange('picker')}
           >
@@ -273,7 +273,7 @@ function FacilityPicker({ onPick, onManual, onCancel, disabled }: FacilityPicker
         <div className="flex flex-wrap gap-2">
           <Input
             id="facility-keyword"
-            className="min-w-48 flex-1"
+            className="min-w-[min(12rem,100%)] flex-1"
             value={keyword}
             placeholder={t('nearby.keywordPlaceholder')}
             aria-invalid={Boolean(keywordError)}
@@ -361,7 +361,7 @@ function FacilityPicker({ onPick, onManual, onCancel, disabled }: FacilityPicker
         <Button
           type="button"
           variant="link"
-          className="h-auto min-h-11 px-0 text-left whitespace-normal"
+          className="h-auto min-h-11 max-w-full px-0 text-left whitespace-normal"
           onClick={onManual}
           disabled={disabled}
         >
@@ -371,7 +371,7 @@ function FacilityPicker({ onPick, onManual, onCancel, disabled }: FacilityPicker
           <Button
             type="button"
             variant="link"
-            className="h-auto min-h-11 px-0 whitespace-normal"
+            className="h-auto min-h-11 max-w-full px-0 whitespace-normal"
             onClick={onCancel}
             disabled={disabled}
           >
@@ -662,7 +662,7 @@ function TimeOfDaySelect({ id, value, onChange, disabled, invalid }: TimeOfDaySe
           id={id}
           aria-label={t('appt.form.hourAria')}
           aria-invalid={invalid}
-          className="num min-w-[11rem] flex-[2] font-semibold"
+          className="num min-w-[min(11rem,100%)] flex-[2] font-semibold"
         >
           <SelectValue>
             {(current) => (current ? hourLabel(String(current)) : t('appt.form.hourPlaceholder'))}
@@ -687,7 +687,7 @@ function TimeOfDaySelect({ id, value, onChange, disabled, invalid }: TimeOfDaySe
         <SelectTrigger
           aria-label={t('appt.form.minuteAria')}
           aria-invalid={invalid}
-          className="num min-w-[7rem] flex-1 font-semibold"
+          className="num min-w-[min(7rem,100%)] flex-1 font-semibold"
         >
           <SelectValue>
             {(current) =>

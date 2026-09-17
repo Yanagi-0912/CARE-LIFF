@@ -371,7 +371,7 @@ export function SlotEntryEditor({
               aria-label={t('meds.detailed.addMedName')}
               placeholder={t('meds.detailed.addMedName')}
               disabled={addingMed}
-              className="min-w-40 flex-1"
+              className="min-w-[min(10rem,100%)] flex-1"
             />
             <Button
               type="button"
