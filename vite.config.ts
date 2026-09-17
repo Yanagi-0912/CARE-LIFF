@@ -31,7 +31,17 @@ export default defineConfig({
       '.devtunnels.ms',
       '.trycloudflare.com',
       '.loca.lt'
-    ]
+    ],
+
+    // 實機測試：手機載入的是通道的 HTTPS 頁面，若 API 指向 localhost 會打到
+    // 手機自己，指向 http:// 又會被混合內容擋下。把 /api 代理到本機後端，
+    // VITE_API_BASE_URL 就可以填通道網址本身（同源），只需要一條通道。
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      }
+    }
   },
   test: {
     globals: true,
