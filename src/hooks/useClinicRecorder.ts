@@ -81,7 +81,7 @@ export interface ClinicRecorder {
 
 export function useClinicRecorder(): ClinicRecorder {
   const [state, setState] = useState<RecorderState>('idle');
-  const [unsupported, setUnsupported] = useState<RecorderUnsupported | null>(null);
+  const [unsupported, setUnsupported] = useState<RecorderUnsupported | null>(detectSupport);
   const [seconds, setSeconds] = useState(0);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [mimeType, setMimeType] = useState('');
@@ -90,10 +90,6 @@ export function useClinicRecorder(): ClinicRecorder {
   const chunksRef = useRef<BlobPart[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    setUnsupported(detectSupport());
-  }, []);
 
   /** 麥克風一定要關掉：不關的話手機狀態列會一直顯示錄音中，使用者會以為還在錄。 */
   const releaseStream = useCallback(() => {
