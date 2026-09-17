@@ -195,6 +195,22 @@
   </div>
 
   <div class="card">
+    <h2>計步校正（走一段路再回來看）</h2>
+    <table>
+      <tr><td>合力最大值</td><td id="cal-max">–</td></tr>
+      <tr><td>合力最小值</td><td id="cal-min">–</td></tr>
+      <tr><td>波動幅度（最大 − 最小）</td><td id="cal-range">–</td></tr>
+      <tr><td>基準（重力估計）</td><td id="cal-base">–</td></tr>
+      <tr><td>偵測步數：超出基準 +0.6</td><td id="cal-s0">0</td></tr>
+      <tr><td>偵測步數：超出基準 +1.0</td><td id="cal-s1">0</td></tr>
+      <tr><td>偵測步數：超出基準 +1.5</td><td id="cal-s2">0</td></tr>
+    </table>
+    <button type="button" id="cal-reset">歸零，重新計算</button>
+    <p>用法：按「歸零」→ 手機放口袋或自然擺動 → <b>實走 20 步</b> → 拿出來看三個門檻各算到幾步。
+       數字最接近 20 的那個，就是正式參數該用的值。讀螢幕邊走會把晃動壓掉，所以走的時候不要看畫面。</p>
+  </div>
+
+  <div class="card">
     <h2>acceleration（不含重力，多數手機回傳 null）</h2>
     <table>
       <tr><td>x</td><td id="a-x">–</td></tr>
@@ -303,6 +319,10 @@
       ? fmt(Math.sqrt(aig.x * aig.x + aig.y * aig.y + aig.z * aig.z))
       : '–';
 
+    if (hasAig) {
+      calFeed(Math.sqrt(aig.x * aig.x + aig.y * aig.y + aig.z * aig.z), Date.now());
+    }
+
     var a = event.acceleration || {};
     $('a-x').textContent = fmt(a.x);
     $('a-y').textContent = fmt(a.y);
@@ -325,8 +345,59 @@
     }
   }
 
+  // ── 計步校正 ───────────────────────────────────────────────────────────
+  // 正式的偵測器用「絕對門檻」（超過 11 就算一步），但重力基準會因裝置與擺放
+  // 而異（實測有 9.825 的機器），而且走路的波峰本來就不一定高過固定值。這裡
+  // 改用「超出目前基準多少」來數，同時跑三個候選值，走一趟就能看出差別。
+  var CAL_DELTAS = [0.6, 1.0, 1.5];
+  var CAL_IDS = ['cal-s0', 'cal-s1', 'cal-s2'];
+  var calState = null;
+
+  function calReset() {
+    calState = {
+      max: null, min: null, base: null,
+      smoothed: null, prev: null, prev2: null,
+      counts: [0, 0, 0], lastStepAt: [0, 0, 0]
+    };
+    $('cal-max').textContent = '–';
+    $('cal-min').textContent = '–';
+    $('cal-range').textContent = '–';
+    $('cal-base').textContent = '–';
+    for (var i = 0; i < CAL_IDS.length; i++) { $(CAL_IDS[i]).textContent = '0'; }
+  }
+
+  function calFeed(mag, now) {
+    if (!calState) calReset();
+    var s = calState;
+    if (s.max === null || mag > s.max) s.max = mag;
+    if (s.min === null || mag < s.min) s.min = mag;
+    // 低通濾波，係數與正式偵測器相同（0.3）
+    s.smoothed = s.smoothed === null ? mag : s.smoothed + 0.3 * (mag - s.smoothed);
+    // 慢速基準＝重力估計，讓門檻跟著裝置走，不寫死 9.8
+    s.base = s.base === null ? s.smoothed : s.base + 0.01 * (s.smoothed - s.base);
+
+    // 三點峰值：前一點同時高於再前一點與現在這一點
+    if (s.prev2 !== null && s.prev > s.prev2 && s.prev >= s.smoothed) {
+      for (var i = 0; i < CAL_DELTAS.length; i++) {
+        if (s.prev - s.base > CAL_DELTAS[i] && now - s.lastStepAt[i] >= 300) {
+          s.counts[i]++;
+          s.lastStepAt[i] = now;
+          $(CAL_IDS[i]).textContent = String(s.counts[i]);
+        }
+      }
+    }
+    s.prev2 = s.prev;
+    s.prev = s.smoothed;
+
+    $('cal-max').textContent = fmt(s.max);
+    $('cal-min').textContent = fmt(s.min);
+    $('cal-range').textContent = fmt(s.max - s.min);
+    $('cal-base').textContent = fmt(s.base);
+  }
+
   function startListening() {
     listening = true;
+    calReset();
     window.addEventListener('devicemotion', onMotion);
     requestBtn.disabled = true;
     stopBtn.disabled = false;
@@ -385,6 +456,7 @@
   });
 
   stopBtn.addEventListener('click', stopListening);
+  $('cal-reset').addEventListener('click', calReset);
 
   if (!hasApi) {
     setBadge(statusEl, '此瀏覽器沒有 DeviceMotionEvent', 'err');
