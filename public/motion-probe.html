@@ -201,13 +201,17 @@
       <tr><td>合力最小值</td><td id="cal-min">–</td></tr>
       <tr><td>波動幅度（最大 − 最小）</td><td id="cal-range">–</td></tr>
       <tr><td>基準（重力估計）</td><td id="cal-base">–</td></tr>
-      <tr><td>偵測步數：超出基準 +0.6</td><td id="cal-s0">0</td></tr>
-      <tr><td>偵測步數：超出基準 +1.0</td><td id="cal-s1">0</td></tr>
-      <tr><td>偵測步數：超出基準 +1.5</td><td id="cal-s2">0</td></tr>
+      <tr><td>經過時間</td><td id="cal-elapsed">–</td></tr>
+    </table>
+    <h3>參數組合試算（平滑 × 門檻 × 最短間隔）</h3>
+    <table>
+      <tr><th>組合</th><th>偵測步數</th></tr>
+      <tbody id="cal-rows"></tbody>
     </table>
     <button type="button" id="cal-reset">歸零，重新計算</button>
-    <p>用法：按「歸零」→ 手機放口袋或自然擺動 → <b>實走 20 步</b> → 拿出來看三個門檻各算到幾步。
-       數字最接近 20 的那個，就是正式參數該用的值。讀螢幕邊走會把晃動壓掉，所以走的時候不要看畫面。</p>
+    <p>用法：按「歸零」→ 手機放口袋或自然擺動 → <b>實走 20 步</b> → 拿出來看哪一組最接近 20。
+       走的時候不要看畫面，讀螢幕會把晃動壓掉。經過時間用來算實際步頻（20 ÷ 秒數），
+       那決定最短間隔該設多少。</p>
   </div>
 
   <div class="card">
@@ -346,24 +350,46 @@
   }
 
   // ── 計步校正 ───────────────────────────────────────────────────────────
-  // 正式的偵測器用「絕對門檻」（超過 11 就算一步），但重力基準會因裝置與擺放
-  // 而異（實測有 9.825 的機器），而且走路的波峰本來就不一定高過固定值。這裡
-  // 改用「超出目前基準多少」來數，同時跑三個候選值，走一趟就能看出差別。
-  var CAL_DELTAS = [0.6, 1.0, 1.5];
-  var CAL_IDS = ['cal-s0', 'cal-s1', 'cal-s2'];
+  // 實測（Android, 61Hz）：靜止合力 9.825、走路波峰 22.654、基準 10.049。
+  // 訊號強度不是問題——絕對門檻 11 早就被輕鬆越過；問題是一步會產生多個波峰
+  // （腳跟著地、腳尖離地、手臂擺動），平滑係數 0.3 跟得太緊、最短間隔 300ms
+  // 又允許每秒 3.3 步，於是 20 步被數成 32～42 步。
+  // 這裡一次跑多組參數，走一趟就能看出哪一組貼近真實步數。
+  var CAL_CONFIGS = [
+    { label: 'α0.30 Δ1.5 300ms（目前）', alpha: 0.30, delta: 1.5, gap: 300 },
+    { label: 'α0.20 Δ2.0 400ms', alpha: 0.20, delta: 2.0, gap: 400 },
+    { label: 'α0.15 Δ3.0 450ms', alpha: 0.15, delta: 3.0, gap: 450 },
+    { label: 'α0.15 Δ4.0 500ms', alpha: 0.15, delta: 4.0, gap: 500 },
+    { label: 'α0.10 Δ3.0 500ms', alpha: 0.10, delta: 3.0, gap: 500 },
+    { label: 'α0.10 Δ5.0 550ms', alpha: 0.10, delta: 5.0, gap: 550 }
+  ];
   var calState = null;
 
+  function calBuildRows() {
+    var tbody = $('cal-rows');
+    tbody.innerHTML = '';
+    for (var i = 0; i < CAL_CONFIGS.length; i++) {
+      var tr = document.createElement('tr');
+      var td1 = document.createElement('td');
+      td1.textContent = CAL_CONFIGS[i].label;
+      var td2 = document.createElement('td');
+      td2.id = 'cal-n' + i;
+      td2.textContent = '0';
+      tr.appendChild(td1); tr.appendChild(td2); tbody.appendChild(tr);
+    }
+  }
+
   function calReset() {
-    calState = {
-      max: null, min: null, base: null,
-      smoothed: null, prev: null, prev2: null,
-      counts: [0, 0, 0], lastStepAt: [0, 0, 0]
-    };
+    calState = { max: null, min: null, base: null, startedAt: Date.now(), runs: [] };
+    for (var i = 0; i < CAL_CONFIGS.length; i++) {
+      calState.runs.push({ smoothed: null, prev: null, prev2: null, count: 0, lastAt: 0 });
+    }
+    calBuildRows();
     $('cal-max').textContent = '–';
     $('cal-min').textContent = '–';
     $('cal-range').textContent = '–';
     $('cal-base').textContent = '–';
-    for (var i = 0; i < CAL_IDS.length; i++) { $(CAL_IDS[i]).textContent = '0'; }
+    $('cal-elapsed').textContent = '0.0 s';
   }
 
   function calFeed(mag, now) {
@@ -371,28 +397,33 @@
     var s = calState;
     if (s.max === null || mag > s.max) s.max = mag;
     if (s.min === null || mag < s.min) s.min = mag;
-    // 低通濾波，係數與正式偵測器相同（0.3）
-    s.smoothed = s.smoothed === null ? mag : s.smoothed + 0.3 * (mag - s.smoothed);
-    // 慢速基準＝重力估計，讓門檻跟著裝置走，不寫死 9.8
-    s.base = s.base === null ? s.smoothed : s.base + 0.01 * (s.smoothed - s.base);
 
-    // 三點峰值：前一點同時高於再前一點與現在這一點
-    if (s.prev2 !== null && s.prev > s.prev2 && s.prev >= s.smoothed) {
-      for (var i = 0; i < CAL_DELTAS.length; i++) {
-        if (s.prev - s.base > CAL_DELTAS[i] && now - s.lastStepAt[i] >= 300) {
-          s.counts[i]++;
-          s.lastStepAt[i] = now;
-          $(CAL_IDS[i]).textContent = String(s.counts[i]);
+    for (var i = 0; i < CAL_CONFIGS.length; i++) {
+      var cfg = CAL_CONFIGS[i];
+      var r = s.runs[i];
+      r.smoothed = r.smoothed === null ? mag : r.smoothed + cfg.alpha * (mag - r.smoothed);
+      if (i === 0) {
+        // 基準（重力估計）用第一組的平滑值即可，僅供顯示
+        s.base = s.base === null ? r.smoothed : s.base + 0.01 * (r.smoothed - s.base);
+      }
+      if (r.prev2 !== null && r.prev > r.prev2 && r.prev >= r.smoothed) {
+        var baseline = s.base === null ? mag : s.base;
+        if (r.prev - baseline > cfg.delta && now - r.lastAt >= cfg.gap) {
+          r.count++;
+          r.lastAt = now;
+          var cell = $('cal-n' + i);
+          if (cell) cell.textContent = String(r.count);
         }
       }
+      r.prev2 = r.prev;
+      r.prev = r.smoothed;
     }
-    s.prev2 = s.prev;
-    s.prev = s.smoothed;
 
     $('cal-max').textContent = fmt(s.max);
     $('cal-min').textContent = fmt(s.min);
     $('cal-range').textContent = fmt(s.max - s.min);
     $('cal-base').textContent = fmt(s.base);
+    $('cal-elapsed').textContent = ((now - s.startedAt) / 1000).toFixed(1) + ' s';
   }
 
   function startListening() {
