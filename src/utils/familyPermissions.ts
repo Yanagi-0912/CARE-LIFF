@@ -107,6 +107,22 @@ export function canManageAppointments(member: FamilyMember): boolean {
   return strictPermissionsOf(member).general.includes('WRITE');
 }
 
+/**
+ * 我看得到這位成員的看診錄音嗎。
+ *
+ * 看診錄音是 RBAC 之後才有的功能，後端一律**嚴格判定** SENSITIVE（見 CARE
+ * `app/routers/users/clinic_transcripts.py` 的 `_authorize`）：影子模式下只有讀取權
+ * 的 MEMBER 也看不到。所以看 `my_strict_permissions`，理由同 canManageAppointments。
+ */
+export function canReadClinicVisits(member: FamilyMember): boolean {
+  return strictPermissionsOf(member).sensitive.includes('READ');
+}
+
+/** 我可以替這位成員錄看診嗎（陪診）。同樣是嚴格判定的 SENSITIVE 寫入權。 */
+export function canRecordClinicVisits(member: FamilyMember): boolean {
+  return strictPermissionsOf(member).sensitive.includes('WRITE');
+}
+
 /** 我可以代這位成員填健康資料嗎。 */
 export function canProxyEditHealth(member: FamilyMember): boolean {
   return canWriteSensitive(member);

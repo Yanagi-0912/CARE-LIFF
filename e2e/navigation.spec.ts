@@ -19,6 +19,7 @@ const SIDEBAR_ITEMS = [
   { labelKey: 'sidebar.health', path: '/personalhealth' },
   { labelKey: 'sidebar.medications', path: '/reminders/medications' },
   { labelKey: 'sidebar.appointments', path: '/reminders/appointments' },
+  { labelKey: 'sidebar.clinicVisits', path: '/clinic-visits' },
   { labelKey: 'sidebar.knowledgeReports', path: '/knowledge-reports' },
   { labelKey: 'sidebar.family', path: '/family' },
   { labelKey: 'sidebar.settings', path: '/settings' },

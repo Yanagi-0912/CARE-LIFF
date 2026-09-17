@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeftIcon } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 
 import { getClinicVisit, type ClinicVisitRecord } from '../../api/clinicVisitApi';
 
@@ -29,6 +32,23 @@ function Section({ title, items }: { title: string; items: string[] }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+/** 從推播進來的人沒有上一頁可退，所以回清單要自己給一顆，而且要記得是誰的清單。 */
+function BackToList({ targetUserId }: { targetUserId?: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const query = targetUserId ? `?target_user_id=${encodeURIComponent(targetUserId)}` : '';
+  return (
+    <Button
+      variant="ghost"
+      className="-ml-3 mb-2 h-auto min-h-11 whitespace-normal"
+      onClick={() => navigate(`/clinic-visits${query}`)}
+    >
+      <ArrowLeftIcon data-icon="inline-start" />
+      {t('clinic.backToList')}
+    </Button>
   );
 }
 
@@ -61,20 +81,29 @@ export default function ClinicVisitDetailPage() {
     };
   }, [recordId, targetUserId]);
 
-  if (failed) return <main className="px-4 py-10">{t('clinic.status.failed')}</main>;
+  if (failed) {
+    return (
+      <main className="px-4 py-6">
+        <BackToList targetUserId={targetUserId} />
+        <p>{t('clinic.status.failed')}</p>
+      </main>
+    );
+  }
   if (!record) return <main className="px-4 py-10">{t('clinic.status.processing')}</main>;
 
   if (record.status === 'processing') {
     return (
-      <main className="mx-auto max-w-md px-4 py-10 text-center">
-        <p className="text-lg">{t('clinic.status.processing')}</p>
+      <main className="mx-auto max-w-md px-4 py-6">
+        <BackToList targetUserId={targetUserId} />
+        <p className="mt-4 text-center text-lg">{t('clinic.status.processing')}</p>
       </main>
     );
   }
 
   if (record.status === 'failed') {
     return (
-      <main className="mx-auto max-w-md px-4 py-10">
+      <main className="mx-auto max-w-md px-4 py-6">
+        <BackToList targetUserId={targetUserId} />
         <h1 className="text-xl font-semibold">{t('clinic.status.failed')}</h1>
         <p className="mt-3 leading-relaxed">{record.failure_reason}</p>
       </main>
@@ -84,7 +113,8 @@ export default function ClinicVisitDetailPage() {
   const { summary } = record;
 
   return (
-    <main className="mx-auto max-w-md px-4 py-8">
+    <main className="mx-auto max-w-md px-4 py-6">
+      <BackToList targetUserId={targetUserId} />
       <h1 className="text-xl font-semibold">
         {record.hospital_name || t('clinic.title')}
         {record.department && ` · ${record.department}`}

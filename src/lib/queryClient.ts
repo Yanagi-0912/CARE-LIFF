@@ -49,6 +49,8 @@ export const queryKeys = {
     ['appointments', targetUserId ?? 'self', 'upcoming'] as const,
   appointmentsPast: (targetUserId?: string) =>
     ['appointments', targetUserId ?? 'self', 'past'] as const,
+  /** 看診錄音清單。SENSITIVE、嚴格判定，對象要進 key，理由同掛號提醒。 */
+  clinicVisits: (targetUserId?: string) => ['clinic-visits', targetUserId ?? 'self'] as const,
   /** 單一院所（編輯掛號提醒時重抓門診時段用） */
   facility: (facilityId: string) => ['facility', facilityId] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */

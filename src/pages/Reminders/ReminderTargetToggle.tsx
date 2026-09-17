@@ -7,6 +7,8 @@ interface ReminderTargetToggleProps {
   selectedUserId: string | undefined;
   selfUserId: string | undefined;
   onSelect: (userId: string | undefined) => void;
+  /** 群組的無障礙名稱。預設「提醒對象」，非提醒頁（如看診錄音）要自己給。 */
+  label?: string;
 }
 
 /**
@@ -21,6 +23,7 @@ export function ReminderTargetToggle({
   selectedUserId,
   selfUserId,
   onSelect,
+  label,
 }: ReminderTargetToggleProps) {
   const { t } = useTranslation();
 
@@ -36,7 +39,7 @@ export function ReminderTargetToggle({
         if (next === undefined) return;
         onSelect(next === 'self' ? selfUserId : next);
       }}
-      aria-label={t('meds.targetLabel')}
+      aria-label={label ?? t('meds.targetLabel')}
     >
       {targets.map((target) => (
         <ToggleGroupItem key={target.userId ?? 'self'} value={target.userId ?? 'self'}>

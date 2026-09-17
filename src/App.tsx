@@ -24,6 +24,7 @@ const MedicationsPage = lazy(() => import('./pages/Medications'));
 const VisitsPage = lazy(() => import('./pages/Medications/Visits'));
 const ClinicRecordPage = lazy(() => import('./pages/ClinicVisit/RecordPage'));
 const ClinicVisitDetailPage = lazy(() => import('./pages/ClinicVisit/DetailPage'));
+const ClinicVisitListPage = lazy(() => import('./pages/ClinicVisit/ListPage'));
 const AppointmentsPage = lazy(() => import('./pages/Appointments'));
 const NearbyHospitalsPage = lazy(() => import('./pages/NearbyHospitals'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
@@ -154,6 +155,7 @@ function AppContent() {
                 </ProtectedRoute>
               )}
             />
+            <Route path="/clinic-visits" element={<ProtectedRoute><ClinicVisitListPage /></ProtectedRoute>} />
             <Route path="/clinic-visits/record" element={<ProtectedRoute><ClinicRecordPage /></ProtectedRoute>} />
             <Route path="/clinic-visits/:recordId" element={<ProtectedRoute><ClinicVisitDetailPage /></ProtectedRoute>} />
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />

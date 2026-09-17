@@ -7,7 +7,7 @@ import {
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
-import { CalendarClockIcon, ChevronRightIcon, ShieldCheckIcon } from 'lucide-react';
+import { CalendarClockIcon, ChevronRightIcon, MicIcon, ShieldCheckIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -67,6 +67,15 @@ const Home = () => {
       path: '/reminders/appointments',
       desc: t('home.appointmentsDesc'),
       tone: 'amber'
+    },
+    // 緊接在掛號提醒之後：看診前設提醒、看診時錄音，是同一趟門診的前後兩步。
+    // 也是看診錄音在 App 裡唯一不必等推播就點得到的入口。
+    {
+      title: t('home.clinicVisits'),
+      icon: <MicIcon width={26} height={26} />,
+      path: '/clinic-visits',
+      desc: t('home.clinicVisitsDesc'),
+      tone: 'teal'
     },
     {
       title: t('home.family'),

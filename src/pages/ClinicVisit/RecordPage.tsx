@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Mic, Square, Upload } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { uploadClinicRecording, type ConsentMode } from '../../api/clinicVisitApi';
+import {
+  uploadClinicRecording,
+  type ClinicVisitRecord,
+  type ConsentMode,
+} from '../../api/clinicVisitApi';
 import { useClinicRecorder } from '../../hooks/useClinicRecorder';
 
 /**
@@ -34,6 +38,8 @@ export default function ClinicRecordPage() {
   const [consent, setConsent] = useState<ConsentMode>('doctor_agreed');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<ClinicVisitRecord | null>(null);
+  const navigate = useNavigate();
 
   // 從掛號提醒的推播進來時會帶這些，讓紀錄知道是哪一次門診。
   const targetUserId = params.get('target_user_id') ?? undefined;
@@ -54,7 +60,7 @@ export default function ClinicRecordPage() {
     setUploading(true);
     setError(null);
     try {
-      await uploadClinicRecording({
+      const record = await uploadClinicRecording({
         blob: recorder.blob,
         consent,
         targetUserId,
@@ -62,6 +68,7 @@ export default function ClinicRecordPage() {
         hospitalName,
         department,
       });
+      setSent(record);
       setPhase('sent');
     } catch {
       // 錄音還在記憶體裡，不要清掉——醫院訊號差，重試很常見。
@@ -83,10 +90,30 @@ export default function ClinicRecordPage() {
   }
 
   if (phase === 'sent') {
+    // 家人替長輩錄的，紀錄屬於長輩：連結要帶 target_user_id，API 才知道看的是誰的。
+    const targetQuery = targetUserId ? `?target_user_id=${encodeURIComponent(targetUserId)}` : '';
+    const sentId = sent?.id ?? sent?._id;
     return (
       <main className="mx-auto max-w-md px-4 py-10 text-center">
         <CheckCircle2 className="mx-auto h-14 w-14 text-green-600" aria-hidden />
         <p className="mt-4 text-lg leading-relaxed">{t('clinic.done')}</p>
+        <div className="mt-8 space-y-3">
+          {sentId && (
+            <Button
+              className="h-14 w-full text-lg"
+              onClick={() => navigate(`/clinic-visits/${encodeURIComponent(sentId)}${targetQuery}`)}
+            >
+              {t('clinic.viewRecord')}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            className="h-12 w-full"
+            onClick={() => navigate(`/clinic-visits${targetQuery}`)}
+          >
+            {t('clinic.backToList')}
+          </Button>
+        </div>
       </main>
     );
   }
