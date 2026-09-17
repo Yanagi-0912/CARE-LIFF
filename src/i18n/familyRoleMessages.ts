@@ -24,6 +24,8 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': '協助照顧者',
     'familyRole.member': '一般家人',
     'familyRole.unassigned': '尚未設定',
+    // 家人卡片上的角色徽章。卡片沒有「權限」的上下文，只寫「尚未設定」會看不出是什麼沒設定
+    'familyRole.cardUnassigned': '尚未設定權限',
 
     'familyRole.manage.title': '家人的權限',
     'familyRole.manage.desc': '您可以決定每位家人能看到、能幫您設定哪些資料。',
@@ -32,6 +34,11 @@ export const familyRoleMessages: Record<
     'familyRole.manage.saved': '已更新 {{name}} 的權限',
     'familyRole.manage.saveError': '權限更新失敗，請稍後再試',
     'familyRole.manage.loadError': '無法載入權限設定',
+    'familyRole.manage.pager': '第 {{current}} 位，共 {{total}} 位',
+    'familyRole.manage.prev': '上一位家人',
+    'familyRole.manage.next': '下一位家人',
+    'familyRole.manage.swipeHint': '左右滑動也可以切換家人',
+    'familyRole.manage.roleFor': '{{name}} 的權限',
 
     'familyRole.explain.guardian': '看得到您的健康狀況與對話紀錄，也能幫您設定用藥與健康資料。',
     'familyRole.explain.caregiver': '看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。',
@@ -50,9 +57,9 @@ export const familyRoleMessages: Record<
     'familyPermission.noPrivate': '您沒有查看對話紀錄的權限',
     'familyPermission.askOwner': '需要的話，請家人在他的「家人的權限」裡調整。',
 
-    'familyPermission.proxyEdit': '幫他填健康資料',
+    'familyPermission.proxyEdit': '幫忙填健康資料',
     'familyPermission.proxyEditTitle': '幫 {{name}} 填健康資料',
-    'familyPermission.proxyEditDesc': '這些資料會存進他的健康檔案。姓名與照片由他本人設定，這裡不會更動。',
+    'familyPermission.proxyEditDesc': '這些資料會存進 {{name}} 的健康檔案。姓名與照片由本人設定，這裡不會更動。',
     'familyPermission.proxyEditSaved': '已更新 {{name}} 的健康資料',
     'familyPermission.proxyEditError': '代填失敗，請稍後再試',
     'familyPermission.proxyEditLoadGuard': '要先讀到 {{name}} 原本的資料才能代填，以免蓋掉已經填好的內容。',
@@ -75,6 +82,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'Assisting caregiver',
     'familyRole.member': 'Family member',
     'familyRole.unassigned': 'Not set yet',
+    'familyRole.cardUnassigned': 'Access not set yet',
 
     'familyRole.manage.title': "Your family's access",
     'familyRole.manage.desc': 'You decide what each family member can see and help you manage.',
@@ -83,6 +91,11 @@ export const familyRoleMessages: Record<
     'familyRole.manage.saved': "Updated {{name}}'s access",
     'familyRole.manage.saveError': 'Could not update access. Please try again later.',
     'familyRole.manage.loadError': 'Could not load access settings',
+    'familyRole.manage.pager': '{{current}} of {{total}}',
+    'familyRole.manage.prev': 'Previous family member',
+    'familyRole.manage.next': 'Next family member',
+    'familyRole.manage.swipeHint': 'You can also swipe left or right to switch',
+    'familyRole.manage.roleFor': "{{name}}'s access",
 
     'familyRole.explain.guardian': 'Can see your health details and conversation records, and can manage your medicines and health information.',
     'familyRole.explain.caregiver': 'Can see your health details and manage your medicines, but not your conversation records.',
@@ -103,7 +116,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'Fill in their health information',
     'familyPermission.proxyEditTitle': "Fill in {{name}}'s health information",
-    'familyPermission.proxyEditDesc': 'This is saved to their health record. Their name and photo are set by them and are not changed here.',
+    'familyPermission.proxyEditDesc': "This is saved to {{name}}'s health record. Their name and photo are set by them and are not changed here.",
     'familyPermission.proxyEditSaved': "Updated {{name}}'s health information",
     'familyPermission.proxyEditError': 'Could not save. Please try again later.',
     'familyPermission.proxyEditLoadGuard': "{{name}}'s current information has to load first, so nothing already filled in gets overwritten.",
@@ -126,6 +139,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'Pengasuh pendamping',
     'familyRole.member': 'Anggota keluarga',
     'familyRole.unassigned': 'Belum diatur',
+    'familyRole.cardUnassigned': 'Akses belum diatur',
 
     'familyRole.manage.title': 'Akses keluarga Anda',
     'familyRole.manage.desc': 'Anda menentukan apa yang dapat dilihat dan dibantu oleh setiap anggota keluarga.',
@@ -134,6 +148,11 @@ export const familyRoleMessages: Record<
     'familyRole.manage.saved': 'Akses {{name}} diperbarui',
     'familyRole.manage.saveError': 'Gagal memperbarui akses. Coba lagi nanti.',
     'familyRole.manage.loadError': 'Gagal memuat pengaturan akses',
+    'familyRole.manage.pager': '{{current}} dari {{total}}',
+    'familyRole.manage.prev': 'Anggota keluarga sebelumnya',
+    'familyRole.manage.next': 'Anggota keluarga berikutnya',
+    'familyRole.manage.swipeHint': 'Geser ke kiri atau kanan juga bisa untuk berpindah',
+    'familyRole.manage.roleFor': 'Akses {{name}}',
 
     'familyRole.explain.guardian': 'Dapat melihat kondisi kesehatan dan catatan percakapan Anda, serta membantu mengatur obat dan data kesehatan.',
     'familyRole.explain.caregiver': 'Dapat melihat kondisi kesehatan dan membantu mengatur obat, tetapi tidak melihat catatan percakapan.',
@@ -154,7 +173,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'Isikan data kesehatannya',
     'familyPermission.proxyEditTitle': 'Isi data kesehatan {{name}}',
-    'familyPermission.proxyEditDesc': 'Data ini disimpan ke catatan kesehatannya. Nama dan fotonya diatur olehnya sendiri dan tidak diubah di sini.',
+    'familyPermission.proxyEditDesc': 'Data ini disimpan ke catatan kesehatan {{name}}. Nama dan foto diatur oleh yang bersangkutan dan tidak diubah di sini.',
     'familyPermission.proxyEditSaved': 'Data kesehatan {{name}} diperbarui',
     'familyPermission.proxyEditError': 'Gagal menyimpan. Coba lagi nanti.',
     'familyPermission.proxyEditLoadGuard': 'Data {{name}} yang sudah ada harus dimuat dulu agar isian yang sudah ada tidak tertimpa.',
@@ -177,6 +196,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'Người hỗ trợ chăm sóc',
     'familyRole.member': 'Thành viên gia đình',
     'familyRole.unassigned': 'Chưa thiết lập',
+    'familyRole.cardUnassigned': 'Chưa thiết lập quyền',
 
     'familyRole.manage.title': 'Quyền của người thân',
     'familyRole.manage.desc': 'Bạn quyết định mỗi người thân được xem và giúp bạn thiết lập những gì.',
@@ -185,6 +205,11 @@ export const familyRoleMessages: Record<
     'familyRole.manage.saved': 'Đã cập nhật quyền của {{name}}',
     'familyRole.manage.saveError': 'Không cập nhật được quyền. Vui lòng thử lại sau.',
     'familyRole.manage.loadError': 'Không tải được thiết lập quyền',
+    'familyRole.manage.pager': 'Người thứ {{current}} trong {{total}}',
+    'familyRole.manage.prev': 'Người thân trước',
+    'familyRole.manage.next': 'Người thân tiếp theo',
+    'familyRole.manage.swipeHint': 'Bạn cũng có thể vuốt sang trái hoặc phải để chuyển',
+    'familyRole.manage.roleFor': 'Quyền của {{name}}',
 
     'familyRole.explain.guardian': 'Xem được tình trạng sức khoẻ và lịch sử trò chuyện của bạn, đồng thời giúp bạn thiết lập thuốc và dữ liệu sức khoẻ.',
     'familyRole.explain.caregiver': 'Xem được tình trạng sức khoẻ và giúp thiết lập thuốc, nhưng không xem được lịch sử trò chuyện.',
@@ -205,7 +230,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'Điền dữ liệu sức khoẻ giúp họ',
     'familyPermission.proxyEditTitle': 'Điền dữ liệu sức khoẻ cho {{name}}',
-    'familyPermission.proxyEditDesc': 'Dữ liệu này được lưu vào hồ sơ sức khoẻ của họ. Tên và ảnh do chính họ thiết lập, ở đây không thay đổi.',
+    'familyPermission.proxyEditDesc': 'Dữ liệu này được lưu vào hồ sơ sức khoẻ của {{name}}. Tên và ảnh do chính người đó thiết lập, ở đây không thay đổi.',
     'familyPermission.proxyEditSaved': 'Đã cập nhật dữ liệu sức khoẻ của {{name}}',
     'familyPermission.proxyEditError': 'Lưu không thành công. Vui lòng thử lại sau.',
     'familyPermission.proxyEditLoadGuard': 'Cần tải được dữ liệu hiện có của {{name}} trước rồi mới điền giúp được, để không ghi đè nội dung đã điền.',
@@ -228,6 +253,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': 'ผู้ช่วยดูแล',
     'familyRole.member': 'สมาชิกครอบครัว',
     'familyRole.unassigned': 'ยังไม่ได้ตั้งค่า',
+    'familyRole.cardUnassigned': 'ยังไม่ได้ตั้งค่าสิทธิ์',
 
     'familyRole.manage.title': 'สิทธิ์ของคนในครอบครัว',
     'familyRole.manage.desc': 'ท่านเป็นผู้กำหนดว่าแต่ละคนดูอะไรได้ และช่วยตั้งค่าอะไรให้ท่านได้',
@@ -236,6 +262,11 @@ export const familyRoleMessages: Record<
     'familyRole.manage.saved': 'อัปเดตสิทธิ์ของ {{name}} แล้ว',
     'familyRole.manage.saveError': 'อัปเดตสิทธิ์ไม่สำเร็จ กรุณาลองใหม่ภายหลัง',
     'familyRole.manage.loadError': 'โหลดการตั้งค่าสิทธิ์ไม่สำเร็จ',
+    'familyRole.manage.pager': 'คนที่ {{current}} จาก {{total}} คน',
+    'familyRole.manage.prev': 'คนก่อนหน้า',
+    'familyRole.manage.next': 'คนถัดไป',
+    'familyRole.manage.swipeHint': 'ปัดซ้ายหรือขวาเพื่อสลับคนได้เช่นกัน',
+    'familyRole.manage.roleFor': 'สิทธิ์ของ {{name}}',
 
     'familyRole.explain.guardian': 'ดูสภาพสุขภาพและบันทึกการสนทนาของท่านได้ และช่วยตั้งค่ายาและข้อมูลสุขภาพให้ท่านได้',
     'familyRole.explain.caregiver': 'ดูสภาพสุขภาพและช่วยตั้งค่ายาได้ แต่ดูบันทึกการสนทนาไม่ได้',
@@ -256,7 +287,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': 'ช่วยกรอกข้อมูลสุขภาพให้',
     'familyPermission.proxyEditTitle': 'กรอกข้อมูลสุขภาพให้ {{name}}',
-    'familyPermission.proxyEditDesc': 'ข้อมูลนี้จะถูกบันทึกลงในระเบียนสุขภาพของเขา ชื่อและรูปภาพเจ้าตัวเป็นผู้ตั้งค่า และจะไม่ถูกแก้ไขที่นี่',
+    'familyPermission.proxyEditDesc': 'ข้อมูลนี้จะถูกบันทึกลงในระเบียนสุขภาพของ {{name}} ชื่อและรูปภาพเจ้าตัวเป็นผู้ตั้งค่า และจะไม่ถูกแก้ไขที่นี่',
     'familyPermission.proxyEditSaved': 'อัปเดตข้อมูลสุขภาพของ {{name}} แล้ว',
     'familyPermission.proxyEditError': 'บันทึกไม่สำเร็จ กรุณาลองใหม่ภายหลัง',
     'familyPermission.proxyEditLoadGuard': 'ต้องโหลดข้อมูลเดิมของ {{name}} ให้ได้ก่อนจึงจะกรอกแทนได้ เพื่อไม่ให้ทับข้อมูลที่กรอกไว้แล้ว',
@@ -279,6 +310,7 @@ export const familyRoleMessages: Record<
     'familyRole.caregiver': '介護の補助者',
     'familyRole.member': 'ご家族',
     'familyRole.unassigned': '未設定',
+    'familyRole.cardUnassigned': '権限が未設定',
 
     'familyRole.manage.title': 'ご家族の権限',
     'familyRole.manage.desc': 'どのご家族が何を見られるか、何を代わりに設定できるかを決められます。',
@@ -287,6 +319,11 @@ export const familyRoleMessages: Record<
     'familyRole.manage.saved': '{{name}} さんの権限を更新しました',
     'familyRole.manage.saveError': '権限を更新できませんでした。しばらくしてからお試しください。',
     'familyRole.manage.loadError': '権限の設定を読み込めませんでした',
+    'familyRole.manage.pager': '{{total}} 人中 {{current}} 人目',
+    'familyRole.manage.prev': '前のご家族',
+    'familyRole.manage.next': '次のご家族',
+    'familyRole.manage.swipeHint': '左右にスワイプしても切り替えられます',
+    'familyRole.manage.roleFor': '{{name}} さんの権限',
 
     'familyRole.explain.guardian': '健康状態と会話の記録を見ることができ、お薬や健康情報の設定も代わりに行えます。',
     'familyRole.explain.caregiver': '健康状態を見ることができ、お薬の設定も行えます。会話の記録は見られません。',
@@ -307,7 +344,7 @@ export const familyRoleMessages: Record<
 
     'familyPermission.proxyEdit': '健康情報を代わりに入力',
     'familyPermission.proxyEditTitle': '{{name}} さんの健康情報を入力',
-    'familyPermission.proxyEditDesc': 'この内容はご本人の健康記録に保存されます。お名前と写真はご本人が設定するもので、ここでは変更されません。',
+    'familyPermission.proxyEditDesc': 'この内容は{{name}}さんの健康記録に保存されます。お名前と写真はご本人が設定するもので、ここでは変更されません。',
     'familyPermission.proxyEditSaved': '{{name}} さんの健康情報を更新しました',
     'familyPermission.proxyEditError': '保存できませんでした。しばらくしてからお試しください。',
     'familyPermission.proxyEditLoadGuard': 'すでに入力されている内容を上書きしないよう、{{name}} さんの現在の情報を読み込めてから入力できます。',

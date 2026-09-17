@@ -2,6 +2,7 @@ import type {
     ConsultationSummary,
     ConsultationViewResponse,
 } from '../types/consultation'
+import i18n from '../i18n'
 import { fetchWithAuth } from '../utils/auth'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
@@ -12,17 +13,18 @@ export interface ConsultationDownloadTokenResponse {
 }
 
 function buildConsultationErrorMessage(status: number, defaultMessage: string) {
+    console.error('諮詢紀錄 API 失敗', status)
     if (status === 401) {
-        return '登入已失效，請重新登入'
+        return i18n.t('auth.notLoggedIn')
     }
 
     // 後端在請求者與目標成員不屬同一家庭族譜時回 403
     if (status === 403) {
-        return '你不在這位成員的家庭群組中，無法查看紀錄'
+        return i18n.t('consultRecord.errorForbidden')
     }
 
     if (status === 503) {
-        return '資料庫暫時不可用，請稍後再試'
+        return i18n.t('consultRecord.errorDbUnavailable')
     }
 
     return defaultMessage
@@ -47,7 +49,7 @@ export async function getAllSummaries(userId?: string): Promise<ConsultationSumm
     if (!res.ok) {
         const message = buildConsultationErrorMessage(
             res.status,
-            `取得諮詢摘要清單失敗：${res.status}`,
+            i18n.t('consultRecord.loadSummaryError'),
         )
         throw new Error(message)
     }
@@ -71,7 +73,7 @@ export async function getConsultationSummaryDownloadToken(): Promise<Consultatio
     if (!res.ok) {
         const message = buildConsultationErrorMessage(
             res.status,
-            `取得摘要下載token失敗：${res.status}`,
+            i18n.t('consultRecord.downloadTokenError'),
         )
         throw new Error(message)
     }
@@ -93,7 +95,7 @@ export async function fetchConsultationRaw(userId?: string): Promise<Consultatio
     if (!res.ok) {
         const message = buildConsultationErrorMessage(
             res.status,
-            `取得原始對話訊息失敗：${res.status}`,
+            i18n.t('consultRecord.loadRawError'),
         )
         throw new Error(message)
     }

@@ -13,6 +13,8 @@ interface UseVisitsReturn {
    * 一個是「你沒有這項權限」——後者重試多少次都一樣。
    */
   forbidden: boolean;
+  /** 載入失敗時給畫面的「重新載入」用 */
+  refetch: () => Promise<unknown>;
 }
 
 /**
@@ -35,5 +37,6 @@ export function useVisits(targetUserId?: string): UseVisitsReturn {
     loading: query.isLoading,
     error: forbidden ? null : (query.error as Error | null)?.message ?? null,
     forbidden,
+    refetch: query.refetch,
   };
 }

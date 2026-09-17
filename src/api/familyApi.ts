@@ -8,6 +8,7 @@ import type {
   VerifyInviteResponse,
   FamilyTree,
 } from '../types/family';
+import i18n from '../i18n';
 import { fetchWithAuth } from '../utils/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -19,7 +20,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
  * 成立」與真正的失敗，例如移除家人時對方早已不在族譜裡，後端回 404。
  */
 async function parseError(res: Response): Promise<Error & { status: number }> {
-  let message = `API 請求失敗：${res.status}`;
+  let message = i18n.t('common.requestFailed', { status: res.status });
   try {
     const data = await res.json();
     if (data.detail) {

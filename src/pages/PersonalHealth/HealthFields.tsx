@@ -56,7 +56,7 @@ type HealthInputProps = {
     placeholder?: string;
     invalid?: boolean;
     register: UseFormRegisterReturn;
-} & Pick<React.ComponentProps<'input'>, 'min' | 'max' | 'step'>;
+} & Pick<React.ComponentProps<'input'>, 'min' | 'max' | 'step' | 'inputMode'>;
 
 export function HealthInput({ id, type = 'text', placeholder, invalid, register, ...rest }: HealthInputProps) {
     return (

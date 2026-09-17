@@ -296,11 +296,11 @@ function KnowledgeReportsPage() {
           >
             {/* 分類一律用自然寬度（flex-none）：這個 App 有六種語言，
                 讓它們平分寬度的話較長的語系會被截成「待審…」。
-                放不下時整條橫向捲動，而不是把字切掉。
-                ≥640px 的 w-fit 要配 max-w-full：少了它 TabsList 不受外層寬度限制，
-                overflow-x-auto 永遠不會觸發，放不下時直接撐破頁面、壓到排序選單。 */}
+                放不下時換行（flex-wrap＋h-auto），不橫向捲動：捲軸被藏起來時，
+                最後一個分頁「已處理」在 390px 手機、20px 字級下就直接被裁在畫面外，
+                長輩不會知道要往右滑。實測 24px 字級下三、四個分頁都放不進一列。 */}
             <TabsList
-              className="w-full max-w-full justify-start overflow-x-auto min-[640px]:w-fit [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="h-auto w-full max-w-full flex-wrap justify-start min-[640px]:w-fit"
               aria-label={t('knowledgeReports.filterLabel')}
             >
               {filters.map((filter) => (
@@ -393,7 +393,7 @@ function KnowledgeReportsPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon"
                     className="absolute top-4 right-4"
                     aria-label={t('knowledgeReports.closeDetail')}
                   />
@@ -403,16 +403,13 @@ function KnowledgeReportsPage() {
               </DialogClose>
 
               <DialogHeader>
-                <div className="flex flex-wrap items-center gap-2 pr-8">
+                <div className="flex flex-wrap items-center gap-2 pr-10">
                   <StatusBadge
                     status={selectedReport.status}
                     label={statusLabel[selectedReport.status]}
                   />
-                  <span className="text-xs font-bold text-muted-foreground">
-                    {selectedReport.id}
-                  </span>
                 </div>
-                <DialogTitle className="text-2xl leading-snug text-balance">
+                <DialogTitle className="text-xl leading-snug text-balance">
                   {selectedReport.question}
                 </DialogTitle>
               </DialogHeader>

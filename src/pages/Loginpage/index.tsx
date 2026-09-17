@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import liff, { LIFF_AVAILABLE, initLiff } from '../../lib/liffClient'
+import liff, { LIFF_AVAILABLE, getFreshIdToken, initLiff } from '../../lib/liffClient'
 import { loginWithLiffIdToken } from '../../api/authApi'
 import { clearLoggedOutFlag, hasLoggedOut } from '../../utils/auth'
 import { useLiffAuth } from '../../context/LiffAuthProvider'
@@ -17,6 +17,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
+
+// redirectUri 必須在 Endpoint URL 之下；/login?redirect= 可撐過 OAuth
+function loginRedirectUri(pending: string | null) {
+	return pending
+		? `${window.location.origin}/login?redirect=${encodeURIComponent(pending)}`
+		: `${window.location.origin}/login`
+}
 
 function LoginPage() {
 	const { t } = useTranslation()
@@ -60,15 +67,17 @@ function LoginPage() {
 			if (pending) {
 				saveRedirectUrl(pending)
 			}
-			// redirectUri 必須在 Endpoint URL 之下；/login?redirect= 可撐過 OAuth
-			const redirectUri = pending
-				? `${window.location.origin}/login?redirect=${encodeURIComponent(pending)}`
-				: `${window.location.origin}/login`
-			liff.login({ redirectUri })
+			liff.login({ redirectUri: loginRedirectUri(pending) })
 			return
 		}
 
-		const idToken = liff.getIDToken()
+		const token = getFreshIdToken(loginRedirectUri(fromQuery || peekRedirectUrl()))
+		if (token.status === 'refreshing') {
+			// 快取的 token 過期了，正在換新，頁面會被導走
+			setStatusText(t('login.redirecting'))
+			return
+		}
+		const idToken = token.idToken
 		if (!idToken) {
 			throw new Error(t('login.noIdToken'))
 		}

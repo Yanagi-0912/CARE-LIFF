@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { saveRedirectUrl } from './redirect';
 
 /** localStorage keys */
@@ -16,14 +17,14 @@ const LOGGED_OUT_KEY = 'CARE_LOGGED_OUT';
 /** 取得 access token，無則拋錯 */
 export function getAccessToken(): string {
   const token = (localStorage.getItem(TOKEN_KEY) || '').trim();
-  if (!token) throw new Error('缺少登入憑證，請先重新登入');
+  if (!token) throw new Error(i18n.t('auth.notLoggedIn'));
   return token;
 }
 
 /** 取得 LINE user ID，無則拋錯 */
 export function getLineUserId(): string {
   const uid = (localStorage.getItem(USER_ID_KEY) || '').trim();
-  if (!uid) throw new Error('尚未登入，找不到 LINE 使用者 ID');
+  if (!uid) throw new Error(i18n.t('auth.notLoggedIn'));
   return uid;
 }
 
@@ -83,10 +84,15 @@ export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
-  const headers = {
-    ...authHeaders(),
-    ...(init?.headers || {}),
+  const headers: Record<string, string> = {
+    ...(authHeaders() as Record<string, string>),
+    ...((init?.headers as Record<string, string> | undefined) || {}),
   };
+  // multipart 上傳（FormData）要讓瀏覽器自己補 boundary，
+  // 不能沿用 authHeaders() 固定帶的 application/json。
+  if (init?.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
 
   const res = await fetch(input, {
     ...init,
@@ -95,7 +101,7 @@ export async function fetchWithAuth(
 
   if (res.status === 401) {
     handleUnauthorized();
-    throw new Error('登入憑證已失效，正在重新登入…');
+    throw new Error(i18n.t('auth.sessionExpired'));
   }
 
   return res;

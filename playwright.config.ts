@@ -31,7 +31,12 @@ export default defineConfig({
   /* CI 上不允許殘留 test.only */
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  /* CI 的 worker 數。樣板預設是 1，但單 worker 跑完兩個 project 共 498 條要
+     17 分半，離 job 的 20 分上限只剩兩分半，PR #50 合併後就超過、測試跑到一半
+     被取消（run 35049398102）。ubuntu-latest 的 hosted runner 是 4 vCPU，而本機
+     預設已經以 5 個 worker 跑同一套測試，CI 取 2 反而更保守；剩下的時序波動由
+     上面的 retries 吸收。 */
+  workers: process.env.CI ? 2 : undefined,
   /* 本機看 list 就夠；html 一律不自動開啟，否則 CLI 會被瀏覽器卡住 */
   reporter: process.env.CI
     ? [['github'], ['html', { open: 'never' }]]

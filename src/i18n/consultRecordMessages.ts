@@ -33,7 +33,13 @@ export const consultRecordMessages: Record<
     "consultRecord.backToHealth": "返回個人健康資料",
     "consultRecord.targetLabel": "查看對象",
     "consultRecord.titleForMember": "{{name}} 的健康諮詢紀錄",
-    "consultRecord.modalMemberTitle": "{{name}} 的訊息"
+    "consultRecord.modalMemberTitle": "{{name}} 的訊息",
+    "consultRecord.field.health_issue": "健康問題",
+    "consultRecord.field.medications_and_appointments": "用藥與掛號紀錄",
+    "consultRecord.field.recommendations": "建議",
+    "consultRecord.field.key_safety_alerts": "關鍵情況與安全提醒",
+    "consultRecord.field.other": "其他",
+    "consultRecord.field.ai_summary": "AI小摘要"
   },
   en:{
     "consultRecord.title": "Health Consultation Records",
@@ -64,7 +70,13 @@ export const consultRecordMessages: Record<
     "consultRecord.backToHealth": "Back to health profile",
     "consultRecord.targetLabel": "Whose records",
     "consultRecord.titleForMember": "{{name}}'s Consultation Records",
-    "consultRecord.modalMemberTitle": "Message from {{name}}"
+    "consultRecord.modalMemberTitle": "Message from {{name}}",
+    "consultRecord.field.health_issue": "Health Issue",
+    "consultRecord.field.medications_and_appointments": "Medications and Appointments",
+    "consultRecord.field.recommendations": "Recommendations",
+    "consultRecord.field.key_safety_alerts": "Key Safety Alerts",
+    "consultRecord.field.other": "Other",
+    "consultRecord.field.ai_summary": "AI Summary"
   },
   id:{
     "consultRecord.title": "Catatan Konsultasi Kesehatan",
@@ -95,7 +107,13 @@ export const consultRecordMessages: Record<
     "consultRecord.backToHealth": "Kembali ke data kesehatan",
     "consultRecord.targetLabel": "Catatan milik siapa",
     "consultRecord.titleForMember": "Catatan Konsultasi {{name}}",
-    "consultRecord.modalMemberTitle": "Pesan dari {{name}}"
+    "consultRecord.modalMemberTitle": "Pesan dari {{name}}",
+    "consultRecord.field.health_issue": "Masalah Kesehatan",
+    "consultRecord.field.medications_and_appointments": "Obat dan Catatan Janji Temu",
+    "consultRecord.field.recommendations": "Rekomendasi",
+    "consultRecord.field.key_safety_alerts": "Peringatan Keselamatan Utama",
+    "consultRecord.field.other": "Lainnya",
+    "consultRecord.field.ai_summary": "Ringkasan AI"
   },
   vi:{
     "consultRecord.title": "Hồ sơ tư vấn sức khỏe",
@@ -126,7 +144,13 @@ export const consultRecordMessages: Record<
     "consultRecord.backToHealth": "Quay lại hồ sơ sức khỏe",
     "consultRecord.targetLabel": "Hồ sơ của ai",
     "consultRecord.titleForMember": "Hồ sơ tư vấn của {{name}}",
-    "consultRecord.modalMemberTitle": "Tin nhắn của {{name}}"
+    "consultRecord.modalMemberTitle": "Tin nhắn của {{name}}",
+    "consultRecord.field.health_issue": "Vấn Đề Sức Khỏe",
+    "consultRecord.field.medications_and_appointments": "Thuốc và Ghi Chép Khám Bệnh",
+    "consultRecord.field.recommendations": "Khuyến Cáo",
+    "consultRecord.field.key_safety_alerts": "Cảnh Báo An Toàn Chính",
+    "consultRecord.field.other": "Khác",
+    "consultRecord.field.ai_summary": "Tóm Tắt AI"
   },
   th:{
     "consultRecord.title": "บันทึกการปรึกษาสุขภาพ",
@@ -157,7 +181,13 @@ export const consultRecordMessages: Record<
     "consultRecord.backToHealth": "กลับไปที่ข้อมูลสุขภาพ",
     "consultRecord.targetLabel": "บันทึกของใคร",
     "consultRecord.titleForMember": "บันทึกการปรึกษาสุขภาพของ {{name}}",
-    "consultRecord.modalMemberTitle": "ข้อความจาก {{name}}"
+    "consultRecord.modalMemberTitle": "ข้อความจาก {{name}}",
+    "consultRecord.field.health_issue": "ปัญหาสุขภาพ",
+    "consultRecord.field.medications_and_appointments": "ยาและบันทึกการนัดหมาย",
+    "consultRecord.field.recommendations": "ข้อเสนอแนะ",
+    "consultRecord.field.key_safety_alerts": "การแจ้งเตือนความปลอดภัยหลัก",
+    "consultRecord.field.other": "อื่นๆ",
+    "consultRecord.field.ai_summary": "สรุป AI"
   },
   ja:{
     "consultRecord.title": "健康相談記録",
@@ -188,6 +218,12 @@ export const consultRecordMessages: Record<
     "consultRecord.backToHealth": "健康データに戻る",
     "consultRecord.targetLabel": "表示する対象",
     "consultRecord.titleForMember": "{{name}} の健康相談記録",
-    "consultRecord.modalMemberTitle": "{{name}} のメッセージ"
+    "consultRecord.modalMemberTitle": "{{name}} のメッセージ",
+    "consultRecord.field.health_issue": "健康上の問題",
+    "consultRecord.field.medications_and_appointments": "薬と診察記録",
+    "consultRecord.field.recommendations": "推奨",
+    "consultRecord.field.key_safety_alerts": "主要な安全警告",
+    "consultRecord.field.other": "その他",
+    "consultRecord.field.ai_summary": "AIの要約"
   }
 }

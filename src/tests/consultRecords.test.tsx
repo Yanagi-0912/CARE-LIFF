@@ -54,10 +54,10 @@ vi.mock('@line/liff', () => ({
 // 個別測試可以透過 overrides 覆寫想要的行為（resolve 或 reject）
 // ==========================================
 type ApiMockOverrides = {
-    getAllSummaries?: ReturnType<typeof vi.fn>
-    fetchConsultationRaw?: ReturnType<typeof vi.fn>
-    getConsultationSummaryDownloadToken?: ReturnType<typeof vi.fn>
-    buildConsultationSummaryDownloadUrl?: ReturnType<typeof vi.fn>
+    getAllSummaries?: typeof api.getAllSummaries
+    fetchConsultationRaw?: typeof api.fetchConsultationRaw
+    getConsultationSummaryDownloadToken?: typeof api.getConsultationSummaryDownloadToken
+    buildConsultationSummaryDownloadUrl?: typeof api.buildConsultationSummaryDownloadUrl
 }
 
 function setupApiMocks(overrides: ApiMockOverrides = {}) {
@@ -68,10 +68,10 @@ function setupApiMocks(overrides: ApiMockOverrides = {}) {
     vi.mocked(api.buildConsultationSummaryDownloadUrl).mockReturnValue('https://download.test/file.pdf')
 
     // 套用個別測試想要的 override
-    if (overrides.getAllSummaries) vi.mocked(api.getAllSummaries).mockImplementation(overrides.getAllSummaries as any)
-    if (overrides.fetchConsultationRaw) vi.mocked(api.fetchConsultationRaw).mockImplementation(overrides.fetchConsultationRaw as any)
-    if (overrides.getConsultationSummaryDownloadToken) vi.mocked(api.getConsultationSummaryDownloadToken).mockImplementation(overrides.getConsultationSummaryDownloadToken as any)
-    if (overrides.buildConsultationSummaryDownloadUrl) vi.mocked(api.buildConsultationSummaryDownloadUrl).mockImplementation(overrides.buildConsultationSummaryDownloadUrl as any)
+    if (overrides.getAllSummaries) vi.mocked(api.getAllSummaries).mockImplementation(overrides.getAllSummaries)
+    if (overrides.fetchConsultationRaw) vi.mocked(api.fetchConsultationRaw).mockImplementation(overrides.fetchConsultationRaw)
+    if (overrides.getConsultationSummaryDownloadToken) vi.mocked(api.getConsultationSummaryDownloadToken).mockImplementation(overrides.getConsultationSummaryDownloadToken)
+    if (overrides.buildConsultationSummaryDownloadUrl) vi.mocked(api.buildConsultationSummaryDownloadUrl).mockImplementation(overrides.buildConsultationSummaryDownloadUrl)
 }
 
 describe('ConsultRecordsPage測試', () => {
@@ -302,6 +302,25 @@ describe('ConsultRecordsPage測試', () => {
 
         expect(await screen.findByText('建議')).toBeInTheDocument()
         expect(screen.getByText('多喝水並多休息')).toBeInTheDocument()
+    })
+
+    it('後端英文 snake_case 欄位名會翻成目前語系的標題', async () => {
+        const mockSummaries = [
+            {
+                summary_date: '2026-07-02T00:00:00Z',
+                summary: JSON.stringify({ health_issue: '頭痛', medications_and_appointments: '普拿疼' }),
+            },
+        ]
+
+        setupApiMocks({
+            getAllSummaries: vi.fn().mockResolvedValue(mockSummaries),
+        })
+
+        renderPage()
+
+        expect(await screen.findByText('健康問題')).toBeInTheDocument()
+        expect(screen.getByText('用藥與掛號紀錄')).toBeInTheDocument()
+        expect(screen.queryByText('health_issue')).not.toBeInTheDocument()
     })
 
     it('切換摘要日期下拉選單後，會顯示對應日期的摘要內容', async () => {

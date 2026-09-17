@@ -137,7 +137,7 @@ function VisitRow({ visit }: { visit: MedicationVisit }) {
 
         {/* 藥名清單。這是 GENERAL 資料，能看到這個畫面的人本來就看得到它。 */}
         <p className="text-muted-foreground text-sm">
-          {visit.medication_names.join('、')}
+          {visit.medication_names.join(t('meds.scan.draft.slotListSeparator'))}
         </p>
 
         {unknownSource ? (

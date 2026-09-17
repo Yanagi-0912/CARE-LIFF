@@ -132,7 +132,7 @@ function AttributeQuestion({
           </Button>
         ))}
       </div>
-      <Button type="button" variant="ghost" size="sm" className="self-start" disabled={disabled} onClick={onSkip}>
+      <Button type="button" variant="ghost" className="self-start" disabled={disabled} onClick={onSkip}>
         {skipLabel}
       </Button>
     </div>
@@ -225,7 +225,6 @@ export function DrugCandidateSection({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
           className="mt-1 self-start"
           disabled={disabled}
           onClick={returnToNarrowing}
@@ -314,7 +313,6 @@ export function DrugCandidateSection({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               className="self-start"
               disabled={disabled}
               onClick={resetFilters}

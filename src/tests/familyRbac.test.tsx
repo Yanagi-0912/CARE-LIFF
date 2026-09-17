@@ -173,7 +173,7 @@ describe('家人卡片依角色降級', () => {
       expect(profileApi.getPersonalHealthProfile).toHaveBeenCalledWith('U-mom'),
     );
     expect(screen.getByRole('button', { name: /查看諮詢紀錄/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /幫他填健康資料/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /幫忙填健康資料/ })).toBeInTheDocument();
   });
 
   it('CAREGIVER 看得到健康狀況，但沒有對話紀錄、也不能代填', async () => {
@@ -186,7 +186,7 @@ describe('家人卡片依角色降級', () => {
     );
     expect(screen.getByText('您沒有查看對話紀錄的權限')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /查看諮詢紀錄/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /幫他填健康資料/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /幫忙填健康資料/ })).not.toBeInTheDocument();
   });
 
   it('MEMBER 連健康資料的請求都不發出去', async () => {
@@ -396,6 +396,8 @@ describe('引導式角色指派', () => {
   });
 
   it('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', () => {
+    // 「都設定好了」代表卡片上的家人也有角色，否則卡片會顯示「尚未設定權限」
+    familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({ is_complete: true });
     renderPage();
 
@@ -406,6 +408,7 @@ describe('引導式角色指派', () => {
   });
 
   it('權限已生效且全部設定完：不顯示提示，但入口仍在', () => {
+    familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({
       is_complete: true,
       rbac_migration_state: 'enforced',
@@ -479,6 +482,85 @@ describe('引導式角色指派', () => {
     await waitFor(() =>
       expect(familyApi.setFamilyRole).toHaveBeenCalledWith('U-mom', 'CAREGIVER'),
     );
+  });
+
+  it('一位家人一頁：只有一位時不畫導覽列', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+    ]);
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    await waitFor(() => expect(screen.getByText('媽媽')).toBeInTheDocument());
+
+    expect(screen.queryByRole('button', { name: '下一位家人' })).not.toBeInTheDocument();
+    expect(screen.queryByText('第 1 位，共 1 位')).not.toBeInTheDocument();
+  });
+
+  it('多位家人時用上一位／下一位切換，計數跟著走，兩端按鈕停用', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+      { user_id: 'U-son', display_name: '大兒子', family_role: null },
+      { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
+    ]);
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+
+    const prev = screen.getByRole('button', { name: '上一位家人' });
+    const next = screen.getByRole('button', { name: '下一位家人' });
+    expect(prev).toBeDisabled();
+    expect(next).toBeEnabled();
+
+    fireEvent.click(next);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+    expect(prev).toBeEnabled();
+
+    fireEvent.click(next);
+    expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
+    expect(next).toBeDisabled();
+
+    fireEvent.click(prev);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    // 每位家人的角色群組各自以名字標示，按到的一定是眼前這位的
+    const sonGroup = screen.getByRole('group', { name: '大兒子 的權限' });
+    expect(sonGroup).toBeInTheDocument();
+  });
+
+  it('平滑捲動途中的 scroll 事件不會把計數推回舊頁，捲到之後照常跟著手指走', async () => {
+    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+      { user_id: 'U-son', display_name: '大兒子', family_role: null },
+      { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
+    ]);
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
+    await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+
+    // jsdom 沒有排版，clientWidth 預設 0；給它一個寬度才能模擬捲動位置
+    const track = screen.getByRole('group', { name: '家人的權限' });
+    Object.defineProperty(track, 'clientWidth', { configurable: true, value: 300 });
+
+    fireEvent.click(screen.getByRole('button', { name: '下一位家人' }));
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    // 平滑捲動剛開始：位置還在第 1 頁附近，四捨五入回推會得到第 1 頁。
+    // 這是先前會讓計數與按鈕閃一下的來源，現在要被擋掉。
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 12 });
+    fireEvent.scroll(track);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    // 捲到目的地之後，手指自己滑到第 3 頁仍然要更新計數
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 300 });
+    fireEvent.scroll(track);
+    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 600 });
+    fireEvent.scroll(track);
+    expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
   });
 });
 

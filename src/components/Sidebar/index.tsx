@@ -29,6 +29,7 @@ function Sidebar() {
     // 側欄沒有格數限制，兩種提醒各列一項；手機的底部導覽才需要合成一格
     { path: '/reminders/medications', label: t('sidebar.medications') },
     { path: '/reminders/appointments', label: t('sidebar.appointments') },
+    { path: '/clinic-visits', label: t('sidebar.clinicVisits') },
     { path: '/knowledge-reports', label: t('sidebar.knowledgeReports') },
     ...(isAdmin
       ? [{ path: '/admin/knowledge-reports', label: t('sidebar.adminKnowledgeReports') }]

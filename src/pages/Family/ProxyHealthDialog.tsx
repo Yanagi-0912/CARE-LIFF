@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -66,6 +66,9 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
   const [saving, setSaving] = useState(false);
 
   const displayName = member.display_name || member.user_id.slice(0, 8);
+  // 打開時先聚焦標題：預設會聚焦第一個欄位，內容一長就把標題與說明捲出畫面
+  // （做法與理由同 ReminderFormDialog，WAI-ARIA APG 的 dialog pattern）。
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   const schema = useMemo(() => {
     const numeric = (field: NumericFieldName) =>
@@ -177,13 +180,13 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-[540px]">
+      <DialogContent initialFocus={titleRef} className="max-h-[85dvh] overflow-y-auto sm:max-w-[540px]">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
             {t('familyPermission.proxyEditTitle', { name: displayName })}
           </DialogTitle>
           <DialogDescription>
-            {t('familyPermission.proxyEditDesc')}
+            {t('familyPermission.proxyEditDesc', { name: displayName })}
           </DialogDescription>
         </DialogHeader>
 
@@ -219,7 +222,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
               )}
               {t('family.retry')}
             </Button>
-            <DialogClose render={<Button type="button" variant="ghost" />}>
+            <DialogClose render={<Button type="button" variant="outline" />}>
               {t('familyPermission.cancel')}
             </DialogClose>
           </div>
@@ -238,7 +241,14 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                   }
                 >
                   <SelectTrigger id="proxy-gender" className="w-full">
-                    <SelectValue placeholder={t('personalHealth.genderPlaceholder')} />
+                    {/* 儲存值是 code（male/female），SelectValue 預設會把 code 原樣印出來，
+                        要用函式 child 對應回翻譯標籤（與「我自己」那一頁相同）。 */}
+                    <SelectValue placeholder={t('personalHealth.genderPlaceholder')}>
+                      {(value) => {
+                        const option = GENDER_OPTIONS.find((o) => o.value === value);
+                        return option ? t(option.labelKey) : t('personalHealth.genderPlaceholder');
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {GENDER_OPTIONS.map((option) => (
@@ -258,6 +268,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                 <HealthInput
                   id="proxy-age"
                   type="number"
+                  inputMode="numeric"
                   invalid={!!errors.age}
                   register={register('age')}
                 />
@@ -271,6 +282,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                 <HealthInput
                   id="proxy-height"
                   type="number"
+                  inputMode="decimal"
                   invalid={!!errors.height}
                   register={register('height')}
                 />
@@ -284,6 +296,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                 <HealthInput
                   id="proxy-weight"
                   type="number"
+                  inputMode="decimal"
                   invalid={!!errors.weight}
                   register={register('weight')}
                 />
@@ -341,7 +354,7 @@ export function ProxyHealthDialog({ member, onClose }: Props) {
                 {saving ? <Spinner /> : null}
                 {saving ? t('familyRole.manage.saving') : t('familyPermission.save')}
               </Button>
-              <DialogClose render={<Button type="button" variant="ghost" />}>
+              <DialogClose render={<Button type="button" variant="outline" />}>
                 {t('familyPermission.cancel')}
               </DialogClose>
             </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import liff, { LIFF_AVAILABLE, initLiff } from '../lib/liffClient';
+import liff, { LIFF_AVAILABLE, getFreshIdToken, initLiff } from '../lib/liffClient';
 import { loginWithLiffIdToken } from '../api/authApi';
 import { clearAuth, hasLoggedOut, isAuthenticated, markLoggedOut } from '../utils/auth';
 
@@ -47,7 +47,12 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
       await initLiff();
 
       if (liff.isLoggedIn()) {
-        const idToken = liff.getIDToken();
+        const token = getFreshIdToken(window.location.href);
+        if (token.status === 'refreshing') {
+          // 快取的 token 過期了，正在換新，頁面會被導走
+          return;
+        }
+        const idToken = token.idToken;
         if (idToken) {
           try {
             // 利用 LINE ID Token 換發/更新最新存取憑證

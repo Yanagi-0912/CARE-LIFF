@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   createReminders,
   deleteReminder,
@@ -41,6 +42,7 @@ function byScheduledTime(a: MedicationReminder, b: MedicationReminder): number {
  *   onError 回滾，這正是 mutation 生命週期本來就提供的。
  */
 export function useMedications(targetUserId?: string): UseMedicationsReturn {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = queryKeys.medications(targetUserId);
 
@@ -103,7 +105,7 @@ export function useMedications(targetUserId?: string): UseMedicationsReturn {
   return {
     reminders: data ?? [],
     loading: isPending,
-    error: error ? (error instanceof Error ? error.message : '載入用藥提醒失敗') : null,
+    error: error ? (error instanceof Error ? error.message : t('meds.loadError')) : null,
     refetch: async () => {
       await refetch();
     },

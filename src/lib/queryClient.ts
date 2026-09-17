@@ -50,6 +50,8 @@ export const queryKeys = {
     ['appointments', targetUserId ?? 'self', 'upcoming'] as const,
   appointmentsPast: (targetUserId?: string) =>
     ['appointments', targetUserId ?? 'self', 'past'] as const,
+  /** 看診錄音清單。SENSITIVE、嚴格判定，對象要進 key，理由同掛號提醒。 */
+  clinicVisits: (targetUserId?: string) => ['clinic-visits', targetUserId ?? 'self'] as const,
   /** 單一院所（編輯掛號提醒時重抓門診時段用） */
   facility: (facilityId: string) => ['facility', facilityId] as const,
   /** 藥袋掃描功能開關，見 settingsApi.getPrescriptionScanEnabled */
@@ -78,4 +80,8 @@ export const queryKeys = {
   menstrualRecords: () => ['menstrual-records'] as const,
   /** 每日步數彙總 */
   stepCounts: (userId?: string) => ['step-counts', userId ?? 'self'] as const,
+  /** 長輩自己的走失求救狀態（定位頁用來決定要不要開始上傳） */
+  lostSelf: ['lost-self'] as const,
+  /** 家人查看某位長輩的即時位置；對象要進 key，理由同 consultationSummaries */
+  lostSession: (userId: string) => ['lost-session', userId] as const,
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import liff from '@line/liff';
 import ReactMarkdown from 'react-markdown';
@@ -99,9 +99,13 @@ function toSummarySections(summary: ConsultationSummary, t: (key: string) => str
                 finalValue = String(val).trim() || t('consultRecord.none');
             }
 
+            // 後端 key 是英文 snake_case，查不到翻譯（例如舊摘要的中文 key）就照原樣顯示
+            const labelKey = `consultRecord.field.${key}`;
+            const label = t(labelKey);
+
             return {
                 key,
-                label: key,
+                label: label === labelKey ? key : label,
                 value: finalValue
             };
         })
@@ -145,7 +149,10 @@ function readSelfUserId(): string | undefined {
 const ConsultRecordsPage: React.FC = () => {
     const { t } = useTranslation(); //用於多語系翻譯
     const [selectedSummaryKey, setSelectedSummaryKey] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'summary' | 'raw'>('summary');
+    // 分頁選擇依查看對象各自記住：切換對象時不沿用上一個人的分頁。沒選過就用
+    // 下面的 fallbackView 推導（摘要壞掉但有對話時直接看對話）。原本用 effect 在
+    // 摘要載入後強制 setViewMode('summary')，會把正停在「對話」分頁的人拉走。
+    const [chosenView, setChosenView] = useState<Record<string, 'summary' | 'raw'>>({});
     const [downloading, setDownloading] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState<ConsultationMessage | null>(null);
 
@@ -223,14 +230,11 @@ const ConsultRecordsPage: React.FC = () => {
             ? selectedSummaryKey
             : getSummaryKey(summaryItems[0] ?? ({} as ConsultationSummary));
 
-    // 預設分頁：有摘要就看摘要；摘要載入失敗但有對話紀錄則自動切到對話。
-    useEffect(() => {
-        if (summaryItems.length > 0) {
-            setViewMode('summary');
-        } else if (summaryError !== null && rawMessages.length > 0) {
-            setViewMode('raw');
-        }
-    }, [summaryItems.length, summaryError, rawMessages.length]);
+    // 預設分頁：有摘要就看摘要；摘要載入失敗但有對話紀錄則直接看對話。
+    const targetKey = targetUserId ?? 'self';
+    const fallbackView: 'summary' | 'raw' =
+        summaryError !== null && summaryItems.length === 0 && rawMessages.length > 0 ? 'raw' : 'summary';
+    const viewMode = chosenView[targetKey] ?? fallbackView;
 
     const selectedSummary = summaryItems.find(item => getSummaryKey(item) === effectiveSummaryKey) || null;
     const selectedSummarySections = selectedSummary ? toSummarySections(selectedSummary, t) : [];
@@ -276,7 +280,7 @@ const ConsultRecordsPage: React.FC = () => {
     return (
         // 手機優先：內容直接鋪在頁面上，不再包一層 Card。原本「Card 包 Tabs 再包
         // Card」在 320px 寬會被兩層外框與內距吃掉近 60px，正文只剩十來個字。
-        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4 p-4">
+        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4">
             <header>
                 <h2 className="text-2xl font-extrabold">
                     {isViewingFamily
@@ -290,7 +294,7 @@ const ConsultRecordsPage: React.FC = () => {
             {members.length > 0 && (
                 <ToggleGroup
                     variant="primary"
-                    className="flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="flex w-full flex-wrap gap-2"
                     value={[targetUserId ?? 'self']}
                     onValueChange={(groupValue) => {
                         const next = groupValue[0];
@@ -325,7 +329,9 @@ const ConsultRecordsPage: React.FC = () => {
             <Tabs
                 className="gap-4"
                 value={viewMode}
-                onValueChange={(value) => setViewMode(value as 'summary' | 'raw')}
+                onValueChange={(value) =>
+                    setChosenView((prev) => ({ ...prev, [targetKey]: value as 'summary' | 'raw' }))
+                }
             >
                 <TabsList className="w-full" aria-label={t('consultRecord.title')}>
                     <TabsTrigger value="summary">
@@ -529,7 +535,7 @@ const ConsultRecordsPage: React.FC = () => {
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        size="icon-sm"
+                                        size="icon"
                                         className="absolute top-4 right-4"
                                         aria-label={t('consultRecord.closeModal')}
                                     />

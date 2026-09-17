@@ -8,12 +8,14 @@ import { expect, stubProfileApi, t, test } from './fixtures';
  * 否則 getByRole 會同時命中導覽列。
  */
 
-/** 一般使用者看得到的七張卡片，順序即畫面順序 */
+/** 一般使用者看得到的八張卡片，順序即畫面順序 */
 const FEATURE_CARDS = [
   { titleKey: 'home.nearbyHospitals', descKey: 'home.nearbyHospitalsDesc', path: '/nearby-hospitals' },
   { titleKey: 'home.personalHealth', descKey: 'home.personalHealthDesc', path: '/personalhealth' },
+  { titleKey: 'home.healthRecords', descKey: 'home.healthRecordsDesc', path: '/health-records' },
   { titleKey: 'home.medications', descKey: 'home.medicationsDesc', path: '/reminders/medications' },
   { titleKey: 'home.appointments', descKey: 'home.appointmentsDesc', path: '/reminders/appointments' },
+  { titleKey: 'home.clinicVisits', descKey: 'home.clinicVisitsDesc', path: '/clinic-visits' },
   { titleKey: 'home.family', descKey: 'home.familyDesc', path: '/family' },
   { titleKey: 'home.knowledgeReports', descKey: 'home.knowledgeReportsDesc', path: '/knowledge-reports' },
   { titleKey: 'home.settings', descKey: 'home.settingsDesc', path: '/settings' },
@@ -31,7 +33,7 @@ test.describe('首頁 (Home)', () => {
     await expect(authedPage.getByText(t('home.subtitle'))).toBeVisible();
   });
 
-  test('渲染七張功能卡片，標題與描述都正確', async ({ authedPage }) => {
+  test('渲染八張功能卡片，標題與描述都正確', async ({ authedPage }) => {
     const features = authedPage.getByTestId('home-features');
     const cards = features.getByRole('button');
 
@@ -48,7 +50,10 @@ test.describe('首頁 (Home)', () => {
     test(`點擊「${card.titleKey}」卡片導向 ${card.path}`, async ({ authedPage }) => {
       await authedPage
         .getByTestId('home-features')
-        .getByRole('button', { name: t(card.titleKey), exact: false })
+        // 用「標題 + 描述」而不是只用標題：卡片的無障礙名稱是兩者相接，而標題
+        // 可能出現在別張卡片的描述裡（「個人健康」的描述就含「健康紀錄」），
+        // 只比對標題會同時命中兩張而觸發 strict mode。
+        .getByRole('button', { name: `${t(card.titleKey)} ${t(card.descKey)}`, exact: false })
         .click();
 
       await expect(authedPage).toHaveURL(new RegExp(`${card.path}$`));

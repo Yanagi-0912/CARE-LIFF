@@ -275,9 +275,10 @@ const PersonalHealthPage: React.FC = () => {
     const profileState =
         profile !== undefined ? 'ready' : profileLoadFailed ? 'error' : 'loading';
 
-    // 100dvh 而非 100vh：iOS Safari 的 vh 不含網址列，捲動時高度會跳
+    // 內頁不撐 min-h-[100dvh]：外面已經有 header 與底部導覽，撐滿只會在內容
+    // 之後多出一截空白可捲。左右留白由 .content-area 統一給，這裡不再加。
     return (
-        <div className="mx-auto flex min-h-[100dvh] max-w-[800px] flex-col px-4 py-8 max-[600px]:px-3 max-[600px]:py-6">
+        <div className="mx-auto flex max-w-[800px] flex-col">
             <Item variant="muted" className="mb-4 rounded-2xl">
                 <ItemMedia>
                     <Avatar className="size-16">
@@ -416,6 +417,7 @@ const PersonalHealthPage: React.FC = () => {
                                     <HealthInput
                                         id="age"
                                         type="number"
+                                        inputMode="numeric"
                                         min="1"
                                         max="130"
                                         step="1"
@@ -446,6 +448,7 @@ const PersonalHealthPage: React.FC = () => {
                                     <HealthInput
                                         id="height"
                                         type="number"
+                                        inputMode="decimal"
                                         min="30"
                                         max="300"
                                         step="0.1"
@@ -464,6 +467,7 @@ const PersonalHealthPage: React.FC = () => {
                                     <HealthInput
                                         id="weight"
                                         type="number"
+                                        inputMode="decimal"
                                         min="1"
                                         max="500"
                                         step="0.1"

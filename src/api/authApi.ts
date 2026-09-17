@@ -1,3 +1,5 @@
+import i18n from '../i18n'
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
 export type LiffLoginResponse = {
@@ -15,7 +17,8 @@ export async function loginWithLiffIdToken(idToken: string): Promise<LiffLoginRe
   })
 
   if (!res.ok) {
-    throw new Error(`LIFF 後端登入失敗：${res.status}`)
+    console.error('LIFF 後端登入失敗', res.status)
+    throw new Error(i18n.t('login.serverError', { status: res.status }))
   }
 
   return res.json()

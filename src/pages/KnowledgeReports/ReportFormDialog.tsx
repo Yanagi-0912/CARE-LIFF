@@ -125,7 +125,10 @@ export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) 
             底部按鈕固定。特大字級下表單比手機視窗高，沒限高時整個 dialog 置中後
             標題與關閉鈕會跑到視窗上方，捲也捲不到。 */}
         <ScrollArea>
-        <form id={FORM_ID} className={formStyles.form} onSubmit={handleSubmit}>
+        {/* noValidate：type="url" 的原生驗證會擋下沒打 https:// 的網址、跳出瀏覽器自己的
+            英文氣泡，但後端本來就會補 scheme（見 startKnowledgeReportPreview 的正規化）。
+            空值由 canSubmit 擋，格式交給後端判、由 FormError 用六語文案回報。 */}
+        <form id={FORM_ID} className={formStyles.form} onSubmit={handleSubmit} noValidate>
           <div className={formStyles.field}>
             <Label htmlFor="knowledge-report-url">
               {t('knowledgeReports.form.urlLabel')}
@@ -153,7 +156,7 @@ export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) 
               value={note}
               onChange={(event) => setNote(event.target.value)}
               placeholder={t('knowledgeReports.form.notePlaceholder')}
-              rows={4}
+              rows={3}
               maxLength={500}
               required
             />

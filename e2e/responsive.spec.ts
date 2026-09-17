@@ -15,6 +15,7 @@ import {
   nearbyResponse,
   stubNearby,
   stubReminderList,
+  stubApi,
   stubSettings,
 } from './stubs';
 
@@ -166,4 +167,55 @@ test.describe('手機直式 375px 的 dialog', () => {
       .click();
     await expectDialogFits(authedPage);
   });
+});
+
+/**
+ * dialog 內的捲動區（Base UI ScrollArea）兩軸都能捲：裡面任何一個元素比 dialog
+ * 寬，整塊內容就能被左右滑動，滑過去後左邊被切掉。上面那組只量 dialog 外框
+ * 有沒有超出視窗，量不到這種情況。
+ *
+ * 曾經撐破的是寫死 rem 的最小寬度（醫院名稱輸入框 min-w-48、門診時間的
+ * min-w-[11rem]）與不縮的連結按鈕：字級 xlarge 時 1rem＝24px，393px 手機上
+ * dialog 內容區只剩約 270px。
+ */
+test.describe('掛號提醒 dialog 在字級 xlarge 下不能左右滑', () => {
+  const overflowX = (page: Page) =>
+    page.evaluate(() => {
+      const viewport = document.querySelector(
+        '[role="dialog"] [data-slot="scroll-area-viewport"]',
+      ) as HTMLElement | null;
+      if (!viewport) throw new Error('找不到 dialog 的捲動區');
+      return viewport.scrollWidth - viewport.clientWidth;
+    });
+
+  for (const width of [320, 393]) {
+    test(`${width}px：找醫院與科別時間兩步都不溢出`, async ({ authedPage }) => {
+      await authedPage.setViewportSize({ width, height: 800 });
+      await authedPage.addInitScript(() => {
+        localStorage.setItem(
+          'care-settings',
+          JSON.stringify({ language: 'zh-TW', fontSize: 'xlarge' }),
+        );
+      });
+      await stubFamily(authedPage);
+      await stubSettings(authedPage);
+      await stubApi(authedPage, {
+        path: '/api/appointments/reminders',
+        method: 'GET',
+        body: { items: [], next_cursor: null, total_count: 0 },
+      });
+
+      await authedPage.goto('/reminders/appointments');
+      await authedPage.getByRole('button', { name: t('appt.addButton'), exact: true }).first().click();
+      const dialog = authedPage.getByRole('dialog');
+      await expect(dialog.getByText(t('appt.step.hospital'), { exact: true })).toBeVisible();
+      expect(await overflowX(authedPage)).toBeLessThanOrEqual(0);
+
+      await dialog.getByRole('button', { name: t('appt.form.manualEntry') }).click();
+      await dialog.getByLabel(t('appt.form.manualHospitalLabel')).fill('臺大醫院');
+      await dialog.getByRole('button', { name: t('appt.form.next') }).click();
+      await expect(dialog.getByText(t('appt.step.visit'), { exact: true })).toBeVisible();
+      expect(await overflowX(authedPage)).toBeLessThanOrEqual(0);
+    });
+  }
 });
