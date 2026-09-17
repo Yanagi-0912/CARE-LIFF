@@ -99,24 +99,28 @@ describe('10.1 detectSteps()：合成序列驗證', () => {
     expect(detectSteps(samples, { smoothing: 1 })).toBe(2);
   });
 
-  it('最短間隔的邊界：350 毫秒不算、450 毫秒算', () => {
+  it('最短間隔的邊界：250 毫秒不算、350 毫秒算', () => {
     const peakAt = (t: number): AccelerometerSample[] => [
       { x: 0, y: 0, z: GRAVITY, t: t - 20 },
       { x: 0, y: 0, z: GRAVITY + 5, t },
       { x: 0, y: 0, z: GRAVITY, t: t + 20 },
     ];
-    // 第一步固定在 t=40；第二個波峰分別放在 390（間隔 350）與 490（間隔 450）
-    expect(detectSteps([...peakAt(40), ...peakAt(390)], { smoothing: 1 })).toBe(1);
-    expect(detectSteps([...peakAt(40), ...peakAt(490)], { smoothing: 1 })).toBe(2);
+    // 第一步固定在 t=40；第二個波峰分別放在 290（間隔 250）與 390（間隔 350）
+    expect(detectSteps([...peakAt(40), ...peakAt(290)], { smoothing: 1 })).toBe(1);
+    expect(detectSteps([...peakAt(40), ...peakAt(390)], { smoothing: 1 })).toBe(2);
   });
 
   /**
-   * 迴歸：實機校正時發現的真正誤差來源。一步會產生多個波峰（腳跟著地、
-   * 腳尖離地、手臂擺動），舊設定（最短間隔 300 毫秒）把實走的 20 步數成
-   * 26 步。次波峰落在 300–400 毫秒這個區間時，舊設定放行、現行設定擋掉——
-   * 所以這裡同時斷言兩者，證明差別確實來自這個修正，而不是碰巧通過。
+   * 特性測試（不是迴歸測試）：一步會產生多個波峰（腳跟著地、腳尖離地、手臂
+   * 擺動）。次波峰落在 350 毫秒時，現行預設（最短間隔 300 毫秒）會把它另計
+   * 一步——這正是手持時多算約三成的原因，是**已知取捨**而不是 bug：同一組
+   * 參數在口袋情境下最準（實走 100 步偵測 84），而口袋的晃動幅度小、不會
+   * 產生這種次波峰。
+   *
+   * 兩種設定都斷言，把取捨釘在測試裡：日後若改用自適應門檻，這條會失敗，
+   * 提醒維護者回來重新量測，而不是讓行為悄悄改變。
    */
-  it('一步內的次波峰（350 毫秒後）不另計一步——舊設定會數成兩倍', () => {
+  it('一步內的次波峰（350 毫秒後）：現行設定會另計一步，拉長間隔則不會', () => {
     const samples: AccelerometerSample[] = [];
     const STEP_PERIOD_MS = 845; // 實機量到的步頻：20 步 16.9 秒
     for (let step = 0; step < 6; step += 1) {
@@ -127,8 +131,8 @@ describe('10.1 detectSteps()：合成序列驗證', () => {
       samples.push({ x: 0, y: 0, z: GRAVITY + 4, t: base + 390 }); // 腳尖離地，距主波峰 350ms
       samples.push({ x: 0, y: 0, z: GRAVITY, t: base + 450 });
     }
-    expect(detectSteps(samples, { smoothing: 1, minStepIntervalMs: 300 })).toBe(12);
-    expect(detectSteps(samples, { smoothing: 1 })).toBe(6);
+    expect(detectSteps(samples, { smoothing: 1 })).toBe(12);
+    expect(detectSteps(samples, { smoothing: 1, minStepIntervalMs: 400 })).toBe(6);
   });
 
   it('少於 3 筆樣本無法判斷峰值，回傳 0', () => {
