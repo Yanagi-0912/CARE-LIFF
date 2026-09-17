@@ -24,7 +24,13 @@ export default defineConfig({
 
       // 💡 小秘訣：因為 ngrok 每次重開網址都會變，
       // 你也可以直接加入 '.ngrok-free.dev'，這樣以後不管網址前面怎麼變，都不用再回來改這行了！
-      '.ngrok-free.dev'
+      '.ngrok-free.dev',
+
+      // 實機測試用的其他通道（動作感測器只在 HTTPS 下供資料，區網 IP 不行）：
+      // VS Code 連接埠轉送、cloudflared quick tunnel、localtunnel。
+      '.devtunnels.ms',
+      '.trycloudflare.com',
+      '.loca.lt'
     ]
   },
   test: {
