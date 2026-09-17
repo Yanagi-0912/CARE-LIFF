@@ -99,9 +99,13 @@ function toSummarySections(summary: ConsultationSummary, t: (key: string) => str
                 finalValue = String(val).trim() || t('consultRecord.none');
             }
 
+            // 後端 key 是英文 snake_case，查不到翻譯（例如舊摘要的中文 key）就照原樣顯示
+            const labelKey = `consultRecord.field.${key}`;
+            const label = t(labelKey);
+
             return {
                 key,
-                label: key,
+                label: label === labelKey ? key : label,
                 value: finalValue
             };
         })
