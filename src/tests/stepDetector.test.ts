@@ -82,21 +82,53 @@ describe('10.1 detectSteps()：合成序列驗證', () => {
     expect(detectSteps(samples)).toBe(0);
   });
 
-  it('少於 300 毫秒間隔的兩個峰值只算一步（最短間隔保護）', () => {
-    // 兩個獨立的三角波峰值，間隔 150ms（< 300ms），中間有明顯的谷讓兩者都
-    // 各自成為局部最大值，但因為間隔太短，第二個應被忽略。
+  it('間隔短於最短間隔（400 毫秒）的兩個峰值只算一步', () => {
+    // 三個獨立的三角波峰值，中間都有明顯的谷讓它們各自成為局部最大值。
+    // 第二個距第一個 110ms（< 400ms）應被忽略；第三個距第一個 480ms 才算數。
     const samples: AccelerometerSample[] = [
       { x: 0, y: 0, z: GRAVITY, t: 0 },
       { x: 0, y: 0, z: GRAVITY + 5, t: 40 }, // 第一個峰值
       { x: 0, y: 0, z: GRAVITY, t: 80 },
       { x: 0, y: 0, z: GRAVITY, t: 120 },
-      { x: 0, y: 0, z: GRAVITY + 5, t: 150 }, // 第二個峰值，距第一個 110ms < 300ms
+      { x: 0, y: 0, z: GRAVITY + 5, t: 150 }, // 第二個峰值，距第一個 110ms
       { x: 0, y: 0, z: GRAVITY, t: 190 },
       { x: 0, y: 0, z: GRAVITY, t: 500 },
-      { x: 0, y: 0, z: GRAVITY + 5, t: 520 }, // 第三個峰值，距第一個 480ms >= 300ms，應該算數
+      { x: 0, y: 0, z: GRAVITY + 5, t: 520 }, // 第三個峰值，距第一個 480ms，應該算數
       { x: 0, y: 0, z: GRAVITY, t: 560 },
     ];
     expect(detectSteps(samples, { smoothing: 1 })).toBe(2);
+  });
+
+  it('最短間隔的邊界：350 毫秒不算、450 毫秒算', () => {
+    const peakAt = (t: number): AccelerometerSample[] => [
+      { x: 0, y: 0, z: GRAVITY, t: t - 20 },
+      { x: 0, y: 0, z: GRAVITY + 5, t },
+      { x: 0, y: 0, z: GRAVITY, t: t + 20 },
+    ];
+    // 第一步固定在 t=40；第二個波峰分別放在 390（間隔 350）與 490（間隔 450）
+    expect(detectSteps([...peakAt(40), ...peakAt(390)], { smoothing: 1 })).toBe(1);
+    expect(detectSteps([...peakAt(40), ...peakAt(490)], { smoothing: 1 })).toBe(2);
+  });
+
+  /**
+   * 迴歸：實機校正時發現的真正誤差來源。一步會產生多個波峰（腳跟著地、
+   * 腳尖離地、手臂擺動），舊設定（最短間隔 300 毫秒）把實走的 20 步數成
+   * 26 步。次波峰落在 300–400 毫秒這個區間時，舊設定放行、現行設定擋掉——
+   * 所以這裡同時斷言兩者，證明差別確實來自這個修正，而不是碰巧通過。
+   */
+  it('一步內的次波峰（350 毫秒後）不另計一步——舊設定會數成兩倍', () => {
+    const samples: AccelerometerSample[] = [];
+    const STEP_PERIOD_MS = 845; // 實機量到的步頻：20 步 16.9 秒
+    for (let step = 0; step < 6; step += 1) {
+      const base = step * STEP_PERIOD_MS;
+      samples.push({ x: 0, y: 0, z: GRAVITY, t: base });
+      samples.push({ x: 0, y: 0, z: GRAVITY + 6, t: base + 40 }); // 腳跟著地
+      samples.push({ x: 0, y: 0, z: GRAVITY, t: base + 200 });
+      samples.push({ x: 0, y: 0, z: GRAVITY + 4, t: base + 390 }); // 腳尖離地，距主波峰 350ms
+      samples.push({ x: 0, y: 0, z: GRAVITY, t: base + 450 });
+    }
+    expect(detectSteps(samples, { smoothing: 1, minStepIntervalMs: 300 })).toBe(12);
+    expect(detectSteps(samples, { smoothing: 1 })).toBe(6);
   });
 
   it('少於 3 筆樣本無法判斷峰值，回傳 0', () => {
@@ -104,9 +136,9 @@ describe('10.1 detectSteps()：合成序列驗證', () => {
     expect(detectSteps([{ x: 0, y: 0, z: GRAVITY, t: 0 }])).toBe(0);
   });
 
-  it('自訂門檻：調高 peakThreshold 後，原本算數的走路序列變成不計步', () => {
+  it('自訂門檻：調高 peakDelta 後，原本算數的走路序列變成不計步', () => {
     const samples = generateWalkingSamples({ stepCount: 10, stepsPerSecond: 2, amplitude: 4 });
-    expect(detectSteps(samples, { peakThreshold: 20 })).toBe(0);
+    expect(detectSteps(samples, { peakDelta: 20 })).toBe(0);
   });
 });
 

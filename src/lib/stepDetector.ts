@@ -3,8 +3,20 @@
  * 演算法細節，只規定行為：只在前景計步、估算揭露、最短間隔等）。
  *
  * 演算法：加速度向量長度（magnitude）→ 一階低通濾波（EMA，去除感測器雜訊，
- * 保留走路造成的起伏）→ 三點峰值偵測（前一點比左右都高，且高於門檻值才算
- * 一步）→ 最短間隔 300 毫秒（避免抖動或雜訊在同一步附近被算成兩步）。
+ * 保留走路造成的起伏）→ 追蹤一條慢速基準線（重力估計）→ 三點峰值偵測
+ * （前一點比左右都高，且**高出基準線** `peakDelta` 才算一步）→ 最短間隔
+ * （避免同一步的多個波峰被算成好幾步）。
+ *
+ * 為什麼是「高出基準」而不是固定門檻：原本的版本要求峰值超過絕對值 11
+ * （假設重力 9.8）。但重力基準會因裝置與擺放而異——實機量到的靜止合力是
+ * 9.825、走動中的基準是 10.049——同一個絕對值在不同手機上鬆緊並不一致。
+ * 改成相對於自己的基準判斷，門檻的意義才在每台裝置上一致。
+ *
+ * 參數來自實機校正（Android、61 Hz、手機置於口袋、實走 20 步 16.9 秒，
+ * 即每秒約 1.18 步）：走路波峰達 22–27（基準約 10），訊號強度從來不是問題，
+ * 真正的誤差來源是**一步產生多個波峰**（腳跟著地、腳尖離地、手臂擺動）。
+ * 原設定（平滑 0.3、最短間隔 300 毫秒）把 20 步數成 26 步；改用下列預設值
+ * 後為 21 步（誤差 5%）。其餘試過的組合分別為 12、5、4、0 步，明顯過嚴。
  *
  * 這是簡化過的計步模型，不是可佩戴式裝置等級的演算法——`health.stepCounter`
  * 的 UI 文案因此必須揭露「估算值，可能與手機內建的計步器不同」
@@ -36,18 +48,23 @@ export interface DetectStepsOptions {
    *  這個係數在常見的 devicemotion 取樣率（約 30–60 Hz）下大約對應
    *  3–4 Hz 截止頻率，足以保留步伐起伏、濾掉手部細微晃動的高頻雜訊。 */
   smoothing?: number;
-  /** 判定為一步的最小合力峰值（m/s²）。靜止時合力等於重力加速度
-   *  （約 9.8 m/s²，手機平放或直放都一樣，因為是三軸向量長度不是單軸）；
-   *  正常走路的垂直/水平晃動會讓峰值明顯高於這個值，門檻設在兩者之間。 */
-  peakThreshold?: number;
-  /** 相鄰兩步的最短間隔（毫秒）。10.1 brief 指定 300 毫秒。 */
+  /** 峰值要**高出基準線**多少（m/s²）才算一步。基準線是慢速追蹤的重力估計，
+   *  所以這個值與裝置的重力讀數無關（實機量到的基準是 10.049 而非 9.8）。 */
+  peakDelta?: number;
+  /** 基準線（重力估計）的追蹤速度（0–1]。要遠小於 `smoothing`：基準要跟得上
+   *  姿勢改變（把手機從口袋拿出來），但不能快到被單一步的波峰帶著跑，否則
+   *  峰值與基準一起上升，就永遠差不到 `peakDelta`。 */
+  baselineSmoothing?: number;
+  /** 相鄰兩步的最短間隔（毫秒）。實機校正：每步約 845 毫秒（每秒 1.18 步），
+   *  300 毫秒等於容許每秒 3.3 步，同一步的第二個波峰會被算成另一步。 */
   minStepIntervalMs?: number;
 }
 
 const DEFAULT_OPTIONS: Required<DetectStepsOptions> = {
-  smoothing: 0.3,
-  peakThreshold: 11,
-  minStepIntervalMs: 300,
+  smoothing: 0.2,
+  peakDelta: 2,
+  baselineSmoothing: 0.01,
+  minStepIntervalMs: 400,
 };
 
 function resolveOptions(options: DetectStepsOptions): Required<DetectStepsOptions> {
@@ -61,6 +78,8 @@ function magnitude(sample: AccelerometerSample): number {
 interface StepDetectorState {
   /** 目前的低通濾波值（i 點）。 */
   filtered: number | null;
+  /** 慢速基準線（重力估計）；峰值要高出它 `peakDelta` 才算一步。 */
+  baseline: number | null;
   /** i-1 點的濾波值：目前正在被檢查是不是峰值的候選點。 */
   prevFiltered: number | null;
   /** i-2 點的濾波值，用來判斷候選點是否比左邊高。 */
@@ -76,6 +95,7 @@ interface StepDetectorState {
 function createDetectorState(): StepDetectorState {
   return {
     filtered: null,
+    baseline: null,
     prevFiltered: null,
     prevPrevFiltered: null,
     prevSampleT: null,
@@ -93,12 +113,18 @@ function feed(state: StepDetectorState, sample: AccelerometerSample, opts: Requi
   const mag = magnitude(sample);
   const filtered =
     state.filtered === null ? mag : opts.smoothing * mag + (1 - opts.smoothing) * state.filtered;
+  // 基準線先更新再判峰值，與 motion-probe.html 的校正版本一致，實機量到的
+  // 數字才能直接套用到這裡。
+  const baseline =
+    state.baseline === null
+      ? filtered
+      : state.baseline + opts.baselineSmoothing * (filtered - state.baseline);
 
   if (state.prevFiltered !== null && state.prevPrevFiltered !== null && state.prevSampleT !== null) {
     const isLocalPeak =
       state.prevFiltered > state.prevPrevFiltered &&
       state.prevFiltered >= filtered &&
-      state.prevFiltered >= opts.peakThreshold;
+      state.prevFiltered - baseline > opts.peakDelta;
 
     if (isLocalPeak && state.prevSampleT - state.lastStepAt >= opts.minStepIntervalMs) {
       state.stepCount += 1;
@@ -110,6 +136,7 @@ function feed(state: StepDetectorState, sample: AccelerometerSample, opts: Requi
   state.prevFiltered = filtered;
   state.prevSampleT = sample.t;
   state.filtered = filtered;
+  state.baseline = baseline;
 }
 
 /**
