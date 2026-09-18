@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   ChevronDownIcon,
+  HeartPulseIcon,
   LockIcon,
   MessageCircleIcon,
   PencilIcon,
@@ -14,18 +15,23 @@ import {
 } from 'lucide-react';
 
 import { removeFamilyMember } from '../../api/familyApi';
+import { fetchMeasurements, fetchStepCounts } from '../../api/healthApi';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
 import { FAMILY_ROLE_LABEL_KEY, RELATIONSHIP_LABEL_KEY } from '../../types/family';
 import {
   canProxyEditHealth,
+  canReadHealthRecords,
   canReadPrivate,
   canReadSensitive,
+  canRecordHealthFor,
   hasNoAccess,
 } from '../../utils/familyPermissions';
 import { profileToFormValues } from '../PersonalHealth/healthForm';
+import { HealthLevelBadge } from '../HealthRecords/HealthLevelBadge';
 import { queryKeys } from '@/lib/queryClient';
+import { todayTaipei } from '@/lib/taipeiCalendar';
 import { cn } from '@/lib/utils';
 
 import {
@@ -99,6 +105,13 @@ export function MemberCard({ member }: Props) {
   const showProxyEdit = canProxyEditHealth(member);
   const noAccess = hasNoAccess(member);
 
+  // 血壓血糖量測、提醒範圍與步數是 personal-health-tracking 這個 change 新導入
+  // 的資源，一律看嚴格判定（`my_strict_permissions`），不受影子模式放寬——同
+  // familyPermissions.ts 對 `canReadHealthRecords` 的說明。與上面 `showHealth`
+  // （個人健康檔案，走寬鬆權限）刻意分開判斷。
+  const showHealthRecords = canReadHealthRecords(member);
+  const showRecordProxyEntry = canRecordHealthFor(member);
+
   // enabled 多帶 showHealth：沒有權限就連請求都不發。讓它打出去再收 403，
   // 只是把一個必然失敗的往返送上長輩的行動網路。
   const { data: health, isPending, isError } = useQuery({
@@ -106,6 +119,55 @@ export function MemberCard({ member }: Props) {
     queryFn: () => getPersonalHealthProfile(member.user_id),
     enabled: open && showHealth,
   });
+
+  // 三個獨立查詢（血壓、血糖、步數）而非一次抓齊：與 /health-records 頁共用
+  // 同一組 query key，兩處展開同一位家人時彼此命中快取，不必各自重打一次。
+  // enabled 同樣多帶 showHealthRecords，沒有嚴格讀取權就連請求都不發。
+  const measurementsBpKey = queryKeys.healthMeasurements(member.user_id, 'blood_pressure');
+  const measurementsGlucoseKey = queryKeys.healthMeasurements(member.user_id, 'blood_glucose');
+  const stepsKey = queryKeys.stepCounts(member.user_id);
+
+  const bloodPressure = useQuery({
+    queryKey: measurementsBpKey,
+    queryFn: () => fetchMeasurements(member.user_id, { kind: 'blood_pressure' }),
+    enabled: open && showHealthRecords,
+  });
+  const bloodGlucose = useQuery({
+    queryKey: measurementsGlucoseKey,
+    queryFn: () => fetchMeasurements(member.user_id, { kind: 'blood_glucose' }),
+    enabled: open && showHealthRecords,
+  });
+  const steps = useQuery({
+    queryKey: stepsKey,
+    queryFn: () => fetchStepCounts(member.user_id),
+    enabled: open && showHealthRecords,
+  });
+
+  const latestBloodPressure = bloodPressure.data?.[0];
+  const latestBloodGlucose = bloodGlucose.data?.[0];
+  const todayStepEntry = steps.data?.find((entry) => entry.date === todayTaipei());
+
+  // 三個查詢各自獨立呈現 pending／error：其中一個失敗（例如步數）不該把另外
+  // 兩個已經成功載入的數字也一起蓋掉（review：ORing 三者的 pending/error
+  // 會讓一個失敗的查詢遮住其餘已經有結果的讀數）。呼叫端只在
+  // `isPending || isError` 為真時才會用到這個函式，所以這裡只要分辨
+  // pending／error 兩種情形即可。
+  function recordRowStatus(isPending: boolean) {
+    if (isPending) {
+      return (
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+          {t('family.healthLoading')}
+        </span>
+      );
+    }
+    return (
+      <span className="flex items-center gap-2 text-sm text-destructive">
+        <TriangleAlertIcon className="size-4 shrink-0" />
+        {t('family.healthError')}
+      </span>
+    );
+  }
 
   const removal = useMutation({
     // 404 當成已完成：兩邊都能按移除，對方可能已經先按了，而這張卡片是快取裡
@@ -284,6 +346,109 @@ export function MemberCard({ member }: Props) {
               </p>
             )}
           </div>
+
+          {/* 健康紀錄（血壓、血糖、步數）：strict 判定，沒有嚴格讀取權時整段
+              SHALL NOT 渲染，也不發任何請求（見上面 showHealthRecords 的說明）。
+              經期是 PERSONAL 分類，沒有代記也沒有跨使用者查詢，這裡永遠不放
+              任何經期相關元素。 */}
+          {showHealthRecords && (
+            <>
+              <Separator />
+              <div className="px-4 py-3.5">
+                <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t('family.healthRecords.title')}
+                </p>
+
+                <dl className="grid gap-2">
+                  <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
+                    <dt className="text-sm text-muted-foreground">
+                      {t('family.healthRecords.latestBloodPressure')}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      {bloodPressure.isPending || bloodPressure.isError ? (
+                        recordRowStatus(bloodPressure.isPending)
+                      ) : latestBloodPressure ? (
+                        <>
+                          <span className="num text-base font-semibold">
+                            {latestBloodPressure.systolic}/{latestBloodPressure.diastolic}{' '}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              mmHg
+                            </span>
+                          </span>
+                          <HealthLevelBadge level={latestBloodPressure.level} />
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {t('family.healthRecords.noRecord')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+
+                  <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
+                    <dt className="text-sm text-muted-foreground">
+                      {t('family.healthRecords.latestBloodGlucose')}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      {bloodGlucose.isPending || bloodGlucose.isError ? (
+                        recordRowStatus(bloodGlucose.isPending)
+                      ) : latestBloodGlucose ? (
+                        <>
+                          <span className="num text-base font-semibold">
+                            {latestBloodGlucose.glucose_mg_dl}{' '}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              mg/dL
+                            </span>
+                          </span>
+                          <HealthLevelBadge level={latestBloodGlucose.level} />
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {t('family.healthRecords.noRecord')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+
+                  <div className="flex flex-col gap-1 rounded-lg border border-hair px-3 py-2.5">
+                    <dt className="text-sm text-muted-foreground">
+                      {t('family.healthRecords.todaySteps')}
+                    </dt>
+                    <dd className="flex flex-wrap items-center gap-2">
+                      {steps.isPending || steps.isError ? (
+                        recordRowStatus(steps.isPending)
+                      ) : todayStepEntry ? (
+                        <span className="num text-base font-semibold">
+                          {t('health.steps.stepsValue', { count: todayStepEntry.steps })}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {t('family.healthRecords.noRecord')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+
+                {/* 代記健康紀錄：只有對這位家人的血壓血糖／步數有嚴格寫入權的人
+                    看得到，連到 /health-records 頁去新增量測、設定提醒範圍。
+                    與上面的「幫他填健康資料」（showProxyEdit，個人健康檔案，
+                    走寬鬆權限）是兩個不同的入口，不要合併。 */}
+                {showRecordProxyEntry && (
+                  <Button
+                    variant="outline"
+                    className="mt-3 w-full"
+                    onClick={() =>
+                      navigate(`/health-records?user=${encodeURIComponent(member.user_id)}`)
+                    }
+                  >
+                    <HeartPulseIcon data-icon="inline-start" />
+                    {t('family.healthRecords.proxyEntry')}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
 
           {/* 移除家人：與健康資料無關、也不看權限——族譜裡的任何一方都能切斷
               關係。用分隔線隔開，放在最下面，不跟日常會按的按鈕擠在一起。 */}

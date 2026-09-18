@@ -23,6 +23,9 @@ function Sidebar() {
     { path: '/', label: t('sidebar.home') },
     { path: '/nearby-hospitals', label: t('sidebar.nearbyHospitals') },
     { path: '/personalhealth', label: t('sidebar.health') },
+    // 與「個人健康」分開列：一個是持續累積的量測數字（血壓、血糖、經期、
+    // 步數），一個是偶爾更新的基本資料，兩者在首頁也是分成兩張卡片。
+    { path: '/health-records', label: t('sidebar.healthRecords') },
     // 側欄沒有格數限制，兩種提醒各列一項；手機的底部導覽才需要合成一格
     { path: '/reminders/medications', label: t('sidebar.medications') },
     { path: '/reminders/appointments', label: t('sidebar.appointments') },

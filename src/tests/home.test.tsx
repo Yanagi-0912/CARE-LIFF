@@ -61,7 +61,7 @@ describe('Home Page Component', () => {
     expect(screen.getByText('設定頁面')).toBeInTheDocument();
 
     // 檢查描述文字是否符合實際文字
-    expect(screen.getByText('健康紀錄與醫院預約')).toBeInTheDocument();
+    expect(screen.getByText('年齡、慢性病與病史')).toBeInTheDocument();
     expect(screen.getByText('管理長輩與家人狀況')).toBeInTheDocument();
     expect(screen.getByText('追蹤人工審核進度')).toBeInTheDocument();
   });

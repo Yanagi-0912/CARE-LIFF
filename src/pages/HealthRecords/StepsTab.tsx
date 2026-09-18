@@ -1,0 +1,123 @@
+import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { FootprintsIcon, LockIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react';
+
+import { fetchStepCounts } from '../../api/healthApi';
+import { queryKeys } from '@/lib/queryClient';
+
+import { Alert, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StepCounterPanel } from './StepCounterPanel';
+
+interface StepsTabProps {
+  targetUserId?: string;
+  canRead: boolean;
+  /** 只有看自己時才會出現「開始計步」的操作區——步數只能來自本人手機的感測器。 */
+  isSelf: boolean;
+}
+
+/**
+ * 步數分頁（9.1 的第四個分頁）。這裡負責歷史每日步數的**唯讀**列表；
+ * 「開始計步」的感測器讀取、工作階段同步、Wake Lock 等即時計步 UI 是
+ * Task 10 的範圍（task-8-11-dispatch-notes.md「Task 10」），實作在
+ * `src/hooks/useStepCounter.ts`／`StepCounterPanel.tsx`，只在
+ * `data-testid="steps-counter-slot"` 這個位置掛載，不重寫本頁其餘部分。
+ */
+export function StepsTab({ targetUserId, canRead, isSelf }: StepsTabProps) {
+  const { t } = useTranslation();
+
+  const { data, isPending, isError, isFetching, refetch } = useQuery({
+    queryKey: queryKeys.stepCounts(targetUserId),
+    queryFn: () => fetchStepCounts(targetUserId),
+    enabled: canRead,
+  });
+
+  if (!canRead) {
+    return (
+      <Empty className="border border-dashed">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <LockIcon />
+          </EmptyMedia>
+          <EmptyTitle>{t('familyPermission.noSensitive')}</EmptyTitle>
+          <EmptyDescription>{t('familyPermission.askOwner')}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {isSelf && (
+        <div data-testid="steps-counter-slot">
+          <StepCounterPanel />
+        </div>
+      )}
+
+      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        {t('health.steps.historyTitle')}
+      </p>
+
+      {isPending ? (
+        <ItemGroup className="gap-2" aria-busy="true" aria-label={t('health.loading')}>
+          {[0, 1, 2].map((i) => (
+            <Item key={i} variant="outline">
+              <ItemMedia>
+                <Skeleton className="size-10 rounded-full" />
+              </ItemMedia>
+              <ItemContent>
+                <Skeleton className="h-4 w-24" />
+              </ItemContent>
+            </Item>
+          ))}
+        </ItemGroup>
+      ) : isError ? (
+        <div className="flex flex-col gap-3">
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertTitle>{t('health.loadError')}</AlertTitle>
+          </Alert>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? null : <RotateCwIcon data-icon="inline-start" />}
+            {t('health.retry')}
+          </Button>
+        </div>
+      ) : (data ?? []).length === 0 ? (
+        <Empty className="border border-dashed">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FootprintsIcon />
+            </EmptyMedia>
+            <EmptyTitle>{t('health.steps.emptyTitle')}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <ItemGroup className="gap-2" aria-label={t('health.steps.historyTitle')}>
+          {(data ?? []).map((entry) => (
+            <Item key={entry.date} variant="outline">
+              <ItemMedia>
+                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted-foreground">
+                  <FootprintsIcon className="size-5" aria-hidden="true" />
+                </span>
+              </ItemMedia>
+              <ItemContent>
+                <p className="text-base font-bold">{entry.date}</p>
+                <p className="num text-sm text-muted-foreground">
+                  {t('health.steps.stepsValue', { count: entry.steps })}
+                </p>
+              </ItemContent>
+            </Item>
+          ))}
+        </ItemGroup>
+      )}
+    </div>
+  );
+}

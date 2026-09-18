@@ -1,11 +1,12 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useSearchParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithToaster } from './testUtils';
 import FamilyPage from '../pages/Family';
 import * as profileApi from '../api/profileApi';
 import * as familyApi from '../api/familyApi';
+import * as healthApi from '../api/healthApi';
 import type {
   FamilyMember,
   FamilyPermissions,
@@ -14,6 +15,8 @@ import type {
   FamilyRoleEntry,
   GetFamilyTreeResponse,
 } from '../types/family';
+import type { HealthMeasurement, StepCount } from '../types/health';
+import { todayTaipei } from '../lib/taipeiCalendar';
 import i18n from '../i18n';
 
 vi.mock('../api/profileApi', () => ({
@@ -27,6 +30,11 @@ vi.mock('../api/familyApi', () => ({
   fetchMemberRoles: vi.fn(),
   setFamilyRole: vi.fn(),
   removeFamilyMember: vi.fn(),
+}));
+
+vi.mock('../api/healthApi', () => ({
+  fetchMeasurements: vi.fn(),
+  fetchStepCounts: vi.fn(),
 }));
 
 vi.mock('../hooks/useLiff', () => ({
@@ -85,6 +93,26 @@ function memberAs(role: FamilyRole | null): FamilyMember {
   };
 }
 
+/**
+ * 帶嚴格權限（`my_strict_permissions`）的成員，給健康紀錄區塊（血壓血糖、
+ * 步數）的測試用——那些查詢一律看嚴格判定，不受影子模式放寬。
+ *
+ * `strictRole` 省略時 `my_strict_permissions` 維持 undefined（等同後端沒帶
+ * 這個欄位），fail-closed 成沒有權限；這是影子模式案例要的形狀：`my_permissions`
+ * 可以是放寬後的值，`my_strict_permissions` 卻是真正生效中的（通常較嚴格）角色。
+ */
+function memberWithStrict(
+  role: FamilyRole | null,
+  strictRole: FamilyRole | null,
+  overrides: Partial<FamilyMember> = {},
+): FamilyMember {
+  return {
+    ...memberAs(role),
+    my_strict_permissions: strictRole ? PERMISSIONS[strictRole] : undefined,
+    ...overrides,
+  };
+}
+
 function assignment(
   overrides: Partial<FamilyRoleAssignmentStatus> = {},
 ): FamilyRoleAssignmentStatus {
@@ -101,12 +129,20 @@ function assignment(
 const shadowPending = (count: number) =>
   `還有 ${count} 位家人尚未設定權限。全部設定好之前，所有家人都看得到您的健康狀況與對話紀錄；設定好後權限才會生效。`;
 
+/** `/health-records?user=...` 的替身路由：只回報網址帶了哪個 user id，
+ *  不用真的渲染健康紀錄頁——這裡要驗證的是代記入口導到了哪裡。 */
+function HealthRecordsProbe() {
+  const [params] = useSearchParams();
+  return <div>health-records-for:{params.get('user')}</div>;
+}
+
 function renderPage() {
   return renderWithToaster(
     <MemoryRouter initialEntries={['/family']}>
       <Routes>
         <Route path="/family" element={<FamilyPage />} />
         <Route path="/personalhealth/consult" element={<div>consult</div>} />
+        <Route path="/health-records" element={<HealthRecordsProbe />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -201,6 +237,129 @@ describe('家人卡片依角色降級', () => {
     );
     expect(screen.getByRole('button', { name: /查看諮詢紀錄/ })).toBeInTheDocument();
     expect(screen.queryByText(/您沒有查看/)).not.toBeInTheDocument();
+  });
+});
+
+describe('家人卡片的健康紀錄區塊（血壓、血糖、步數，Task 11）', () => {
+  const BP: HealthMeasurement = {
+    id: 'm-bp-1',
+    user_id: 'U-mom',
+    kind: 'blood_pressure',
+    measured_at: '2026-09-16T01:00:00Z',
+    recorded_by: 'U-mom',
+    systolic: 132,
+    diastolic: 84,
+    pulse: 70,
+    glucose_mg_dl: null,
+    meal_context: null,
+    level: 'above_range',
+    created_at: '2026-09-16T01:00:00Z',
+  };
+  const GLUCOSE: HealthMeasurement = {
+    id: 'm-glucose-1',
+    user_id: 'U-mom',
+    kind: 'blood_glucose',
+    measured_at: '2026-09-16T02:00:00Z',
+    recorded_by: 'U-mom',
+    systolic: null,
+    diastolic: null,
+    pulse: null,
+    glucose_mg_dl: 98,
+    meal_context: 'fasting',
+    level: 'within_range',
+    created_at: '2026-09-16T02:00:00Z',
+  };
+  const STEP_COUNTS: StepCount[] = [{ user_id: 'U-mom', date: todayTaipei(), steps: 62 }];
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    familyState.roleAssignment = null;
+    familyState.loading = false;
+    familyState.error = null;
+    vi.mocked(healthApi.fetchMeasurements).mockImplementation(async (_userId, options) =>
+      options?.kind === 'blood_pressure' ? [BP] : [GLUCOSE],
+    );
+    vi.mocked(healthApi.fetchStepCounts).mockResolvedValue(STEP_COUNTS);
+    await i18n.changeLanguage('zh-TW');
+  });
+
+  it('GUARDIAN（嚴格讀寫皆有）：顯示最新血壓血糖等級與今日步數，也有代記入口', async () => {
+    familyState.members = [memberWithStrict('GUARDIAN', 'GUARDIAN')];
+    renderPage();
+    await expandCard();
+
+    await waitFor(() =>
+      expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', {
+        kind: 'blood_pressure',
+      }),
+    );
+    expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', { kind: 'blood_glucose' });
+    expect(healthApi.fetchStepCounts).toHaveBeenCalledWith('U-mom');
+
+    expect(await screen.findByText('健康紀錄')).toBeInTheDocument();
+    expect(screen.getByText('高於範圍')).toBeInTheDocument();
+    expect(screen.getByText('正常範圍')).toBeInTheDocument();
+    expect(screen.getByText('62 步')).toBeInTheDocument();
+
+    const proxyButton = screen.getByRole('button', { name: /幫他記錄健康紀錄/ });
+    fireEvent.click(proxyButton);
+    expect(await screen.findByText('health-records-for:U-mom')).toBeInTheDocument();
+  });
+
+  it('CAREGIVER（嚴格只有讀取權）：顯示紀錄，但沒有代記入口', async () => {
+    familyState.members = [memberWithStrict('CAREGIVER', 'CAREGIVER')];
+    renderPage();
+    await expandCard();
+
+    await waitFor(() => expect(healthApi.fetchStepCounts).toHaveBeenCalledWith('U-mom'));
+    // 讀取權只讀不寫，血壓血糖的查詢仍要照樣打出去——不能只驗證步數，否則
+    // 唯讀角色的血壓／血糖查詢壞掉也不會被這條測試抓到（Task 12 review）。
+    expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', { kind: 'blood_pressure' });
+    expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', { kind: 'blood_glucose' });
+    expect(await screen.findByText('62 步')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /幫他記錄健康紀錄/ })).not.toBeInTheDocument();
+  });
+
+  it('沒有今天的步數紀錄時顯示「尚無紀錄」，不會顯示成 0 步（review：步數不能把「沒資料」說成「走了 0 步」）', async () => {
+    vi.mocked(healthApi.fetchStepCounts).mockResolvedValue([]);
+    familyState.members = [memberWithStrict('GUARDIAN', 'GUARDIAN')];
+    renderPage();
+    await expandCard();
+
+    await waitFor(() => expect(healthApi.fetchStepCounts).toHaveBeenCalledWith('U-mom'));
+    const stepsRow = (await screen.findByText('今日步數')).closest('div');
+    expect(stepsRow).not.toBeNull();
+    expect(within(stepsRow as HTMLElement).getByText('尚無紀錄')).toBeInTheDocument();
+    expect(screen.queryByText(/0 步/)).not.toBeInTheDocument();
+  });
+
+  it('MEMBER（嚴格判定皆無）：整段健康紀錄不渲染，連請求都不發', async () => {
+    familyState.members = [memberWithStrict('MEMBER', 'MEMBER')];
+    renderPage();
+    await expandCard();
+
+    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
+    expect(healthApi.fetchStepCounts).not.toHaveBeenCalled();
+    expect(screen.queryByText('健康紀錄')).not.toBeInTheDocument();
+  });
+
+  it('影子模式：寬鬆權限放寬成 GUARDIAN，但嚴格判定仍是 MEMBER 時，隱藏且不發請求', async () => {
+    // 血壓血糖、提醒範圍、步數是 personal-health-tracking 新導入的資源，一律
+    // 嚴格判定、不受影子模式放寬（同 familyPermissions.ts 對 canReadHealthRecords
+    // 的說明）。這裡刻意讓 my_permissions 是放寬後的 GUARDIAN，my_strict_permissions
+    // 卻仍是真正生效中的 MEMBER（皆無），驗證健康紀錄區塊只認後者。
+    familyState.members = [
+      memberWithStrict('MEMBER', 'MEMBER', {
+        my_permissions: PERMISSIONS.GUARDIAN,
+        rbac_migration_state: 'shadow',
+      }),
+    ];
+    renderPage();
+    await expandCard();
+
+    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
+    expect(healthApi.fetchStepCounts).not.toHaveBeenCalled();
+    expect(screen.queryByText('健康紀錄')).not.toBeInTheDocument();
   });
 });
 

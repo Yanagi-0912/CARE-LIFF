@@ -7,7 +7,7 @@ import {
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
-import { CalendarClockIcon, ChevronRightIcon, MicIcon, ShieldCheckIcon } from 'lucide-react';
+import { CalendarClockIcon, ChevronRightIcon, HeartPulseIcon, MicIcon, ShieldCheckIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,6 +51,15 @@ const Home = () => {
       icon: <HealthIcon width={26} height={26} />,
       path: '/personalhealth',
       desc: t('home.personalHealthDesc'),
+      tone: 'teal'
+    },
+    // 血壓、血糖、經期、步數的紀錄與查詢，與「個人健康」（身高體重、慢性病史
+    // 這類基本資料）分開：一個是持續累積的量測數字，一個是偶爾更新的檔案。
+    {
+      title: t('home.healthRecords'),
+      icon: <HeartPulseIcon width={26} height={26} />,
+      path: '/health-records',
+      desc: t('home.healthRecordsDesc'),
       tone: 'teal'
     },
     {

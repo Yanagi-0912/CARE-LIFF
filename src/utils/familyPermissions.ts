@@ -123,7 +123,41 @@ export function canRecordClinicVisits(member: FamilyMember): boolean {
   return strictPermissionsOf(member).sensitive.includes('WRITE');
 }
 
-/** 我可以代這位成員填健康資料嗎。 */
+/**
+ * 我可以代這位成員填健康資料嗎。
+ *
+ * 看的是寬鬆權限（`my_permissions`）。個人健康紀錄（血壓血糖量測、提醒
+ * 範圍）改用嚴格判定的 `canRecordHealthFor`——MemberCard 目前呼叫的仍是
+ * 這支，Task 11 會把它遷移過去。
+ */
 export function canProxyEditHealth(member: FamilyMember): boolean {
   return canWriteSensitive(member);
+}
+
+/**
+ * 我可以看這位成員的健康紀錄嗎——血壓血糖量測、提醒範圍、每日步數。
+ *
+ * 看 `my_strict_permissions`，不看 `my_permissions`：這些端點是
+ * personal-health-tracking 這個 change 新導入的能力，在它們出現之前不存在，
+ * 後端一律呼叫 `authorize(..., has_legacy_equivalent=False)`，不受影子模式
+ * 放寬（同 `canManageAppointments` 的理由）。影子模式下 MEMBER 的
+ * `my_permissions` 可能顯示可讀，但嚴格權限沒有 SENSITIVE READ 時，這裡
+ * SHALL 回傳 false，畫面也 SHALL NOT 送出請求。
+ *
+ * 經期沒有對應的函式：經期是 PERSONAL 分類，沒有代記也沒有跨使用者查詢，
+ * 不論角色或委任一律 403，前端也不該顯示任何入口。
+ */
+export function canReadHealthRecords(member: FamilyMember): boolean {
+  return strictPermissionsOf(member).sensitive.includes('READ');
+}
+
+/**
+ * 我可以代這位成員記錄健康資料嗎——新增血壓／血糖量測、編輯提醒範圍。
+ *
+ * 同 `canReadHealthRecords`，看嚴格權限、不受影子模式放寬。後端對「代為
+ * 新增量測」與「代為設定提醒範圍」用的是同一條規則（對本人 SENSITIVE 具
+ * 寫入權），因此這裡不另外拆第三支函式。
+ */
+export function canRecordHealthFor(member: FamilyMember): boolean {
+  return strictPermissionsOf(member).sensitive.includes('WRITE');
 }

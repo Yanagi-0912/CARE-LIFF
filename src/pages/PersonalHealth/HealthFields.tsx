@@ -47,10 +47,12 @@ export function HealthField({ htmlFor, label, hint, error, children }: HealthFie
     );
 }
 
-/** 文字／數字輸入。register 直接展開，維持與 react-hook-form 的連動 */
+/** 文字／數字／日期輸入。register 直接展開，維持與 react-hook-form 的連動 */
 type HealthInputProps = {
     id: string;
-    type?: 'text' | 'number';
+    /** `date` 給經期那類日曆日欄位：原生日期控制項只會吐 YYYY-MM-DD，
+     *  純文字框則會讓「不得晚於今天」那類字串比較在格式不合時整個誤判。 */
+    type?: 'text' | 'number' | 'date';
     placeholder?: string;
     invalid?: boolean;
     register: UseFormRegisterReturn;

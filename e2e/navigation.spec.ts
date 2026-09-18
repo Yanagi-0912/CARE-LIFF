@@ -17,6 +17,7 @@ const SIDEBAR_ITEMS = [
   { labelKey: 'sidebar.home', path: '/' },
   { labelKey: 'sidebar.nearbyHospitals', path: '/nearby-hospitals' },
   { labelKey: 'sidebar.health', path: '/personalhealth' },
+  { labelKey: 'sidebar.healthRecords', path: '/health-records' },
   { labelKey: 'sidebar.medications', path: '/reminders/medications' },
   { labelKey: 'sidebar.appointments', path: '/reminders/appointments' },
   { labelKey: 'sidebar.clinicVisits', path: '/clinic-visits' },
