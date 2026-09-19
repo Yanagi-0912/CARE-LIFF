@@ -1,12 +1,40 @@
 # merge 到 main 後，通知 CARE-infra 開始 build + deploy（前後端都會重建）
+#
+# 型別檢查也放在這個檔案，而且 dispatch 要等它過。原因：npm run build 現在只跑 vite
+# （vite 把型別標註直接刪掉、不檢查），型別錯誤不會再讓 CARE-infra 的 docker build 失敗，
+# 所以關卡要移到 dispatch 之前，不然錯的程式會直接上正式站。
+# PR 也跑，合併前就看得到結果。
 name: Trigger Deploy
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      # --ignore-scripts：理由同 playwright.yml（避免套件在安裝階段執行任意程式）
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Type check
+        run: npm run typecheck
+
   trigger-infra-deploy:
+    # 型別沒過就不部署
+    needs: typecheck
+    # PR 只做檢查，碰不到正式環境
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch deploy to CARE-infra
