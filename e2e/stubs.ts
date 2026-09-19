@@ -713,3 +713,52 @@ export function collectConsoleErrors(page: Page) {
   });
   return errors;
 }
+
+/* ───────────── 共用：錄音能力偵測 ───────────── */
+
+/**
+ * 讓 useClinicRecorder 的 detectSupport() 在測試瀏覽器上過關。
+ *
+ * Playwright 的 Linux WebKit build 沒有 MediaRecorder（同版的 macOS build 有），
+ * 所以 detectSupport() 在 CI 上回 'no-api'，RecordPage 直接改渲染「這個畫面沒辦法
+ * 使用麥克風」，第一屏的徵詢同意永遠等不到。mobile-safari 從 9/17 起連五次失敗就是
+ * 這個原因（run 35327168344 的 trace 裡最後一張快照可見），本機 macOS 跑卻會過，
+ * 所以很容易被當成 flaky。
+ *
+ * 真機沒有這個問題：iOS 14.3 起的 Safari 與 LINE 內建 WebView 都有 MediaRecorder，
+ * 所以這是測試瀏覽器的差異，不是產品的缺陷——補上替身才測得到我們自己的邏輯。
+ *
+ * 只補到「偵測得過」為止，不模擬真的錄音：錄音要真的麥克風，本來就不在 e2e 的範圍
+ * （見 clinicVisits.spec.ts 檔頭）。真的走到 start() 時 getUserMedia 會 reject，
+ * 畫面會顯示 denied，不會假裝錄得起來。
+ */
+export async function stubRecorderSupport(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    if (typeof MediaRecorder === 'undefined') {
+      class UnusableMediaRecorder extends EventTarget {
+        static isTypeSupported() {
+          return false;
+        }
+        readonly mimeType = '';
+        readonly state = 'inactive';
+        start() {}
+        stop() {}
+      }
+      Object.defineProperty(window, 'MediaRecorder', {
+        configurable: true,
+        value: UnusableMediaRecorder,
+      });
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const devices = navigator.mediaDevices ?? {};
+      Object.defineProperty(devices, 'getUserMedia', {
+        configurable: true,
+        value: () => Promise.reject(new DOMException('e2e：沒有真的麥克風', 'NotAllowedError')),
+      });
+      if (!navigator.mediaDevices) {
+        Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: devices });
+      }
+    }
+  });
+}

@@ -1,5 +1,11 @@
 import { LINE_USER_ID, expect, t, test } from './fixtures';
-import { FULL_PERMISSIONS, NO_PERMISSIONS, stubApi, stubFamily } from './stubs';
+import {
+  FULL_PERMISSIONS,
+  NO_PERMISSIONS,
+  stubApi,
+  stubFamily,
+  stubRecorderSupport,
+} from './stubs';
 
 /**
  * 看診錄音清單：選單入口、替誰看（嚴格判定的 SENSITIVE）、開始錄音的網址、
@@ -73,6 +79,8 @@ function record(overrides: Record<string, unknown> = {}) {
 test.describe('看診錄音清單', () => {
   test.beforeEach(async ({ authedPage }) => {
     await stubFamily(authedPage, MEMBERS);
+    // 測試瀏覽器的 MediaRecorder 有無因平台而異，補上替身讓錄音頁走到徵詢同意那一屏
+    await stubRecorderSupport(authedPage);
   });
 
   test('首頁卡片進得來，本人可以開始錄音', async ({ authedPage }) => {
