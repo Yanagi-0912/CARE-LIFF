@@ -12,13 +12,12 @@ interface UseLiffReturn {
  */
 export function useLiff(): UseLiffReturn {
   const [liffReady, setLiffReady] = useState(false);
-  const [liffError, setLiffError] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!LIFF_AVAILABLE) {
-      setLiffError('VITE_LIFF_ID 未設定');
-      return;
-    }
+    // 沒設 VITE_LIFF_ID 在這裡什麼都不用做：那是建置時就決定的事，
+    // 下面直接推導出錯誤訊息，不必寫進 state 再讓元件多 render 一輪。
+    if (!LIFF_AVAILABLE) return;
 
     let cancelled = false;
 
@@ -27,11 +26,11 @@ export function useLiff(): UseLiffReturn {
         if (!cancelled) setLiffReady(true);
       })
       .catch((err) => {
-        if (!cancelled) setLiffError(err?.message || 'LIFF 初始化失敗');
+        if (!cancelled) setInitError(err?.message || 'LIFF 初始化失敗');
       });
 
     return () => { cancelled = true; };
   }, []);
 
-  return { liffReady, liffError };
+  return { liffReady, liffError: LIFF_AVAILABLE ? initError : 'VITE_LIFF_ID 未設定' };
 }

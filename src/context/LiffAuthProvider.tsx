@@ -1,26 +1,8 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import liff, { LIFF_AVAILABLE, getFreshIdToken, initLiff } from '../lib/liffClient';
 import { loginWithLiffIdToken } from '../api/authApi';
 import { clearAuth, hasLoggedOut, isAuthenticated, markLoggedOut } from '../utils/auth';
-
-interface LiffAuthContextType {
-  authInitialized: boolean;
-  isLoggedIn: boolean;
-  liffError: string | null;
-  refreshAuth: () => Promise<void>;
-  /** 登入頁換發 token 成功後呼叫，讓全域狀態立刻同步（不必等整頁重載） */
-  markAuthenticated: () => void;
-  logout: () => void;
-}
-
-const LiffAuthContext = createContext<LiffAuthContextType>({
-  authInitialized: false,
-  isLoggedIn: false,
-  liffError: null,
-  refreshAuth: async () => {},
-  markAuthenticated: () => {},
-  logout: () => {},
-});
+import { LiffAuthContext } from './liffAuth';
 
 export function LiffAuthProvider({ children }: { children: ReactNode }) {
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -151,8 +133,4 @@ export function LiffAuthProvider({ children }: { children: ReactNode }) {
       )}
     </LiffAuthContext.Provider>
   );
-}
-
-export function useLiffAuth() {
-  return useContext(LiffAuthContext);
 }

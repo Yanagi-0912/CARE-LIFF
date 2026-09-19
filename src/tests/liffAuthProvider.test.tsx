@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { LiffAuthProvider, useLiffAuth } from '../context/LiffAuthProvider';
+import { LiffAuthProvider } from '../context/LiffAuthProvider';
+import { useLiffAuth } from '../context/liffAuth';
 
 // vi.mock 的 factory 會被提升到 import 之前，所以 mock 物件要用 vi.hoisted 建立
 const liffMock = vi.hoisted(() => ({

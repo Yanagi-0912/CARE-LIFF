@@ -116,7 +116,11 @@ function KnowledgeReportsPage() {
   // 這樣 Rich Menu 或 LINE 訊息能直接把使用者送進表單，又不必複製一份頁面。
   const [formOpen, setFormOpen] = useState(location.pathname.endsWith('/new'));
 
+  // 每次開啟都換一個 key，讓表單重新掛載、欄位回到空白。只在開啟時換：關閉時若
+  // 一起換，關閉動畫播到一半內容就被清空了。
+  const [formKey, setFormKey] = useState(0);
   const handleFormOpenChange = (open: boolean) => {
+    if (open) setFormKey((previous) => previous + 1);
     setFormOpen(open);
     if (!open && location.pathname.endsWith('/new')) {
       navigate('/knowledge-reports', { replace: true });
@@ -252,7 +256,7 @@ function KnowledgeReportsPage() {
           }
         />
 
-        <ReportFormDialog open={formOpen} onOpenChange={handleFormOpenChange} />
+        <ReportFormDialog key={formKey} open={formOpen} onOpenChange={handleFormOpenChange} />
 
         {latestReport && (
           <Card className="h-full" aria-label={t('knowledgeReports.latest')}>

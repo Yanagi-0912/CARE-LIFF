@@ -22,7 +22,7 @@ import { isLanguageChoice, textLanguageOf, type LanguageChoice } from '../../i18
 import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
 import type { UpdateUserSettingsPayload } from '../../api/settingsApi';
 import { isAuthenticated } from '../../utils/auth';
-import { useLiffAuth } from '../../context/LiffAuthProvider';
+import { useLiffAuth } from '../../context/liffAuth';
 import { Button } from '@/components/ui/button';
 import {
   applyTheme,
@@ -199,14 +199,24 @@ const SettingsPage: React.FC = () => {
     });
   };
 
-  // 以 i18n 全域語言為準，確保下拉顯示與頁面語言一致（選台語時畫面是繁體中文，不算不一致）
+  // 以 i18n 全域語言為準，確保下拉顯示與頁面語言一致（選台語時畫面是繁體中文，不算不一致）。
+  //
+  // i18n 是 React 以外的系統，所以用訂閱事件的方式接它的變更，而不是在 effect 裡直接寫
+  // state（那是 react-hooks 的 set-state-in-effect，會多一輪 render）。掛載當下不必對一次：
+  // i18n 的初始語言就是 getInitialLanguage() 從同一份 care-settings 讀出來的，本來就一致。
   useEffect(() => {
-    setSettings((prev) => (
-      textLanguageOf(prev.language) === i18n.language
-        ? prev
-        : { ...prev, language: i18n.language as SupportedLanguage }
-    ));
-  }, [i18n.language]);
+    const syncFromI18n = (language: string) => {
+      setSettings((prev) => (
+        textLanguageOf(prev.language) === language
+          ? prev
+          : { ...prev, language: language as SupportedLanguage }
+      ));
+    };
+    i18n.on('languageChanged', syncFromI18n);
+    return () => {
+      i18n.off('languageChanged', syncFromI18n);
+    };
+  }, [i18n]);
 
   const handleFontSize = (size: SettingsState['fontSize']) => {
     setSettings((prev) => ({ ...prev, fontSize: size }));

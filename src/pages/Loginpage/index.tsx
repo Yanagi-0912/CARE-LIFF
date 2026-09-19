@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import liff, { LIFF_AVAILABLE, getFreshIdToken, initLiff } from '../../lib/liffClient'
 import { loginWithLiffIdToken } from '../../api/authApi'
 import { clearLoggedOutFlag, hasLoggedOut } from '../../utils/auth'
-import { useLiffAuth } from '../../context/LiffAuthProvider'
+import { useLiffAuth } from '../../context/liffAuth'
 import {
 	consumeRedirectUrl,
 	peekRedirectUrl,

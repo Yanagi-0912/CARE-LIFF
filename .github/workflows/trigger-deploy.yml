@@ -1,10 +1,13 @@
-# merge 到 main 後，通知 CARE-infra 開始 build + deploy（前後端都會重建）
+# 每次 push 與 PR 都跑快速檢查；merge 到 main 且檢查過了，才通知 CARE-infra
+# 開始 build + deploy（前後端都會重建）。
 #
-# 型別檢查也放在這個檔案，而且 dispatch 要等它過。原因：npm run build 現在只跑 vite
-# （vite 把型別標註直接刪掉、不檢查），型別錯誤不會再讓 CARE-infra 的 docker build 失敗，
-# 所以關卡要移到 dispatch 之前，不然錯的程式會直接上正式站。
-# PR 也跑，合併前就看得到結果。
-name: Trigger Deploy
+# 為什麼檢查放在這個檔案而不是另開一個：dispatch 是直接通知外部 repo，沒有別的
+# 機制擋得住它，所以要擋就得在同一個 workflow 裡用 needs。npm run build 現在只跑
+# vite（vite 把型別標註直接刪掉、不看型別），型別錯誤已經不會讓 CARE-infra 的
+# docker build 失敗，關卡只剩這裡。
+#
+# e2e 不放進來：整套要十分鐘以上，擋著部署不划算，留在 playwright.yml 自己跑。
+name: Checks & Deploy
 
 on:
   push:
@@ -16,8 +19,15 @@ permissions:
   contents: read
 
 jobs:
-  typecheck:
+  checks:
     runs-on: ubuntu-latest
+    strategy:
+      # 一次看完所有問題，不要第一個失敗就把其他的取消掉
+      fail-fast: false
+      matrix:
+        # 對應 package.json 的 script：型別、lint、vitest 單元測試
+        check: [typecheck, lint, test]
+    name: ${{ matrix.check }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -27,12 +37,12 @@ jobs:
       # --ignore-scripts：理由同 playwright.yml（避免套件在安裝階段執行任意程式）
       - name: Install dependencies
         run: npm ci --ignore-scripts
-      - name: Type check
-        run: npm run typecheck
+      - name: npm run ${{ matrix.check }}
+        run: npm run ${{ matrix.check }}
 
   trigger-infra-deploy:
-    # 型別沒過就不部署
-    needs: typecheck
+    # 三項檢查全過才部署
+    needs: checks
     # PR 只做檢查，碰不到正式環境
     if: github.event_name == 'push'
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -61,6 +61,11 @@ interface ReportFormDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * 每次開啟都要是空白的表單。重設不靠 effect，而是由父層在開啟時換掉 key 讓它重新
+ * 掛載——React 官方對「prop 變了要重設 state」的建議做法，少一輪 render，也避免
+ * 關閉的瞬間畫面上的字被清掉被使用者看到。
+ */
 export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -68,14 +73,6 @@ export function ReportFormDialog({ open, onOpenChange }: ReportFormDialogProps) 
   const [note, setNote] = useState('');
   const [reason, setReason] = useState<KnowledgeReportReason>('outdated');
   const [error, setError] = useState<KnowledgeReportRequestError | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setUrl('');
-    setNote('');
-    setReason('outdated');
-    setError(null);
-  }, [open]);
 
   const mutation = useMutation({
     mutationFn: createKnowledgeReport,

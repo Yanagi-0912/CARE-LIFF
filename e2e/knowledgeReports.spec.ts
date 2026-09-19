@@ -172,6 +172,22 @@ test.describe('回報表單', () => {
     await expect(submit).toBeEnabled();
   });
 
+  // 表單的重設是靠父層在開啟時換 key 重新掛載（不是 effect），這條測試就是在守它：
+  // 換 key 沒生效的話，上一次打到一半的內容會留在畫面上。
+  test('關掉再開，上次填到一半的內容不會留著', async ({ authedPage }) => {
+    await openPage(authedPage);
+    const dialog = await openForm(authedPage);
+    await fillForm(dialog);
+    await expect(dialog.locator('#knowledge-report-url')).toHaveValue(URL);
+
+    await dialog.getByRole('button', { name: t('knowledgeReports.form.cancel') }).click();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+
+    const reopened = await openForm(authedPage);
+    await expect(reopened.locator('#knowledge-report-url')).toHaveValue('');
+    await expect(reopened.locator('#knowledge-report-note')).toHaveValue('');
+  });
+
   test('送出成功：payload 正確、關閉表單、toast、列表重新載入', async ({ authedPage }) => {
     const lists = await stubKnowledgeReports(authedPage, []);
     const posts = await stubApi(authedPage, {

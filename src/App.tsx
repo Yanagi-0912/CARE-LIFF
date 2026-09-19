@@ -38,7 +38,8 @@ import { ThemeProvider } from 'next-themes';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { Toaster } from '@/components/ui/sonner';
-import { LiffAuthProvider, useLiffAuth } from './context/LiffAuthProvider';
+import { LiffAuthProvider } from './context/LiffAuthProvider';
+import { useLiffAuth } from './context/liffAuth';
 
 // 1. ProtectedRoute 元件：整合全域 LIFF 驗證狀態與深連結（Rich Menu）跳轉前路徑保存
 function ProtectedRoute({ children }: { children: ReactNode }) {

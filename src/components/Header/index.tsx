@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
@@ -10,10 +9,11 @@ function Header() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { resolvedTheme, setTheme } = useTheme();
-  // next-themes 在首次掛載前無法得知主題（避免 SSR/localStorage 不一致），
-  // 未 mounted 時先不渲染圖示，否則會閃一下錯誤的太陽／月亮。
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // next-themes 在首次掛載前無法得知主題（避免 SSR/localStorage 不一致），這時
+  // resolvedTheme 就是 undefined。直接拿它判斷即可，不必另外開一個 mounted 狀態再用
+  // effect 寫回去——那會多一輪 render，也是 react-hooks 的 set-state-in-effect。
+  // 主題還沒定之前不渲染圖示，否則會閃一下錯誤的太陽／月亮。
+  const themeResolved = resolvedTheme !== undefined;
   const isDark = resolvedTheme === 'dark';
 
   // 登出入口統一收在設定頁（Header 只出現在受保護頁面，等於永遠是登出鈕，
@@ -56,7 +56,8 @@ function Header() {
             aria-label={themeLabel}
             title={themeLabel}
           >
-            {mounted && (isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />)}
+            {themeResolved &&
+              (isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />)}
           </Button>
         </nav>
       </div>

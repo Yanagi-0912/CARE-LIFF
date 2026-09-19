@@ -5,14 +5,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 import i18n, { getInitialLanguage } from '../i18n';
 import SettingsPage from '../pages/Settings';
-import { useLiffAuth } from '../context/LiffAuthProvider';
+import { useLiffAuth } from '../context/liffAuth';
 
 // 登出的實際行為（清 token、liff.logout、標記主動登出）屬於 LiffAuthProvider，
 // 這裡只驗證設定頁有把入口接到 logout() 並導回 /login。
 const mockLogout = vi.fn();
 const mockNavigate = vi.fn();
 
-vi.mock('../context/LiffAuthProvider', () => ({
+vi.mock('../context/liffAuth', () => ({
   useLiffAuth: vi.fn(),
 }));
 
