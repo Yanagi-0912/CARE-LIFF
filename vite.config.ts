@@ -33,6 +33,11 @@ export default defineConfig({
     setupFiles: './src/tests/setup.ts',
     env: {
       VITE_LIFF_ID: 'test-liff-id',
+      // 時區釘在台北。CARE 的使用者都在台灣，測試裡寫死的「9/15（週二） 09:30」
+      // 這種字串是照台北算的；不釘就會跟著跑測試的機器走——本機是台北所以會過，
+      // GitHub Actions 是 UTC，掛號撞時段那三條就會找不到文字而失敗。
+      // playwright.config.ts 的 timezoneId 已經是 Asia/Taipei，這裡對齊它。
+      TZ: 'Asia/Taipei',
     },
     // e2e 由 Playwright 跑，vitest 不要抓。
     // .worktrees：git worktree 是同一個 repo 的另一份簽出，裡面有一模一樣的
