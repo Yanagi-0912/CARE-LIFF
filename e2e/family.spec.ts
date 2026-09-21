@@ -77,6 +77,62 @@ test.describe('族譜列表', () => {
     await expect(authedPage.getByRole('button', { name: t('family.inviteBtn') })).toHaveCount(1);
     await expect(authedPage.getByText(t('family.emptyTitle'))).toHaveCount(0);
   });
+
+  test('手機大字級可獨立設定稱謂，儲存後不用重新整理就更新卡片', async ({ authedPage }) => {
+    await authedPage.setViewportSize({ width: 375, height: 812 });
+    await authedPage.addInitScript(() => {
+      localStorage.setItem(
+        'care-settings',
+        JSON.stringify({ language: 'zh-TW', fontSize: 'xlarge' }),
+      );
+    });
+    const store = await stubFamilyStore(authedPage, [
+      { ...UNSET, relationship_type: null, my_permissions: FULL_PERMISSIONS },
+    ]);
+    await stubApi(authedPage, { path: `/api/profiles/${UNSET.user_id}`, status: 404, body: {} });
+    await openPage(authedPage);
+
+    const card = authedPage.getByRole('button', { name: UNSET.display_name });
+    await expect(card).toContainText(t('familyRelationship.unset'));
+    await card.click();
+    await expect(authedPage.getByRole('button', { name: t('familyRole.manage.open') })).toBeVisible();
+
+    const openRelationship = authedPage.getByRole('button', {
+      name: t('familyRelationship.manage.open'),
+    });
+    await expect(openRelationship).toBeVisible();
+    await openRelationship.click();
+
+    const dialog = authedPage.getByRole('dialog', {
+      name: t('familyRelationship.manage.title'),
+    });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole('group', {
+        name: t('familyRelationship.manage.relationFor', { name: UNSET.display_name }),
+      }),
+    ).toBeVisible();
+    for (const label of ['父/母', '子/女', '配偶', '兄弟姊妹', '祖父母', '孫子女', '其他']) {
+      await expect(dialog.getByRole('button', { name: label })).toBeVisible();
+    }
+
+    await dialog.getByRole('button', { name: '子/女' }).click();
+    await dialog.getByRole('button', { name: t('familyPermission.save') }).click();
+
+    await expect(
+      authedPage.getByText(
+        t('familyRelationship.manage.saved', { name: UNSET.display_name }),
+      ),
+    ).toBeVisible();
+    expect(store.relationships).toHaveLength(1);
+    expect(store.relationships[0].body).toEqual({
+      member_id: UNSET.user_id,
+      relationship_type: 'child',
+    });
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await expect(card).toContainText('子/女');
+    await expect(card).not.toContainText(t('familyRelationship.unset'));
+  });
 });
 
 test.describe('成員卡片展開', () => {

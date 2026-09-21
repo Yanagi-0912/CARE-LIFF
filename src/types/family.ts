@@ -10,6 +10,29 @@ export const ASSIGNABLE_FAMILY_ROLES: FamilyRole[] = [
   'MEMBER',
 ];
 
+export type RelationshipType =
+  | 'parent'
+  | 'child'
+  | 'spouse'
+  | 'sibling'
+  | 'grandparent'
+  | 'grandchild'
+  | 'other';
+
+export const ASSIGNABLE_RELATIONSHIP_TYPES: RelationshipType[] = [
+  'parent',
+  'child',
+  'spouse',
+  'sibling',
+  'grandparent',
+  'grandchild',
+  'other',
+];
+
+export function isRelationshipType(value: string | null | undefined): value is RelationshipType {
+  return ASSIGNABLE_RELATIONSHIP_TYPES.includes(value as RelationshipType);
+}
+
 export type PermissionAction = 'READ' | 'WRITE';
 
 /**
@@ -126,7 +149,7 @@ export interface AcceptInviteResponse {
 /** POST /family-tree/relationship 請求 */
 export interface SetRelationshipRequest {
   member_id: string;
-  relationship_type: string;
+  relationship_type: RelationshipType;
 }
 
 /** 家庭角色的 i18n key。角色名稱要跟著使用者的語言走。 */
@@ -138,7 +161,7 @@ export const FAMILY_ROLE_LABEL_KEY: Record<FamilyRole, string> = {
 };
 
 /** 稱謂 → i18n key（文案在 i18n/systemMessages.ts 的 family.relation.*）。後端沒列的值原樣顯示。 */
-export const RELATIONSHIP_LABEL_KEY: Record<string, string> = {
+export const RELATIONSHIP_LABEL_KEY: Record<RelationshipType, string> = {
   parent: 'family.relation.parent',
   child: 'family.relation.child',
   spouse: 'family.relation.spouse',

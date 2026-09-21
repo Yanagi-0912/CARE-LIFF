@@ -19,6 +19,7 @@ vi.mock('../api/familyApi', () => ({
   createInvite: vi.fn(),
   fetchFamilyTree: vi.fn(),
   removeFamilyMember: vi.fn(),
+  setRelationship: vi.fn(),
 }));
 
 vi.mock('../hooks/useLiff', () => ({
@@ -108,7 +109,7 @@ describe('FamilyPage', () => {
     expect(screen.getByText('共 1 位家人')).toBeInTheDocument();
   });
 
-  it('卡片顯示角色；沒設稱謂時不印「未設定」，沒設角色時講明是權限未設定', () => {
+  it('卡片顯示角色；沒設稱謂時顯示可設定狀態，沒設角色時講明是權限未設定', () => {
     familyState.members = [
       { ...mom, family_role: 'CAREGIVER' },
       { ...mom, user_id: 'U-son', display_name: '兒子', relationship_type: null, family_role: null },
@@ -118,9 +119,101 @@ describe('FamilyPage', () => {
     const [momCard, sonCard] = screen.getAllByRole('listitem');
     expect(within(momCard).getByText('協助照顧者')).toBeInTheDocument();
     expect(within(momCard).getByText('父/母')).toBeInTheDocument();
-    // 以前稱謂沒設就印「未設定」，擁有者剛設好角色回來看到它，以為沒存到
+    // 稱謂未設定要講出可設定的狀態，不能假設任何關係。
+    expect(within(sonCard).getByText('尚未設定稱謂')).toBeInTheDocument();
     expect(within(sonCard).getByText('尚未設定權限')).toBeInTheDocument();
-    expect(within(sonCard).queryByText('未設定')).not.toBeInTheDocument();
+  });
+
+  describe('設定稱謂', () => {
+    beforeEach(() => {
+      vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
+    });
+
+    async function openRelationshipDialog(member: FamilyMember = mom) {
+      familyState.members = [member];
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: member.display_name ?? '媽媽' }));
+      fireEvent.click(await screen.findByRole('button', { name: '設定稱謂' }));
+      return screen.findByRole('dialog', { name: '設定稱謂' });
+    }
+
+    it('與權限設定分開，未設定時不預設任何關係，並列出七種稱謂', async () => {
+      const dialog = await openRelationshipDialog({
+        ...mom,
+        relationship_type: null,
+        display_name: '兒子',
+      });
+
+      expect(within(dialog).getByText('尚未設定稱謂')).toBeInTheDocument();
+      expect(within(dialog).getByRole('group', { name: '兒子 的稱謂' })).toBeInTheDocument();
+      for (const label of ['父/母', '子/女', '配偶', '兄弟姊妹', '祖父母', '孫子女', '其他']) {
+        expect(within(dialog).getByRole('button', { name: label })).toHaveAttribute(
+          'aria-pressed',
+          'false',
+        );
+      }
+      expect(within(dialog).getByRole('button', { name: '儲存' })).toBeDisabled();
+    });
+
+    it('頁面上「設定稱謂」與「設定家人權限」是兩個獨立入口', async () => {
+      familyState.members = [{ ...mom, relationship_type: null }];
+      renderPage();
+
+      expect(screen.getByRole('button', { name: /設定家人權限/ })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
+      expect(await screen.findByRole('button', { name: '設定稱謂' })).toBeInTheDocument();
+    });
+
+    it('儲存稱謂時呼叫 setRelationship，送出中顯示載入狀態，成功後更新快取並提示', async () => {
+      let finishSave!: (value: { user_id: string; family_members: FamilyMember[]; created_at: string; updated_at: string }) => void;
+      vi.mocked(familyApi.setRelationship).mockReturnValue(
+        new Promise((resolve) => {
+          finishSave = resolve;
+        }),
+      );
+      const setQueryData = vi.spyOn(QueryClient.prototype, 'setQueryData');
+      const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+
+      const dialog = await openRelationshipDialog({ ...mom, relationship_type: null });
+      const spouse = within(dialog).getByRole('button', { name: '配偶' });
+      fireEvent.click(spouse);
+      await waitFor(() => expect(spouse).toHaveAttribute('aria-pressed', 'true'));
+      const save = within(dialog).getByRole('button', { name: '儲存' });
+      await waitFor(() => expect(save).toBeEnabled());
+      fireEvent.click(save);
+
+      await waitFor(() =>
+        expect(familyApi.setRelationship).toHaveBeenCalledWith('U-mom', 'spouse'),
+      );
+      expect(await within(dialog).findByRole('button', { name: '儲存中…' })).toBeDisabled();
+
+      await act(async () => {
+        finishSave({
+          user_id: 'U-me',
+          family_members: [{ ...mom, relationship_type: 'spouse' }],
+          created_at: '',
+          updated_at: '',
+        });
+      });
+
+      expect(await screen.findByText('已更新 媽媽 的稱謂')).toBeInTheDocument();
+      expect(setQueryData).toHaveBeenCalledWith(queryKeys.familyTree, expect.any(Function));
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.familyTree });
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      setQueryData.mockRestore();
+      invalidate.mockRestore();
+    });
+
+    it('稱謂更新失敗時提示錯誤並留在 dialog', async () => {
+      vi.mocked(familyApi.setRelationship).mockRejectedValue(new Error('稱謂服務忙碌中'));
+
+      const dialog = await openRelationshipDialog({ ...mom, relationship_type: null });
+      fireEvent.click(within(dialog).getByRole('button', { name: '子/女' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }));
+
+      expect(await screen.findByText('稱謂服務忙碌中')).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: '設定稱謂' })).toBeInTheDocument();
+    });
   });
 
   it('沒有成員時顯示空狀態，邀請按鈕就在空狀態卡片裡', () => {

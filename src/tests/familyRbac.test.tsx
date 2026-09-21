@@ -30,6 +30,7 @@ vi.mock('../api/familyApi', () => ({
   fetchMemberRoles: vi.fn(),
   setFamilyRole: vi.fn(),
   removeFamilyMember: vi.fn(),
+  setRelationship: vi.fn(),
 }));
 
 vi.mock('../api/healthApi', () => ({
@@ -621,5 +622,58 @@ describe('指派完最後一位家人後，提示跟著後端的狀態走', () =
     ).toBeInTheDocument();
     expect(screen.queryByText(/權限生效後/)).not.toBeInTheDocument();
     expect(screen.queryByText(/目前會以「一般家人」處理/)).not.toBeInTheDocument();
+  });
+});
+
+describe('設定稱謂後，族譜畫面直接更新', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    familyMode.real = true;
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
+    await i18n.changeLanguage('zh-TW');
+  });
+
+  afterEach(() => {
+    familyMode.real = false;
+  });
+
+  it('relationship_type 原本是 null 時不假設關係；儲存後不用重新整理就顯示新稱謂', async () => {
+    let relationship: FamilyMember['relationship_type'] = null;
+    const tree = (): GetFamilyTreeResponse => ({
+      family_tree: {
+        user_id: 'U-me',
+        family_members: [
+          memberWithStrict('MEMBER', 'MEMBER', {
+            display_name: '兒子',
+            relationship_type: relationship,
+          }),
+        ],
+        created_at: '',
+        updated_at: '',
+      },
+      role_assignment: null,
+    });
+    vi.mocked(familyApi.fetchFamilyTree).mockImplementation(async () => tree());
+    vi.mocked(familyApi.setRelationship).mockImplementation(async (_memberId, next) => {
+      relationship = next;
+      return tree().family_tree;
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('尚未設定稱謂')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '兒子' }));
+    fireEvent.click(await screen.findByRole('button', { name: '設定稱謂' }));
+    const dialog = await screen.findByRole('dialog', { name: '設定稱謂' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '子/女' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }));
+
+    await waitFor(() =>
+      expect(familyApi.setRelationship).toHaveBeenCalledWith('U-mom', 'child'),
+    );
+    expect(await screen.findByText('已更新 兒子 的稱謂')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('子/女')).toBeInTheDocument();
+    expect(screen.queryByText('尚未設定稱謂')).not.toBeInTheDocument();
   });
 });

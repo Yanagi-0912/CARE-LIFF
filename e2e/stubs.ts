@@ -173,7 +173,27 @@ export async function stubFamilyStore(
     },
   });
 
-  return { state, gets, deletes };
+  const relationships = await stubApi(page, {
+    path: '/api/family/relationship',
+    method: 'POST',
+    respond: (call) => {
+      const body = call.body as { member_id?: string; relationship_type?: string };
+      const target = state.members.find((member) => member.user_id === body.member_id);
+      if (!target) return { status: 404, body: { detail: 'e2e: 不是家人' } };
+      Object.assign(target, { relationship_type: body.relationship_type });
+      return {
+        status: 200,
+        body: {
+          user_id: LINE_USER_ID,
+          family_members: state.members,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      };
+    },
+  });
+
+  return { state, gets, deletes, relationships };
 }
 
 /* ───────────── 用藥提醒 ───────────── */
