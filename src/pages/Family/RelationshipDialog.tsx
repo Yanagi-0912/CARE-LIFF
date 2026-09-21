@@ -120,6 +120,12 @@ export function RelationshipDialog({ member, onClose }: Props) {
             {mutation.isPending && <Spinner aria-hidden="true" />}
           </div>
 
+          <p className="text-sm font-medium">
+            {t('familyRelationship.manage.relationFor', {
+              name: displayName,
+            })}
+          </p>
+
           <ToggleGroup
             variant="primary"
             className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2"

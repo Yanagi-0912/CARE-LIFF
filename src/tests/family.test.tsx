@@ -145,7 +145,9 @@ describe('FamilyPage', () => {
       });
 
       expect(within(dialog).getByText('尚未設定稱謂')).toBeInTheDocument();
-      expect(within(dialog).getByRole('group', { name: '兒子 的稱謂' })).toBeInTheDocument();
+      const relationshipQuestion = '請問 兒子 是您的哪位家人？';
+      expect(within(dialog).getByText(relationshipQuestion)).toBeInTheDocument();
+      expect(within(dialog).getByRole('group', { name: relationshipQuestion })).toBeInTheDocument();
       for (const label of ['父/母', '子/女', '配偶', '兄弟姊妹', '祖父母', '孫子女', '其他']) {
         expect(within(dialog).getByRole('button', { name: label })).toHaveAttribute(
           'aria-pressed',

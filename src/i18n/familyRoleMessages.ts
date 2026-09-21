@@ -47,7 +47,7 @@ export const familyRoleMessages: Record<
     'familyRelationship.manage.saving': '儲存中…',
     'familyRelationship.manage.saved': '已更新 {{name}} 的稱謂',
     'familyRelationship.manage.saveError': '稱謂更新失敗，請稍後再試',
-    'familyRelationship.manage.relationFor': '{{name}} 的稱謂',
+    'familyRelationship.manage.relationFor': '請問 {{name}} 是您的哪位家人？',
 
     'familyRole.explain.guardian': '看得到您的健康狀況與對話紀錄，也能幫您設定用藥與健康資料。',
     'familyRole.explain.caregiver': '看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。',
@@ -113,7 +113,7 @@ export const familyRoleMessages: Record<
     'familyRelationship.manage.saving': 'Saving…',
     'familyRelationship.manage.saved': "Updated {{name}}'s relationship",
     'familyRelationship.manage.saveError': 'Could not update relationship. Please try again later.',
-    'familyRelationship.manage.relationFor': "{{name}}'s relationship",
+    'familyRelationship.manage.relationFor': 'How is {{name}} related to you?',
 
     'familyRole.explain.guardian': 'Can see your health details and conversation records, and can manage your medicines and health information.',
     'familyRole.explain.caregiver': 'Can see your health details and manage your medicines, but not your conversation records.',
@@ -179,7 +179,7 @@ export const familyRoleMessages: Record<
     'familyRelationship.manage.saving': 'Menyimpan…',
     'familyRelationship.manage.saved': 'Hubungan {{name}} diperbarui',
     'familyRelationship.manage.saveError': 'Gagal memperbarui hubungan. Coba lagi nanti.',
-    'familyRelationship.manage.relationFor': 'Hubungan {{name}}',
+    'familyRelationship.manage.relationFor': 'Apa hubungan {{name}} dengan Anda?',
 
     'familyRole.explain.guardian': 'Dapat melihat kondisi kesehatan dan catatan percakapan Anda, serta membantu mengatur obat dan data kesehatan.',
     'familyRole.explain.caregiver': 'Dapat melihat kondisi kesehatan dan membantu mengatur obat, tetapi tidak melihat catatan percakapan.',
@@ -245,7 +245,7 @@ export const familyRoleMessages: Record<
     'familyRelationship.manage.saving': 'Đang lưu…',
     'familyRelationship.manage.saved': 'Đã cập nhật cách gọi của {{name}}',
     'familyRelationship.manage.saveError': 'Không cập nhật được cách gọi. Vui lòng thử lại sau.',
-    'familyRelationship.manage.relationFor': 'Cách gọi của {{name}}',
+    'familyRelationship.manage.relationFor': '{{name}} có mối quan hệ gì với bạn?',
 
     'familyRole.explain.guardian': 'Xem được tình trạng sức khoẻ và lịch sử trò chuyện của bạn, đồng thời giúp bạn thiết lập thuốc và dữ liệu sức khoẻ.',
     'familyRole.explain.caregiver': 'Xem được tình trạng sức khoẻ và giúp thiết lập thuốc, nhưng không xem được lịch sử trò chuyện.',
@@ -311,7 +311,7 @@ export const familyRoleMessages: Record<
     'familyRelationship.manage.saving': 'กำลังบันทึก…',
     'familyRelationship.manage.saved': 'อัปเดตความสัมพันธ์ของ {{name}} แล้ว',
     'familyRelationship.manage.saveError': 'อัปเดตความสัมพันธ์ไม่สำเร็จ กรุณาลองใหม่ภายหลัง',
-    'familyRelationship.manage.relationFor': 'ความสัมพันธ์ของ {{name}}',
+    'familyRelationship.manage.relationFor': '{{name}} เป็นสมาชิกคนใดในครอบครัวของท่าน?',
 
     'familyRole.explain.guardian': 'ดูสภาพสุขภาพและบันทึกการสนทนาของท่านได้ และช่วยตั้งค่ายาและข้อมูลสุขภาพให้ท่านได้',
     'familyRole.explain.caregiver': 'ดูสภาพสุขภาพและช่วยตั้งค่ายาได้ แต่ดูบันทึกการสนทนาไม่ได้',
@@ -377,7 +377,7 @@ export const familyRoleMessages: Record<
     'familyRelationship.manage.saving': '保存しています…',
     'familyRelationship.manage.saved': '{{name}} さんの続柄を更新しました',
     'familyRelationship.manage.saveError': '続柄を更新できませんでした。しばらくしてからお試しください。',
-    'familyRelationship.manage.relationFor': '{{name}} さんの続柄',
+    'familyRelationship.manage.relationFor': '{{name}} さんはあなたのどなたですか？',
 
     'familyRole.explain.guardian': '健康状態と会話の記録を見ることができ、お薬や健康情報の設定も代わりに行えます。',
     'familyRole.explain.caregiver': '健康状態を見ることができ、お薬の設定も行えます。会話の記録は見られません。',
