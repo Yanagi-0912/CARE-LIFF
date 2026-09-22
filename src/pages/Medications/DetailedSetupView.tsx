@@ -9,6 +9,7 @@ import {
   type MedicationReminder,
   type MedicationSlotType,
   type ReminderEntry,
+  type UpdateReminderRequest,
 } from '../../types/medication';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
-import { todayLocalDateString } from '../../utils/date';
 import { SLOT_TONE } from './slotTone';
 import { SlotEntryEditor } from './SlotEntryEditor';
 import { useMedicationList } from './useMedicationList';
@@ -31,11 +31,22 @@ interface DetailedSetupViewProps {
   /** 提醒清單載入失敗的訊息；非 null 時第一層改顯示錯誤，不呈現時段卡
    *  （那會讓使用者以為四個時段真的都還沒設定，點進去才發現是空的）。 */
   remindersError: string | null;
-  /** 從新增表單的「詳細設定」進入時為 undefined；Task 11 起編輯視窗會帶入該筆規則的時段 */
+  /**
+   * 從清單頁的「新增」進入時為 undefined，停在第一層四張時段卡；點提醒卡片
+   * 進入時帶入該筆規則的時段，直接落在那個時段的編輯面——此時返回、儲存
+   * 成功、刪除成功都直接回清單，不經過第一層（使用者是從清單點進來改一筆
+   * 提醒的，繞回第一層只是多一步）。
+   */
   initialSlot?: MedicationSlotType;
   onBack: () => void;
-  onCreate: (slot: MedicationSlotType, entries: ReminderEntry[], startDate: string) => Promise<void>;
-  onUpdate: (reminderId: string, entries: ReminderEntry[]) => Promise<void>;
+  onCreate: (payload: {
+    slot: MedicationSlotType;
+    entries: ReminderEntry[];
+    startDate: string;
+    endDate?: string;
+  }) => Promise<void>;
+  onUpdate: (reminderId: string, patch: UpdateReminderRequest) => Promise<void>;
+  onDelete: (reminderId: string) => Promise<void>;
 }
 
 /**
@@ -56,6 +67,7 @@ export function DetailedSetupView({
   onBack,
   onCreate,
   onUpdate,
+  onDelete,
 }: DetailedSetupViewProps) {
   const { t } = useTranslation();
   const [selectedSlot, setSelectedSlot] = useState<MedicationSlotType | undefined>(initialSlot);
@@ -73,6 +85,9 @@ export function DetailedSetupView({
     return map;
   }, [reminders]);
 
+  // 從卡片直接進到某個時段時，離開編輯面就回清單；從「新增」進來則回第一層
+  const leaveEditor = initialSlot ? onBack : () => setSelectedSlot(undefined);
+
   if (selectedSlot) {
     const reminder = reminderBySlot.get(selectedSlot);
     return (
@@ -86,16 +101,31 @@ export function DetailedSetupView({
         // 一律換成固定的中文引導文案，行為與呈現都由這裡集中決定。
         medicationsError={medicationsError ? t('meds.detailed.medsLoadError') : null}
         onAddMedication={addMedication}
-        onBack={() => setSelectedSlot(undefined)}
-        onSave={async (entries) => {
+        onBack={leaveEditor}
+        onSave={async ({ entries, startDate, endDate }) => {
           if (reminder) {
-            await onUpdate(reminder.id, entries);
+            // 日期只送出真正變動的部分。結束日期清空要送 null 才會改回長期——
+            // 後端以 exclude_unset 匯出，「沒帶這個 key」是不動原值
+            // （見 UpdateReminderRequest 的說明）。
+            const patch: UpdateReminderRequest = { entries };
+            if (startDate !== reminder.start_date) patch.start_date = startDate;
+            const nextEndDate = endDate || null;
+            if (nextEndDate !== reminder.end_date) patch.end_date = nextEndDate;
+            await onUpdate(reminder.id, patch);
           } else {
-            await onCreate(selectedSlot, entries, todayLocalDateString());
+            await onCreate({ slot: selectedSlot, entries, startDate, endDate: endDate || undefined });
           }
-          // 成功後回到第一層，讓使用者看到更新後的摘要（decisions：不留在編輯面）
-          setSelectedSlot(undefined);
+          // 成功後離開編輯面，讓使用者看到更新後的摘要（decisions：不留在編輯面）
+          leaveEditor();
         }}
+        onDelete={
+          reminder
+            ? async () => {
+                await onDelete(reminder.id);
+                leaveEditor();
+              }
+            : undefined
+        }
       />
     );
   }
