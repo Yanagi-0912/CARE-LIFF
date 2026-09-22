@@ -105,13 +105,12 @@ describe('MedicationsPage 詳細設定檢視', () => {
       </MemoryRouter>,
     );
 
-  /** 開新增視窗、切到詳細設定第一層 */
+  /** 按清單頁的「新增」：直接進詳細設定第一層（已沒有簡易新增視窗） */
   const openDetailed = async () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /新增/ })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /新增/ }));
-    fireEvent.click(screen.getByRole('button', { name: '詳細設定' }));
   };
 
   it('新規則：分別開啟飯前飯後並指派藥品後儲存，帶出 slot_entries 呼叫建立', async () => {
@@ -137,6 +136,8 @@ describe('MedicationsPage 詳細設定檢視', () => {
       expect(screen.getByText(medA.name)).toBeInTheDocument();
     });
 
+    // 新時段預設開著「不分飯前後」，要分飯前飯後就先關掉它
+    fireEvent.click(screen.getByRole('switch', { name: '不分飯前後' }));
     fireEvent.click(screen.getByRole('switch', { name: '飯前' }));
     fireEvent.change(screen.getByLabelText('飯前時間'), { target: { value: '07:30' } });
 
@@ -227,9 +228,10 @@ describe('MedicationsPage 詳細設定檢視', () => {
     });
   });
 
-  it('關閉某個時機的開關後，原本指派在底下的藥品變成未指派並落入 none 條目', async () => {
-    // review fix 2 的回歸測試：關掉飯後開關前 B 指派在飯後，關掉後 B 不能悄悄
-    // 從所有條目消失——它原本就屬於這筆規則，要落入 none 繼續被提醒。
+  it('關閉某個時機的開關後，原本指派在底下的藥品變成未指派，存檔後從這個時段拿掉', async () => {
+    // review fix 2 的回歸測試：關掉飯後開關後 B 的指派要一起清掉，畫面標示
+    // 「未指派」——不能留著停用的指派、存檔時卻悄悄消失。「不分飯前後」
+    // 成為看得到的時機之後，未指派就是真的不在這個時段，不再自動落入 none。
     const medA = makeMedication({ id: 'm-a', name: '脈優錠5毫克' });
     const medB = makeMedication({ id: 'm-b', name: '克流感膠囊' });
     const morningReminder = makeReminder({
@@ -278,10 +280,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
 
     await waitFor(() => {
       expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
-        entries: [
-          { meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a'] },
-          { meal_timing: 'none', scheduled_time: '07:30', medication_ids: ['m-b'] },
-        ],
+        entries: [{ meal_timing: 'before_meal', scheduled_time: '07:30', medication_ids: ['m-a'] }],
       });
     });
   });
@@ -299,6 +298,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
       expect(screen.getByText('目前沒有藥品，可在下方新增')).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole('switch', { name: '不分飯前後' }));
     fireEvent.click(screen.getByRole('button', { name: '儲存' }));
 
     await waitFor(() => {
@@ -328,6 +328,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
       expect(screen.getByText(medA.name)).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole('switch', { name: '不分飯前後' }));
     fireEvent.click(screen.getByRole('switch', { name: '飯前' }));
     fireEvent.click(screen.getByRole('switch', { name: '飯後' }));
 
@@ -423,6 +424,7 @@ describe('MedicationsPage 詳細設定檢視', () => {
 
     expect(itemFor(medB.name).getByRole('button', { name: '放到飯前' })).toBeDisabled();
     expect(itemFor(medB.name).getByRole('button', { name: '放到飯後' })).toBeDisabled();
+    expect(itemFor(medB.name).getByRole('button', { name: '放到不分飯前後' })).toBeDisabled();
     // 未停用的藥不受影響
     expect(itemFor(medA.name).getByRole('button', { name: '放到飯前' })).toBeEnabled();
   });
@@ -510,5 +512,131 @@ describe('MedicationsPage 詳細設定檢視', () => {
 
     expect(await screen.findByRole('list', { name: '載入中…' })).toBeInTheDocument();
     expect(screen.queryByText('尚未設定')).not.toBeInTheDocument();
+  });
+
+  it('新時段點進去直接儲存：建立單一「不分飯前後」條目，時刻是該時段預設值', async () => {
+    // 取代原本的簡易新增視窗：長輩不懂飯前飯後，點時段、按儲存就完成
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+    vi.mocked(medicationApi.createReminders).mockResolvedValue([makeReminder()]);
+
+    renderPage();
+    await openDetailed();
+    fireEvent.click(await screen.findByRole('button', { name: /^睡前/ }));
+
+    expect(await screen.findByLabelText('不分飯前後時間')).toHaveValue('21:30');
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.createReminders).toHaveBeenCalledWith({
+        user_id: 'U-self',
+        slots: ['bedtime'],
+        slot_entries: {
+          bedtime: [{ meal_timing: 'none', scheduled_time: '21:30', medication_ids: [] }],
+        },
+        start_date: todayLocalDateString(),
+        end_date: undefined,
+      });
+    });
+  });
+
+  it('點提醒卡片直接進到該時段的編輯面；改時間儲存後回到清單', async () => {
+    const morningReminder = makeReminder({ id: 'r-morning' });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([morningReminder]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue(morningReminder);
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /編輯「早」/ }));
+
+    // 不經過第一層，直接是「早」的編輯面，單一時刻的提醒開在「不分飯前後」
+    expect(await screen.findByRole('heading', { name: '早' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '不分飯前後' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: '飯前' })).toHaveAttribute('aria-checked', 'false');
+
+    // 藥品清單載入完才能儲存（載入中儲存鈕是停用的）
+    await screen.findByText('目前沒有藥品，可在下方新增');
+    fireEvent.change(screen.getByLabelText('不分飯前後時間'), { target: { value: '07:15' } });
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
+        entries: [{ meal_timing: 'none', scheduled_time: '07:15', medication_ids: [] }],
+      });
+    });
+    // 回到清單，不是詳細設定第一層
+    expect(await screen.findByRole('button', { name: /編輯「早」/ })).toBeInTheDocument();
+    expect(screen.queryByText('詳細設定')).not.toBeInTheDocument();
+  });
+
+  it('清空結束日期會送出 end_date: null，把療程改回長期；日期沒動就不送', async () => {
+    const reminder = makeReminder({ id: 'r-morning', end_date: '2026-12-31' });
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([reminder]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+    vi.mocked(medicationApi.updateReminder).mockResolvedValue(reminder);
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /編輯「早」/ }));
+
+    await screen.findByText('目前沒有藥品，可在下方新增');
+    const endDate = screen.getByLabelText('結束日期');
+    expect(endDate).toHaveValue('2026-12-31');
+    expect(screen.getByLabelText('開始日期')).toHaveValue('2026-08-01');
+    fireEvent.change(endDate, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+
+    await waitFor(() => {
+      expect(medicationApi.updateReminder).toHaveBeenCalledWith('r-morning', {
+        entries: [{ meal_timing: 'none', scheduled_time: '08:00', medication_ids: [] }],
+        end_date: null,
+      });
+    });
+  });
+
+  it('開始日期被清空、或結束日期早於開始日期時顯示錯誤，不呼叫 API', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([makeReminder({ id: 'r-morning' })]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /編輯「早」/ }));
+
+    await screen.findByText('目前沒有藥品，可在下方新增');
+    fireEvent.change(screen.getByLabelText('開始日期'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+    expect(await screen.findByText('請選擇開始日期')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('開始日期'), { target: { value: '2026-08-10' } });
+    fireEvent.change(screen.getByLabelText('結束日期'), { target: { value: '2026-08-01' } });
+    fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+    expect(await screen.findByText('結束日期不可早於開始日期')).toBeInTheDocument();
+
+    expect(medicationApi.updateReminder).not.toHaveBeenCalled();
+  });
+
+  it('刪除要先確認；確認後呼叫刪除並回到清單。尚未設定的時段沒有刪除鈕', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([makeReminder({ id: 'r-morning' })]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+    vi.mocked(medicationApi.deleteReminder).mockResolvedValue({ ok: true });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /編輯「早」/ }));
+
+    fireEvent.click(await screen.findByRole('button', { name: '刪除此提醒' }));
+    const confirm = await screen.findByRole('alertdialog');
+    expect(medicationApi.deleteReminder).not.toHaveBeenCalled();
+    fireEvent.click(within(confirm).getByRole('button', { name: '確定刪除' }));
+
+    await waitFor(() => {
+      expect(medicationApi.deleteReminder).toHaveBeenCalledWith('r-morning');
+    });
+    expect(await screen.findByText('已刪除用藥提醒')).toBeInTheDocument();
+    // 回到清單
+    expect(screen.queryByRole('heading', { name: '早' })).not.toBeInTheDocument();
+
+    // 尚未設定的時段（從「新增」進去）不渲染刪除鈕
+    await openDetailed();
+    fireEvent.click(await screen.findByRole('button', { name: /^中/ }));
+    expect(await screen.findByRole('heading', { name: '中' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '刪除此提醒' })).not.toBeInTheDocument();
   });
 });

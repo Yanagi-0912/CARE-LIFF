@@ -17,8 +17,8 @@ import {
 
 /**
  * 用藥提醒：列表四態（載入／錯誤／空／有資料）、開關的樂觀更新與回滾、
- * 新增／編輯／刪除三個 dialog 的表單驗證與 API 契約、對象切換、掃描入口旗標，
- * 以及飯前飯後的詳細設定流程（時段時間、條目指派、手動新增藥品）。
+ * 新增／修改／刪除（一律走詳細設定）的表單驗證與 API 契約、對象切換、
+ * 掃描入口旗標，以及飯前飯後的詳細設定流程（時段時間、條目指派、手動新增藥品）。
  *
  * 藥袋辨識（上傳影像→草稿核對）需要真實影像與辨識服務，不在這裡；
  * 這裡只驗「入口有沒有出現」。
@@ -164,111 +164,102 @@ test.describe('啟用開關', () => {
   });
 });
 
-test.describe('新增提醒 dialog', () => {
+test.describe('新增與修改提醒（一律走詳細設定）', () => {
+  const NONE = t('meds.meal.none');
+  const noneSwitch = (page: Page) => page.getByRole('switch', { name: NONE, exact: true });
+  const noneTime = (page: Page) =>
+    page.getByLabel(t('meds.detailed.timeFor', { meal: NONE }), { exact: true });
+  const saveButton = (page: Page) => page.getByRole('button', { name: t('meds.detailed.save') });
+  const slotHeading = (page: Page, slot: ReminderDto['slot_type']) =>
+    page.getByRole('heading', { name: slotLabel(slot), level: 2 });
+
   test.beforeEach(async ({ authedPage }) => {
     await stubFamily(authedPage);
     await stubSettings(authedPage);
   });
 
-  async function openAddDialog(page: Page) {
-    await page.getByRole('button', { name: t('meds.addButton') }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText(t('meds.add.title'))).toBeVisible();
-    return dialog;
+  /** 點提醒卡片：直接落在該時段的編輯面，藥品清單載入完才回傳 */
+  async function openFromCard(page: Page, r: ReminderDto) {
+    await editButton(page, r).click();
+    await expect(slotHeading(page, r.slot_type)).toBeVisible();
+    await expect(saveButton(page)).toBeEnabled();
   }
 
-  test('未勾選時段就送出會被擋下', async ({ authedPage }) => {
-    await stubReminderList(authedPage, []);
+  test('按「新增」不開 dialog，直接進四張時段卡；點時段直接儲存就建立單一時刻提醒', async ({ authedPage }) => {
+    const { posts } = await stubReminderStore(authedPage);
     await openPage(authedPage);
-    const dialog = await openAddDialog(authedPage);
 
-    await expect(dialog).toContainText(t('meds.self'));
-    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
+    await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
+    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    const slotCards = authedPage.getByRole('list', { name: t('meds.detailed.title') });
+    await slotCards.getByRole('button', { name: new RegExp(`^${slotLabel('morning')}`) }).click();
 
-    await expect(dialog.getByText(t('meds.add.needSlot'))).toBeVisible();
-  });
+    // 新時段預設開「不分飯前後」、時刻是該時段預設值
+    await expect(noneSwitch(authedPage)).toBeChecked();
+    await expect(noneTime(authedPage)).toHaveValue('08:00');
+    await noneTime(authedPage).fill('07:30');
+    await saveButton(authedPage).click();
 
-  test('勾選時段後建立成功：送出正確 payload、關閉 dialog、更新列表', async ({ authedPage }) => {
-    let current: ReminderDto[] = [];
-    await stubReminderList(authedPage, () => current);
-    const posts = await stubApi(authedPage, {
-      path: '/api/medications/reminders',
-      method: 'POST',
-      respond: () => {
-        current = [MORNING];
-        return { status: 200, body: [MORNING] };
-      },
-    });
-    await openPage(authedPage);
-    const dialog = await openAddDialog(authedPage);
-
-    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
-    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
-
+    await expect(authedPage.getByText(t('meds.detailed.saveSuccess'))).toBeVisible();
     await expect.poll(() => posts.length).toBe(1);
     expect(posts[0].body).toMatchObject({
       user_id: LINE_USER_ID,
       slots: ['morning'],
+      slot_entries: { morning: [{ meal_timing: 'none', scheduled_time: '07:30', medication_ids: [] }] },
       start_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
     expect((posts[0].body as { end_date?: string }).end_date).toBeUndefined();
 
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
-    await expect(authedPage.getByText(t('meds.add.success', { n: 1 }))).toBeVisible();
-    await expect(editButton(authedPage, MORNING)).toBeVisible();
-  });
-
-  test('已設定的時段停用並標示「已設定」', async ({ authedPage }) => {
-    await stubReminderList(authedPage, [MORNING]);
-    await openPage(authedPage);
-    const dialog = await openAddDialog(authedPage);
-
+    // 從「新增」進來的，存完回到時段卡；再返回清單看得到新卡片
+    await expect(slotCards).toContainText(
+      t('meds.detailed.entrySummary', { meal: NONE, time: '07:30', count: 0 }),
+    );
+    await authedPage.getByRole('button', { name: t('meds.detailed.back') }).click();
     await expect(
-      dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }),
-    ).toBeDisabled();
-    await expect(dialog.getByText(t('meds.add.slotExists'))).toBeVisible();
-    await expect(
-      dialog.getByRole('checkbox', { name: new RegExp(slotLabel('noon')) }),
-    ).toBeEnabled();
+      editButton(authedPage, reminder({ id: 'x', slot_type: 'morning', scheduled_time: '07:30' })),
+    ).toBeVisible();
   });
 
-  test('四個時段都設定過時無法再新增', async ({ authedPage }) => {
-    await stubReminderList(authedPage, [
-      MORNING,
-      reminder({ id: 'n', slot_type: 'noon', scheduled_time: '12:00' }),
-      reminder({ id: 'e', slot_type: 'evening', scheduled_time: '18:00' }),
-      reminder({ id: 'b', slot_type: 'bedtime', scheduled_time: '21:30' }),
-    ]);
+  test('點卡片直接進該時段；改時間與結束日期後只送出變動的日期，存完回到清單', async ({ authedPage }) => {
+    const { puts } = await stubReminderStore(authedPage, { reminders: [MORNING] });
     await openPage(authedPage);
-    const dialog = await openAddDialog(authedPage);
+    await openFromCard(authedPage, MORNING);
 
-    await expect(dialog.getByText(t('meds.add.allSlotsUsed'))).toBeVisible();
-    await expect(dialog.getByRole('button', { name: t('meds.add.submit') })).toBeDisabled();
-  });
+    await expect(noneTime(authedPage)).toHaveValue('08:00');
+    await noneTime(authedPage).fill('09:30');
+    await authedPage.getByLabel(t('meds.add.endDate'), { exact: true }).fill('2026-12-31');
+    await saveButton(authedPage).click();
 
-  test('結束日期早於開始日期會顯示欄位錯誤', async ({ authedPage }) => {
-    await stubReminderList(authedPage, []);
-    await openPage(authedPage);
-    const dialog = await openAddDialog(authedPage);
-
-    const posts = await stubApi(authedPage, {
-      path: '/api/medications/reminders',
-      method: 'POST',
-      body: [MORNING],
+    await expect.poll(() => puts.length).toBe(1);
+    expect(puts[0].body).toEqual({
+      entries: [{ meal_timing: 'none', scheduled_time: '09:30', medication_ids: [] }],
+      end_date: '2026-12-31',
     });
-    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
-    await dialog.locator('#startDate').fill('2026-09-10');
-    await dialog.locator('#endDate').fill('2026-09-01');
-    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
-
-    // 表單關掉了原生約束驗證（結束日期的 min 只當日期選擇器的提示），
-    // 由 zod 擋下並顯示 dateOrderError，而不是瀏覽器自己的氣泡。
-    await expect(dialog.getByText(t('meds.add.dateOrderError'))).toBeVisible();
-    expect(posts).toHaveLength(0);
+    await expect(authedPage.getByText(t('meds.detailed.saveSuccess'))).toBeVisible();
+    // 從卡片進來的，存完直接回清單，不經過時段卡
+    await expect(
+      editButton(authedPage, { ...MORNING, scheduled_time: '09:30' }),
+    ).toBeVisible();
+    await expect(authedPage.getByRole('list', { name: t('meds.detailed.title') })).toHaveCount(0);
   });
 
-  test('後端建立失敗時錯誤留在表單內、dialog 不關閉', async ({ authedPage }) => {
+  test('結束日期早於開始日期會顯示欄位錯誤，不送出', async ({ authedPage }) => {
+    const { puts } = await stubReminderStore(authedPage, { reminders: [MORNING] });
+    await openPage(authedPage);
+    await openFromCard(authedPage, MORNING);
+
+    await authedPage.getByLabel(t('meds.add.startDate'), { exact: true }).fill('2026-09-10');
+    await authedPage.getByLabel(t('meds.add.endDate'), { exact: true }).fill('2026-09-01');
+    await saveButton(authedPage).click();
+
+    // 日期欄位的 min 只當日期選擇器的提示，擋下送出的是 zod
+    await expect(authedPage.getByText(t('meds.add.dateOrderError'))).toBeVisible();
+    expect(puts).toHaveLength(0);
+  });
+
+  test('後端建立失敗時錯誤留在編輯面，不離開', async ({ authedPage }) => {
     await stubReminderList(authedPage, []);
+    await stubApi(authedPage, { path: '/api/medications', method: 'GET', body: [] });
     await stubApi(authedPage, {
       path: '/api/medications/reminders',
       method: 'POST',
@@ -276,154 +267,45 @@ test.describe('新增提醒 dialog', () => {
       body: { detail: '該時段已有提醒' },
     });
     await openPage(authedPage);
-    const dialog = await openAddDialog(authedPage);
+    await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
+    await authedPage
+      .getByRole('list', { name: t('meds.detailed.title') })
+      .getByRole('button', { name: new RegExp(`^${slotLabel('noon')}`) })
+      .click();
+    await expect(saveButton(authedPage)).toBeEnabled();
+    await saveButton(authedPage).click();
 
-    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
-    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
-
-    await expect(dialog.getByText('該時段已有提醒')).toBeVisible();
-    await expect(dialog).toBeVisible();
+    await expect(authedPage.getByText('該時段已有提醒')).toBeVisible();
+    await expect(slotHeading(authedPage, 'noon')).toBeVisible();
   });
 
-  test('取消與 Escape 都能關閉 dialog', async ({ authedPage }) => {
-    await stubReminderList(authedPage, []);
+  test('刪除要先確認：取消不打 API；確定後回到清單、卡片消失', async ({ authedPage }) => {
+    const { deletes } = await stubReminderStore(authedPage, { reminders: [MORNING] });
     await openPage(authedPage);
+    await openFromCard(authedPage, MORNING);
 
-    let dialog = await openAddDialog(authedPage);
-    await dialog.getByRole('button', { name: t('meds.cancel') }).click();
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
-
-    dialog = await openAddDialog(authedPage);
-    await authedPage.keyboard.press('Escape');
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
-  });
-});
-
-test.describe('編輯與刪除 dialog', () => {
-  test.beforeEach(async ({ authedPage }) => {
-    await stubFamily(authedPage);
-    await stubSettings(authedPage);
-    await stubReminderList(authedPage, [MORNING]);
-  });
-
-  async function openEditDialog(page: Page) {
-    await editButton(page, MORNING).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText(t('meds.edit.title'))).toBeVisible();
-    return dialog;
-  }
-
-  test('修改時間後儲存，只送出變動的欄位', async ({ authedPage }) => {
-    const puts = await stubApi(authedPage, {
-      path: `/api/medications/reminders/${MORNING.id}`,
-      method: 'PUT',
-      body: { ...MORNING, scheduled_time: '09:30', medications: undefined },
-    });
-    await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
-
-    await expect(dialog.locator('#edit-time')).toHaveValue('08:00');
-    await dialog.locator('#edit-time').fill('09:30');
-    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
-
-    await expect.poll(() => puts.length).toBe(1);
-    expect(puts[0].body).toEqual({ scheduled_time: '09:30' });
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
-    await expect(authedPage.getByText(t('meds.edit.saveSuccess'))).toBeVisible();
-    await expect(
-      editButton(authedPage, { ...MORNING, scheduled_time: '09:30' }),
-    ).toBeVisible();
-  });
-
-  test('時間改到別的時段範圍時，時段跟著跳，兩者一起送出', async ({ authedPage }) => {
-    const puts = await stubApi(authedPage, {
-      path: `/api/medications/reminders/${MORNING.id}`,
-      method: 'PUT',
-      body: { ...MORNING, slot_type: 'noon', scheduled_time: '12:30' },
-    });
-    await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
-
-    // 12:30 離「中」的預設 12:00 最近，時段 radio 應自動跳到「中」
-    await dialog.locator('#edit-time').fill('12:30');
-    await expect(dialog.locator('#edit-slot-noon')).toBeChecked();
-    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
-
-    await expect.poll(() => puts.length).toBe(1);
-    expect(puts[0].body).toEqual({ slot_type: 'noon', scheduled_time: '12:30' });
-  });
-
-  test('已被其他提醒佔用的時段停用，時間改過去也不會跳到它', async ({ authedPage }) => {
-    await stubReminderList(authedPage, [
-      MORNING,
-      reminder({ id: 'rem-noon', slot_type: 'noon', scheduled_time: '12:00' }),
-    ]);
-    await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
-
-    await expect(dialog.locator('#edit-slot-noon')).toBeDisabled();
-    await dialog.locator('#edit-time').fill('12:30');
-    // 「中」被 rem-noon 佔住，時段留在「早」
-    await expect(dialog.locator('#edit-slot-morning')).toBeChecked();
-  });
-
-  test('沒有任何變更時按儲存直接關閉，不打 API', async ({ authedPage }) => {
-    const puts = await stubApi(authedPage, {
-      path: `/api/medications/reminders/${MORNING.id}`,
-      method: 'PUT',
-      body: MORNING,
-    });
-    await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
-
-    await dialog.getByRole('button', { name: t('meds.edit.save') }).click();
-
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
-    expect(puts).toHaveLength(0);
-  });
-
-  test('刪除要先經過確認框；取消不會打 API', async ({ authedPage }) => {
-    const deletes = await stubApi(authedPage, {
-      path: `/api/medications/reminders/${MORNING.id}`,
-      method: 'DELETE',
-      body: { ok: true },
-    });
-    await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
-
-    await dialog.getByRole('button', { name: t('meds.edit.delete') }).click();
+    await authedPage.getByRole('button', { name: t('meds.edit.delete') }).click();
     const confirm = authedPage.getByRole('alertdialog');
     await expect(confirm.getByText(t('meds.edit.deleteConfirm'))).toBeVisible();
-
     await confirm.getByRole('button', { name: t('meds.edit.deleteConfirmNo') }).click();
     await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
-    await expect(dialog).toBeVisible();
     expect(deletes).toHaveLength(0);
-  });
 
-  test('確認刪除後卡片消失並顯示成功 toast', async ({ authedPage }) => {
-    const deletes = await stubApi(authedPage, {
-      path: `/api/medications/reminders/${MORNING.id}`,
-      method: 'DELETE',
-      body: { ok: true },
-    });
-    await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
-
-    await dialog.getByRole('button', { name: t('meds.edit.delete') }).click();
+    await authedPage.getByRole('button', { name: t('meds.edit.delete') }).click();
     await authedPage
       .getByRole('alertdialog')
       .getByRole('button', { name: t('meds.edit.deleteConfirmYes') })
       .click();
 
     await expect.poll(() => deletes.length).toBe(1);
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
     await expect(authedPage.getByText(t('meds.edit.deleteSuccess'))).toBeVisible();
     await expect(editButton(authedPage, MORNING)).toHaveCount(0);
     await expect(authedPage.getByText(t('meds.empty', { name: t('meds.self') }))).toBeVisible();
   });
 
-  test('刪除失敗時關掉確認框、錯誤顯示在編輯表單', async ({ authedPage }) => {
+  test('刪除失敗時關掉確認框、錯誤顯示在編輯面，卡片仍在', async ({ authedPage }) => {
+    await stubReminderList(authedPage, [MORNING]);
+    await stubApi(authedPage, { path: '/api/medications', method: 'GET', body: [] });
     await stubApi(authedPage, {
       path: `/api/medications/reminders/${MORNING.id}`,
       method: 'DELETE',
@@ -431,20 +313,18 @@ test.describe('編輯與刪除 dialog', () => {
       body: { detail: '刪除失敗' },
     });
     await openPage(authedPage);
-    const dialog = await openEditDialog(authedPage);
+    await openFromCard(authedPage, MORNING);
 
-    await dialog.getByRole('button', { name: t('meds.edit.delete') }).click();
+    await authedPage.getByRole('button', { name: t('meds.edit.delete') }).click();
     await authedPage
       .getByRole('alertdialog')
       .getByRole('button', { name: t('meds.edit.deleteConfirmYes') })
       .click();
 
     await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
-    await expect(dialog.getByText('刪除失敗')).toBeVisible();
+    await expect(authedPage.getByText('刪除失敗')).toBeVisible();
 
-    // 關掉編輯框後卡片仍在（沒有被樂觀移除）
-    await dialog.getByRole('button', { name: t('meds.cancel') }).click();
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
+    await authedPage.getByRole('button', { name: t('meds.detailed.back') }).click();
     await expect(editButton(authedPage, MORNING)).toBeVisible();
   });
 });
@@ -535,7 +415,6 @@ test.describe('飯前飯後（詳細設定）', () => {
   const AFTER = t('meds.meal.after_meal');
 
   type CreateBody = {
-    slot_times?: Record<string, string>;
     slot_entries?: Record<string, ReminderEntryDto[]>;
   };
 
@@ -553,11 +432,10 @@ test.describe('飯前飯後（詳細設定）', () => {
     await stubSettings(authedPage);
   });
 
-  /** 新增 dialog →「詳細設定」→ 點進某個時段的編輯面；藥品清單載入完才回傳 */
+  /** 「新增」→ 四張時段卡 → 點進某個時段的編輯面；藥品清單載入完才回傳 */
   async function openSlotEditor(page: Page, slot: ReminderDto['slot_type']) {
     await page.getByRole('button', { name: t('meds.addButton') }).click();
-    await page.getByRole('dialog').getByRole('button', { name: t('meds.add.detailed') }).click();
-    // 詳細設定是同一頁內切換檢視，不是另一個 dialog（design.md 決策 8）
+    // 詳細設定是同一頁內切換檢視，不是 dialog（design.md 決策 8）
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page
       .getByRole('list', { name: t('meds.detailed.title') })
@@ -566,34 +444,13 @@ test.describe('飯前飯後（詳細設定）', () => {
     await expect(page.getByRole('list', { name: t('meds.detailed.medsHeading') })).toBeVisible();
   }
 
-  test('新增表單可直接改時段時間，送出 slot_times', async ({ authedPage }) => {
-    const { posts } = await stubReminderStore(authedPage, { medications: [MED_A, MED_B] });
-    await openPage(authedPage);
-    await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
-    const dialog = authedPage.getByRole('dialog');
-
-    // Base UI 的 Checkbox 是 role=checkbox 的自訂元件，用 click 切換勾選
-    await dialog.getByRole('checkbox', { name: new RegExp(slotLabel('morning')) }).click();
-    const timeInput = dialog.getByLabel(t('meds.add.timeFieldFor', { slot: slotLabel('morning') }));
-    await expect(timeInput).toHaveValue('08:00');
-    await timeInput.fill('07:30');
-    await dialog.getByRole('button', { name: t('meds.add.submit') }).click();
-
-    await expect(authedPage.getByText(t('meds.add.success', { n: 1 }))).toBeVisible();
-    await expect(authedPage.getByRole('dialog')).toHaveCount(0);
-    await expect(
-      editButton(authedPage, reminder({ id: 'x', slot_type: 'morning', scheduled_time: '07:30' })),
-    ).toBeVisible();
-
-    expect(posts).toHaveLength(1);
-    expect((posts[0].body as CreateBody).slot_times?.morning).toBe('07:30');
-  });
-
   test('詳細設定：飯前飯後各自的時間與藥品，送出 slot_entries 並在卡片攤開', async ({ authedPage }) => {
     const { posts } = await stubReminderStore(authedPage, { medications: [MED_A, MED_B] });
     await openPage(authedPage);
     await openSlotEditor(authedPage, 'morning');
 
+    // 新時段預設開著「不分飯前後」，要分飯前飯後就先關掉它
+    await timingSwitch(authedPage, t('meds.meal.none')).click();
     await timingSwitch(authedPage, BEFORE).click();
     await timingTime(authedPage, BEFORE).fill('07:30');
     await timingSwitch(authedPage, AFTER).click();

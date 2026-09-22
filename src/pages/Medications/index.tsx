@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { getLineUserId } from '../../utils/auth';
@@ -13,8 +13,6 @@ import type {
 } from '../../types/medication';
 import type { PrescriptionCommitResult, PrescriptionDraft } from '../../types/prescription';
 import { ReminderCard } from './ReminderCard';
-import { ReminderEditDialog } from './ReminderEditDialog';
-import { ReminderFormDialog } from './ReminderFormDialog';
 import { PrescriptionScanDialog } from './PrescriptionScanDialog';
 import { PrescriptionDraftForm } from './PrescriptionDraftForm';
 import { DetailedSetupView } from './DetailedSetupView';
@@ -36,25 +34,19 @@ const MedicationsPage = () => {
   // 對象清單與權限判斷和掛號分頁共用，見 useReminderTargets
   const { selfUserId, targets, selectedUserId, setSelectedUserId, selectedName, canEditSelected } =
     useReminderTargets(canManageMedications);
-  const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<MedicationReminder | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<PrescriptionDraft | null>(null);
   // 詳細設定是同一頁內的整頁檢視，不另開路由（design.md 決策 8：LIFF webview
   // 換路徑會重掛整頁、重打 API，在長輩裝置上明顯卡頓）。
   const [view, setView] = useState<'list' | 'detailed'>('list');
-  // 從新增表單的「詳細設定」進入時不預選任何時段；Task 11 起編輯視窗會把
-  // 目前這筆規則的時段帶進來，直接跳進該時段的編輯面。
+  // 手動新增與修改提醒一律走詳細設定（原本的簡易新增／編輯視窗已移除）：
+  // 「新增」不預選時段，停在四張時段卡；點提醒卡片則帶入該筆規則的時段，
+  // 直接跳進那個時段的編輯面。
   const [detailedSlot, setDetailedSlot] = useState<MedicationSlotType | undefined>(undefined);
 
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
-
-  const existingSlots = useMemo<MedicationSlotType[]>(
-    () => reminders.map((reminder) => reminder.slot_type),
-    [reminders],
-  );
 
   const handleToggle = async (reminder: MedicationReminder) => {
     setTogglingId(reminder.id);
@@ -67,67 +59,41 @@ const MedicationsPage = () => {
     }
   };
 
-  const handleCreate = async (payload: {
-    slots: MedicationSlotType[];
-    slotTimes: Partial<Record<MedicationSlotType, string>>;
-    startDate: string;
-    endDate?: string;
-  }) => {
-    // 未取得本人 userId 時 getLineUserId 會拋錯，訊息由 dialog 就地顯示
-    const userId = selectedUserId ?? getLineUserId();
-    const created = await create({
-      user_id: userId,
-      slots: payload.slots,
-      slot_times: payload.slotTimes,
-      start_date: payload.startDate,
-      end_date: payload.endDate,
-    });
-    setAdding(false);
-    toast.success(t('meds.add.success', { n: created.length }));
-  };
-
-  const handleOpenDetailed = () => {
-    setAdding(false);
-    setDetailedSlot(undefined);
+  const openDetailed = (slot?: MedicationSlotType) => {
+    setDetailedSlot(slot);
     setView('detailed');
   };
 
   // 該時段尚未有規則 → 走建立（帶 slot_entries）；refetch 是因為 create／update
   // 的回應不含 medications（只有 GET /reminders 會附上），詳細檢視第一層的
   // 摘要與藥品指派畫面都需要重新整份的提醒清單才會是正確的。
-  const handleDetailedCreate = async (
-    slot: MedicationSlotType,
-    entries: ReminderEntry[],
-    startDate: string,
-  ) => {
+  const handleDetailedCreate = async (payload: {
+    slot: MedicationSlotType;
+    entries: ReminderEntry[];
+    startDate: string;
+    endDate?: string;
+  }) => {
+    // 未取得本人 userId 時 getLineUserId 會拋錯，訊息由編輯面就地顯示
     const userId = selectedUserId ?? getLineUserId();
     await create({
       user_id: userId,
-      slots: [slot],
-      slot_entries: { [slot]: entries },
-      start_date: startDate,
+      slots: [payload.slot],
+      slot_entries: { [payload.slot]: payload.entries },
+      start_date: payload.startDate,
+      end_date: payload.endDate,
     });
     await refetch();
     toast.success(t('meds.detailed.saveSuccess'));
   };
 
-  const handleDetailedUpdate = async (reminderId: string, entries: ReminderEntry[]) => {
-    await update(reminderId, { entries });
+  const handleDetailedUpdate = async (reminderId: string, patch: UpdateReminderRequest) => {
+    await update(reminderId, patch);
     await refetch();
     toast.success(t('meds.detailed.saveSuccess'));
   };
 
-  const handleSave = async (patch: UpdateReminderRequest) => {
-    if (!editing) return;
-    await update(editing.id, patch);
-    setEditing(null);
-    toast.success(t('meds.edit.saveSuccess'));
-  };
-
-  const handleDelete = async () => {
-    if (!editing) return;
-    await remove(editing.id);
-    setEditing(null);
+  const handleDetailedDelete = async (reminderId: string) => {
+    await remove(reminderId);
     toast.success(t('meds.edit.deleteSuccess'));
   };
 
@@ -138,10 +104,10 @@ const MedicationsPage = () => {
     setDraft(scanned);
   };
 
-  // 三種失敗原因與使用者直接關閉視窗，都要能落回原本手動建立提醒的路徑。
+  // 三種失敗原因與使用者直接關閉視窗，都要能落回手動建立提醒的路徑（詳細設定）。
   const handleManualFallback = () => {
     setScanning(false);
-    setAdding(true);
+    openDetailed();
   };
 
   // 送出後的訊息要反映「這次到底發生了什麼」，不能只看 prn_medication_ids——
@@ -205,7 +171,7 @@ const MedicationsPage = () => {
               </Button>
             )}
             {canEditSelected && (
-              <Button type="button" className="grow rounded-full" onClick={() => setAdding(true)}>
+              <Button type="button" className="grow rounded-full" onClick={() => openDetailed()}>
                 <PlusIcon data-icon="inline-start" />
                 {t('meds.addButton')}
               </Button>
@@ -242,6 +208,7 @@ const MedicationsPage = () => {
           onBack={() => setView('list')}
           onCreate={handleDetailedCreate}
           onUpdate={handleDetailedUpdate}
+          onDelete={handleDetailedDelete}
         />
       ) : loading ? (
         // 骨架屏用與 ReminderCard 同一組 Item 元件，卡片外框自然對齊，
@@ -290,35 +257,10 @@ const MedicationsPage = () => {
               reminder={reminder}
               busy={togglingId === reminder.id}
               onToggle={handleToggle}
-              onEdit={setEditing}
+              onEdit={(reminder: MedicationReminder) => openDetailed(reminder.slot_type)}
             />
           ))}
         </ItemGroup>
-      )}
-
-      {adding && (
-        <ReminderFormDialog
-          targetName={selectedName}
-          existingSlots={existingSlots}
-          onSubmit={handleCreate}
-          onOpenDetailed={handleOpenDetailed}
-          onClose={() => setAdding(false)}
-        />
-      )}
-
-      {editing && (
-        <ReminderEditDialog
-          reminder={editing}
-          existingSlots={existingSlots}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onClose={() => setEditing(null)}
-          onOpenDetailed={(reminder) => {
-            setEditing(null);
-            setDetailedSlot(reminder.slot_type);
-            setView('detailed');
-          }}
-        />
       )}
 
       {scanning && (

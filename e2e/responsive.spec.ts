@@ -96,6 +96,38 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
+/**
+ * 手動新增與修改用藥提醒都改走詳細設定的整頁編輯面（原本的新增／編輯 dialog
+ * 已移除——新增 dialog 在手機上會滑動）。編輯面一列擺三個服藥時機的指派鈕、
+ * 長藥名、日期欄位，字級最大時最容易撐寬。
+ */
+test.describe('用藥詳細設定編輯面在字級 xlarge 下不能左右滑', () => {
+  for (const width of [320, 375]) {
+    test(`${width}px：從卡片進到編輯面不橫向溢出`, async ({ authedPage }) => {
+      await authedPage.setViewportSize({ width, height: 800 });
+      await authedPage.addInitScript(() => {
+        localStorage.setItem('care-settings', JSON.stringify({ language: 'zh-TW', fontSize: 'xlarge' }));
+      });
+      await stubWithData(authedPage);
+      await stubApi(authedPage, {
+        path: '/api/medications',
+        method: 'GET',
+        body: [
+          medication({ id: 'm1', name: LONG_NAME, shape: '橢圓形', color: '白色', mark_one: 'PBF 436' }),
+          medication({ id: 'm2', name: 'METFORMIN 500MG' }),
+        ],
+      });
+
+      await authedPage.goto('/medications');
+      await authedPage.getByText('08:00').first().click();
+      await expect(authedPage.getByRole('button', { name: t('meds.detailed.save') })).toBeEnabled();
+      await expect(authedPage.getByText(LONG_NAME).first()).toBeVisible();
+
+      expect(await overflow(authedPage)).toBe(0);
+    });
+  }
+});
+
 test.describe('手機直式 375px 的 dialog', () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
@@ -116,42 +148,6 @@ test.describe('手機直式 375px 的 dialog', () => {
     expect(box!.x + box!.width).toBeLessThanOrEqual(375 + 1);
     expect(box!.y + box!.height).toBeLessThanOrEqual(667 + 1);
   }
-
-  test('新增用藥提醒表單：整個 dialog 在視窗內，打開時從頂端開始，底部按鈕看得到', async ({ authedPage }) => {
-    await authedPage.goto('/medications');
-    await authedPage.getByRole('button', { name: t('meds.addButton') }).click();
-
-    await expectDialogFits(authedPage);
-    const dialog = authedPage.getByRole('dialog');
-    // 焦點若落在表單裡的欄位，瀏覽器會把表單捲過去：曾一打開就捲掉 233px，
-    // 第一個欄位的標題整個在畫面外。
-    await expect(dialog.getByText(t('meds.add.slotsField'), { exact: true })).toBeInViewport({
-      ratio: 1,
-    });
-    await expect(dialog.getByRole('button', { name: t('meds.add.submit') })).toBeInViewport();
-  });
-
-  test('編輯用藥提醒表單：打開時從頂端開始，取消／儲存在視窗內，刪除捲得到', async ({ authedPage }) => {
-    // 這個 dialog 自己的最小內容寬只有約 240px，本來就放得進 375px。它曾在 Chromium
-    // 寬 458px，是被背後頁面撐寬的：頁首橫向溢出時 Chromium 會把 layout viewport
-    // 撐成內容寬度，寬度以視窗百分比計算的 position: fixed dialog 跟著變寬（WebKit
-    // 不會）。所以這一條同時守著「dialog 背後的用藥頁不能橫向溢出」。
-    await authedPage.goto('/medications');
-    await authedPage.getByText('08:00').first().click();
-
-    await expectDialogFits(authedPage);
-    const dialog = authedPage.getByRole('dialog');
-    // 「用藥時段」的標題曾在打開時被切掉上緣：焦點落在第一個 radio，表單被捲了 16px。
-    await expect(dialog.getByText(t('meds.edit.slot'), { exact: true })).toBeInViewport({
-      ratio: 1,
-    });
-    await expect(dialog.getByRole('button', { name: t('meds.edit.save') })).toBeInViewport();
-    await expect(dialog.getByRole('button', { name: t('meds.cancel') })).toBeInViewport();
-    // 刪除放在表單最下方：捲到那裡要完整看得到、按得到。
-    const remove = dialog.getByRole('button', { name: t('meds.edit.delete') });
-    await remove.scrollIntoViewIfNeeded();
-    await expect(remove).toBeInViewport({ ratio: 1 });
-  });
 
   test('知識回報表單 dialog 在視窗內', async ({ authedPage }) => {
     await authedPage.goto('/knowledge-reports/new');

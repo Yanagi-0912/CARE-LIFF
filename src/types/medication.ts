@@ -36,7 +36,7 @@ export const DEFAULT_SLOT_TIMES: Record<MedicationSlotType, string> = {
 /** 條目內的服藥時機（對應後端 MealTiming）。同一筆提醒內每種至多一個、至少一個條目。 */
 export type MealTiming = 'before_meal' | 'after_meal' | 'none';
 
-/** 顯示順序：飯前 → 飯後 → 其他，推播版面與詳細設定頁都依此排序 */
+/** 顯示順序：飯前 → 飯後 → 不分飯前後，推播版面與詳細設定頁都依此排序 */
 export const MEAL_TIMING_ORDER: readonly MealTiming[] = ['before_meal', 'after_meal', 'none'] as const;
 
 /** 各服藥時機的 i18n key */
