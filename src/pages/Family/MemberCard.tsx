@@ -9,6 +9,7 @@ import {
   LockIcon,
   MessageCircleIcon,
   PencilIcon,
+  TagsIcon,
   TriangleAlertIcon,
   UserIcon,
   UserMinusIcon,
@@ -19,7 +20,11 @@ import { fetchMeasurements, fetchStepCounts } from '../../api/healthApi';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import type { HealthProfile } from '../../api/profileApi';
 import type { FamilyMember } from '../../types/family';
-import { FAMILY_ROLE_LABEL_KEY, RELATIONSHIP_LABEL_KEY } from '../../types/family';
+import {
+  FAMILY_ROLE_LABEL_KEY,
+  RELATIONSHIP_LABEL_KEY,
+  isRelationshipType,
+} from '../../types/family';
 import {
   canProxyEditHealth,
   canReadHealthRecords,
@@ -57,6 +62,7 @@ import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { ProxyHealthDialog } from './ProxyHealthDialog';
+import { RelationshipDialog } from './RelationshipDialog';
 
 interface Props {
   member: FamilyMember;
@@ -78,20 +84,19 @@ export function MemberCard({ member }: Props) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [settingRelationship, setSettingRelationship] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const displayName = member.display_name || member.user_id.slice(0, 8);
-  // 稱謂目前沒有介面能設定，透過邀請加入的家人一律是 null。以前沒設就印「未設定」，
-  // 擁有者剛在「設定家人權限」設好角色，回來看到它以為沒存到。沒設就不顯示。
   // 稱謂文案在 i18n 的 family.relation.*；後端沒列的值原樣顯示。
-  const relationKey = member.relationship_type
+  const relationKey = isRelationshipType(member.relationship_type)
     ? RELATIONSHIP_LABEL_KEY[member.relationship_type]
     : undefined;
   const relationLabel = member.relationship_type
     ? relationKey
       ? t(relationKey)
       : member.relationship_type
-    : null;
+    : t('familyRelationship.unset');
   // family_role 是「他對我的資料」的角色，也就是我在「設定家人權限」裡替他選的那個
   const roleLabel = member.family_role
     ? t(FAMILY_ROLE_LABEL_KEY[member.family_role])
@@ -235,11 +240,12 @@ export function MemberCard({ member }: Props) {
             {/* h-auto + whitespace-normal：Badge 內建 h-5 與 nowrap，角色譯文比稱謂長
                 （越南文近 20 字），特大字級下會把 375px 的頁面撐出橫向捲動 */}
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              {relationLabel && (
-                <Badge variant="secondary" className="h-auto text-sm whitespace-normal">
-                  {relationLabel}
-                </Badge>
-              )}
+              <Badge
+                variant={member.relationship_type ? 'secondary' : 'outline'}
+                className="h-auto text-sm whitespace-normal"
+              >
+                {relationLabel}
+              </Badge>
               <Badge
                 variant={member.family_role ? 'secondary' : 'outline'}
                 className="h-auto text-sm whitespace-normal"
@@ -322,6 +328,16 @@ export function MemberCard({ member }: Props) {
                 {t('familyPermission.proxyEdit')}
               </Button>
             )}
+
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 h-auto min-h-11 w-full py-2 whitespace-normal"
+              onClick={() => setSettingRelationship(true)}
+            >
+              <TagsIcon data-icon="inline-start" />
+              {t('familyRelationship.manage.open')}
+            </Button>
 
             {/* 查看諮詢紀錄：無 PRIVATE 讀取權時整個入口不渲染。
                 渲染成停用狀態也不行——那等於告訴使用者「這裡有東西但你不能
@@ -517,6 +533,12 @@ export function MemberCard({ member }: Props) {
 
       {editing && (
         <ProxyHealthDialog member={member} onClose={() => setEditing(false)} />
+      )}
+      {settingRelationship && (
+        <RelationshipDialog
+          member={member}
+          onClose={() => setSettingRelationship(false)}
+        />
       )}
     </Collapsible>
   );

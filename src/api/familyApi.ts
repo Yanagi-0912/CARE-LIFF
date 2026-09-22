@@ -7,6 +7,7 @@ import type {
   GetFamilyTreeResponse,
   VerifyInviteResponse,
   FamilyTree,
+  RelationshipType,
 } from '../types/family';
 import i18n from '../i18n';
 import { fetchWithAuth } from '../utils/auth';
@@ -78,7 +79,7 @@ export async function acceptInvite(code: string): Promise<AcceptInviteResponse> 
 /**
  * 5. 設定關係 (POST /family-tree/relationship)
  */
-export async function setRelationship(memberId: string, relationshipType: string): Promise<FamilyTree> {
+export async function setRelationship(memberId: string, relationshipType: RelationshipType): Promise<FamilyTree> {
   const res = await fetchWithAuth(`${BASE_URL}/api/family/relationship`, {
     method: 'POST',
     body: JSON.stringify({
