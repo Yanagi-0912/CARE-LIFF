@@ -34,3 +34,15 @@ export function googleMapsDirectionsUrl(latitude: number, longitude: number): st
     `${latitude},${longitude}`,
   )}`;
 }
+
+/**
+ * 長輩畫面上的「離你約 800 公尺」。後端給的是直線距離，實際走的路一定更長，
+ * 所以只到百公尺：一公里內四捨五入到 100 公尺（最少寫 100 公尺，不寫「0 公尺」
+ * 讓人以為已經到了），一公里以上寫到小數點後一位。
+ */
+export function formatDistance(t: TFunction, meters: number): string {
+  if (meters < 950) {
+    return t('lost.distance.meters', { meters: Math.max(100, Math.round(meters / 100) * 100) });
+  }
+  return t('lost.distance.km', { km: (Math.round(meters / 100) / 10).toFixed(1) });
+}

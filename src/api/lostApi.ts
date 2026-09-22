@@ -1,5 +1,6 @@
 import type {
   LostEndResult,
+  LostPresenceUpload,
   LostSelfStatus,
   LostSessionView,
 } from '../types/lost';
@@ -54,4 +55,14 @@ export function markLostFound(userId: string): Promise<LostEndResult> {
   return request<LostEndResult>(`/api/lost/${encodeURIComponent(userId)}/found`, {
     method: 'POST',
   });
+}
+
+export function reportLostPresence(
+  userId: string,
+  presence: LostPresenceUpload,
+): Promise<{ recorded: boolean }> {
+  return request<{ recorded: boolean }>(
+    `/api/lost/${encodeURIComponent(userId)}/presence`,
+    { method: 'POST', body: JSON.stringify(presence) },
+  );
 }

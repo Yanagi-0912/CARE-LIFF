@@ -1,10 +1,17 @@
-import { useCallback, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CheckCircle2Icon, MapPinIcon, PhoneIcon, ShieldCheckIcon } from 'lucide-react';
+import {
+  CarIcon,
+  CheckCircle2Icon,
+  EyeIcon,
+  MapPinIcon,
+  PhoneIcon,
+  ShieldCheckIcon,
+} from 'lucide-react';
 import { endLostByElder, fetchMyLostStatus } from '../../api/lostApi';
-import type { LostStatus } from '../../types/lost';
+import type { LostFamilyMember, LostStatus } from '../../types/lost';
 import { queryKeys } from '@/lib/queryClient';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -21,8 +28,11 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
-import { closeToChat, formatElapsed, useNow } from './shared';
+import { closeToChat, formatDistance, formatElapsed, useNow } from './shared';
 import { useLocationSharing } from './useLocationSharing';
+
+// 地圖只在有家人正在過來、而且傳了位置時才出現，同 WatchPage 延遲載入 Leaflet
+const LostMap = lazy(() => import('./LostMap'));
 
 /** 大按鈕的共用樣式：字級調到最大時仍能換行，不會被 whitespace-nowrap 截掉 */
 const BIG_BUTTON = 'h-auto min-h-12 w-full whitespace-normal py-3 text-lg';
@@ -41,6 +51,62 @@ function endedMessageKey(status: LostStatus | null): string {
     default:
       return 'lost.share.inactiveBody';
   }
+}
+
+/**
+ * 哪些家人正在看、誰正在過來。正在過來的寫在最前面、字最大，附上距離：慌張的人
+ * 最需要知道的是「有人要來了、還有多遠」。後端已經排好序（正在過來、近的在前）。
+ */
+function FamilyCard({ family, now }: { family: LostFamilyMember[]; now: number }) {
+  const { t } = useTranslation();
+  if (family.length === 0) {
+    return (
+      <Card aria-live="polite">
+        <CardContent>
+          <p className="text-lg leading-relaxed">{t('lost.share.familyNone')}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card aria-live="polite">
+      <CardContent className="flex flex-col gap-4">
+        {family.map((member, index) => {
+          const name = member.name || t('lost.share.familyFallback');
+          if (!member.coming) {
+            return (
+              <p key={index} className="flex items-center gap-3 text-lg">
+                <EyeIcon className="size-7 shrink-0 text-primary" aria-hidden="true" />
+                {t('lost.share.familyWatching', { name })}
+              </p>
+            );
+          }
+          return (
+            <div key={index} className="flex items-start gap-3">
+              <CarIcon className="mt-1 size-8 shrink-0 text-success" aria-hidden="true" />
+              <div className="flex flex-col gap-1">
+                <p className="text-2xl leading-tight font-bold">
+                  {t('lost.share.familyComing', { name })}
+                </p>
+                {member.distance_m !== null && (
+                  <p className="text-xl font-semibold">
+                    {t('lost.share.familyDistance', { distance: formatDistance(t, member.distance_m) })}
+                  </p>
+                )}
+                {member.location_at && (
+                  <p className="text-base text-muted-foreground">
+                    {t('lost.share.familyUpdated', {
+                      time: formatElapsed(t, now - Date.parse(member.location_at)),
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
 }
 
 /**
@@ -66,6 +132,26 @@ export default function LostSharePage() {
   const handleEnded = useCallback((status: LostStatus) => setEndedStatus(status), []);
   const sharing = useLocationSharing(active, handleEnded);
   const now = useNow(5_000);
+
+  const family = useMemo(
+    () => sharing.family ?? statusQuery.data?.family ?? [],
+    [sharing.family, statusQuery.data],
+  );
+  const companions = useMemo(
+    () =>
+      family.flatMap((member) =>
+        member.coming && member.latitude !== null && member.longitude !== null
+          ? [
+              {
+                latitude: member.latitude,
+                longitude: member.longitude,
+                label: member.name || t('lost.share.familyFallback'),
+              },
+            ]
+          : [],
+      ),
+    [family, t],
+  );
 
   const endMutation = useMutation({
     mutationFn: endLostByElder,
@@ -164,6 +250,24 @@ export default function LostSharePage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      <FamilyCard family={family} now={now} />
+
+      {position && companions.length > 0 && (
+        <Suspense
+          fallback={<div className="h-[min(55dvh,26rem)] rounded-lg bg-surface-2" role="status" />}
+        >
+          <LostMap
+            current={position}
+            trail={[]}
+            companions={companions}
+            currentLabel={t('lost.share.you')}
+            label={t('lost.share.mapLabel')}
+            recenterLabel={t('lost.watch.recenter')}
+            attribution={t('lost.watch.mapAttribution')}
+          />
+        </Suspense>
       )}
 
       {!blocked && geoError && !position && (

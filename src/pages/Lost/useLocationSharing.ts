@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { uploadLostLocation } from '../../api/lostApi';
-import type { LostStatus } from '../../types/lost';
+import type { LostFamilyMember, LostStatus } from '../../types/lost';
 import {
   watchPositionUpdates,
   type GeoPosition,
@@ -18,6 +18,8 @@ export interface LocationSharingState {
   lastSentAt: number | null;
   geoError: GeolocationError | null;
   uploadFailed: boolean;
+  /** 最近一次上傳回應裡的家人；還沒上傳成功過時是 null，由頁面用 /me 的結果代替 */
+  family: LostFamilyMember[] | null;
 }
 
 /**
@@ -37,6 +39,7 @@ export function useLocationSharing(
   const [lastSentAt, setLastSentAt] = useState<number | null>(null);
   const [geoError, setGeoError] = useState<GeolocationError | null>(null);
   const [uploadFailed, setUploadFailed] = useState(false);
+  const [family, setFamily] = useState<LostFamilyMember[] | null>(null);
 
   const latestRef = useRef<GeoPosition | null>(null);
   const inFlightRef = useRef(false);
@@ -58,6 +61,7 @@ export function useLocationSharing(
       });
       setLastSentAt(Date.now());
       setUploadFailed(false);
+      setFamily(status.family ?? []);
       if (!status.active) onEndedRef.current(status.status ?? 'expired');
     } catch {
       // 網路斷一下很常見，下一輪再送；畫面上只提示「正在重試」
@@ -122,5 +126,5 @@ export function useLocationSharing(
     };
   }, [enabled, upload]);
 
-  return { position, lastSentAt, geoError, uploadFailed };
+  return { position, lastSentAt, geoError, uploadFailed, family };
 }

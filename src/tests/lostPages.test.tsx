@@ -10,6 +10,7 @@ import {
   fetchMyLostStatus,
   LostApiError,
   markLostFound,
+  reportLostPresence,
   uploadLostLocation,
 } from '../api/lostApi';
 import { GeolocationError, watchPositionUpdates, type GeoPosition } from '../utils/geolocation';
@@ -26,6 +27,7 @@ vi.mock('../api/lostApi', async () => {
     endLostByElder: vi.fn(),
     fetchLostSession: vi.fn(),
     markLostFound: vi.fn(),
+    reportLostPresence: vi.fn(),
   };
 });
 
@@ -38,8 +40,21 @@ vi.mock('../utils/geolocation', async () => {
 });
 
 vi.mock('../pages/Lost/LostMap', () => ({
-  default: ({ label, trail }: { label: string; trail: unknown[] }) => (
-    <div role="region" aria-label={label} data-trail-points={trail.length} />
+  default: ({
+    label,
+    trail,
+    companions = [],
+  }: {
+    label: string;
+    trail: unknown[];
+    companions?: { label: string }[];
+  }) => (
+    <div
+      role="region"
+      aria-label={label}
+      data-trail-points={trail.length}
+      data-companions={companions.map((c) => c.label).join(',')}
+    />
   ),
 }));
 
@@ -189,6 +204,62 @@ describe('長輩定位頁', () => {
     expect(await screen.findByText(i18n.t('lost.share.endedSafe'))).toBeInTheDocument();
     expect(endLostByElder).toHaveBeenCalledTimes(1);
   });
+
+  it('家人的狀態：正在過來的寫距離並標在地圖上，正在看的只列名字', async () => {
+    const active = {
+      active: true,
+      status: 'active' as const,
+      started_at: '2026-09-16T08:00:00Z',
+      ended_at: null,
+    };
+    vi.mocked(fetchMyLostStatus).mockResolvedValue({ ...active, family: [] });
+    vi.mocked(uploadLostLocation).mockResolvedValue({
+      ...active,
+      family: [
+        {
+          name: '美玲',
+          online: false,
+          coming: true,
+          latitude: 25.04,
+          longitude: 121.57,
+          location_at: new Date().toISOString(),
+          distance_m: 812,
+        },
+        {
+          name: '志明',
+          online: true,
+          coming: false,
+          latitude: null,
+          longitude: null,
+          location_at: null,
+          distance_m: null,
+        },
+      ],
+    });
+    const { handlers } = captureWatch();
+
+    renderAt('/lost/share', <LostSharePage />);
+    expect(await screen.findByText(i18n.t('lost.share.familyNone'))).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: i18n.t('lost.share.mapLabel') }),
+    ).not.toBeInTheDocument();
+
+    act(() => handlers.onPosition?.(POSITION));
+
+    expect(
+      await screen.findByText(i18n.t('lost.share.familyComing', { name: '美玲' })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(i18n.t('lost.share.familyDistance', { distance: '800 公尺' })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(i18n.t('lost.share.familyWatching', { name: '志明' })),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('lost.share.familyNone'))).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('region', { name: i18n.t('lost.share.mapLabel') }),
+    ).toHaveAttribute('data-companions', '美玲');
+  });
 });
 
 function sessionView(overrides: Partial<LostSessionView> = {}): LostSessionView {
@@ -217,6 +288,7 @@ function sessionView(overrides: Partial<LostSessionView> = {}): LostSessionView 
       { latitude: 25.033, longitude: 121.564, at: now },
       { latitude: 25.0339, longitude: 121.5645, at: now },
     ],
+    viewer_coming: false,
     server_time: now,
     ...overrides,
   };
@@ -314,6 +386,108 @@ describe('家人地圖頁', () => {
 
     expect(await screen.findByText(i18n.t('lost.watch.missingUser'))).toBeInTheDocument();
     expect(fetchLostSession).not.toHaveBeenCalled();
+  });
+
+  it('開著地圖就回報在看；按「我要過去找」才定位、並帶位置回報', async () => {
+    vi.mocked(fetchLostSession).mockResolvedValue(sessionView());
+    vi.mocked(reportLostPresence).mockResolvedValue({ recorded: true });
+    const { handlers, stop } = captureWatch();
+
+    renderAt('/lost/watch?user=U_ELDER', <LostWatchPage />);
+
+    await waitFor(() =>
+      expect(reportLostPresence).toHaveBeenCalledWith('U_ELDER', {
+        coming: false,
+        latitude: null,
+        longitude: null,
+        accuracy: null,
+      }),
+    );
+    expect(mockWatch).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: i18n.t('lost.watch.comingButton', { name: '林秀琴' }),
+      }),
+    );
+    expect(reportLostPresence).toHaveBeenLastCalledWith('U_ELDER', {
+      coming: true,
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+    });
+    expect(
+      await screen.findByText(i18n.t('lost.watch.comingActive', { name: '林秀琴' })),
+    ).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('lost.watch.comingLocating'))).toBeInTheDocument();
+
+    act(() => handlers.onPosition?.({ latitude: 25.05, longitude: 121.52, accuracy: 30, timestamp: 0 }));
+    await waitFor(() =>
+      expect(reportLostPresence).toHaveBeenLastCalledWith('U_ELDER', {
+        coming: true,
+        latitude: 25.05,
+        longitude: 121.52,
+        accuracy: 30,
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('lost.watch.stopComing') }));
+    expect(reportLostPresence).toHaveBeenLastCalledWith('U_ELDER', {
+      coming: false,
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+    });
+    expect(stop).toHaveBeenCalled();
+  });
+
+  it('重新整理後接得上「正在過去」，不會先回報沒要過去', async () => {
+    vi.mocked(fetchLostSession).mockResolvedValue(sessionView({ viewer_coming: true }));
+    vi.mocked(reportLostPresence).mockResolvedValue({ recorded: true });
+    captureWatch();
+
+    renderAt('/lost/watch?user=U_ELDER', <LostWatchPage />);
+
+    expect(
+      await screen.findByRole('button', { name: i18n.t('lost.watch.stopComing') }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(reportLostPresence).toHaveBeenCalled());
+    for (const [, body] of vi.mocked(reportLostPresence).mock.calls) {
+      expect(body.coming).toBe(true);
+    }
+    expect(mockWatch).toHaveBeenCalled();
+  });
+
+  it('按了過去但不允許定位：說明長輩看不到距離', async () => {
+    vi.mocked(fetchLostSession).mockResolvedValue(sessionView());
+    vi.mocked(reportLostPresence).mockResolvedValue({ recorded: true });
+    const { handlers } = captureWatch();
+
+    renderAt('/lost/watch?user=U_ELDER', <LostWatchPage />);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: i18n.t('lost.watch.comingButton', { name: '林秀琴' }),
+      }),
+    );
+    act(() => handlers.onError?.(new GeolocationError('permission_denied', 'denied')));
+
+    expect(
+      await screen.findByText(i18n.t('lost.watch.comingNoLocation', { name: '林秀琴' })),
+    ).toBeInTheDocument();
+  });
+
+  it('已經結束：不回報、不顯示「我要過去找」', async () => {
+    vi.mocked(fetchLostSession).mockResolvedValue(
+      sessionView({ status: 'found', ended_by_name: '陳志明' }),
+    );
+
+    renderAt('/lost/watch?user=U_ELDER', <LostWatchPage />);
+
+    await screen.findByText(i18n.t('lost.watch.endedFound', { finder: '陳志明', name: '林秀琴' }));
+    expect(
+      screen.queryByRole('button', { name: i18n.t('lost.watch.comingButton', { name: '林秀琴' }) }),
+    ).not.toBeInTheDocument();
+    expect(reportLostPresence).not.toHaveBeenCalled();
   });
 });
 

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   AlertTriangleIcon,
+  CarIcon,
   CheckCircle2Icon,
   MapPinIcon,
   NavigationIcon,
@@ -30,6 +31,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { formatElapsed, googleMapsDirectionsUrl, useNow } from './shared';
+import { useFamilyPresence, type FamilyPresence } from './useFamilyPresence';
 
 // Leaflet 壓縮後約 44 KB，只有這一頁用得到，跟著頁面一起延遲載入還不夠：地圖在收到第一個
 // 位置之前不會出現，再切一次讓等待中的畫面先出來。
@@ -88,6 +90,55 @@ function Call110Link() {
 }
 
 /**
+ * 「我要過去找」：按了長輩才看得到這位家人的位置與距離，並收到一則「正在過來」。
+ * 沒按之前不問定位權限。
+ */
+function ComingCard({ name, presence }: { name: string; presence: FamilyPresence }) {
+  const { t } = useTranslation();
+  const { coming, setComing, hasFix, geoError } = presence;
+  if (!coming) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <Button size="lg" className={BIG_BUTTON} onClick={() => setComing(true)}>
+            <CarIcon data-icon="inline-start" aria-hidden="true" />
+            {t('lost.watch.comingButton', { name })}
+          </Button>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t('lost.watch.comingHint', { name })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3" aria-live="polite">
+        <p className="flex items-center gap-2 text-lg font-semibold text-success">
+          <CarIcon className="size-6 shrink-0" aria-hidden="true" />
+          {t('lost.watch.comingActive', { name })}
+        </p>
+        {geoError && !hasFix ? (
+          <p className="text-base leading-relaxed">{t('lost.watch.comingNoLocation', { name })}</p>
+        ) : !hasFix ? (
+          <p className="flex items-center gap-2 text-base">
+            <Spinner className="size-5 shrink-0" aria-hidden="true" />
+            {t('lost.watch.comingLocating')}
+          </p>
+        ) : (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t('lost.watch.comingNavigateHint')}
+          </p>
+        )}
+        <Button variant="outline" size="lg" className={BIG_BUTTON} onClick={() => setComing(false)}>
+          {t('lost.watch.stopComing')}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
  * 家人的地圖頁（/lost/watch?user=長輩的 LINE user id）。從 LINE 通報卡的
  * 「看即時位置」打開。
  *
@@ -123,6 +174,8 @@ export default function LostWatchPage() {
 
   const view = sessionQuery.data;
   const trail = useMemo(() => view?.trail ?? [], [view]);
+  // 開著這一頁就讓長輩知道有人在看；結束後停止回報
+  const presence = useFamilyPresence(userId, view?.status === 'active', view?.viewer_coming);
 
   if (!userId) {
     return (
@@ -265,6 +318,8 @@ export default function LostWatchPage() {
           </Card>
         )
       )}
+
+      {active && <ComingCard name={name} presence={presence} />}
 
       {active && (
         <AlertDialog>

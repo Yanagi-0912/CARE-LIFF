@@ -183,3 +183,79 @@ test.describe('家人地圖頁', () => {
     await expect(authedPage.getByText(t('lost.watch.forbidden'))).toBeVisible({ timeout: 10000 });
   });
 });
+
+test.describe('長輩看得到家人', () => {
+  test.use({ geolocation: TAIPEI, permissions: ['geolocation'] });
+
+  test('正在過來的家人寫出距離，並和自己一起標在地圖上', async ({ authedPage }) => {
+    await stubTiles(authedPage);
+    const withFamily = {
+      ...ACTIVE_SELF,
+      family: [
+        {
+          name: '美玲',
+          online: false,
+          coming: true,
+          latitude: 25.0412,
+          longitude: 121.5654,
+          location_at: new Date().toISOString(),
+          distance_m: 812,
+        },
+        {
+          name: '志明',
+          online: true,
+          coming: false,
+          latitude: null,
+          longitude: null,
+          location_at: null,
+          distance_m: null,
+        },
+      ],
+    };
+    await stubApi(authedPage, { path: '/api/lost/me', body: { ...ACTIVE_SELF, family: [] } });
+    await stubApi(authedPage, { path: '/api/lost/me/location', method: 'POST', body: withFamily });
+
+    await authedPage.goto('/lost/share');
+
+    await expect(authedPage.getByText(t('lost.share.familyComing', { name: '美玲' }))).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      authedPage.getByText(t('lost.share.familyDistance', { distance: '800 公尺' })),
+    ).toBeVisible();
+    await expect(authedPage.getByText(t('lost.share.familyWatching', { name: '志明' }))).toBeVisible();
+    const map = authedPage.getByRole('region', { name: t('lost.share.mapLabel') });
+    await expect(map).toBeVisible();
+    // 兩個標記都畫出來了，名字固定顯示在旁邊
+    await expect(map.locator('.leaflet-tooltip', { hasText: '美玲' })).toBeVisible();
+    await expect(map.locator('.leaflet-tooltip', { hasText: t('lost.share.you') })).toBeVisible();
+  });
+});
+
+test.describe('家人地圖頁：我要過去找', () => {
+  test.use({ geolocation: { latitude: 25.0412, longitude: 121.5654 }, permissions: ['geolocation'] });
+
+  test('打開就回報在看，按了才帶位置', async ({ authedPage }) => {
+    await stubTiles(authedPage);
+    await stubApi(authedPage, { path: '/api/lost/Uelder', body: sessionBody({ viewer_coming: false }) });
+    const presence = await stubApi(authedPage, {
+      path: '/api/lost/Uelder/presence',
+      method: 'POST',
+      body: { recorded: true },
+    });
+
+    await authedPage.goto('/lost/watch?user=Uelder');
+
+    await expect.poll(() => presence.length, { timeout: 10000 }).toBeGreaterThan(0);
+    expect(presence[0].body).toMatchObject({ coming: false, latitude: null });
+
+    await authedPage
+      .getByRole('button', { name: t('lost.watch.comingButton', { name: '林秀琴' }) })
+      .click();
+    await expect(authedPage.getByText(t('lost.watch.comingActive', { name: '林秀琴' }))).toBeVisible();
+    await expect
+      .poll(() => presence.some((call) => (call.body as { latitude: number | null }).latitude === 25.0412))
+      .toBe(true);
+    await expect(authedPage.getByText(t('lost.watch.comingNavigateHint'))).toBeVisible();
+  });
+});
