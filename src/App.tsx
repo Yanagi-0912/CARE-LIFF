@@ -33,6 +33,7 @@ const Login = lazy(() => import('./pages/Loginpage'));
 const NotFoundPage = lazy(() => import('./pages/NotFound'));
 const LostSharePage = lazy(() => import('./pages/Lost/SharePage'));
 const LostWatchPage = lazy(() => import('./pages/Lost/WatchPage'));
+const LegalTestingPage = lazy(() => import('./pages/LegalTesting'));
 import { saveRedirectUrl } from './utils/redirect';
 import { ThemeProvider } from 'next-themes';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -40,6 +41,7 @@ import { queryClient } from '@/lib/queryClient';
 import { Toaster } from '@/components/ui/sonner';
 import { LiffAuthProvider } from './context/LiffAuthProvider';
 import { useLiffAuth } from './context/liffAuth';
+import { isPublicRoute } from './utils/publicRoutes';
 
 // 1. ProtectedRoute 元件：整合全域 LIFF 驗證狀態與深連結（Rich Menu）跳轉前路徑保存
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -181,6 +183,32 @@ function AppContent() {
   );
 }
 
+function PublicRoutes() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" role="status" aria-label="載入中" />}>
+      <Routes>
+        <Route path="/legal/testing" element={<LegalTestingPage />} />
+        <Route path="/legal/testing/*" element={<LegalTestingPage />} />
+        <Route path="*" element={<Navigate to="/legal/testing" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+function AppRouter() {
+  const location = useLocation();
+
+  if (isPublicRoute(location.pathname)) {
+    return <PublicRoutes />;
+  }
+
+  return (
+    <LiffAuthProvider>
+      <AppContent />
+    </LiffAuthProvider>
+  );
+}
+
 function App() {
   return (
     // next-themes 標準設定（shadcn 建議）：切換 html 的 .dark class。
@@ -196,9 +224,7 @@ function App() {
     >
       <QueryClientProvider client={queryClient}>
         <Router>
-          <LiffAuthProvider>
-            <AppContent />
-          </LiffAuthProvider>
+          <AppRouter />
         </Router>
       </QueryClientProvider>
       <Toaster />

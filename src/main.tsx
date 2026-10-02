@@ -4,8 +4,13 @@ import './i18n'
 import './index.css'
 import App from './App.tsx'
 import { bootstrapLiff } from './liffBootstrap'
+import { isPublicRoute } from './utils/publicRoutes'
 
-void bootstrapLiff().then(() => {
+const bootstrap = isPublicRoute(window.location.pathname)
+  ? Promise.resolve()
+  : bootstrapLiff()
+
+void bootstrap.then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
