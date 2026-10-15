@@ -1838,6 +1838,86 @@ describe('MedicationsPage：送出後的 toast 反映實際發生的事（Fix 3�
   });
 });
 
+describe('MedicationsPage：藥袋送出後的相衝警告', () => {
+  // 以前偵測只在背景跑、只推 LINE，核對畫面送出後什麼都看不到；現在提交的
+  // 回應帶著同一份偵測結果，送出當下就要跳出來。
+  it('提交回應帶有相衝時，送出後跳出警告視窗，toast 照常出現', async () => {
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ frequency_code: 'QD', name: '普拿疼' })],
+        multiple_bags_suspected: false,
+      },
+    });
+    vi.mocked(medicationApi.scanPrescription).mockResolvedValue(draft);
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+      interaction_alert: {
+        kind: 'overlap',
+        new_drug_name: '普拿疼',
+        existing_drug_name: '斯斯感冒膠囊',
+        ingredients: ['ACETAMINOPHEN'],
+      },
+    });
+
+    renderWithToaster(
+      <MemoryRouter>
+        <MedicationsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /掃描藥袋/ }));
+    const fileInput = screen.getByLabelText('拍照或選擇照片', { selector: 'input' });
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('用藥重複提醒')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('剛加入的「普拿疼」，和正在吃的「斯斯感冒膠囊」含有相同成分。'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText('ACETAMINOPHEN')).toBeInTheDocument();
+    expect(await screen.findByText('已建立 1 項藥品與對應提醒')).toBeInTheDocument();
+  });
+
+  it('提交回應沒有相衝（含後端尚未提供這個欄位）時不跳警告', async () => {
+    vi.mocked(settingsApi.getPrescriptionScanEnabled).mockResolvedValue(true);
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    vi.mocked(medicationApi.scanPrescription).mockResolvedValue(makeDraft());
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+
+    renderWithToaster(
+      <MemoryRouter>
+        <MedicationsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /掃描藥袋/ }));
+    const fileInput = screen.getByLabelText('拍照或選擇照片', { selector: 'input' });
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
+
+    expect(await screen.findByText('已建立 1 項藥品與對應提醒')).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+});
+
 describe('ReminderCard：依證號呈現藥丸照片與外觀描述（7.5）', () => {
   function makeReminderWithMedications(medications: Medication[]): MedicationReminder {
     const scheduled_time = '08:00';

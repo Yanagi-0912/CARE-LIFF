@@ -1,4 +1,4 @@
-import type { MedicationSlotType } from './medication';
+import type { MedicationInteractionAlert, MedicationSlotType } from './medication';
 
 /** 醫囑頻次代碼（對應後端 app/models/medication.py 的 MedicationFrequencyCode） */
 export type PrescriptionFrequencyCode = 'QD' | 'BID' | 'TID' | 'QID' | 'HS' | 'PRN' | 'OTHER';
@@ -170,4 +170,10 @@ export interface PrescriptionCommitResult {
    * 逐一補上這個永遠是空陣列的欄位。
    */
   discarded_license_medication_ids?: string[];
+  /**
+   * 這次加入的藥與現有用藥的相衝，與 LINE 推給服藥本人的那則是同一份偵測
+   * 結果。沒有相衝、全是處方藥、偵測失敗或冪等重放時為 null。選填是為了
+   * 後端還沒部署這個欄位時，舊回應照樣合法。
+   */
+  interaction_alert?: MedicationInteractionAlert | null;
 }

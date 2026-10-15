@@ -6,6 +6,7 @@ import {
   MEAL_LABEL_KEY,
   SLOT_LABEL_KEY,
   SLOT_TYPES,
+  type MedicationInteractionAlert,
   type MedicationReminder,
   type MedicationSlotType,
   type ReminderEntry,
@@ -18,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SLOT_TONE } from './slotTone';
+import { InteractionAlertDialog } from './InteractionAlertDialog';
 import { SlotEntryEditor } from './SlotEntryEditor';
 import { useMedicationList } from './useMedicationList';
 
@@ -71,6 +73,7 @@ export function DetailedSetupView({
 }: DetailedSetupViewProps) {
   const { t } = useTranslation();
   const [selectedSlot, setSelectedSlot] = useState<MedicationSlotType | undefined>(initialSlot);
+  const [interactionAlert, setInteractionAlert] = useState<MedicationInteractionAlert | null>(null);
 
   const {
     medications,
@@ -85,48 +88,59 @@ export function DetailedSetupView({
     return map;
   }, [reminders]);
 
+  // 手動新增的藥若和正在吃的藥相衝，新增完當場跳警告（與 LINE 推給服藥本人的
+  // 是同一份偵測結果）；藥照樣加進清單，警告不擋後續的指派。
+  const handleAddMedication = async (name: string) => {
+    const created = await addMedication(name);
+    if (created.interaction_alert) setInteractionAlert(created.interaction_alert);
+    return created;
+  };
+
   // 從卡片直接進到某個時段時，離開編輯面就回清單；從「新增」進來則回第一層
   const leaveEditor = initialSlot ? onBack : () => setSelectedSlot(undefined);
 
   if (selectedSlot) {
     const reminder = reminderBySlot.get(selectedSlot);
     return (
-      <SlotEntryEditor
-        key={selectedSlot}
-        slot={selectedSlot}
-        reminder={reminder}
-        medications={medications}
-        medicationsLoading={medicationsLoading}
-        // 不直接把 medicationsError 的原始訊息（可能是英文的 API 例外訊息）往下傳——
-        // 一律換成固定的中文引導文案，行為與呈現都由這裡集中決定。
-        medicationsError={medicationsError ? t('meds.detailed.medsLoadError') : null}
-        onAddMedication={addMedication}
-        onBack={leaveEditor}
-        onSave={async ({ entries, startDate, endDate }) => {
-          if (reminder) {
-            // 日期只送出真正變動的部分。結束日期清空要送 null 才會改回長期——
-            // 後端以 exclude_unset 匯出，「沒帶這個 key」是不動原值
-            // （見 UpdateReminderRequest 的說明）。
-            const patch: UpdateReminderRequest = { entries };
-            if (startDate !== reminder.start_date) patch.start_date = startDate;
-            const nextEndDate = endDate || null;
-            if (nextEndDate !== reminder.end_date) patch.end_date = nextEndDate;
-            await onUpdate(reminder.id, patch);
-          } else {
-            await onCreate({ slot: selectedSlot, entries, startDate, endDate: endDate || undefined });
+      <>
+        <SlotEntryEditor
+          key={selectedSlot}
+          slot={selectedSlot}
+          reminder={reminder}
+          medications={medications}
+          medicationsLoading={medicationsLoading}
+          // 不直接把 medicationsError 的原始訊息（可能是英文的 API 例外訊息）往下傳——
+          // 一律換成固定的中文引導文案，行為與呈現都由這裡集中決定。
+          medicationsError={medicationsError ? t('meds.detailed.medsLoadError') : null}
+          onAddMedication={handleAddMedication}
+          onBack={leaveEditor}
+          onSave={async ({ entries, startDate, endDate }) => {
+            if (reminder) {
+              // 日期只送出真正變動的部分。結束日期清空要送 null 才會改回長期——
+              // 後端以 exclude_unset 匯出，「沒帶這個 key」是不動原值
+              // （見 UpdateReminderRequest 的說明）。
+              const patch: UpdateReminderRequest = { entries };
+              if (startDate !== reminder.start_date) patch.start_date = startDate;
+              const nextEndDate = endDate || null;
+              if (nextEndDate !== reminder.end_date) patch.end_date = nextEndDate;
+              await onUpdate(reminder.id, patch);
+            } else {
+              await onCreate({ slot: selectedSlot, entries, startDate, endDate: endDate || undefined });
+            }
+            // 成功後離開編輯面，讓使用者看到更新後的摘要（decisions：不留在編輯面）
+            leaveEditor();
+          }}
+          onDelete={
+            reminder
+              ? async () => {
+                  await onDelete(reminder.id);
+                  leaveEditor();
+                }
+              : undefined
           }
-          // 成功後離開編輯面，讓使用者看到更新後的摘要（decisions：不留在編輯面）
-          leaveEditor();
-        }}
-        onDelete={
-          reminder
-            ? async () => {
-                await onDelete(reminder.id);
-                leaveEditor();
-              }
-            : undefined
-        }
-      />
+        />
+        <InteractionAlertDialog alert={interactionAlert} onClose={() => setInteractionAlert(null)} />
+      </>
     );
   }
 

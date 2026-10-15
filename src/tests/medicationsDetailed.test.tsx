@@ -399,6 +399,66 @@ describe('MedicationsPage 詳細設定檢視', () => {
     expect(screen.getByLabelText('藥品名稱')).toHaveValue('');
   });
 
+  it('新增的藥和正在吃的藥相衝時，新增完當場跳出警告，按「我知道了」關掉', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    const medA = makeMedication({ id: 'm-a', name: '可化凝錠' });
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([medA]);
+    vi.mocked(medicationApi.createMedication).mockResolvedValue({
+      ...makeMedication({ id: 'm-new', name: '伊普錠', source: 'manual' }),
+      interaction_alert: {
+        kind: 'bleeding',
+        new_drug_name: '伊普錠',
+        existing_drug_name: '可化凝錠',
+        ingredients: ['非類固醇消炎止痛藥', '抗凝血劑'],
+      },
+    });
+
+    renderPage();
+    await openDetailed();
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
+    await waitFor(() => {
+      expect(screen.getByText(medA.name)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('藥品名稱'), { target: { value: '伊普錠' } });
+    fireEvent.click(screen.getByRole('button', { name: '新增藥品' }));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('出血風險提醒')).toBeInTheDocument();
+    expect(within(dialog).getByText(/剛加入的「伊普錠」，和正在吃的「可化凝錠」/)).toBeInTheDocument();
+    expect(within(dialog).getByText('非類固醇消炎止痛藥、抗凝血劑')).toBeInTheDocument();
+    // 只導向藥師／醫師，不叫人自行停藥
+    expect(within(dialog).getByText(/請不要自己停掉醫師開的藥/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '我知道了' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+    // 警告不擋新增：藥照樣進了清單
+    expect(screen.getByText('伊普錠')).toBeInTheDocument();
+  });
+
+  it('沒有相衝時不跳警告', async () => {
+    vi.mocked(medicationApi.fetchReminders).mockResolvedValue([]);
+    vi.mocked(medicationApi.fetchMedications).mockResolvedValue([]);
+    vi.mocked(medicationApi.createMedication).mockResolvedValue({
+      ...makeMedication({ id: 'm-new', name: '維他命B群', source: 'manual' }),
+      interaction_alert: null,
+    });
+
+    renderPage();
+    await openDetailed();
+    fireEvent.click(screen.getByRole('button', { name: /^早/ }));
+
+    fireEvent.change(await screen.findByLabelText('藥品名稱'), { target: { value: '維他命B群' } });
+    fireEvent.click(screen.getByRole('button', { name: '新增藥品' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('維他命B群')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
   it('已停用的藥品顯示「已停用」標籤，飯前飯後指派按鈕都停用', async () => {
     // final review item 4：已停用的藥品（療程結束或家屬手動停用）不該再被
     // 指派新的服藥時機——三重編碼（opacity 淡化＋圖示＋文字），不只靠淡化

@@ -1,5 +1,6 @@
 import type {
   CreateMedicationRequest,
+  CreatedMedication,
   CreateRemindersRequest,
   Medication,
   MedicationReminder,
@@ -163,9 +164,10 @@ export async function fetchMedications(targetUserId?: string): Promise<Medicatio
 }
 
 /**
- * 6. 手動新增一種藥品（source 固定為 manual）
+ * 6. 手動新增一種藥品（source 固定為 manual）。回應多帶一個 interaction_alert：
+ *    這次新增偵測到的相衝，呼叫端當場顯示。
  */
-export async function createMedication(req: CreateMedicationRequest): Promise<Medication> {
+export async function createMedication(req: CreateMedicationRequest): Promise<CreatedMedication> {
   const res = await fetchWithAuth(`${BASE_URL}/api/medications`, {
     method: 'POST',
     body: JSON.stringify(req),

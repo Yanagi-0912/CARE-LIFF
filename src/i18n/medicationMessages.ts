@@ -165,6 +165,35 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       '您修改了藥名，原本比對到的證號與藥丸照片已一併清除；如需要，請重新掃描藥袋。',
     'meds.scan.draft.commitDiscardedLicenseNote':
       '{{n}} 項藥品原本挑選的藥丸照片已不再適用，未顯示照片。',
+
+    // 新增藥品後的相衝警告（與 LINE 推給服藥本人的那則是同一份偵測結果）。
+    // 語氣是中性的「剛加入的／正在吃的」：新增的人可能是代長輩操作的家人。
+    'meds.interaction.title.bleeding': '出血風險提醒',
+    'meds.interaction.title.overlap': '用藥重複提醒',
+    'meds.interaction.title.stacking': '用藥作用疊加提醒',
+    'meds.interaction.title.tcm': '中藥與西藥併用提醒',
+    'meds.interaction.summary.bleeding':
+      '剛加入的「{{newDrug}}」，和正在吃的「{{existingDrug}}」，是兩類一起吃會增加出血風險的藥。',
+    'meds.interaction.summary.overlap':
+      '剛加入的「{{newDrug}}」，和正在吃的「{{existingDrug}}」含有相同成分。',
+    'meds.interaction.summary.stacking':
+      '剛加入的「{{newDrug}}」，和正在吃的「{{existingDrug}}」成分不一樣，但作用會加在一起。',
+    'meds.interaction.summary.tcm':
+      '剛加入的「{{newDrug}}」，和正在吃的「{{existingDrug}}」，在衛福部的資料庫裡有併用紀錄。',
+    'meds.interaction.ingredientsLabel.bleeding': '併用的兩類藥',
+    'meds.interaction.ingredientsLabel.overlap': '相同成分',
+    'meds.interaction.ingredientsLabel.stacking': '作用相似的成分',
+    'meds.interaction.ingredientsLabel.tcm': '有併用紀錄的組合',
+    'meds.interaction.advice.bleeding':
+      '請留意有沒有大便變黑、刷牙流血、身上出現不明的瘀青，或特別容易累，有任何一項就盡快去看醫生。請盡快帶著這兩種藥去問藥師或原本開藥的醫師；在問到之前，請不要自己停掉醫師開的藥，那樣可能更危險。',
+    'meds.interaction.advice.overlap':
+      '同一種成分吃到兩份可能會過量。這兩種藥不一定不能一起吃，但最好請藥師看一下：下次經過藥局時，把兩盒藥一起帶去問就可以了。',
+    'meds.interaction.advice.stacking':
+      '一起吃比較容易想睡、頭暈、口乾，走路要特別小心。這兩種藥不一定不能一起吃，但最好請藥師看一下：下次經過藥局時，把兩盒藥一起帶去問就可以了。',
+    'meds.interaction.advice.tcm':
+      '中藥不等於溫和，一樣會和西藥互相影響。這兩種不一定不能一起吃，但最好請藥師看一下：把兩種藥都帶去，並告訴藥師也有在吃中藥。',
+    'meds.interaction.source.tcm': '資料來源：衛生福利部中西藥交互作用資料庫',
+    'meds.interaction.ok': '我知道了',
   },
 
   en: {
@@ -335,6 +364,33 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'You changed the medication name, so the matched licence number and pill photo have been cleared. Re-scan the bag if you need them.',
     'meds.scan.draft.commitDiscardedLicenseNote':
       'The pill photo you picked for {{n}} medication(s) no longer applied, so it wasn’t shown.',
+
+    'meds.interaction.title.bleeding': 'Bleeding risk notice',
+    'meds.interaction.title.overlap': 'Duplicate ingredient notice',
+    'meds.interaction.title.stacking': 'Overlapping drug effects',
+    'meds.interaction.title.tcm': 'Herbal and Western medicine together',
+    'meds.interaction.summary.bleeding':
+      'The just-added 「{{newDrug}}」 and 「{{existingDrug}}」, which is already being taken, are two kinds of medicine that raise bleeding risk when taken together.',
+    'meds.interaction.summary.overlap':
+      'The just-added 「{{newDrug}}」 shares an ingredient with 「{{existingDrug}}」, which is already being taken.',
+    'meds.interaction.summary.stacking':
+      'The just-added 「{{newDrug}}」 and 「{{existingDrug}}」, which is already being taken, contain different ingredients, but their effects add up.',
+    'meds.interaction.summary.tcm':
+      'The just-added 「{{newDrug}}」 and 「{{existingDrug}}」, which is already being taken, have a recorded interaction in the MOHW database.',
+    'meds.interaction.ingredientsLabel.bleeding': 'The two drug classes',
+    'meds.interaction.ingredientsLabel.overlap': 'Shared ingredient',
+    'meds.interaction.ingredientsLabel.stacking': 'Ingredients with similar effects',
+    'meds.interaction.ingredientsLabel.tcm': 'Recorded combination',
+    'meds.interaction.advice.bleeding':
+      'Watch for black stools, bleeding when brushing teeth, unexplained bruises, or feeling unusually tired, and see a doctor promptly if any of these appear. Take both medicines to a pharmacist or the prescribing doctor soon. Until then, do not stop the prescribed medication on your own — that can be more dangerous.',
+    'meds.interaction.advice.overlap':
+      'Taking the same ingredient twice can add up to too much. That does not necessarily mean they cannot be taken together, but it is best to ask a pharmacist — bring both boxes next time you pass a pharmacy.',
+    'meds.interaction.advice.stacking':
+      'Together they are more likely to cause drowsiness, dizziness or a dry mouth, so take extra care when walking. That does not necessarily mean they cannot be taken together, but it is best to ask a pharmacist — bring both boxes next time you pass a pharmacy.',
+    'meds.interaction.advice.tcm':
+      'Herbal medicine is not automatically mild; it can still affect Western medicines. That does not necessarily mean they cannot be taken together, but it is best to ask a pharmacist — bring both and mention the herbal medicine.',
+    'meds.interaction.source.tcm': 'Source: MOHW Chinese–Western Drug Interaction Database',
+    'meds.interaction.ok': 'Got it',
   },
 
   id: {
@@ -504,6 +560,33 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'Anda mengubah nama obat, sehingga nomor izin edar dan foto pil yang cocok sebelumnya telah dihapus. Pindai ulang kantong obat jika diperlukan.',
     'meds.scan.draft.commitDiscardedLicenseNote':
       'Foto pil yang Anda pilih untuk {{n}} obat sudah tidak berlaku, sehingga tidak ditampilkan.',
+
+    'meds.interaction.title.bleeding': 'Pemberitahuan risiko perdarahan',
+    'meds.interaction.title.overlap': 'Pemberitahuan bahan obat ganda',
+    'meds.interaction.title.stacking': 'Efek obat yang menumpuk',
+    'meds.interaction.title.tcm': 'Obat herbal dan obat Barat bersamaan',
+    'meds.interaction.summary.bleeding':
+      '「{{newDrug}}」 yang baru ditambahkan dan 「{{existingDrug}}」 yang sedang diminum adalah dua jenis obat yang meningkatkan risiko perdarahan bila diminum bersama.',
+    'meds.interaction.summary.overlap':
+      '「{{newDrug}}」 yang baru ditambahkan memiliki bahan yang sama dengan 「{{existingDrug}}」 yang sedang diminum.',
+    'meds.interaction.summary.stacking':
+      '「{{newDrug}}」 yang baru ditambahkan dan 「{{existingDrug}}」 yang sedang diminum memiliki bahan berbeda, tetapi efeknya saling menumpuk.',
+    'meds.interaction.summary.tcm':
+      '「{{newDrug}}」 yang baru ditambahkan dan 「{{existingDrug}}」 yang sedang diminum tercatat berinteraksi dalam basis data MOHW.',
+    'meds.interaction.ingredientsLabel.bleeding': 'Dua golongan obat',
+    'meds.interaction.ingredientsLabel.overlap': 'Bahan yang sama',
+    'meds.interaction.ingredientsLabel.stacking': 'Bahan dengan efek serupa',
+    'meds.interaction.ingredientsLabel.tcm': 'Kombinasi yang tercatat',
+    'meds.interaction.advice.bleeding':
+      'Perhatikan tinja menghitam, gusi berdarah saat menyikat gigi, memar tanpa sebab, atau mudah lelah; segera ke dokter bila ada salah satunya. Segera bawa kedua obat ke apoteker atau dokter yang meresepkan. Sebelum itu, jangan hentikan sendiri obat resep dokter — itu bisa lebih berbahaya.',
+    'meds.interaction.advice.overlap':
+      'Bahan yang sama terminum dua kali bisa menjadi terlalu banyak. Itu belum tentu berarti keduanya tidak boleh diminum bersama, tetapi sebaiknya tanyakan ke apoteker — bawa kedua kotak obat saat melewati apotek.',
+    'meds.interaction.advice.stacking':
+      'Bila diminum bersama, keduanya lebih mudah membuat mengantuk, pusing, atau mulut kering, jadi berhati-hatilah saat berjalan. Itu belum tentu berarti keduanya tidak boleh diminum bersama, tetapi sebaiknya tanyakan ke apoteker — bawa kedua kotak obat saat melewati apotek.',
+    'meds.interaction.advice.tcm':
+      'Obat herbal belum tentu ringan; tetap dapat memengaruhi obat Barat. Itu belum tentu berarti keduanya tidak boleh diminum bersama, tetapi sebaiknya tanyakan ke apoteker — bawa keduanya dan sebutkan obat herbal yang diminum.',
+    'meds.interaction.source.tcm': 'Sumber: Basis Data Interaksi Obat Tionghoa–Barat, MOHW',
+    'meds.interaction.ok': 'Mengerti',
   },
 
   vi: {
@@ -670,6 +753,33 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'Bạn đã đổi tên thuốc nên số đăng ký và ảnh viên thuốc khớp trước đó đã bị xoá. Vui lòng quét lại túi thuốc nếu cần.',
     'meds.scan.draft.commitDiscardedLicenseNote':
       'Ảnh viên thuốc bạn chọn cho {{n}} loại thuốc không còn phù hợp nên không được hiển thị.',
+
+    'meds.interaction.title.bleeding': 'Cảnh báo nguy cơ chảy máu',
+    'meds.interaction.title.overlap': 'Thông báo trùng hoạt chất',
+    'meds.interaction.title.stacking': 'Tác dụng thuốc chồng nhau',
+    'meds.interaction.title.tcm': 'Dùng thuốc Đông y cùng thuốc Tây',
+    'meds.interaction.summary.bleeding':
+      '「{{newDrug}}」 vừa thêm và 「{{existingDrug}}」 đang dùng là hai loại thuốc khi dùng chung sẽ tăng nguy cơ chảy máu.',
+    'meds.interaction.summary.overlap':
+      '「{{newDrug}}」 vừa thêm có cùng hoạt chất với 「{{existingDrug}}」 đang dùng.',
+    'meds.interaction.summary.stacking':
+      '「{{newDrug}}」 vừa thêm và 「{{existingDrug}}」 đang dùng có hoạt chất khác nhau, nhưng tác dụng sẽ cộng thêm.',
+    'meds.interaction.summary.tcm':
+      '「{{newDrug}}」 vừa thêm và 「{{existingDrug}}」 đang dùng có ghi nhận tương tác trong cơ sở dữ liệu của Bộ Y tế và Phúc lợi.',
+    'meds.interaction.ingredientsLabel.bleeding': 'Hai nhóm thuốc',
+    'meds.interaction.ingredientsLabel.overlap': 'Hoạt chất trùng',
+    'meds.interaction.ingredientsLabel.stacking': 'Hoạt chất có tác dụng tương tự',
+    'meds.interaction.ingredientsLabel.tcm': 'Cặp có ghi nhận',
+    'meds.interaction.advice.bleeding':
+      'Hãy để ý phân đen, chảy máu khi đánh răng, vết bầm không rõ nguyên nhân hoặc mệt bất thường; nếu có bất kỳ dấu hiệu nào, hãy đi khám ngay. Xin sớm mang cả hai loại đến hỏi dược sĩ hoặc bác sĩ đã kê đơn. Trước khi hỏi được, đừng tự ý ngừng thuốc bác sĩ kê — như vậy có thể nguy hiểm hơn.',
+    'meds.interaction.advice.overlap':
+      'Uống cùng một hoạt chất hai lần có thể thành quá nhiều. Điều đó không hẳn là không thể dùng chung, nhưng nên hỏi dược sĩ — lần tới đi ngang nhà thuốc, hãy mang cả hai hộp để hỏi.',
+    'meds.interaction.advice.stacking':
+      'Dùng chung dễ gây buồn ngủ, chóng mặt, khô miệng, nên hãy cẩn thận khi đi lại. Điều đó không hẳn là không thể dùng chung, nhưng nên hỏi dược sĩ — lần tới đi ngang nhà thuốc, hãy mang cả hai hộp để hỏi.',
+    'meds.interaction.advice.tcm':
+      'Thuốc Đông y không hẳn là nhẹ, nó vẫn ảnh hưởng tới thuốc Tây. Điều đó không hẳn là không thể dùng chung, nhưng nên hỏi dược sĩ — hãy mang cả hai và nói rõ có dùng thuốc Đông y.',
+    'meds.interaction.source.tcm': 'Nguồn: Cơ sở dữ liệu tương tác Đông – Tây y, Bộ Y tế và Phúc lợi',
+    'meds.interaction.ok': 'Đã hiểu',
   },
 
   th: {
@@ -831,6 +941,33 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       'คุณแก้ไขชื่อยา ทะเบียนยาและรูปเม็ดยาที่ตรงกันก่อนหน้านี้จึงถูกล้างแล้ว หากต้องการ กรุณาสแกนถุงยาใหม่',
     'meds.scan.draft.commitDiscardedLicenseNote':
       'รูปเม็ดยาที่คุณเลือกสำหรับยา {{n}} รายการไม่สามารถใช้ได้แล้ว จึงไม่แสดงรูป',
+
+    'meds.interaction.title.bleeding': 'แจ้งเตือนความเสี่ยงเลือดออก',
+    'meds.interaction.title.overlap': 'แจ้งเตือนตัวยาซ้ำ',
+    'meds.interaction.title.stacking': 'แจ้งเตือนฤทธิ์ยาซ้อนทับ',
+    'meds.interaction.title.tcm': 'แจ้งเตือนใช้ยาจีนร่วมกับยาแผนปัจจุบัน',
+    'meds.interaction.summary.bleeding':
+      '「{{newDrug}}」 ที่เพิ่งเพิ่ม กับ 「{{existingDrug}}」 ที่กินอยู่ เป็นยาสองกลุ่มที่กินร่วมกันแล้วเพิ่มความเสี่ยงเลือดออก',
+    'meds.interaction.summary.overlap':
+      '「{{newDrug}}」 ที่เพิ่งเพิ่ม มีตัวยาซ้ำกับ 「{{existingDrug}}」 ที่กินอยู่',
+    'meds.interaction.summary.stacking':
+      '「{{newDrug}}」 ที่เพิ่งเพิ่ม กับ 「{{existingDrug}}」 ที่กินอยู่ มีตัวยาต่างกัน แต่ฤทธิ์จะเสริมกัน',
+    'meds.interaction.summary.tcm':
+      '「{{newDrug}}」 ที่เพิ่งเพิ่ม กับ 「{{existingDrug}}」 ที่กินอยู่ มีบันทึกปฏิกิริยาในฐานข้อมูลของกระทรวงสาธารณสุขและสวัสดิการ',
+    'meds.interaction.ingredientsLabel.bleeding': 'ยาสองกลุ่ม',
+    'meds.interaction.ingredientsLabel.overlap': 'ตัวยาที่ซ้ำ',
+    'meds.interaction.ingredientsLabel.stacking': 'ตัวยาที่ออกฤทธิ์คล้ายกัน',
+    'meds.interaction.ingredientsLabel.tcm': 'คู่ยาที่มีบันทึก',
+    'meds.interaction.advice.bleeding':
+      'โปรดสังเกตอุจจาระสีดำ เลือดออกตอนแปรงฟัน รอยช้ำไม่ทราบสาเหตุ หรืออ่อนเพลียผิดปกติ หากมีอย่างใดอย่างหนึ่งให้รีบไปพบแพทย์ กรุณานำยาทั้งสองไปถามเภสัชกรหรือแพทย์ที่สั่งยาโดยเร็ว ก่อนจะได้คำตอบ อย่าหยุดยาที่แพทย์สั่งเอง เพราะอาจอันตรายกว่า',
+    'meds.interaction.advice.overlap':
+      'กินตัวยาเดียวกันซ้ำสองทางอาจได้รับยามากเกินไป ไม่ได้แปลว่ากินด้วยกันไม่ได้ แต่ควรถามเภสัชกร ครั้งหน้าที่ผ่านร้านยา นำยาทั้งสองกล่องไปถามได้เลย',
+    'meds.interaction.advice.stacking':
+      'กินร่วมกันอาจทำให้ง่วง เวียนศีรษะ ปากแห้ง เดินเหินต้องระวังเป็นพิเศษ ไม่ได้แปลว่ากินด้วยกันไม่ได้ แต่ควรถามเภสัชกร ครั้งหน้าที่ผ่านร้านยา นำยาทั้งสองกล่องไปถามได้เลย',
+    'meds.interaction.advice.tcm':
+      'ยาจีนไม่ได้อ่อนโยนเสมอไป ยังส่งผลต่อยาแผนปัจจุบันได้ ไม่ได้แปลว่ากินด้วยกันไม่ได้ แต่ควรถามเภสัชกร นำยาทั้งสองไปถาม และบอกด้วยว่ากินยาจีนอยู่',
+    'meds.interaction.source.tcm': 'แหล่งข้อมูล: ฐานข้อมูลปฏิกิริยายาจีน–ยาแผนปัจจุบัน กระทรวงสาธารณสุขและสวัสดิการ',
+    'meds.interaction.ok': 'รับทราบ',
   },
 
   ja: {
@@ -995,5 +1132,32 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
       '薬品名を変更したため、以前一致していた許可番号と錠剤の写真は消去されました。必要であれば薬袋を再スキャンしてください。',
     'meds.scan.draft.commitDiscardedLicenseNote':
       '{{n}} 件の薬で選択した錠剤の写真が無効になったため、表示されませんでした。',
+
+    'meds.interaction.title.bleeding': '出血リスクのお知らせ',
+    'meds.interaction.title.overlap': '成分重複のお知らせ',
+    'meds.interaction.title.stacking': '作用が重なる薬のお知らせ',
+    'meds.interaction.title.tcm': '漢方薬と西洋薬の併用について',
+    'meds.interaction.summary.bleeding':
+      '追加された「{{newDrug}}」と、すでに飲んでいる「{{existingDrug}}」は、一緒に飲むと出血しやすくなる2種類の薬です。',
+    'meds.interaction.summary.overlap':
+      '追加された「{{newDrug}}」は、すでに飲んでいる「{{existingDrug}}」と同じ成分を含んでいます。',
+    'meds.interaction.summary.stacking':
+      '追加された「{{newDrug}}」と、すでに飲んでいる「{{existingDrug}}」は、成分は違いますが作用が重なります。',
+    'meds.interaction.summary.tcm':
+      '追加された「{{newDrug}}」と、すでに飲んでいる「{{existingDrug}}」は、衛生福利部のデータベースに併用の記録があります。',
+    'meds.interaction.ingredientsLabel.bleeding': '併用している2つの薬効群',
+    'meds.interaction.ingredientsLabel.overlap': '重複している成分',
+    'meds.interaction.ingredientsLabel.stacking': '作用が似ている成分',
+    'meds.interaction.ingredientsLabel.tcm': '記録のある組み合わせ',
+    'meds.interaction.advice.bleeding':
+      '黒い便、歯みがきのときの出血、身に覚えのないあざ、いつもより疲れやすい——このいずれかがあれば早めに受診してください。できるだけ早く両方を薬剤師に見せるか、処方した医師に相談してください。相談できるまで、処方された薬を自己判断でやめないでください。かえって危険なことがあります。',
+    'meds.interaction.advice.overlap':
+      '同じ成分を二重に飲むと多すぎることがあります。必ずしも一緒に飲めないわけではありませんが、薬剤師に見てもらうのが安心です。今度薬局に立ち寄ったとき、両方の箱を持って聞いてみてください。',
+    'meds.interaction.advice.stacking':
+      '一緒に飲むと眠気・めまい・口の渇きが出やすくなるので、歩くときは特に気をつけてください。必ずしも一緒に飲めないわけではありませんが、薬剤師に見てもらうのが安心です。今度薬局に立ち寄ったとき、両方の箱を持って聞いてみてください。',
+    'meds.interaction.advice.tcm':
+      '漢方薬だから穏やかとは限らず、西洋薬に影響することがあります。必ずしも一緒に飲めないわけではありませんが、薬剤師に見てもらうのが安心です。両方を持参し、漢方薬も飲んでいるとお伝えください。',
+    'meds.interaction.source.tcm': '出典：衛生福利部 中西薬相互作用データベース',
+    'meds.interaction.ok': 'わかりました',
   },
 };

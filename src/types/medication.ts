@@ -188,6 +188,28 @@ export interface CreateMedicationRequest {
   name: string;
 }
 
+/** 相衝的四種：出血風險、成分重複、作用疊加、中西藥併用（後端依嚴重度只回一組） */
+export type MedicationInteractionKind = 'bleeding' | 'overlap' | 'stacking' | 'tcm';
+
+/**
+ * 新增藥品當下偵測到的相衝（對應後端 MedicationInteractionAlert）。
+ *
+ * 與 LINE 上推給服藥本人的那則是同一份偵測結果，只在新增的回應裡出現一次，
+ * 不落地——之後停掉另一顆藥，它就不成立了。
+ */
+export interface MedicationInteractionAlert {
+  kind: MedicationInteractionKind;
+  new_drug_name: string;
+  existing_drug_name: string;
+  /** 重複／疊加是成分學名；中西藥是（中藥名, 西藥成分）；出血是兩個藥理類別 */
+  ingredients: string[];
+}
+
+/** POST /api/medications 回應：新增的藥品，加上這次新增偵測到的相衝 */
+export interface CreatedMedication extends Medication {
+  interaction_alert?: MedicationInteractionAlert | null;
+}
+
 /**
  * 一次看診：同一個調劑機構、同一個調劑日期拿到的那些藥。
  *

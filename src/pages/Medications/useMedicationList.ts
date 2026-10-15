@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { createMedication, fetchMedications } from '../../api/medicationApi';
 import { getLineUserId } from '../../utils/auth';
 import { queryKeys } from '@/lib/queryClient';
-import type { Medication } from '../../types/medication';
+import type { CreatedMedication, Medication } from '../../types/medication';
 
 interface UseMedicationListReturn {
   /** 該用藥者的藥品清單（含已停用者），詳細設定頁用它列出可指派飯前／飯後的藥品 */
@@ -12,8 +12,9 @@ interface UseMedicationListReturn {
   error: string | null;
   /** 手動新增一種藥品。成功後直接把新藥品追加進快取（見下方 onSuccess 說明），
    *  不重新整份重抓——詳細設定頁的使用情境是「打字、送出、馬上在清單裡指派」，
-   *  多一次來回等待對長輩來說是可感知的延遲。 */
-  addMedication: (name: string) => Promise<Medication>;
+   *  多一次來回等待對長輩來說是可感知的延遲。回傳值帶著這次新增偵測到的
+   *  相衝（interaction_alert），由呼叫端決定怎麼顯示。 */
+  addMedication: (name: string) => Promise<CreatedMedication>;
 }
 
 /**

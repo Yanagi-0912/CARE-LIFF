@@ -6,6 +6,7 @@ import { canManageMedications } from '../../utils/familyPermissions';
 import { useReminderTargets } from '../Reminders/useReminderTargets';
 import { ReminderTargetToggle } from '../Reminders/ReminderTargetToggle';
 import type {
+  MedicationInteractionAlert,
   MedicationReminder,
   MedicationSlotType,
   ReminderEntry,
@@ -16,6 +17,7 @@ import { ReminderCard } from './ReminderCard';
 import { PrescriptionScanDialog } from './PrescriptionScanDialog';
 import { PrescriptionDraftForm } from './PrescriptionDraftForm';
 import { DetailedSetupView } from './DetailedSetupView';
+import { InteractionAlertDialog } from './InteractionAlertDialog';
 import { usePrescriptionScanEnabled } from './usePrescriptionScanEnabled';
 import { useMedications } from './useMedications';
 import { buildCommitSummary } from './commitSummary';
@@ -44,6 +46,7 @@ const MedicationsPage = () => {
   // 「新增」不預選時段，停在四張時段卡；點提醒卡片則帶入該筆規則的時段，
   // 直接跳進那個時段的編輯面。
   const [detailedSlot, setDetailedSlot] = useState<MedicationSlotType | undefined>(undefined);
+  const [interactionAlert, setInteractionAlert] = useState<MedicationInteractionAlert | null>(null);
 
   const scanEnabled = usePrescriptionScanEnabled();
   const { reminders, loading, error, create, update, remove, refetch } = useMedications(selectedUserId);
@@ -120,6 +123,8 @@ const MedicationsPage = () => {
     facts: { totalCount: number; noReminderCount: number },
   ) => {
     setDraft(null);
+    // 相衝警告先開：refetch 要等一次來回，警告不該排在它後面
+    setInteractionAlert(result.interaction_alert ?? null);
     await refetch();
     toast.success(buildCommitSummary(t, { result, ...facts }));
   };
@@ -278,6 +283,8 @@ const MedicationsPage = () => {
           onClose={() => setDraft(null)}
         />
       )}
+
+      <InteractionAlertDialog alert={interactionAlert} onClose={() => setInteractionAlert(null)} />
     </div>
   );
 };
