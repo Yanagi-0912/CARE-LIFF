@@ -1022,8 +1022,9 @@ describe('PrescriptionDraftForm：候選消歧（7.2, 7.3, 7.6）', () => {
     expect(payload.drugs[0]!.license_number).toBe('LIC-B');
   });
 
-  // 7.3：未挑選不得阻擋提交，介面要明講後果只是「不會顯示藥丸照片」。
-  it('未挑選候選時仍可送出，證號留空；畫面已說明後果只是沒有照片', async () => {
+  // 以前未挑選也能送出，結果是一路按下去、藥全以空證號建立，之後推播永遠
+  // 沒有照片。現在必須當場二選一：挑一張，或明說「都不是／不確定」。
+  it('未挑選候選時不能送出；點「都不是／不確定」後才送出，證號留空', async () => {
     vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
       medication_ids: ['m-1'],
       prn_medication_ids: [],
@@ -1049,14 +1050,123 @@ describe('PrescriptionDraftForm：候選消歧（7.2, 7.3, 7.6）', () => {
     );
 
     expect(
-      await screen.findByText('沒有找到相符的也沒關係，不選不會影響建立這項藥品，只是不會顯示藥丸照片。'),
+      await screen.findByText('選「不確定」也沒關係，藥照樣會建立，只是不會顯示藥丸照片。'),
     ).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    expect(
+      await screen.findByText('還沒確認這個藥是哪一顆，請在上面點選一個選項。'),
+    ).toBeInTheDocument();
+    expect(medicationApi.commitPrescriptionDraft).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: '都不是／不確定' }));
+    // 選了答案，錯誤當場消失，不必再按一次送出才知道
+    await waitFor(() =>
+      expect(screen.queryByText('還沒確認這個藥是哪一顆，請在上面點選一個選項。')).not.toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
 
     await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
     const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
     expect(payload.drugs[0]!.license_number).toBeUndefined();
+  });
+
+  it('一鍵建立也要先選好：有沒對定的藥時不送出，標出是哪一個', async () => {
+    const candidate = makeCandidate({ license_number: 'LIC-SS', name_zh: '斯斯感冒膠囊' });
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ name: '斯斯感冒膠囊', license_number: null, candidates: [candidate] })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /一鍵建立/ }));
+
+    expect(
+      await screen.findByText('還沒確認這個藥是哪一顆，請在上面點選一個選項。'),
+    ).toBeInTheDocument();
+    expect(medicationApi.commitPrescriptionDraft).not.toHaveBeenCalled();
+    // 一鍵建立在畫面頂端、沒選的藥在下面：焦點要移到那一列，畫面才會捲過去
+    await waitFor(() =>
+      expect(document.activeElement).toHaveAttribute('data-invalid', 'true'),
+    );
+  });
+
+  it('只有一個候選時按鈕寫「不是這一顆」，點選那一顆就帶出它的證號', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+    const candidate = makeCandidate({ license_number: 'LIC-SS', name_zh: '斯斯感冒膠囊' });
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [makeDrug({ name: '斯斯感冒膠囊', license_number: null, candidates: [candidate] })],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(await screen.findByRole('button', { name: '不是這一顆／不確定' })).toBeInTheDocument();
+    fireEvent.click(screen.getByText('斯斯感冒膠囊', { selector: 'p' }).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
+    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
+    expect(payload.drugs[0]!.license_number).toBe('LIC-SS');
+  });
+
+  it('不建立的那一列、藥名改過的那一列，不要求選擇', async () => {
+    vi.mocked(medicationApi.commitPrescriptionDraft).mockResolvedValue({
+      medication_ids: ['m-1'],
+      prn_medication_ids: [],
+      reminder_ids: ['r-1'],
+      reactivated_slots: [],
+    });
+    const candidates = [
+      makeCandidate({ license_number: 'LIC-A', name_zh: '普拿疼膜衣錠500毫克' }),
+      makeCandidate({ license_number: 'LIC-B', name_zh: '普拿疼速效膜衣錠' }),
+    ];
+    const draft = makeDraft({
+      recognition: {
+        institution: null,
+        patient_name: null,
+        dispensed_date: null,
+        drugs: [
+          makeDrug({ name: '普拿疼', license_number: null, candidates }),
+          makeDrug({ name: '斯斯', license_number: null, candidates }),
+        ],
+        multiple_bags_suspected: false,
+      },
+    });
+
+    renderWithToaster(
+      <PrescriptionDraftForm draft={draft} onCommitted={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    const [firstInclude] = await screen.findAllByRole('checkbox', { name: '建立這項藥品' });
+    fireEvent.click(firstInclude!);
+    fireEvent.change(screen.getByLabelText('藥品名稱', { selector: '#drug-name-1' }), {
+      target: { value: '斯斯感冒膠囊' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+
+    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
   });
 
   // 候選縮圖是從後端網域載入的真實 HTTP 資源，載入失敗（斷線、檔案不存在）
@@ -1414,7 +1524,39 @@ describe('PrescriptionDraftForm：挑選必須隨篩選失效而清空（C1 回�
     await narrowAndPickWR0();
 
     fireEvent.click(await screen.findByRole('button', { name: '重新選擇顏色／形狀' }));
-    // 中間不做任何其他互動，直接送出。
+    // 中間不做任何其他互動，直接送出。挑選若沒被清掉，表單會帶著 WR-0 送出；
+    // 清掉了就變回「還沒選」，被必選的規則擋下。
+    fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
+    expect(
+      await screen.findByText('還沒確認這個藥是哪一顆，請在上面點選一個選項。'),
+    ).toBeInTheDocument();
+    expect(medicationApi.commitPrescriptionDraft).not.toHaveBeenCalled();
+  });
+
+  it('回答顏色後仍收窄不了（候選過多）時，視同不確定，可以直接送出', async () => {
+    mockCommitOk();
+    // 白圓 6 張＋粉橢 2 張：先問顏色；選白色後剩 6 張、形狀問不出分歧 → 過多
+    renderWithCandidates(
+      buildCandidates([
+        { color: '白色', shape: '圓形', count: 6, prefix: 'WR' },
+        { color: '粉紅色', shape: '橢圓形', count: 2, prefix: 'PO' },
+      ]),
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '白色' }));
+    expect(
+      await screen.findByText(
+        '這個藥名的候選太多，且無法用顏色或形狀進一步縮小範圍，這次不提供藥丸照片可供選擇，不影響這項藥品的建立。',
+      ),
+    ).toBeInTheDocument();
+
+    expect(await submitAndReadLicense()).toBeUndefined();
+  });
+
+  it('一開始就收窄不了（外觀都一樣）時沒有可選的東西，不要求選擇', async () => {
+    mockCommitOk();
+    renderWithCandidates(buildCandidates([{ color: '白色', shape: '圓形', count: 6, prefix: 'WR' }]));
+
     expect(await submitAndReadLicense()).toBeUndefined();
   });
 
@@ -1533,11 +1675,12 @@ describe('PrescriptionDraftForm：挑選必須隨篩選失效而清空（C1 回�
     const poCard = (await screen.findByText('PO候選0')).closest('button')!;
     expect(poCard).toHaveAttribute('aria-pressed', 'false');
 
+    // 舊挑選清掉了，這一列回到「還沒選」：送出被擋下，不會帶著 WR-0 出去
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
-
-    await waitFor(() => expect(medicationApi.commitPrescriptionDraft).toHaveBeenCalled());
-    const [, payload] = vi.mocked(medicationApi.commitPrescriptionDraft).mock.calls[0]!;
-    expect(payload.drugs[0]!.license_number).toBeUndefined();
+    expect(
+      await screen.findByText('還沒確認這個藥是哪一顆，請在上面點選一個選項。'),
+    ).toBeInTheDocument();
+    expect(medicationApi.commitPrescriptionDraft).not.toHaveBeenCalled();
   });
 });
 

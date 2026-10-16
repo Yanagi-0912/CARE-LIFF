@@ -157,7 +157,11 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.pickPromptSingleNarrowed':
       '依您選的顏色／形狀，符合的只剩這一顆，請確認是否為這一顆',
     'meds.scan.draft.appearance.notPickedHint':
-      '沒有找到相符的也沒關係，不選不會影響建立這項藥品，只是不會顯示藥丸照片。',
+      '選「不確定」也沒關係，藥照樣會建立，只是不會顯示藥丸照片。',
+    'meds.scan.draft.appearance.noneOfTheseSingle': '不是這一顆／不確定',
+    'meds.scan.draft.appearance.noneOfThese': '都不是／不確定',
+    'meds.scan.draft.appearance.choiceRequired':
+      '還沒確認這個藥是哪一顆，請在上面點選一個選項。',
     'meds.scan.draft.appearance.resetNarrowing': '重新選擇顏色／形狀',
     'meds.scan.draft.appearance.returnToNarrowing': '改用顏色／形狀重新篩選',
     'meds.scan.draft.appearance.sizeLabel': '外觀尺寸：{{value}}',
@@ -356,7 +360,11 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.pickPromptSingleNarrowed':
       'This is the only one matching the colour and shape you chose — please confirm this is the one',
     'meds.scan.draft.appearance.notPickedHint':
-      'It’s fine if none match — not choosing one won’t stop this medication from being created; it just means no pill photo will be shown.',
+      'Choosing “not sure” is fine: the medication will still be created, just without a pill photo.',
+    'meds.scan.draft.appearance.noneOfTheseSingle': 'Not this one / not sure',
+    'meds.scan.draft.appearance.noneOfThese': 'None of these / not sure',
+    'meds.scan.draft.appearance.choiceRequired':
+      'Please confirm which one this is — tap one of the options above.',
     'meds.scan.draft.appearance.resetNarrowing': 'Choose colour / shape again',
     'meds.scan.draft.appearance.returnToNarrowing': 'Filter by colour / shape again',
     'meds.scan.draft.appearance.sizeLabel': 'Size: {{value}}',
@@ -552,7 +560,11 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.pickPromptSingleNarrowed':
       'Hanya ini yang cocok dengan warna dan bentuk yang Anda pilih — mohon konfirmasi apakah ini yang benar',
     'meds.scan.draft.appearance.notPickedHint':
-      'Tidak apa-apa jika tidak ada yang cocok — tidak memilih tidak akan menghentikan pembuatan obat ini, hanya berarti foto pil tidak akan ditampilkan.',
+      'Memilih “tidak yakin” tidak apa-apa: obat tetap dibuat, hanya tanpa foto pil.',
+    'meds.scan.draft.appearance.noneOfTheseSingle': 'Bukan yang ini / tidak yakin',
+    'meds.scan.draft.appearance.noneOfThese': 'Tidak ada yang cocok / tidak yakin',
+    'meds.scan.draft.appearance.choiceRequired':
+      'Mohon konfirmasi obat yang mana — ketuk salah satu pilihan di atas.',
     'meds.scan.draft.appearance.resetNarrowing': 'Pilih ulang warna/bentuk',
     'meds.scan.draft.appearance.returnToNarrowing': 'Saring lagi berdasarkan warna/bentuk',
     'meds.scan.draft.appearance.sizeLabel': 'Ukuran: {{value}}',
@@ -745,7 +757,11 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.pickPromptSingleNarrowed':
       'Chỉ viên này khớp với màu sắc và hình dạng bạn đã chọn — vui lòng xác nhận đây có đúng là viên thuốc đó không',
     'meds.scan.draft.appearance.notPickedHint':
-      'Không sao nếu không có loại nào khớp — không chọn sẽ không ngăn việc tạo thuốc này, chỉ là sẽ không hiển thị ảnh viên thuốc.',
+      'Chọn “không chắc” cũng được: thuốc vẫn được tạo, chỉ là không hiển thị ảnh viên thuốc.',
+    'meds.scan.draft.appearance.noneOfTheseSingle': 'Không phải viên này / không chắc',
+    'meds.scan.draft.appearance.noneOfThese': 'Không có viên nào khớp / không chắc',
+    'meds.scan.draft.appearance.choiceRequired':
+      'Vui lòng xác nhận đó là viên nào — chạm vào một lựa chọn ở trên.',
     'meds.scan.draft.appearance.resetNarrowing': 'Chọn lại màu sắc/hình dạng',
     'meds.scan.draft.appearance.returnToNarrowing': 'Lọc lại theo màu sắc/hình dạng',
     'meds.scan.draft.appearance.sizeLabel': 'Kích thước: {{value}}',
@@ -933,7 +949,11 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.pickPromptSingleNarrowed':
       'มีเพียงเม็ดนี้ที่ตรงกับสีและรูปทรงที่คุณเลือก กรุณายืนยันว่าใช่เม็ดนี้หรือไม่',
     'meds.scan.draft.appearance.notPickedHint':
-      'ไม่เป็นไรหากไม่มีรายการที่ตรงกัน การไม่เลือกจะไม่ทำให้สร้างยานี้ไม่ได้ เพียงแต่จะไม่แสดงรูปเม็ดยา',
+      'เลือก “ไม่แน่ใจ” ได้ ยาจะยังถูกสร้าง เพียงแต่ไม่แสดงรูปเม็ดยา',
+    'meds.scan.draft.appearance.noneOfTheseSingle': 'ไม่ใช่เม็ดนี้ / ไม่แน่ใจ',
+    'meds.scan.draft.appearance.noneOfThese': 'ไม่ตรงกับรายการใด / ไม่แน่ใจ',
+    'meds.scan.draft.appearance.choiceRequired':
+      'โปรดยืนยันว่าเป็นเม็ดไหน — แตะตัวเลือกด้านบนหนึ่งรายการ',
     'meds.scan.draft.appearance.resetNarrowing': 'เลือกสี/รูปทรงใหม่',
     'meds.scan.draft.appearance.returnToNarrowing': 'กรองใหม่ตามสีหรือรูปทรง',
     'meds.scan.draft.appearance.sizeLabel': 'ขนาด: {{value}}',
@@ -1124,7 +1144,11 @@ export const medicationFeatureMessages: Record<SupportedLanguage, Record<string,
     'meds.scan.draft.appearance.pickPromptSingleNarrowed':
       'お選びいただいた色・形に該当するのはこの1件だけです。これで間違いないか確認してください',
     'meds.scan.draft.appearance.notPickedHint':
-      '該当するものがなくても問題ありません。選ばなくてもこの薬の作成は妨げられません。錠剤の写真が表示されないだけです。',
+      '「わからない」を選んでも大丈夫です。薬は作成され、錠剤の写真が表示されないだけです。',
+    'meds.scan.draft.appearance.noneOfTheseSingle': 'これではない／わからない',
+    'meds.scan.draft.appearance.noneOfThese': 'どれでもない／わからない',
+    'meds.scan.draft.appearance.choiceRequired':
+      'どの錠剤か確認してください。上の選択肢から一つ選んでください。',
     'meds.scan.draft.appearance.resetNarrowing': '色／形をもう一度選び直す',
     'meds.scan.draft.appearance.returnToNarrowing': '色／形でもう一度絞り込む',
     'meds.scan.draft.appearance.sizeLabel': 'サイズ：{{value}}',

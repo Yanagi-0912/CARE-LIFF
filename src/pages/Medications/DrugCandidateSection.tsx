@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckIcon } from 'lucide-react';
 import type { DrugCandidate, RecognizedDrug } from '../../types/prescription';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FieldDescription, FieldLegend, FieldSet } from '@/components/ui/field';
+import { FieldDescription, FieldError, FieldLegend, FieldSet } from '@/components/ui/field';
 import { PillThumbnail } from './PillThumbnail';
 import { formatAppearanceMarks, formatAppearancePrimary, formatAppearanceSize } from './appearanceText';
 import {
@@ -20,6 +20,17 @@ interface DrugCandidateSectionProps {
   nameEdited: boolean;
   selectedLicense: string | null;
   onSelect: (license: string | null) => void;
+  /** 使用者明說「都不是／不確定」（含收窄時按「略過」）。與挑了某一張一樣
+   *  算是做了選擇——送出前每個沒對定的藥都要有其中一種（見
+   *  needsCandidateChoice）。 */
+  noMatch?: boolean;
+  /** 一律在 onSelect 之前呼叫：表單送出過一次之後，onSelect 會觸發這一列的
+   *  重新驗證，那時 noMatch 必須已經是新值，錯誤才會在同一下點擊就消失。 */
+  onNoMatchChange?: (noMatch: boolean) => void;
+  /** 還沒選就按送出時的錯誤訊息 */
+  error?: string;
+  /** 驗證失敗時表單把焦點移到這裡，畫面跟著捲到這一列 */
+  focusRef?: Ref<HTMLFieldSetElement>;
   disabled?: boolean;
 }
 
@@ -144,6 +155,10 @@ export function DrugCandidateSection({
   nameEdited,
   selectedLicense,
   onSelect,
+  noMatch = false,
+  onNoMatchChange,
+  error,
+  focusRef,
   disabled,
 }: DrugCandidateSectionProps) {
   const { t } = useTranslation();
@@ -159,20 +174,21 @@ export function DrugCandidateSection({
   // 已經放棄的篩選底下選出的證號」這種貼錯照片的情境。三個會改變篩選前提
   // 的操作（換屬性值、重新篩選、略過）一律經過這三支函式，統一在改變
   // filters／skipped 的同時呼叫 onSelect(null)，不讓任何一條路徑漏掉。
-  const pickColor = (color: string) => {
-    setFilters((f) => ({ ...f, color }));
+  //
+  // 「都不是」同理要跟著重設：換了篩選前提，先前那句「都不是」講的是另一批
+  // 候選。例外是回答完顏色／形狀仍收窄不了（too-many）——畫面上已經沒有
+  // 任何可點的選項，使用者能做的都做了，視同「不確定」，否則送出會被卡死。
+  const narrowTo = (next: CandidateNarrowingFilters) => {
+    setFilters(next);
+    onNoMatchChange?.(narrowCandidates(drug.candidates, next).stage === 'too-many');
     onSelect(null);
   };
-  const pickShape = (shape: string) => {
-    setFilters((f) => ({ ...f, shape }));
-    onSelect(null);
-  };
-  const resetFilters = () => {
-    setFilters({ color: null, shape: null });
-    onSelect(null);
-  };
+  const pickColor = (color: string) => narrowTo({ ...filters, color });
+  const pickShape = (shape: string) => narrowTo({ ...filters, shape });
+  const resetFilters = () => narrowTo({ color: null, shape: null });
   const skipNarrowing = () => {
     setSkipped(true);
+    onNoMatchChange?.(true);
     onSelect(null);
   };
   // I5：略過不是單行道——使用者可能是手滑點到，或想起自己其實看得出顏色／
@@ -180,8 +196,18 @@ export function DrugCandidateSection({
   const returnToNarrowing = () => {
     setSkipped(false);
     setFilters({ color: null, shape: null });
+    onNoMatchChange?.(false);
     onSelect(null);
   };
+  const chooseCandidate = (license: string) => {
+    onNoMatchChange?.(false);
+    onSelect(selectedLicense === license ? null : license);
+  };
+  const toggleNoMatch = () => {
+    onNoMatchChange?.(!noMatch);
+    onSelect(null);
+  };
+  const errorNode = error ? <FieldError>{error}</FieldError> : null;
 
   // 產品規則（spec「藥名被編輯時證號與照片一併失效」）：藥名一改，這整段
   // 都不該再呈現，避免使用者看到的照片其實對應著改名前的舊藥名。
@@ -218,7 +244,7 @@ export function DrugCandidateSection({
 
   if (skipped) {
     return (
-      <FieldSet className="mt-3">
+      <FieldSet className="mt-3 outline-none" ref={focusRef} tabIndex={-1} data-invalid={Boolean(error)}>
         <FieldLegend variant="label">{t('meds.scan.draft.appearance.sectionTitle')}</FieldLegend>
         <FieldDescription>{t('meds.scan.draft.appearance.tooManyNote')}</FieldDescription>
         {/* I5：略過不是單行道，留一條路回到收窄流程。 */}
@@ -231,6 +257,7 @@ export function DrugCandidateSection({
         >
           {t('meds.scan.draft.appearance.returnToNarrowing')}
         </Button>
+        {errorNode}
       </FieldSet>
     );
   }
@@ -238,7 +265,7 @@ export function DrugCandidateSection({
   const result = narrowCandidates(candidates, filters);
 
   return (
-    <FieldSet className="mt-3">
+    <FieldSet className="mt-3 outline-none" ref={focusRef} tabIndex={-1} data-invalid={Boolean(error)}>
       <FieldLegend variant="label">{t('meds.scan.draft.appearance.sectionTitle')}</FieldLegend>
 
       {result.stage === 'ask-color' && (
@@ -300,14 +327,31 @@ export function DrugCandidateSection({
                 candidate={candidate}
                 selected={selectedLicense === candidate.license_number}
                 disabled={disabled}
-                onSelect={() =>
-                  onSelect(selectedLicense === candidate.license_number ? null : candidate.license_number)
-                }
+                onSelect={() => chooseCandidate(candidate.license_number)}
               />
             ))}
           </div>
-          {/* 未挑選不得阻擋提交，這裡明講後果只是「不會顯示藥丸照片」，
-              不是任何功能受限（spec「使用者為多候選藥品挑定藥證」）。 */}
+          {/* 「都不是／不確定」也是一個要點的答案，不是預設值：不點任何一個
+              就送不出去。這裡明講選它的後果只是「不會顯示藥丸照片」，藥照樣
+              建立。 */}
+          <Button
+            type="button"
+            variant="outline"
+            aria-pressed={noMatch}
+            disabled={disabled}
+            className={cn(
+              'h-auto min-h-11 justify-start whitespace-normal text-left',
+              noMatch && 'border-primary bg-primary/5 ring-2 ring-primary',
+            )}
+            onClick={toggleNoMatch}
+          >
+            {noMatch && <CheckIcon className="text-primary" aria-hidden />}
+            {t(
+              result.candidates.length === 1
+                ? 'meds.scan.draft.appearance.noneOfTheseSingle'
+                : 'meds.scan.draft.appearance.noneOfThese',
+            )}
+          </Button>
           <FieldDescription>{t('meds.scan.draft.appearance.notPickedHint')}</FieldDescription>
           {(filters.color || filters.shape) && (
             <Button
@@ -322,6 +366,7 @@ export function DrugCandidateSection({
           )}
         </div>
       )}
+      {errorNode}
     </FieldSet>
   );
 }

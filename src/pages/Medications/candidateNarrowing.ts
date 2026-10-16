@@ -109,3 +109,24 @@ export function narrowCandidates(
   // 逼使用者亂選，寧可不給照片（spec「候選過多時以外觀屬性漸進收窄」）。
   return { stage: 'too-many' };
 }
+
+/**
+ * 這個藥送出前是否必須由使用者明確做出選擇——點選其中一張候選，或明說
+ * 「都不是／不確定」。不選就不能送出：先前「不選也能送出」的結果是長輩一路
+ * 按下去，藥一律以空證號建立，之後推播永遠沒有照片、相衝偵測也拿不到成分。
+ *
+ * 不需要選的情況：
+ * - 後端已經釘定證號（畫面呈現唯讀的「已確認」）。
+ * - 沒有任何候選（藥名比不到藥證庫，沒有東西可選）。
+ * - 一開始就收窄不了（顏色、形狀都問不出分歧，候選仍超過上限）：畫面上
+ *   沒有任何可點的選項，要求選擇只會卡住送出。
+ *
+ * 藥名被改過、或這一列不建立時也不需要選，那兩件事由呼叫端（表單）判斷。
+ */
+export function needsCandidateChoice(drug: {
+  license_number?: string | null;
+  candidates: DrugCandidate[];
+}): boolean {
+  if (drug.license_number || drug.candidates.length === 0) return false;
+  return narrowCandidates(drug.candidates, { color: null, shape: null }).stage !== 'too-many';
+}

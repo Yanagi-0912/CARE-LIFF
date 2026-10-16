@@ -21,6 +21,7 @@ import { useMedications } from './useMedications';
 import { isReminderSchedulable } from './reminderSchedule';
 import { todayLocalDateString } from '../../utils/date';
 import { DrugCandidateSection } from './DrugCandidateSection';
+import { needsCandidateChoice } from './candidateNarrowing';
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,10 @@ interface DrugFormValue {
    * 與畫面呈現（DrugCandidateSection）兩處生效，若使用者把名字改回原樣，
    * 原本挑過的證號要能原樣復原，不必重新挑一次。 */
   licenseNumber: string | null;
+  /** 使用者明說候選「都不是／不確定」。證號沒對定的藥送出前必須二選一：
+   * 挑一張（licenseNumber）或點這個——不點任何一個就不能送出（見
+   * buildSchema）。 */
+  noCandidateMatch: boolean;
 }
 
 /**
@@ -138,16 +143,36 @@ function buildSchema(t: TFunction, drugs: RecognizedDrug[]) {
             .nullable(),
           noReminder: z.boolean(),
           licenseNumber: z.string().nullable(),
+          noCandidateMatch: z.boolean(),
         }),
       )
       .superRefine((rows, ctx) => {
         rows.forEach((row, index) => {
-          const isOther = drugs[index]?.frequency_code === 'OTHER';
+          const original = drugs[index];
+          const isOther = original?.frequency_code === 'OTHER';
           if (row.include && isOther && !row.noReminder && row.slots.length === 0) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: t('meds.scan.draft.slotsRequired'),
               path: [index, 'slots'],
+            });
+          }
+          // 證號沒對定的藥要當場確認是哪一顆：以前不選也能送出，結果是一路
+          // 按下去、藥全以空證號建立，之後推播沒照片、相衝偵測也拿不到成分。
+          // 「都不是／不確定」算一個答案，藥照樣建立，只是沒有照片。藥名改過
+          // 的列候選已經失效（畫面不再呈現），不要求。
+          if (
+            row.include &&
+            original &&
+            row.name === original.name &&
+            needsCandidateChoice(original) &&
+            !row.licenseNumber &&
+            !row.noCandidateMatch
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('meds.scan.draft.appearance.choiceRequired'),
+              path: [index, 'licenseNumber'],
             });
           }
         });
@@ -192,9 +217,8 @@ function toCommitDrug(original: RecognizedDrug, row: DrugFormValue): CommitDrugI
     generic_name: original.generic_name ?? undefined,
     // 未編輯藥名時送出使用者在候選清單中挑定的證號（後端已釘定證號時預設
     // 就是那個證號，不需要使用者動作；候選只有一筆但證號留空時不預設，仍
-    // 要使用者自己確認）；未挑選則 row.licenseNumber 為 null，
-    // 送出 undefined，後端以空證號建立，未挑選不得阻擋提交（spec「使用者
-    // 為多候選藥品挑定藥證」）。藥名一經編輯，不論 row.licenseNumber 裡
+    // 要使用者自己確認）；使用者選了「都不是／不確定」則 row.licenseNumber
+    // 為 null，送出 undefined，後端以空證號建立。藥名一經編輯，不論 row.licenseNumber 裡
     // 存了什麼，一律送出 undefined——沿用改名前挑的證號等於把新藥名和
     // 另一顆藥的許可證字號存在一起。
     license_number: nameEdited ? undefined : (row.licenseNumber ?? undefined),
@@ -255,8 +279,8 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
     control,
     register,
     handleSubmit,
-    getValues,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -282,6 +306,7 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
         // 全庫 56,886 個中文品名有 27,058 個、47.6%）。那一筆一樣不預先帶入
         // ——後端拒絕釘定的東西，畫面不能替它決定（見 DrugCandidateSection）。
         licenseNumber: drug.license_number ?? null,
+        noCandidateMatch: false,
       })),
     },
   });
@@ -328,6 +353,8 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
     (slot) => (reminderBySlot.get(slot)?.medications?.length ?? 0) > 0,
   );
 
+  // 手動送出與一鍵建立共用：兩者都要先過同一套驗證（包括「沒對定的藥要
+  // 先選好」），一鍵建立不是繞過核對的路徑。
   const submit = handleSubmit(async (values) => {
     try {
       const result = await commitPrescriptionDraft(draft.draft_id, {
@@ -345,24 +372,15 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
 
   // 「一鍵建立」是加速路徑，不是繞過核對的路徑：對象 ToggleGroup 與逐筆欄位
   // 在按鈕按下前都還是可編輯、可見的（見下方 canOneTapConfirm 區塊），使用者
-  // 完全可能先改選對象或調整某一列再按一鍵建立。所以這裡一律讀 getValues()
-  // 取得當下的表單狀態，走跟手動送出完全相同的 toCommitDrug 映射——絕不能有
-  // 任一欄位繞過表單、直接沿用渲染當下算出的常數（那正是本次要修的重大缺陷：
-  // 使用者在畫面上改了對象，一鍵建立卻沿用了舊的建議值）。
+  // 完全可能先改選對象或調整某一列再按一鍵建立。所以這裡走跟手動送出完全
+  // 相同的 submit——讀當下的表單狀態、同一套驗證、同一個 toCommitDrug 映射，
+  // 絕不能有任一欄位繞過表單、直接沿用渲染當下算出的常數（先前的重大缺陷：
+  // 使用者在畫面上改了對象，一鍵建立卻沿用了舊的建議值）。以前這裡直接讀
+  // getValues() 不驗證，沒對定的藥因此一鍵就以空證號建立。
   const handleOneTapConfirm = async () => {
     setOneTapSubmitting(true);
     try {
-      const values = getValues();
-      const result = await commitPrescriptionDraft(draft.draft_id, {
-        user_id: values.targetUserId,
-        drugs: values.drugs.map((row, index) => toCommitDrug(drugs[index], row)),
-      });
-      onCommitted(result, {
-        totalCount: result.medication_ids.length,
-        noReminderCount: countNoReminder(values.drugs, drugs),
-      });
-    } catch (err) {
-      setError('root', { message: err instanceof Error ? err.message : t('meds.updateFailed') });
+      await submit();
     } finally {
       setOneTapSubmitting(false);
     }
@@ -509,18 +527,24 @@ export function PrescriptionDraftForm({ draft, onCommitted, onClose }: Prescript
                     })}
                   </FieldDescription>
 
-                  {/* 藥丸外觀消歧：候選多於一張時逐筆呈現候選的縮圖與外觀描述供挑選，
-                      挑選後釘定該筆的證號；未挑選不阻擋提交，只是不會顯示藥丸照片
-                      （spec「使用者為多候選藥品挑定藥證」）。 */}
+                  {/* 藥丸外觀消歧：證號沒對定時逐筆呈現候選的縮圖與外觀描述，使用者
+                      必須挑一張或點「都不是／不確定」才能送出；挑選後釘定該筆的
+                      證號，選「都不是」則藥照樣建立、只是不顯示藥丸照片。 */}
                   <Controller
                     control={control}
                     name={`drugs.${index}.licenseNumber`}
-                    render={({ field: licenseField }) => (
+                    render={({ field: licenseField, fieldState }) => (
                       <DrugCandidateSection
                         drug={original}
                         nameEdited={rowNameEdited}
                         selectedLicense={licenseField.value}
                         onSelect={licenseField.onChange}
+                        noMatch={watchedDrugRows?.[index]?.noCandidateMatch ?? false}
+                        onNoMatchChange={(noMatch) =>
+                          setValue(`drugs.${index}.noCandidateMatch`, noMatch)
+                        }
+                        error={fieldState.error?.message}
+                        focusRef={licenseField.ref}
                         disabled={busy}
                       />
                     )}
