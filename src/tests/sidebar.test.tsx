@@ -79,12 +79,14 @@ describe('Sidebar', () => {
   it('非管理員看不到審核佇列入口，管理員才看得到', async () => {
     renderAt('/');
     expect(screen.queryByRole('button', { name: '知識審核' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '標記頁面' })).not.toBeInTheDocument();
 
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ role: 'admin' });
     renderAt('/');
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: '知識審核' }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: '標記頁面' }).length).toBeGreaterThan(0);
     });
   });
 });

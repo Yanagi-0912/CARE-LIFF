@@ -7,7 +7,7 @@ import {
 import DecryptedText from '../../components/DecryptedText/DecryptedText';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
-import { CalendarClockIcon, ChevronRightIcon, HeartPulseIcon, MicIcon, ShieldCheckIcon } from 'lucide-react';
+import { CalendarClockIcon, ChevronRightIcon, HeartPulseIcon, MicIcon, ShieldCheckIcon, TagsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -108,6 +108,12 @@ const Home = () => {
           icon: <ShieldCheckIcon width={26} height={26} />,
           path: '/admin/knowledge-reports',
           desc: t('home.adminKnowledgeReportsDesc'),
+          tone: 'coral'
+        }, {
+          title: t('sidebar.annotations'),
+          icon: <TagsIcon width={26} height={26} />,
+          path: '/admin/annotations',
+          desc: t('home.annotationsDesc'),
           tone: 'coral'
         }]
       : []),

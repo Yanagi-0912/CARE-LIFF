@@ -15,6 +15,7 @@ const APP_PATHS = new Set([
   '/personalhealth/consult',
   '/knowledge-reports',
   '/admin/knowledge-reports',
+  '/admin/annotations',
   '/nearby-hospitals',
   '/join',
   '/lost/share',

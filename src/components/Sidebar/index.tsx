@@ -32,7 +32,10 @@ function Sidebar() {
     { path: '/clinic-visits', label: t('sidebar.clinicVisits') },
     { path: '/knowledge-reports', label: t('sidebar.knowledgeReports') },
     ...(isAdmin
-      ? [{ path: '/admin/knowledge-reports', label: t('sidebar.adminKnowledgeReports') }]
+      ? [
+          { path: '/admin/knowledge-reports', label: t('sidebar.adminKnowledgeReports') },
+          { path: '/admin/annotations', label: t('sidebar.annotations') },
+        ]
       : []),
     { path: '/family', label: t('sidebar.family') },
     { path: '/settings', label: t('sidebar.settings') },

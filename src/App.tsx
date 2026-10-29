@@ -20,6 +20,7 @@ const JoinPage = lazy(() => import('./pages/Join'));
 const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultRecords'));
 const KnowledgeReportsPage = lazy(() => import('./pages/KnowledgeReports'));
 const AdminKnowledgeReportsPage = lazy(() => import('./pages/AdminKnowledgeReports'));
+const AdminAnnotationsPage = lazy(() => import('./pages/AdminAnnotations'));
 const RemindersLayout = lazy(() => import('./pages/Reminders'));
 const MedicationsPage = lazy(() => import('./pages/Medications'));
 const VisitsPage = lazy(() => import('./pages/Medications/Visits'));
@@ -161,6 +162,7 @@ function AppContent() {
               )}
             />
             <Route path="/clinic-visits" element={<ProtectedRoute><ClinicVisitListPage /></ProtectedRoute>} />
+            <Route path="/admin/annotations" element={<ProtectedRoute><AdminRoute><AdminAnnotationsPage /></AdminRoute></ProtectedRoute>} />
             <Route path="/clinic-visits/record" element={<ProtectedRoute><ClinicRecordPage /></ProtectedRoute>} />
             <Route path="/clinic-visits/:recordId" element={<ProtectedRoute><ClinicVisitDetailPage /></ProtectedRoute>} />
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
