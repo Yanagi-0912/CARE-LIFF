@@ -71,7 +71,7 @@ const VIEWPORTS = [
 
 const PAGES = [
   { path: '/medications', ready: (p: Page) => p.getByText(LONG_NAME) },
-  { path: '/family', ready: (p: Page) => p.getByText(FAMILY_MEMBERS[0].display_name) },
+  { path: '/family/members', ready: (p: Page) => p.getByText(FAMILY_MEMBERS[0].display_name) },
   { path: '/knowledge-reports', ready: (p: Page) => p.getByText('糖尿病患者的飲食建議') },
   { path: '/personalhealth/consult', ready: (p: Page) => p.locator('#summary-select') },
 ] as const;

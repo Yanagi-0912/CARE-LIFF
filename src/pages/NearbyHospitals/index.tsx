@@ -6,7 +6,7 @@ import type {
   FacilitySearchResponse,
   NearbyHospitalsResponse,
 } from '../../types/medical';
-import DecryptedText from '../../components/DecryptedText/DecryptedText';
+import { FeaturePage } from '@/components/FeaturePage';
 import FacilityCard from './FacilityCard';
 import { DEPARTMENT_OPTIONS, FACILITY_TYPE_OPTIONS } from './filters';
 import { buildEmptyStateMessage, buildResultSummary } from './searchSummary';
@@ -130,25 +130,8 @@ const NearbyHospitalsPage = () => {
   const facilities = nearbyResult?.facilities ?? nameResult?.facilities ?? [];
 
   return (
-    <div className="mx-auto flex max-w-[720px] flex-col gap-4">
-      <Card className="bg-primary text-primary-foreground">
-        <CardContent>
-          <p className="text-xs tracking-wide uppercase opacity-85">{t('nearby.eyebrow')}</p>
-          {/* text-inherit 的理由同首頁 hero：base 層的 h1 墨色會蓋掉繼承色 */}
-          <h1 className="mt-2 text-[clamp(1.4rem,4vw,1.85rem)] font-bold text-inherit">
-            <DecryptedText
-              text={t('nearby.title')}
-              speed={36}
-              sequential
-              revealDirection="center"
-              useOriginalCharsOnly
-              animateOn="view"
-            />
-          </h1>
-          <p className="mt-2 opacity-90">{t('nearby.desc')}</p>
-          <p className="mt-3 text-xs leading-relaxed opacity-80">{t('nearby.privacyNote')}</p>
-        </CardContent>
-      </Card>
+    <FeaturePage title={t('home.nearbyTitle')} description={t('nearby.desc')} backTo="/">
+      <div className="flex flex-col gap-4">
 
       <Tabs value={mode} onValueChange={(value) => setMode(value as SearchMode)}>
         <TabsList className="w-full">
@@ -212,7 +195,7 @@ const NearbyHospitalsPage = () => {
                   onCheckedChange={(checked) => setOpenNow(checked)}
                 />
               </div>
-              <p className="text-muted-foreground -mt-2 text-xs">{t('nearby.openNowHint')}</p>
+              <p className="text-muted-foreground -mt-2 text-sm">{t('nearby.openNowHint')}</p>
 
               <Button
                 type="button"
@@ -330,7 +313,9 @@ const NearbyHospitalsPage = () => {
           </div>
         </section>
       )}
-    </div>
+      <p className="text-sm text-muted-foreground">{t('nearby.privacyNote')}</p>
+      </div>
+    </FeaturePage>
   );
 };
 

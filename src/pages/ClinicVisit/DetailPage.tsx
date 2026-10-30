@@ -124,7 +124,7 @@ export default function ClinicVisitDetailPage() {
         <p className="mt-3 rounded-lg bg-muted p-3 text-sm">{t('clinic.selfRecapNotice')}</p>
       )}
       {/* 警語在摘要之前，不在之後：摘要讀起來很像醫囑。 */}
-      <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm leading-relaxed text-amber-900">
+      <p className="mt-3 rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm leading-relaxed text-warning">
         {t('clinic.summary.notice')}
       </p>
       {summary.truncated && (

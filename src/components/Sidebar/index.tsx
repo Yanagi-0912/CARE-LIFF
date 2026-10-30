@@ -1,82 +1,25 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { getPersonalHealthProfile } from '../../api/profileApi';
-import { isAdminRole } from '../../utils/roles';
-import { queryKeys } from '@/lib/queryClient';
-import { cn } from '@/lib/utils';
-import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { activeNavigationPath, navigationItems } from '../navigation';
 
-function Sidebar() {
+const desktopItems = [navigationItems[2], navigationItems[0], navigationItems[1], navigationItems[3], navigationItems[4]];
+
+export default function Sidebar() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const { t } = useTranslation();
-  // 與 AdminRoute 共用同一個查詢，兩者都只是要判斷管理員身分；
-  // 分開抓會對同一支 API 打兩次。
-  const { data: profile } = useQuery({
-    queryKey: queryKeys.myProfile,
-    queryFn: () => getPersonalHealthProfile(),
-  });
-  const isAdmin = isAdminRole(profile?.role);
-
-  const items = [
-    { path: '/', label: t('sidebar.home') },
-    { path: '/nearby-hospitals', label: t('sidebar.nearbyHospitals') },
-    { path: '/personalhealth', label: t('sidebar.health') },
-    // 與「個人健康」分開列：一個是持續累積的量測數字（血壓、血糖、經期、
-    // 步數），一個是偶爾更新的基本資料，兩者在首頁也是分成兩張卡片。
-    { path: '/health-records', label: t('sidebar.healthRecords') },
-    // 側欄沒有格數限制，兩種提醒各列一項；手機的底部導覽才需要合成一格
-    { path: '/reminders/medications', label: t('sidebar.medications') },
-    { path: '/reminders/appointments', label: t('sidebar.appointments') },
-    { path: '/clinic-visits', label: t('sidebar.clinicVisits') },
-    { path: '/knowledge-reports', label: t('sidebar.knowledgeReports') },
-    ...(isAdmin
-      ? [{ path: '/admin/knowledge-reports', label: t('sidebar.adminKnowledgeReports') }]
-      : []),
-    { path: '/family', label: t('sidebar.family') },
-    { path: '/settings', label: t('sidebar.settings') },
-  ];
-
-  const isActive = (path: string) =>
-    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
-
+  const activePath = activeNavigationPath(pathname);
   return (
-    // 僅桌面版顯示（手機用底部導覽）；黏在 header 下方、自身可捲動
-    <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] w-[var(--sidebar-w)] shrink-0 self-start overflow-y-auto border-r px-4 py-8 md:block">
-      <ItemGroup
-        className="animate-in fade-in slide-in-from-left-2 fill-mode-both duration-300 gap-1"
-        aria-label={t('sidebar.mainNavAriaLabel')}
-      >
-        {items.map((item) => {
-          const active = isActive(item.path);
-          return (
-            <Item
-              key={item.path}
-              size="sm"
-              className={cn(
-                'cursor-pointer transition-colors hover:bg-muted',
-                active && 'bg-primary/10 text-primary hover:bg-primary/10',
-              )}
-              render={
-                <button
-                  type="button"
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() => navigate(item.path)}
-                />
-              }
-            >
-              <ItemContent>
-                <ItemTitle className={cn('text-base', active && 'font-bold')}>
-                  {item.label}
-                </ItemTitle>
-              </ItemContent>
-            </Item>
-          );
-        })}
-      </ItemGroup>
+    <aside className="care-sidebar" aria-label={t('sidebar.mainNavAriaLabel')}>
+      <div className="flex flex-col gap-2">
+        {desktopItems.map(({ path, label, icon: Icon }) => (
+          <button type="button" key={path} aria-current={activePath === path ? 'page' : undefined}
+            onClick={() => navigate(path)}>
+            <span className="care-sidebar-icon"><Icon className="size-6" aria-hidden="true" /></span>
+            <span>{t(label)}</span>
+          </button>
+        ))}
+      </div>
     </aside>
   );
 }
-
-export default Sidebar;

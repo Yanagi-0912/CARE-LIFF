@@ -310,7 +310,7 @@ test.describe('四種主題組合', () => {
         highContrast: theme.highContrast,
       });
 
-      await openPage(authedPage, '/settings');
+      await openPage(authedPage, '/settings/display');
 
       // 主題確實掛上去了
       const classes = await authedPage.evaluate(() => document.documentElement.className);
@@ -333,7 +333,7 @@ test.describe('四種主題組合', () => {
   test('高對比選項會即時掛上 html.high-contrast', async ({ authedPage }) => {
     await seedLiffMock(authedPage, { isLoggedIn: true });
     await applyAppState(authedPage, { highContrast: false });
-    await openPage(authedPage, '/settings');
+    await openPage(authedPage, '/settings/display');
 
     const toggle = authedPage.getByRole('switch').first();
     await expect(toggle).toBeVisible();
@@ -359,16 +359,15 @@ test.describe('手機直式與桌面版面', () => {
   ] as const;
 
   for (const viewport of VIEWPORTS) {
-    test(`${viewport.name}：字級最大時首頁與設定頁都不溢出`, async ({ authedPage }) => {
-      await authedPage.setViewportSize({ width: viewport.width, height: viewport.height });
-      await seedLiffMock(authedPage, { isLoggedIn: true });
-      await applyAppState(authedPage, { fontSize: 'xlarge', highContrast: true });
-
-      for (const path of ['/', '/settings'] as const) {
+    for (const path of ['/', '/settings', '/settings/display', '/settings/voice', '/family', '/reminders', '/health-records'] as const) {
+      test(`${viewport.name}：字級最大時 ${path} 不溢出`, async ({ authedPage }) => {
+        await authedPage.setViewportSize({ width: viewport.width, height: viewport.height });
+        await seedLiffMock(authedPage, { isLoggedIn: true });
+        await applyAppState(authedPage, { fontSize: 'xlarge', highContrast: true });
         await openPage(authedPage, path);
         expect(await horizontalOverflow(authedPage), `${path} 在 ${viewport.name} 溢出`).toBe(0);
-      }
-    });
+      });
+    }
   }
 
   test('手機顯示底部導覽、桌面顯示側欄，兩者不同時出現', async ({ authedPage }) => {

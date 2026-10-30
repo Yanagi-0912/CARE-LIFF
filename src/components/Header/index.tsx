@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
-import { SunIcon, MoonIcon, PulseIcon } from '../icons';
+import { SunIcon, MoonIcon, HeartPulseIcon } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 
@@ -28,13 +28,13 @@ function Header() {
     // z-40 必須低於浮層層級（dialog／alert-dialog／select／popover／sheet 都是 z-50）。
     // 之前是 z-[100]，這根 sticky bar 會畫在 modal 上面把 dialog 標題與關閉鈕蓋掉，
     // 遮罩也蓋不到它 —— 症狀一眼可辨：開 dialog 時背景變暗但 header 沒變暗。
-    <header className="sticky top-0 z-40 flex min-h-[var(--header-h)] items-center border-b bg-background px-3 sm:px-4">
+    <header className="sticky top-0 z-40 flex min-h-[var(--header-h)] items-center border-b bg-card px-5 sm:px-8">
       <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-2.5 sm:gap-4">
         {/* 左側 Logo */}
-        <div className="group flex shrink-0 items-center gap-2.5">
-          <Avatar className="size-8 rounded-md">
-            <AvatarFallback className="rounded-md bg-primary text-primary-foreground group-hover:animate-badge-wiggle">
-              <PulseIcon width={16} height={16} className="origin-center animate-heartbeat" />
+        <div className="group flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+          <Avatar className="size-11 rounded-[.875rem] after:rounded-[.875rem]">
+            <AvatarFallback className="rounded-[.875rem] bg-primary text-primary-foreground ">
+              <HeartPulseIcon className="size-6" />
             </AvatarFallback>
           </Avatar>
           <Button
@@ -42,8 +42,9 @@ function Header() {
             className="px-1 text-xl font-extrabold tracking-[0.04em]"
             onClick={() => navigate('/')}
           >
-            CARE
+            {t('header.brand')}
           </Button>
+          <span className="text-sm font-semibold text-muted-foreground max-[359px]:hidden">{t('header.tagline')}</span>
         </div>
 
         {/* 右側按鈕 */}

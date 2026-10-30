@@ -75,7 +75,7 @@ const EMPTY_THRESHOLD: HealthAlertThreshold = {
   updated_at: null,
 };
 
-function renderHealthRecords(initialEntry = '/health-records') {
+function renderHealthRecords(initialEntry = '/health-records?tab=blood_pressure') {
   return renderWithToaster(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
@@ -127,6 +127,25 @@ afterEach(() => {
 // ── 9.1 路由與入口 ─────────────────────────────────────────────────────
 
 describe('9.1 路由與入口', () => {
+  it('新版入口不讀取量測資料，選擇分類後才顯示紀錄', async () => {
+    renderHealthRecords('/health-records');
+    const pressure = await screen.findByRole('link', { name: /血壓/ });
+    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
+    fireEvent.click(pressure);
+    expect(await screen.findByRole('tab', { name: /血壓/ })).toBeInTheDocument();
+    await waitFor(() => expect(healthApi.fetchMeasurements).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('link', { name: '返回' }));
+    expect(await screen.findByRole('link', { name: /血壓/ })).toBeInTheDocument();
+  });
+
+  it('家人健康分類連結保留查看對象', async () => {
+    familyState.members = [familyMember({ my_strict_permissions: GUARDIAN_PERMISSIONS })];
+    renderHealthRecords('/health-records?user=U-mom');
+    expect(await screen.findByRole('link', { name: /血壓/ })).toHaveAttribute('href', '/health-records?user=U-mom&tab=blood_pressure');
+    expect(screen.queryByRole('link', { name: /經期/ })).not.toBeInTheDocument();
+    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
+  });
+
   it('/health-records 顯示血壓、血糖、步數三個分頁（性別未知時經期先出現，待判定為男性後才收起）', async () => {
     renderHealthRecords();
     expect(await screen.findByRole('tab', { name: /血壓/ })).toBeInTheDocument();
@@ -147,8 +166,8 @@ describe('9.1 路由與入口', () => {
 
   it('族譜頁上方的「我的健康紀錄」會導向 /health-records', () => {
     renderWithToaster(
-      <MemoryRouter>
-        <FamilyPage />
+      <MemoryRouter initialEntries={['/family/members']}>
+        <Routes><Route path="/family/*" element={<FamilyPage />} /></Routes>
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByRole('button', { name: /我的健康紀錄/ }));
@@ -169,7 +188,7 @@ describe('9.1 路由與入口', () => {
 
   it('看家人時沒有權限：不渲染分頁、不送出任何健康資料請求', async () => {
     familyState.members = [familyMember({ my_strict_permissions: { general: [], sensitive: [], private: [] } })];
-    renderHealthRecords('/health-records?user=U-mom');
+    renderHealthRecords('/health-records?user=U-mom&tab=blood_pressure');
 
     expect(await screen.findByText('您沒有查看健康狀況的權限')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /血壓/ })).not.toBeInTheDocument();
@@ -180,7 +199,7 @@ describe('9.1 路由與入口', () => {
 
   it('看家人時有讀取權：顯示他的名字與分頁，經期分頁一律不出現', async () => {
     familyState.members = [familyMember({ my_strict_permissions: GUARDIAN_PERMISSIONS })];
-    renderHealthRecords('/health-records?user=U-mom');
+    renderHealthRecords('/health-records?user=U-mom&tab=blood_pressure');
 
     expect(await screen.findByRole('heading', { name: /媽媽 的健康紀錄/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /血壓/ })).toBeInTheDocument();
@@ -190,7 +209,7 @@ describe('9.1 路由與入口', () => {
   it('看家人時族譜抓取失敗：講「載入失敗」並提供重試，不會誤說成沒有權限（review）', async () => {
     familyState.members = [];
     familyState.error = '載入族譜失敗';
-    renderHealthRecords('/health-records?user=U-mom');
+    renderHealthRecords('/health-records?user=U-mom&tab=blood_pressure');
 
     expect(await screen.findByText('載入失敗')).toBeInTheDocument();
     expect(screen.queryByText('您沒有查看健康狀況的權限')).not.toBeInTheDocument();
@@ -309,7 +328,7 @@ describe('9.3 提醒範圍設定', () => {
       systolic_high: 140,
       systolic_low: 90,
     });
-    renderHealthRecords('/health-records?user=U-mom');
+    renderHealthRecords('/health-records?user=U-mom&tab=blood_pressure');
 
     fireEvent.click(await screen.findByRole('button', { name: '提醒範圍' }));
     const dialog = await screen.findByRole('dialog');
@@ -322,7 +341,7 @@ describe('9.3 提醒範圍設定', () => {
 
   it('GUARDIAN（有寫入權）代看家人時可以編輯', async () => {
     familyState.members = [familyMember({ my_strict_permissions: GUARDIAN_PERMISSIONS })];
-    renderHealthRecords('/health-records?user=U-mom');
+    renderHealthRecords('/health-records?user=U-mom&tab=blood_pressure');
 
     fireEvent.click(await screen.findByRole('button', { name: '提醒範圍' }));
     const dialog = await screen.findByRole('dialog');

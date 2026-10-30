@@ -16,6 +16,7 @@ import {
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { queryKeys } from '@/lib/queryClient';
+import { FeaturePage } from '@/components/FeaturePage';
 
 import { listClinicVisits, type ClinicVisitRecord } from '../../api/clinicVisitApi';
 import { useFamily } from '../../hooks/useFamily';
@@ -104,13 +105,9 @@ export default function ClinicVisitListPage() {
   const canRecord = isSelf || (target?.canWrite ?? false);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-extrabold">
-          {isSelf ? t('clinic.title') : t('clinic.titleForMember', { name: target?.name ?? '' })}
-        </h1>
-        <p className="text-muted-foreground">{t('clinic.intro')}</p>
-      </div>
+    <FeaturePage title={isSelf ? t('clinic.title') : t('clinic.titleForMember', { name: target?.name ?? '' })}
+      description={t('clinic.intro')} backTo="/">
+      <div className="space-y-4">
 
       {targets.length > 1 && (
         <ReminderTargetToggle
@@ -208,6 +205,7 @@ export default function ClinicVisitListPage() {
           ))}
         </ItemGroup>
       )}
-    </div>
+      </div>
+    </FeaturePage>
   );
 }

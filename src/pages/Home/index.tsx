@@ -1,186 +1,37 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import {
-  HealthIcon, PillIcon, FamilyIcon, KnowledgeIcon, SettingsIcon, SearchIcon,
-} from '../../components/icons';
-import DecryptedText from '../../components/DecryptedText/DecryptedText';
-import { getPersonalHealthProfile } from '../../api/profileApi';
-import { isAdminRole } from '../../utils/roles';
-import { CalendarClockIcon, ChevronRightIcon, HeartPulseIcon, MicIcon, ShieldCheckIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { queryKeys } from '@/lib/queryClient';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle,
-} from '@/components/ui/item';
+import { ArrowRightIcon, BookOpenIcon, HeartPulseIcon, MapPinIcon, MicIcon } from 'lucide-react';
 
-// 圖示圓底的 tone 配色。必須是完整字串的查表，不能用 `tone-${f.tone}` 拼接：
-// Tailwind 掃描原始碼文字比對 class，拼接出的字串不會出現在檔案裡，規則不會產生。
-const TONE_ICON: Record<string, string> = {
-  teal: 'bg-[var(--primary-soft)] text-[var(--primary-strong)]',
-  violet: 'bg-[var(--violet-soft)] text-[var(--violet)]',
-  amber: 'bg-[var(--amber-soft)] text-[var(--amber)]',
-  coral: 'bg-[var(--accent-soft)] text-[var(--accent)]',
-};
+const features = [
+  { title: 'home.nearbyTitle', desc: 'home.nearbyShort', icon: MapPinIcon, path: '/nearby-hospitals', tone: 'green' },
+  { title: 'home.healthRecords', desc: 'home.recordsShort', icon: HeartPulseIcon, path: '/health-records', tone: 'coral' },
+  { title: 'home.clinicVisits', desc: 'home.clinicShort', icon: MicIcon, path: '/clinic-visits', tone: 'amber' },
+  { title: 'home.knowledgeReports', desc: 'home.reportsShort', icon: BookOpenIcon, path: '/knowledge-reports', tone: 'violet' },
+];
 
-/** * 首頁主入口：提供主要功能導航 */
-const Home = () => {
-  const navigate = useNavigate();
+export default function Home() {
   const { t } = useTranslation();
-  // 與 Sidebar／AdminRoute 共用同一個查詢，三者都只是要判斷管理員身分。
-  // 手機沒有側欄（Sidebar 是 md:block），底部導覽的 tab 也是寫死的五個，
-  // 少了這張卡片，admin 在手機上就沒有任何地方點得到審核佇列。
-  const { data: profile } = useQuery({
-    queryKey: queryKeys.myProfile,
-    queryFn: () => getPersonalHealthProfile(),
-  });
-  const isAdmin = isAdminRole(profile?.role);
-
-  // 定義功能卡片配置（tone 對應各自的圖示底色）
-  const features = [
-    {
-      title: t('home.nearbyHospitals'),
-      icon: <SearchIcon width={26} height={26} />,
-      path: '/nearby-hospitals',
-      desc: t('home.nearbyHospitalsDesc'),
-      tone: 'teal'
-    },
-    {
-      title: t('home.personalHealth'),
-      icon: <HealthIcon width={26} height={26} />,
-      path: '/personalhealth',
-      desc: t('home.personalHealthDesc'),
-      tone: 'teal'
-    },
-    // 血壓、血糖、經期、步數的紀錄與查詢，與「個人健康」（身高體重、慢性病史
-    // 這類基本資料）分開：一個是持續累積的量測數字，一個是偶爾更新的檔案。
-    {
-      title: t('home.healthRecords'),
-      icon: <HeartPulseIcon width={26} height={26} />,
-      path: '/health-records',
-      desc: t('home.healthRecordsDesc'),
-      tone: 'teal'
-    },
-    {
-      title: t('home.medications'),
-      icon: <PillIcon width={26} height={26} />,
-      path: '/reminders/medications',
-      desc: t('home.medicationsDesc'),
-      tone: 'amber'
-    },
-    // 與用藥同屬「提醒」分頁，tone 也跟著用 amber，兩張卡一眼看得出是同一類
-    {
-      title: t('home.appointments'),
-      icon: <CalendarClockIcon width={26} height={26} />,
-      path: '/reminders/appointments',
-      desc: t('home.appointmentsDesc'),
-      tone: 'amber'
-    },
-    // 緊接在掛號提醒之後：看診前設提醒、看診時錄音，是同一趟門診的前後兩步。
-    // 也是看診錄音在 App 裡唯一不必等推播就點得到的入口。
-    {
-      title: t('home.clinicVisits'),
-      icon: <MicIcon width={26} height={26} />,
-      path: '/clinic-visits',
-      desc: t('home.clinicVisitsDesc'),
-      tone: 'teal'
-    },
-    {
-      title: t('home.family'),
-      icon: <FamilyIcon width={26} height={26} />,
-      path: '/family',
-      desc: t('home.familyDesc'),
-      tone: 'violet'
-    },
-    {
-      title: t('home.knowledgeReports'),
-      icon: <KnowledgeIcon width={26} height={26} />,
-      path: '/knowledge-reports',
-      desc: t('home.knowledgeReportsDesc'),
-      tone: 'teal'
-    },
-    // 緊接在使用者端的知識回報之後：兩者是同一件事的兩端（送出／審核）。
-    // coral 是這頁唯一沒被一般功能用掉的 tone，讓管理入口一眼與其他卡片分開。
-    ...(isAdmin
-      ? [{
-          title: t('home.adminKnowledgeReports'),
-          icon: <ShieldCheckIcon width={26} height={26} />,
-          path: '/admin/knowledge-reports',
-          desc: t('home.adminKnowledgeReportsDesc'),
-          tone: 'coral'
-        }]
-      : []),
-    {
-      title: t('home.settings'),
-      icon: <SettingsIcon width={26} height={26} />,
-      path: '/settings',
-      desc: t('home.settingsDesc'),
-      tone: 'amber'
-    },
-    // 登出已移至設定頁（settings.accountTitle），首頁不再放身分驗證卡片
-  ];
-
+  const navigate = useNavigate();
   return (
-    <div className="mx-auto max-w-[1200px]">
-      <Card className="animate-in fade-in slide-in-from-bottom-3 zoom-in-95 fill-mode-both duration-500 mb-6 bg-primary text-primary-foreground">
-        <CardContent>
-          {/* text-inherit 不可省：@layer base 的 h1{color:var(--ink)} 是直接規則，
-              永遠贏過從 Card 的 text-primary-foreground 繼承下來的顏色，
-              少了它標題會變成墨色壓在深綠底上（實測 1.6:1）。 */}
-          <h1 className="text-[1.7rem] font-extrabold tracking-[0.01em] text-balance text-inherit sm:text-[2rem]">
-            <DecryptedText
-              text={t('home.title')}
-              speed={36}
-              sequential
-              revealDirection="center"
-              useOriginalCharsOnly
-              animateOn="view"
-            />
-          </h1>
-          <p className="mt-2 opacity-90">{t('home.subtitle')}</p>
-        </CardContent>
-      </Card>
-
-      {/* data-testid 給 e2e 用：功能卡片的文案與側欄／底部導覽大量重複
-          （「家庭」「設定」…），沒有這個錨點就只能靠 CSS class 選取器，
-          一改樣式測試就爆——正是先前 e2e 全紅的原因。 */}
-      <section
-        data-testid="home-features"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {features.map((f, index) => (
-          <Item
-            key={f.path}
-            variant="outline"
-            className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 cursor-pointer text-left transition-colors hover:bg-muted/40"
-            // 瀑布式進場：依序延遲。原 CSS 以 nth-child(1)~(6) 寫死，第 7 張卡
-            // 沒延遲、反而最先出現；改用 index 公式讓整排一致。
-            style={{ animationDelay: `${60 + index * 70}ms` }}
-            render={<button type="button" onClick={() => navigate(f.path)} />}
-          >
-            <ItemMedia>
-              <span
-                className={cn(
-                  'inline-flex size-13 shrink-0 items-center justify-center rounded-xl',
-                  TONE_ICON[f.tone],
-                )}
-              >
-                {f.icon}
-              </span>
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle className="text-lg">{f.title}</ItemTitle>
-              <ItemDescription className="line-clamp-none">{f.desc}</ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <ChevronRightIcon className="size-5 text-muted-foreground" />
-            </ItemActions>
-          </Item>
+    <div className="mx-auto max-w-[60rem]">
+      <div className="mb-6">
+        <h1 className="text-2xl font-extrabold leading-relaxed">{t('home.introTitle')}</h1>
+        <p className="mt-1 text-base text-muted-foreground">{t('home.introDesc')}</p>
+      </div>
+      <section data-testid="home-features" className="care-home-grid">
+        {features.map(({ title, desc, icon: Icon, path, tone }) => (
+          <button key={path} type="button" className="care-feature" onClick={() => navigate(path)}>
+            <span className="flex w-full items-center justify-between gap-2">
+              <span className={`care-feature-icon care-tone-${tone}`}><Icon className="size-7" strokeWidth={1.8} aria-hidden="true" /></span>
+              <ArrowRightIcon className="size-5 shrink-0 text-faint" aria-hidden="true" />
+            </span>
+            <span className="flex flex-col gap-1">
+              <strong className="text-xl leading-relaxed">{t(title)}</strong>
+              <span className="text-sm leading-relaxed text-muted-foreground">{t(desc)}</span>
+            </span>
+          </button>
         ))}
       </section>
     </div>
   );
-};
-
-export default Home;
+}

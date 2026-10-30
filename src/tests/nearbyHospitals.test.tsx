@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderWithToaster } from './testUtils';
@@ -97,7 +98,7 @@ describe('附近醫院頁', () => {
     await i18n.changeLanguage('zh-TW');
   });
 
-  const renderPage = () => renderWithToaster(<NearbyHospitalsPage />);
+  const renderPage = () => renderWithToaster(<MemoryRouter><NearbyHospitalsPage /></MemoryRouter>);
 
   it('不帶任何條件時只送座標，不再寫死搜尋半徑', async () => {
     // radius_meters 寫死 5 公里曾讓後端的階梯放寬完全失效，

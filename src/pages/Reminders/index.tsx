@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CalendarClockIcon, PillIcon } from 'lucide-react';
+import { ArrowLeftIcon, CalendarClockIcon, PillIcon } from 'lucide-react';
+import { EntryLink, FeaturePage } from '@/components/FeaturePage';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -11,24 +11,7 @@ const TABS = [
 ] as const;
 
 /**
- * 記住上次看的是哪個子頁。底部導覽的「提醒」格導向 /reminders，如果每次都
- * 落在用藥，常看掛號的人每次都得多點一下。用 sessionStorage：只在這次開啟
- * LIFF 期間有效，重開就回到預設的用藥。
- */
-const LAST_TAB_KEY = 'care-reminders-last-tab';
-
-function readLastTab(): string {
-  try {
-    const saved = sessionStorage.getItem(LAST_TAB_KEY);
-    if (saved && TABS.some((tab) => tab.path === saved)) return saved;
-  } catch {
-    // 儲存空間不可用時（隱私模式、webview 限制）退回預設
-  }
-  return TABS[0].path;
-}
-
-/**
- * 「提醒」分頁的外殼：上方切換用藥／掛號，下方是子頁。
+ * 新版先顯示兩個服務入口；既有子頁與 LINE 深連結沿用原路徑。
  *
  * 子頁是兩條真實路由而不是同一頁裡的 Tabs：LINE 推播點進來要能直接落在掛號
  * 那頁，Rich Menu 也可能直接指過去，單一路由的 Tabs 做不到深連結。
@@ -39,19 +22,21 @@ export default function RemindersLayout() {
   const { pathname } = useLocation();
   const activeTab = TABS.find((tab) => pathname.startsWith(tab.path));
 
-  useEffect(() => {
-    if (!activeTab) return;
-    try {
-      sessionStorage.setItem(LAST_TAB_KEY, activeTab.path);
-    } catch {
-      // ignore
-    }
-  }, [activeTab]);
-
-  if (!activeTab) return <Navigate to={readLastTab()} replace />;
+  if (pathname === '/reminders' || pathname === '/reminders/') return (
+    <FeaturePage title={t('nav.reminders')} description={t('featureNav.remindersDesc')}>
+      <div className="flex flex-col gap-3">
+        <EntryLink to="/reminders/medications" title={t('home.medications')} description={t('featureNav.medicationsDesc')} icon={PillIcon} />
+        <EntryLink to="/reminders/appointments" title={t('home.appointments')} description={t('featureNav.appointmentsDesc')} icon={CalendarClockIcon} />
+      </div>
+    </FeaturePage>
+  );
+  if (!activeTab) return <Navigate to="/reminders" replace />;
 
   return (
-    <div className="mx-auto max-w-[760px]">
+    <div className="mx-auto w-full max-w-[48rem]">
+      <Link to="/reminders" aria-label={t('personalHealth.return')} className={buttonVariants({ variant: 'outline', size: 'icon', className: 'mb-4 rounded-full' })}>
+        <ArrowLeftIcon aria-hidden="true" />
+      </Link>
       <nav
         aria-label={t('reminders.subNavLabel')}
         className="mb-5 grid grid-cols-2 gap-1 rounded-full border border-hair bg-surface-2 p-1"

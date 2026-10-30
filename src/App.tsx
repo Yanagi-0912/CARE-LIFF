@@ -76,6 +76,8 @@ function AppContent() {
   // 2. 取得當前路徑，用來判斷是否要顯示導覽列
   const location = useLocation();
   const { t } = useTranslation();
+  // 設定的分類子頁共用正在同步的偏好狀態；切分類時不重新掛載、重打初始 GET。
+  const pageKey = location.pathname.startsWith('/settings/') ? '/settings' : location.pathname;
   // 走失求救的定位頁也是獨立頁：長輩正在慌，畫面上只留要他做的事，導覽列一點
   // 下去就離開了定位頁，位置也跟著停止上傳。
   const isStandalonePage =
@@ -109,7 +111,7 @@ function AppContent() {
             index.css 的 .content-area，已改用 tw-animate-css 的 utility）*/}
         <main
           className="content-area animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
-          key={location.pathname}
+          key={pageKey}
         >
           {/* 頁面切分後首次進入某頁需短暫載入。fallback 用與頁面同高的空白區塊
               而非轉圈動畫：切頁本身很快，閃一下 spinner 反而比留白更晃眼。
@@ -133,7 +135,7 @@ function AppContent() {
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
             <Route path="/health-records" element={<ProtectedRoute><HealthRecordsPage /></ProtectedRoute>} />
             {/* 用藥與掛號收在同一個「提醒」分頁底下，子頁切換由 RemindersLayout 負責。
-                /reminders 本身與未知子路徑都由 layout 導回上次看的子頁。 */}
+                /reminders 本身顯示新版分類入口，既有子路徑保留。 */}
             <Route path="/reminders" element={<ProtectedRoute><RemindersLayout /></ProtectedRoute>}>
               <Route path="medications" element={<MedicationsPage />} />
               {/* 看診紀錄從用藥頁進入，掛在用藥底下：底部導覽亮「提醒」、子分頁停在「用藥」 */}
@@ -162,11 +164,11 @@ function AppContent() {
             <Route path="/clinic-visits/record" element={<ProtectedRoute><ClinicRecordPage /></ProtectedRoute>} />
             <Route path="/clinic-visits/:recordId" element={<ProtectedRoute><ClinicVisitDetailPage /></ProtectedRoute>} />
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
-            <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
+            <Route path="/family/*" element={<ProtectedRoute><Family /></ProtectedRoute>} />
             {/* 走失求救：從 LINE 卡片的按鈕打開（後端 lost_location_service 組網址） */}
             <Route path="/lost/share" element={<ProtectedRoute><LostSharePage /></ProtectedRoute>} />
             <Route path="/lost/watch" element={<ProtectedRoute><LostWatchPage /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/settings/*" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             {/* 未知路由：沒有這條時畫面只剩導覽列、中間一片空白 */}
             <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
             </Routes>

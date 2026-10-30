@@ -17,7 +17,7 @@ const TAIPEI = { latitude: 25.033, longitude: 121.5654 };
 async function openPage(page: Page) {
   await page.goto('/nearby-hospitals');
   // lazy 頁面在多 worker 並行下偶爾超過 5 秒，放寬到 10 秒
-  await expect(page.getByRole('heading', { name: t('nearby.title') })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: t('home.nearbyTitle') })).toBeVisible({ timeout: 10000 });
 }
 
 const searchButton = (page: Page) => page.getByRole('button', { name: t('nearby.searchButton') });

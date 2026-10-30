@@ -3,24 +3,14 @@ import type { Page } from '@playwright/test';
 import { expect, stubProfileApi, t, test } from './fixtures';
 import { stubApi } from './stubs';
 
-/**
- * 個人健康資料（三步驟表單）。
- *
- * 這頁在改版後換掉了兩個關鍵互動，舊測試整批失效：
- *   性別   下拉選單改用 Base UI Select → 選項是 role="option"，不再是 button
- *   慢性病 由「下拉複選 + 其他選項」改成「勾選卡片 + 獨立的自訂輸入區」
- *          （設計上刻意拿掉「先勾其他才看得到輸入框」這一步）
- *
- * 驗證錯誤一律斷言使用者看得到的結果——「下一步」停用 + 提示文字，
- * 而不是 .inputHasError 這種樣式 class。
- */
-
-const STEP_NEXT = () => t('personalHealth.next');
-const STEP_BACK = () => t('personalHealth.back');
-const STEP_SAVE = () => t('personalHealth.save');
+/** 個人健康：摘要 → 詳細資料 → 單頁編輯；驗證資料保存與錯誤保護。 */
+const SAVE = () => t('personalHealth.save');
+const CANCEL = () => t('personalHealth.cancel');
 
 async function openPage(page: Page) {
   await page.goto('/personalhealth');
+  await page.getByRole('button', { name: t('personalHealth.details'), exact: true }).click();
+  await page.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
   await expect(page.locator('#personalHealthForm')).toBeVisible();
 }
 
@@ -31,30 +21,23 @@ async function selectGender(page: Page, labelKey = 'personalHealth.gender.male')
   await expect(page.locator('#gender')).toContainText(t(labelKey));
 }
 
-async function fillBasicStep(page: Page) {
+async function fillBasicFields(page: Page) {
   await page.locator('#name').fill('測試使用者');
   await page.locator('#age').fill('40');
   await selectGender(page);
 }
 
-async function fillBodyStep(page: Page) {
+async function fillBodyFields(page: Page) {
   await page.locator('#height').fill('170');
   await page.locator('#weight').fill('65');
 }
 
-async function goNext(page: Page) {
-  const next = page.getByRole('button', { name: STEP_NEXT() });
-  await expect(next).toBeEnabled();
-  await next.click();
-}
-
-/** 一路填到第三步 */
-async function advanceToChronicStep(page: Page) {
-  await fillBasicStep(page);
-  await goNext(page);
-  await fillBodyStep(page);
-  await goNext(page);
-  await expect(page.getByRole('button', { name: STEP_SAVE() })).toBeVisible();
+/** 填妥必填欄位並展開病史。 */
+async function fillAndExpandHistory(page: Page) {
+  await fillBasicFields(page);
+  await fillBodyFields(page);
+  await page.getByRole('button', { name: new RegExp(t('personalHealth.step3.title')) }).click();
+  await expect(page.getByRole('button', { name: SAVE() })).toBeVisible();
 }
 
 test.describe('個人健康資料', () => {
@@ -62,74 +45,72 @@ test.describe('個人健康資料', () => {
     await openPage(authedPage);
   });
 
-  test('第一步渲染標題與基本欄位', async ({ authedPage }) => {
-    await expect(authedPage.getByText(t('personalHealth.title'))).toBeVisible();
+  test('同頁顯示基本資料與身體數值', async ({ authedPage }) => {
+    await expect(authedPage.getByText(t('personalHealth.edit'))).toBeVisible();
     await expect(authedPage.locator('#name')).toBeVisible();
     await expect(authedPage.locator('#age')).toBeVisible();
     await expect(authedPage.locator('#gender')).toBeVisible();
   });
 
-  test('填完三步驟可成功儲存', async ({ authedPage }) => {
-    await advanceToChronicStep(authedPage);
-    await authedPage.getByRole('button', { name: STEP_SAVE() }).click();
+  test('同頁填寫後成功儲存並回到詳細資料', async ({ authedPage }) => {
+    await fillAndExpandHistory(authedPage);
+    await authedPage.getByRole('button', { name: SAVE() }).click();
     await expect(authedPage.getByText(t('personalHealth.saveSuccess'))).toBeVisible();
   });
 
-  test('可以回上一步修改姓名再繼續', async ({ authedPage }) => {
-    await fillBasicStep(authedPage);
-    await goNext(authedPage);
+  test('取消回到詳細資料後可重新編輯', async ({ authedPage }) => {
+    await fillBasicFields(authedPage);
 
-    await authedPage.getByRole('button', { name: STEP_BACK() }).click();
+    await authedPage.getByRole('button', { name: CANCEL() }).click();
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
     await expect(authedPage.locator('#name')).toBeVisible();
+    await fillBasicFields(authedPage);
     await authedPage.locator('#name').fill('王小芳');
 
-    await goNext(authedPage);
-    await fillBodyStep(authedPage);
-    await goNext(authedPage);
-    await authedPage.getByRole('button', { name: STEP_SAVE() }).click();
+    await fillBodyFields(authedPage);
+    await authedPage.getByRole('button', { name: SAVE() }).click();
     await expect(authedPage.getByText(t('personalHealth.saveSuccess'))).toBeVisible();
   });
 
   test.describe('必填與範圍驗證', () => {
-    test('只填姓名與年齡、未選性別時無法繼續', async ({ authedPage }) => {
+    test('只填姓名與年齡、未選性別時無法儲存', async ({ authedPage }) => {
       await authedPage.locator('#name').fill('測試使用者');
       await authedPage.locator('#age').fill('40');
 
-      await expect(authedPage.getByRole('button', { name: STEP_NEXT() })).toBeDisabled();
-      await expect(authedPage.getByText(t('personalHealth.basicRequired'))).toBeVisible();
+      await expect(authedPage.getByRole('button', { name: SAVE() })).toBeDisabled();
+      await expect(authedPage.getByText(t('personalHealth.requiredHint'))).toBeVisible();
     });
 
     for (const [label, age] of [
       ['負數', '-5'],
       ['超過 130', '200'],
     ] as const) {
-      test(`年齡${label}時無法繼續`, async ({ authedPage }) => {
+      test(`年齡${label}時無法儲存`, async ({ authedPage }) => {
         await authedPage.locator('#name').fill('測試使用者');
         await selectGender(authedPage);
         await authedPage.locator('#age').fill(age);
         await authedPage.locator('#age').blur();
 
-        await expect(authedPage.getByRole('button', { name: STEP_NEXT() })).toBeDisabled();
-        await expect(authedPage.getByText(t('personalHealth.basicRequired'))).toBeVisible();
+        await expect(authedPage.getByRole('button', { name: SAVE() })).toBeDisabled();
+        await expect(authedPage.getByText(t('personalHealth.requiredHint'))).toBeVisible();
       });
     }
 
-    test('身高為零時無法繼續', async ({ authedPage }) => {
-      await fillBasicStep(authedPage);
-      await goNext(authedPage);
+    test('身高為零時無法儲存', async ({ authedPage }) => {
+      await fillBasicFields(authedPage);
 
       await authedPage.locator('#height').fill('0');
       await authedPage.locator('#height').blur();
       await authedPage.locator('#weight').fill('65');
 
-      await expect(authedPage.getByRole('button', { name: STEP_NEXT() })).toBeDisabled();
-      await expect(authedPage.getByText(t('personalHealth.bodyRequired'))).toBeVisible();
+      await expect(authedPage.getByRole('button', { name: SAVE() })).toBeDisabled();
+      await expect(authedPage.getByText(t('personalHealth.requiredHint'))).toBeVisible();
     });
   });
 
   test.describe('慢性病', () => {
     test('可勾選與取消勾選固定選項', async ({ authedPage }) => {
-      await advanceToChronicStep(authedPage);
+      await fillAndExpandHistory(authedPage);
 
       const hypertension = authedPage.getByRole('checkbox', {
         name: t('personalHealth.chronic.hypertension'),
@@ -150,7 +131,7 @@ test.describe('個人健康資料', () => {
     });
 
     test('自訂病名新增後變成可移除的標籤', async ({ authedPage }) => {
-      await advanceToChronicStep(authedPage);
+      await fillAndExpandHistory(authedPage);
 
       const draft = authedPage.locator('#chronicDiseaseOther');
       const addButton = authedPage.getByRole('button', {
@@ -178,7 +159,7 @@ test.describe('個人健康資料', () => {
     });
 
     test('重複輸入已存在的病名會被擋下', async ({ authedPage }) => {
-      await advanceToChronicStep(authedPage);
+      await fillAndExpandHistory(authedPage);
 
       const draft = authedPage.locator('#chronicDiseaseOther');
       await draft.fill('痛風');
@@ -198,7 +179,7 @@ test.describe('個人健康資料', () => {
   });
 
   test('可填寫重大傷病與開刀紀錄', async ({ authedPage }) => {
-    await advanceToChronicStep(authedPage);
+    await fillAndExpandHistory(authedPage);
 
     await authedPage.locator('#majorIllness').fill('2020年診斷為冠心病');
     await authedPage.locator('#surgeryHistory').fill('2019年進行膽囊切除手術');
@@ -228,9 +209,9 @@ test.describe('已有健康檔案時', () => {
     await expect(authedPage.locator('#name')).toHaveValue('王大明');
     await expect(authedPage.locator('#age')).toHaveValue('72');
     await expect(authedPage.locator('#gender')).toContainText(t('personalHealth.gender.male'));
-    // 標題會換成「{name} 的健康資料」
+    // 編輯頁標題固定，姓名由欄位呈現。
     await expect(
-      authedPage.getByText(t('personalHealth.titleWithName', { name: '王大明' })),
+      authedPage.getByText(t('personalHealth.edit')),
     ).toBeVisible();
   });
 
@@ -242,7 +223,7 @@ test.describe('已有健康檔案時', () => {
     await expect(authedPage.locator('#gender')).toContainText(
       t('personalHealth.genderPlaceholder'),
     );
-    await expect(authedPage.getByRole('button', { name: STEP_NEXT() })).toBeDisabled();
+    await expect(authedPage.getByRole('button', { name: SAVE() })).toBeDisabled();
   });
 
   test('後端只有佔位值（age 0、height 1、weight 1）時欄位是空白，不帶入 0 與 1', async ({ authedPage }) => {
@@ -260,7 +241,6 @@ test.describe('已有健康檔案時', () => {
     await expect(authedPage.locator('#age')).toHaveValue('');
     await authedPage.locator('#age').fill('72');
     await selectGender(authedPage);
-    await goNext(authedPage);
 
     await expect(authedPage.locator('#height')).toHaveValue('');
     await expect(authedPage.locator('#weight')).toHaveValue('');
@@ -301,13 +281,85 @@ test.describe('讀取健康檔案失敗時', () => {
     });
     await expect(authedPage.getByText(t('personalHealth.loadErrorGuard'))).toBeVisible();
     await expect(authedPage.locator('#personalHealthForm')).toHaveCount(0);
-    await expect(authedPage.getByRole('button', { name: STEP_SAVE() })).toHaveCount(0);
+    await expect(authedPage.getByRole('button', { name: SAVE() })).toHaveCount(0);
 
     healthy = true;
     await authedPage.getByRole('button', { name: t('personalHealth.retry') }).click();
 
+    await authedPage.getByRole('button', { name: t('personalHealth.details'), exact: true }).click();
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
     await expect(authedPage.locator('#personalHealthForm')).toBeVisible();
     await expect(authedPage.locator('#name')).toHaveValue('王大明');
     await expect(authedPage.locator('#age')).toHaveValue('72');
+  });
+});
+
+test.describe('個人健康的網址與儲存生命週期', () => {
+  test.beforeEach(async ({ authedPage }) => {
+    await stubProfileApi(authedPage, {
+      name: '陳明德', gender: 'male', age: 65, height: 165, weight: 60,
+      chronic_diseases: ['hypertension'], chronic_custom: ['痛風'],
+      major_illness_history: '冠心病', surgery_history: '白內障手術',
+      health_consultations: { last_consultation: '保留既有諮詢' },
+    });
+  });
+
+  test('瀏覽器返回與前進保留草稿，重新整理保留編輯網址', async ({ authedPage }) => {
+    await openPage(authedPage);
+    await expect(authedPage).toHaveURL(/\/personalhealth\?view=edit$/);
+    await authedPage.reload();
+    await expect(authedPage.getByRole('heading', { name: t('personalHealth.edit'), exact: true })).toBeVisible();
+    await authedPage.locator('#age').fill('70');
+    await authedPage.goBack();
+    await expect(authedPage).toHaveURL(/\/personalhealth\?view=details$/);
+    await expect(authedPage.getByRole('heading', { name: t('personalHealth.details'), exact: true })).toBeVisible();
+    await authedPage.goBack();
+    await expect(authedPage).toHaveURL(/\/personalhealth$/);
+    await authedPage.goForward();
+    await authedPage.goForward();
+    await expect(authedPage.locator('#age')).toHaveValue('70');
+    await authedPage.getByRole('button', { name: CANCEL(), exact: true }).click();
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
+    await expect(authedPage.locator('#age')).toHaveValue('65');
+  });
+
+  test('延遲儲存只送一次，瀏覽器返回後舊回應不改變畫面', async ({ authedPage }) => {
+    let completeSave!: () => void;
+    const pendingSave = new Promise<void>(resolve => { completeSave = resolve; });
+    const calls = await stubApi(authedPage, {
+      path: '/api/profiles/me/update', method: 'PUT',
+      respond: async () => {
+        await pendingSave;
+        return { status: 200, body: { success: true } };
+      },
+    });
+    await openPage(authedPage);
+    await authedPage.locator('#age').fill('66');
+    await authedPage.locator('#personalHealthForm').evaluate(form => {
+      (form as HTMLFormElement).requestSubmit();
+      (form as HTMLFormElement).requestSubmit();
+    });
+    await expect.poll(() => calls.length).toBe(1);
+    await expect(authedPage.getByRole('button', { name: t('personalHealth.return'), exact: true })).toBeDisabled();
+    await expect(authedPage.getByRole('button', { name: CANCEL(), exact: true })).toBeDisabled();
+    await authedPage.goBack();
+    await expect(authedPage).toHaveURL(/\/personalhealth\?view=details$/);
+    completeSave();
+    await expect(authedPage.getByRole('button', { name: t('personalHealth.return'), exact: true })).toBeEnabled();
+    await expect(authedPage.getByRole('heading', { name: t('personalHealth.details'), exact: true })).toBeVisible();
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
+    await authedPage.locator('#age').fill('70');
+    await expect(authedPage.locator('#age')).toHaveValue('70');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).toMatchObject({ age: 66, health_consultations: { last_consultation: '保留既有諮詢' } });
+  });
+
+  test('病史收合時仍有項目數，展開可看到已選慢性病摘要', async ({ authedPage }) => {
+    await openPage(authedPage);
+    await expect(authedPage.getByText(t('personalHealth.historyCount', { count: 4 }))).toBeVisible();
+    await authedPage.getByRole('button', { name: new RegExp(t('personalHealth.step3.title')) }).click();
+    await expect(authedPage.getByText(t('personalHealth.selectedChronicSummary', {
+      conditions: `${t('personalHealth.chronic.hypertension')}${t('personalHealth.listSeparator')}痛風`,
+    }))).toBeVisible();
   });
 });

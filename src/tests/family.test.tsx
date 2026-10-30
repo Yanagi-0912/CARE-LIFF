@@ -83,9 +83,9 @@ function ConsultProbe() {
  */
 function renderPage() {
   return renderWithToaster(
-    <MemoryRouter initialEntries={['/family']}>
+    <MemoryRouter initialEntries={['/family/members']}>
       <Routes>
-        <Route path="/family" element={<FamilyPage />} />
+        <Route path="/family/*" element={<FamilyPage />} />
         <Route path="/personalhealth/consult" element={<ConsultProbe />} />
       </Routes>
     </MemoryRouter>,

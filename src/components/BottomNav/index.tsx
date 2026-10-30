@@ -1,46 +1,25 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HomeIcon, HealthIcon, PillIcon, FamilyIcon, SettingsIcon } from '../icons';
-import GlidingTabs from '../GlidingTabs/GlidingTabs';
+import { activeNavigationPath, navigationItems } from '../navigation';
 
-function BottomNav() {
+export default function BottomNav() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const { t } = useTranslation();
-
-  const tabs = [
-    { key: '/', label: t('nav.home'), icon: <HomeIcon /> },
-    { key: '/personalhealth', label: t('nav.health'), icon: <HealthIcon /> },
-    // 用藥與掛號合成一格「提醒」，進去再分兩個子頁（見 pages/Reminders）。
-    // 第六格放不下：每格文字區只剩約 38px，印尼／泰／越文的標籤會壓到隔壁格。
-    // 圖示沿用藥丸，既有使用者認得這一格的位置與樣子。
-    { key: '/reminders', label: t('nav.reminders'), icon: <PillIcon /> },
-    { key: '/family', label: t('nav.family'), icon: <FamilyIcon /> },
-    { key: '/settings', label: t('nav.settings'), icon: <SettingsIcon /> },
-  ];
-
-  const activeKey =
-    tabs.find((tab) =>
-      tab.key === '/'
-        ? location.pathname === '/'
-        : location.pathname.startsWith(tab.key),
-    )?.key ?? '/';
-
+  const activePath = activeNavigationPath(pathname);
   return (
-    // 容器不吃點擊（讓出內容捲動區），只有導覽列本身可點；電腦版改用側欄，故隱藏。
-    // z-40 必須低於浮層層級（dialog／alert-dialog／select／popover／sheet 都是 z-50）。
-    // 之前是 z-[100]，導覽列會畫在 modal 上面把 dialog 最下面那顆按鈕蓋掉（例如編輯
-    // 提醒的「削除」），使用者看到的是「元件太大、東西被切掉」，其實是被蓋住。
-    <div className="pointer-events-none sticky bottom-0 left-0 right-0 z-40 flex justify-center bg-transparent md:hidden">
-      <GlidingTabs
-        className="pointer-events-auto"
-        tabs={tabs}
-        activeKey={activeKey}
-        onChange={(key) => navigate(key)}
-        aria-label={t('sidebar.mainNavAriaLabel')}
-      />
-    </div>
+    <footer className="care-bottom-nav md:hidden">
+      <nav aria-label={t('sidebar.mainNavAriaLabel')}>
+        {navigationItems.map(({ path, label, icon: Icon }) => (
+          <button type="button" key={path} aria-current={activePath === path ? 'page' : undefined}
+            onClick={() => navigate(path)}>
+            <span className={path === '/' ? 'care-nav-icon care-home-nav' : 'care-nav-icon'}>
+              <Icon className="size-6" strokeWidth={activePath === path ? 2.2 : 1.8} aria-hidden="true" />
+            </span>
+            <span>{t(label)}</span>
+          </button>
+        ))}
+      </nav>
+    </footer>
   );
 }
-
-export default BottomNav;

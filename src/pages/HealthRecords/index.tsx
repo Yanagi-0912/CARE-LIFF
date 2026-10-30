@@ -17,6 +17,7 @@ import { getLineUserId } from '../../utils/auth';
 import { canReadHealthRecords, canRecordHealthFor } from '../../utils/familyPermissions';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { queryKeys } from '@/lib/queryClient';
+import { EntryLink, FeaturePage } from '@/components/FeaturePage';
 import { MeasurementTab } from './MeasurementTab';
 import { MenstrualTab } from './MenstrualTab';
 import { StepsTab } from './StepsTab';
@@ -111,6 +112,7 @@ export default function HealthRecordsPage() {
   }, [showMenstrualTab]);
 
   const requestedTab = searchParams.get('tab');
+  const isLanding = requestedTab === null;
   const activeTab = tabs.some((tab) => tab.key === requestedTab)
     ? (requestedTab as TabKey)
     : tabs[0].key;
@@ -122,14 +124,19 @@ export default function HealthRecordsPage() {
     setSearchParams(params, { replace: true });
   };
 
+  const recordsUrl = (tab?: TabKey) => {
+    const params = new URLSearchParams(searchParams);
+    if (tab) params.set('tab', tab);
+    else params.delete('tab');
+    return `/health-records${params.size ? `?${params}` : ''}`;
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4 p-4">
-      <header>
-        <h1 className="text-2xl font-extrabold">
-          {isViewingFamily ? t('health.titleForMember', { name: targetName }) : t('health.title')}
-        </h1>
-        <p className="mt-1 text-muted-foreground">{t('health.description')}</p>
-      </header>
+    <FeaturePage
+      title={isViewingFamily ? t('health.titleForMember', { name: targetName }) : isLanding ? t('health.title') : t(tabs.find(tab => tab.key === activeTab)!.labelKey)}
+      description={isLanding ? t('health.description') : undefined}
+      backTo={isLanding ? (isViewingFamily ? '/family/members' : '/') : recordsUrl()}
+    >
 
       {isViewingFamily && familyLoading ? (
         <p className="flex items-center gap-2 py-6 text-base text-muted-foreground" role="status">
@@ -167,6 +174,11 @@ export default function HealthRecordsPage() {
             <EmptyDescription>{t('familyPermission.askOwner')}</EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : isLanding ? (
+        <div className="flex flex-col gap-3">
+          {tabs.map(({ key, labelKey, Icon }) => <EntryLink key={key} to={recordsUrl(key)} title={t(labelKey)}
+            description={t(`featureNav.record.${key}`)} icon={Icon} />)}
+        </div>
       ) : (
         <Tabs value={activeTab} onValueChange={(value) => handleTabChange(String(value))}>
           <TabsList className="w-full" aria-label={t('health.tabListLabel')}>
@@ -204,6 +216,6 @@ export default function HealthRecordsPage() {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+    </FeaturePage>
   );
 }

@@ -121,7 +121,7 @@ test.describe('管理員守門', () => {
     await authedPage.goto('/admin/knowledge-reports');
 
     await expect(authedPage).toHaveURL(/\/$/);
-    await expect(authedPage.getByRole('heading', { name: t('home.title'), level: 1 })).toBeVisible();
+    await expect(authedPage.getByRole('heading', { name: t('home.introTitle'), level: 1 })).toBeVisible();
   });
 
   test('尚未建檔（profile 404）也視為非管理員', async ({ authedPage }) => {

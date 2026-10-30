@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import AdminKnowledgeLink from './AdminKnowledgeLink';
+import React, { useState, useEffect, useRef } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
+import { BellIcon, TypeIcon, UserRoundIcon, Volume2Icon } from 'lucide-react';
+import { EntryLink, FeaturePage } from '@/components/FeaturePage';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -48,12 +52,12 @@ const toggleFieldMap: Record<
   voiceReplyEnabled: 'voice_reply_enabled',
 };
 
-/* 字級按鈕各自以「它代表的字級」顯示（16/20/24px）。
-   完整字串查表，不可用 `font-size-btn-${size}` 拼接（Tailwind 掃描不到）。 */
+/* 三檔字級預覽使用 rem，隨使用者的全站字級一併縮放。
+   完整字串查表，讓 Tailwind 能掃描到各種選項。 */
 const FONT_SIZE_BTN: Record<SettingsState['fontSize'], string> = {
-  normal: 'text-[16px]',
-  large: 'text-[20px]',
-  xlarge: 'text-[24px]',
+  normal: 'text-base',
+  large: 'text-xl',
+  xlarge: 'text-2xl',
 };
 
 /* ToggleGroup 群組上方的小標題。真正的無障礙名稱掛在 ToggleGroup 的 aria-label，
@@ -62,28 +66,25 @@ const GROUP_LABEL = 'text-[0.95rem] font-semibold text-foreground min-[480px]:te
 
 /* 互斥切換鈕（字級、語速、音色）的共用尺寸。選中態由 Toggle 的 primary
    變體負責（原本是這裡自己抄一串 aria-pressed:），這裡只剩版面。 */
-const SEGMENT_ITEM = 'h-12 flex-1 font-bold';
+const SEGMENT_ITEM = 'h-auto min-h-12 min-w-0 flex-1 whitespace-normal wrap-anywhere py-2 font-bold';
 
 /** 設定區塊：標題 + 說明 + 內容 */
 function SettingSection({
   title,
   description,
-  delayMs,
   children,
 }: {
   title: string;
   description?: string;
-  delayMs: number;
   children: React.ReactNode;
 }) {
   return (
     <Card
       className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 mb-3"
-      style={{ animationDelay: `${delayMs}ms` }}
     >
       <CardHeader>
-        {/* 用 h3 而非 CardTitle：CardTitle 渲染的是 div，這裡需要真的標題語意 */}
-        <h3 className="text-lg font-bold">{title}</h3>
+        {/* CardTitle 渲染的是 div，這裡保留 h1 底下的區段標題語意。 */}
+        <h2 className="text-lg font-bold">{title}</h2>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>{children}</CardContent>
@@ -119,6 +120,16 @@ const languageOptions: Array<{ value: LanguageChoice; label: string }> = [
 const SettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { theme, setTheme } = useTheme();
+  const section = pathname.split('/')[2] || '';
+  const sectionTitles: Record<string, string> = {
+    display: 'settings.displayTitle',
+    voice: 'settings.voiceTitle',
+    notifications: 'settings.notificationsTitle',
+    account: 'settings.accountTitle',
+  };
+  const sectionTitle = sectionTitles[section];
   const { logout } = useLiffAuth();
   const fontSizeLabelMap = {
     normal: t('settings.fontSizeNormal'),
@@ -134,6 +145,8 @@ const SettingsPage: React.FC = () => {
     female: t('settings.voiceGenderFemale'),
     male: t('settings.voiceGenderMale'),
   };
+  // 記住本次開啟設定頁後改過的欄位，避免較晚回來的初始 GET 蓋掉剛才的操作。
+  const editedFields = useRef(new Set<keyof SettingsState>());
   const [settings, setSettings] = useState<SettingsState>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -156,12 +169,12 @@ const SettingsPage: React.FC = () => {
   // 未登入或 API 失敗則靜默 fallback，繼續使用 localStorage 目前的值
   useEffect(() => {
     if (!isAuthenticated()) return;
+    let active = true;
 
     getUserSettings()
       .then((apiSettings) => {
-        if (!apiSettings) return;
-        setSettings((prev) => ({
-          ...prev,
+        if (!active || !apiSettings) return;
+        const remote: Partial<SettingsState> = {
           fontSize: apiSettings.font_size,
           highContrast: apiSettings.high_contrast,
           notifyReminder: apiSettings.notify_reminder,
@@ -173,20 +186,26 @@ const SettingsPage: React.FC = () => {
           voiceReplyEnabled: apiSettings.voice_reply_enabled,
           voiceRate: apiSettings.voice_rate,
           voiceGender: apiSettings.voice_gender,
-        }));
+        };
+        // 只合併尚未手動調整的欄位；其他裝置的設定仍然可以同步進來。
+        const untouched = Object.fromEntries(
+          Object.entries(remote).filter(([key]) => !editedFields.current.has(key as keyof SettingsState)),
+        );
+        setSettings((prev) => ({ ...prev, ...untouched }));
 
         // language 存在資料庫的 settings.language 裡，用它來實際切換介面語言，
         // 而不只是更新 select 的顯示值，確保多裝置登入後語言也會同步。
         // 台語的介面文字是繁體中文，select 要另外記住選的是台語。
         const language = apiSettings.language;
-        if (language && isLanguageChoice(language)) {
+        if (!editedFields.current.has('language') && language && isLanguageChoice(language)) {
           setSettings((prev) => ({ ...prev, language }));
           void i18n.changeLanguage(textLanguageOf(language));
         }
       })
       .catch((err) => {
-        console.error('讀取伺服器設定失敗，改用本機設定', err);
+        if (active) console.error('讀取伺服器設定失敗，改用本機設定', err);
       });
+    return () => { active = false; };
   }, [i18n]);
 
   // 變更即寫入後端；未登入時不送。失敗時本機已經改了、伺服器沒改，不講的話
@@ -219,22 +238,26 @@ const SettingsPage: React.FC = () => {
   }, [i18n]);
 
   const handleFontSize = (size: SettingsState['fontSize']) => {
+    editedFields.current.add('fontSize');
     setSettings((prev) => ({ ...prev, fontSize: size }));
     persistSettings({ font_size: size });
   };
 
   const handleLanguage = (language: LanguageChoice) => {
+    editedFields.current.add('language');
     setSettings((prev) => ({ ...prev, language }));
     void i18n.changeLanguage(textLanguageOf(language));
     persistSettings({ language });
   };
 
   const handleVoiceRate = (rate: SettingsState['voiceRate']) => {
+    editedFields.current.add('voiceRate');
     setSettings((prev) => ({ ...prev, voiceRate: rate }));
     persistSettings({ voice_rate: rate });
   };
 
   const handleVoiceGender = (gender: SettingsState['voiceGender']) => {
+    editedFields.current.add('voiceGender');
     setSettings((prev) => ({ ...prev, voiceGender: gender }));
     persistSettings({ voice_gender: gender });
   };
@@ -247,223 +270,259 @@ const SettingsPage: React.FC = () => {
   // 後端同步不能寫在 setSettings 的 updater 裡：updater 必須是純函式，
   // StrictMode（dev）會把它執行兩次，每點一次開關就送出兩筆一樣的 PATCH。
   const toggle = (key: keyof typeof toggleFieldMap) => {
+    editedFields.current.add(key);
     const nextValue = !settings[key];
     setSettings((prev) => ({ ...prev, [key]: nextValue }));
     persistSettings({ [toggleFieldMap[key]]: nextValue });
   };
 
+  if (section && !sectionTitle) return <Navigate to="/settings" replace />;
+
   return (
     // 四周留白（含底部避開導覽列）由 .content-area 統一給（規範 §4），這裡不再重複加。
-    <div className="mx-auto w-full max-w-[720px]">
-      <h2 className="mb-3 text-2xl font-extrabold min-[480px]:mb-4">{t('settings.title')}</h2>
+    <FeaturePage
+      title={t(sectionTitle ?? 'settings.overviewTitle')}
+      description={section ? undefined : t('settings.overviewDesc')}
+      backTo={section ? '/settings' : undefined}
+    >
+      {!section && <div className="space-y-3">
+        <EntryLink to="/settings/display" title={t('settings.displayTitle')}
+          description={t('settings.displayDesc')} icon={TypeIcon} />
+        <EntryLink to="/settings/voice" title={t('settings.voiceTitle')}
+          description={t('settings.voiceDesc')} icon={Volume2Icon} />
+        <EntryLink to="/settings/notifications" title={t('settings.notificationsTitle')}
+          description={t('settings.notificationsEntryDesc')} icon={BellIcon} />
+        <EntryLink to="/settings/account" title={t('settings.accountTitle')}
+          description={t('settings.accountEntryDesc')} icon={UserRoundIcon} />
+        <AdminKnowledgeLink />
+      </div>}
 
-      {/* ── 字體大小 ── */}
-      <SettingSection
-        title={t('settings.fontSizeTitle')}
-        description={t('settings.fontSizeDesc')}
-        delayMs={40}
-      >
-        {/* ToggleGroup 取代原本三顆各自帶 aria-pressed 的獨立按鈕：
-            三者互斥，應為一個群組而非三個彼此無關的切換鈕，
-            方向鍵在群組內移動焦點也由元件提供。
-            multiple 預設 false（單選），value 為陣列語意。 */}
-        <ToggleGroup
-          variant="primary"
-          className="w-full"
-          value={[settings.fontSize]}
-          onValueChange={(groupValue) => {
-            const next = groupValue[0] as SettingsState['fontSize'] | undefined;
-            if (next) handleFontSize(next);
-          }}
-          aria-label={t('settings.fontSizeTitle')}
+      {section === 'display' && <>
+
+        {/* ── 字體大小 ── */}
+        <SettingSection
+          title={t('settings.fontSizeTitle')}
+          description={t('settings.fontSizeDesc')}
         >
-          {(['normal', 'large', 'xlarge'] as const).map((size) => (
-            <ToggleGroupItem
-              key={size}
-              value={size}
-              className={cn(SEGMENT_ITEM, FONT_SIZE_BTN[size])}
+          {/* ToggleGroup 取代原本三顆各自帶 aria-pressed 的獨立按鈕：
+              三者互斥，應為一個群組而非三個彼此無關的切換鈕，
+              方向鍵在群組內移動焦點也由元件提供。
+              multiple 預設 false（單選），value 為陣列語意。 */}
+          <ToggleGroup
+            variant="primary"
+            className="grid w-full grid-cols-1 min-[480px]:grid-cols-3"
+            value={[settings.fontSize]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0] as SettingsState['fontSize'] | undefined;
+              if (next) handleFontSize(next);
+            }}
+            aria-label={t('settings.fontSizeTitle')}
+          >
+            {(['normal', 'large', 'xlarge'] as const).map((size) => (
+              <ToggleGroupItem
+                key={size}
+                value={size}
+                className={cn(SEGMENT_ITEM, FONT_SIZE_BTN[size])}
+              >
+                {fontSizeLabelMap[size]}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          {/* 預覽區跟著 --base-font-size 即時縮放 */}
+          <Empty className="mt-3 border border-dashed p-4">
+            <span className="text-base font-semibold">
+              {t('settings.preview')}
+            </span>
+          </Empty>
+        </SettingSection>
+
+        {/* ── 語言設定 ── */}
+        <SettingSection
+          title={t('settings.languageTitle')}
+          description={t('settings.languageDesc')}
+        >
+          <Field>
+            <FieldLabel htmlFor="language-select" className="text-base">
+              {t('settings.displayLanguage')}
+            </FieldLabel>
+            <Select
+              value={settings.language}
+              onValueChange={(value) => handleLanguage(value as SettingsState['language'])}
             >
-              {fontSizeLabelMap[size]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {/* 預覽區跟著 --base-font-size 即時縮放 */}
-        <Empty className="mt-3 border border-dashed p-4">
-          <span className="text-[length:var(--base-font-size,20px)] font-semibold">
-            {t('settings.preview')}
-          </span>
-        </Empty>
-      </SettingSection>
+              <SelectTrigger id="language-select" className="w-full font-semibold">
+                {/* SelectValue 預設顯示原始值（en），需以函式 child 對應回標籤 */}
+                <SelectValue>
+                  {(value) =>
+                    languageOptions.find((option) => option.value === value)?.label ?? String(value)
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {languageOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </SettingSection>
 
-      {/* ── 語言設定 ── */}
-      <SettingSection
-        title={t('settings.languageTitle')}
-        description={t('settings.languageDesc')}
-        delayMs={100}
-      >
-        <Field>
-          <FieldLabel htmlFor="language-select" className="text-base">
-            {t('settings.displayLanguage')}
-          </FieldLabel>
-          <Select
-            value={settings.language}
-            onValueChange={(value) => handleLanguage(value as SettingsState['language'])}
-          >
-            <SelectTrigger id="language-select" className="w-full font-semibold">
-              {/* SelectValue 預設顯示原始值（en），需以函式 child 對應回標籤 */}
-              <SelectValue>
-                {(value) =>
-                  languageOptions.find((option) => option.value === value)?.label ?? String(value)
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {languageOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
+        <SettingSection title={t('settings.themeTitle')} description={t('settings.themeDesc')}>
+          <ToggleGroup variant="primary" className="w-full" value={[theme ?? 'system']}
+            onValueChange={(values) => { if (values[0]) setTheme(values[0]); }}
+            aria-label={t('settings.themeTitle')}>
+            {(['light', 'dark', 'system'] as const).map((value) => (
+              <ToggleGroupItem key={value} value={value} className={SEGMENT_ITEM}>
+                {t(`settings.theme.${value}`)}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </SettingSection>
+
+        {/* ── 高對比模式 ── */}
+        <SettingSection
+          title={t('settings.highContrastTitle')}
+          description={t('settings.highContrastDesc')}
+        >
+          <SettingRow label={t('settings.highContrastToggle')}>
+            {/* 原手刻 toggle 是普通 button，沒有 role="switch" 與 aria-checked，
+                螢幕閱讀器只會唸「按鈕」；Base UI Switch 兩者皆備，鍵盤操作也內建。
+                aria-label 走 settings.toggleAria 套用同一組已翻譯的項目名稱，
+                避免硬編中文——切到其他語言時螢幕閱讀器仍會唸中文。 */}
+            <Switch
+              checked={settings.highContrast}
+              onCheckedChange={() => toggle('highContrast')}
+              aria-label={t('settings.toggleAria', { label: t('settings.highContrastToggle') })}
+            />
+          </SettingRow>
+        </SettingSection>
+
+      </>}
+
+      {section === 'notifications' && <>
+        {/* ── 通知設定 ── */}
+        <SettingSection
+          title={t('settings.notificationsTitle')}
+          description={t('settings.notificationsDesc')}
+        >
+          <ItemGroup>
+            <SettingRow label={t('settings.medicationReminder')}>
+              <Switch
+                checked={settings.notifyReminder}
+                onCheckedChange={() => toggle('notifyReminder')}
+                aria-label={t('settings.toggleAria', { label: t('settings.medicationReminder') })}
+              />
+            </SettingRow>
+            <ItemSeparator />
+            <SettingRow label={t('settings.familyAlert')}>
+              <Switch
+                checked={settings.notifyFamily}
+                onCheckedChange={() => toggle('notifyFamily')}
+                aria-label={t('settings.toggleAria', { label: t('settings.familyAlert') })}
+              />
+            </SettingRow>
+            <ItemSeparator />
+            <SettingRow label={t('settings.medicalNews')}>
+              <Switch
+                checked={settings.notifyMedicalNews}
+                onCheckedChange={() => toggle('notifyMedicalNews')}
+                aria-label={t('settings.toggleAria', { label: t('settings.medicalNews') })}
+              />
+            </SettingRow>
+          </ItemGroup>
+        </SettingSection>
+
+      </>}
+
+      {section === 'voice' && <>
+        {/* ── 語音回覆 ── */}
+        <SettingSection
+          title={t('settings.voiceTitle')}
+          description={t('settings.voiceDesc')}
+        >
+          <SettingRow label={t('settings.voiceReplyToggle')}>
+            <Switch
+              checked={settings.voiceReplyEnabled}
+              onCheckedChange={() => toggle('voiceReplyEnabled')}
+              aria-label={t('settings.toggleAria', { label: t('settings.voiceReplyToggle') })}
+            />
+          </SettingRow>
+
+          {/* 語速三檔互斥，沿用字體大小區塊的 ToggleGroup 模式；
+              aria-label 用專屬的「語速」文字（而非區塊標題），避免與下方音色群組同名，
+              否則螢幕閱讀器使用者無法分辨兩組各是什麼 */}
+          <div className="mt-3 flex flex-col gap-2.5">
+            <span className={GROUP_LABEL}>{t('settings.voiceRateLabel')}</span>
+            <ToggleGroup
+              variant="primary"
+              className="w-full"
+              value={[settings.voiceRate]}
+              onValueChange={(groupValue) => {
+                const next = groupValue[0] as SettingsState['voiceRate'] | undefined;
+                if (next) handleVoiceRate(next);
+              }}
+              aria-label={t('settings.voiceRateLabel')}
+            >
+              {(['slow', 'normal', 'fast'] as const).map((rate) => (
+                <ToggleGroupItem key={rate} value={rate} className={SEGMENT_ITEM}>
+                  {voiceRateLabelMap[rate]}
+                </ToggleGroupItem>
               ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      </SettingSection>
+            </ToggleGroup>
+          </div>
 
-      {/* ── 高對比模式 ── */}
-      <SettingSection
-        title={t('settings.highContrastTitle')}
-        description={t('settings.highContrastDesc')}
-        delayMs={160}
-      >
-        <SettingRow label={t('settings.highContrastToggle')}>
-          {/* 原手刻 toggle 是普通 button，沒有 role="switch" 與 aria-checked，
-              螢幕閱讀器只會唸「按鈕」；Base UI Switch 兩者皆備，鍵盤操作也內建。
-              aria-label 走 settings.toggleAria 套用同一組已翻譯的項目名稱，
-              避免硬編中文——切到其他語言時螢幕閱讀器仍會唸中文。 */}
-          <Switch
-            checked={settings.highContrast}
-            onCheckedChange={() => toggle('highContrast')}
-            aria-label={t('settings.toggleAria', { label: t('settings.highContrastToggle') })}
-          />
-        </SettingRow>
-      </SettingSection>
+          {/* 音色兩檔（女聲／男聲）互斥，同語速群組的 ToggleGroup 模式；
+              送出給後端的值必須是 female/male，顯示標籤與送出值分離（voiceGenderLabelMap） */}
+          <div className="mt-3 flex flex-col gap-2.5">
+            <span className={GROUP_LABEL}>{t('settings.voiceGenderLabel')}</span>
+            <ToggleGroup
+              variant="primary"
+              className="w-full"
+              value={[settings.voiceGender]}
+              onValueChange={(groupValue) => {
+                const next = groupValue[0] as SettingsState['voiceGender'] | undefined;
+                if (next) handleVoiceGender(next);
+              }}
+              aria-label={t('settings.voiceGenderLabel')}
+            >
+              {(['female', 'male'] as const).map((gender) => (
+                <ToggleGroupItem key={gender} value={gender} className={SEGMENT_ITEM}>
+                  {voiceGenderLabelMap[gender]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+        </SettingSection>
 
-      {/* ── 通知設定 ── */}
-      <SettingSection
-        title={t('settings.notificationsTitle')}
-        description={t('settings.notificationsDesc')}
-        delayMs={220}
-      >
-        <ItemGroup>
-          <SettingRow label={t('settings.medicationReminder')}>
-            <Switch
-              checked={settings.notifyReminder}
-              onCheckedChange={() => toggle('notifyReminder')}
-              aria-label={t('settings.toggleAria', { label: t('settings.medicationReminder') })}
-            />
-          </SettingRow>
-          <ItemSeparator />
-          <SettingRow label={t('settings.familyAlert')}>
-            <Switch
-              checked={settings.notifyFamily}
-              onCheckedChange={() => toggle('notifyFamily')}
-              aria-label={t('settings.toggleAria', { label: t('settings.familyAlert') })}
-            />
-          </SettingRow>
-          <ItemSeparator />
-          <SettingRow label={t('settings.medicalNews')}>
-            <Switch
-              checked={settings.notifyMedicalNews}
-              onCheckedChange={() => toggle('notifyMedicalNews')}
-              aria-label={t('settings.toggleAria', { label: t('settings.medicalNews') })}
-            />
-          </SettingRow>
-        </ItemGroup>
-      </SettingSection>
+      </>}
 
-      {/* ── 語音回覆 ── */}
-      <SettingSection
-        title={t('settings.voiceTitle')}
-        description={t('settings.voiceDesc')}
-        delayMs={280}
-      >
-        <SettingRow label={t('settings.voiceReplyToggle')}>
-          <Switch
-            checked={settings.voiceReplyEnabled}
-            onCheckedChange={() => toggle('voiceReplyEnabled')}
-            aria-label={t('settings.toggleAria', { label: t('settings.voiceReplyToggle') })}
-          />
-        </SettingRow>
+      {section === 'account' && <>
+        {/* ── 關於 ── */}
+        <SettingSection title={t('settings.aboutTitle')}>
+          <ItemGroup>
+            <SettingRow label={t('settings.version')}>
+              <span className="num font-bold">{t('settings.appVersion')}</span>
+            </SettingRow>
+            <ItemSeparator />
+            <SettingRow label={t('settings.team')}>
+              <span className="num font-bold">{t('settings.teamName')}</span>
+            </SettingRow>
+          </ItemGroup>
+        </SettingSection>
 
-        {/* 語速三檔互斥，沿用字體大小區塊的 ToggleGroup 模式；
-            aria-label 用專屬的「語速」文字（而非區塊標題），避免與下方音色群組同名，
-            否則螢幕閱讀器使用者無法分辨兩組各是什麼 */}
-        <div className="mt-3 flex flex-col gap-2.5">
-          <span className={GROUP_LABEL}>{t('settings.voiceRateLabel')}</span>
-          <ToggleGroup
-            variant="primary"
-            className="w-full"
-            value={[settings.voiceRate]}
-            onValueChange={(groupValue) => {
-              const next = groupValue[0] as SettingsState['voiceRate'] | undefined;
-              if (next) handleVoiceRate(next);
-            }}
-            aria-label={t('settings.voiceRateLabel')}
-          >
-            {(['slow', 'normal', 'fast'] as const).map((rate) => (
-              <ToggleGroupItem key={rate} value={rate} className={SEGMENT_ITEM}>
-                {voiceRateLabelMap[rate]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
 
-        {/* 音色兩檔（女聲／男聲）互斥，同語速群組的 ToggleGroup 模式；
-            送出給後端的值必須是 female/male，顯示標籤與送出值分離（voiceGenderLabelMap） */}
-        <div className="mt-3 flex flex-col gap-2.5">
-          <span className={GROUP_LABEL}>{t('settings.voiceGenderLabel')}</span>
-          <ToggleGroup
-            variant="primary"
-            className="w-full"
-            value={[settings.voiceGender]}
-            onValueChange={(groupValue) => {
-              const next = groupValue[0] as SettingsState['voiceGender'] | undefined;
-              if (next) handleVoiceGender(next);
-            }}
-            aria-label={t('settings.voiceGenderLabel')}
-          >
-            {(['female', 'male'] as const).map((gender) => (
-              <ToggleGroupItem key={gender} value={gender} className={SEGMENT_ITEM}>
-                {voiceGenderLabelMap[gender]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
-      </SettingSection>
-
-      {/* ── 關於 ── */}
-      <SettingSection title={t('settings.aboutTitle')} delayMs={340}>
-        <ItemGroup>
-          <SettingRow label={t('settings.version')}>
-            <span className="num font-bold">1.0.0</span>
-          </SettingRow>
-          <ItemSeparator />
-          <SettingRow label={t('settings.team')}>
-            <span className="num font-bold">CARE Team</span>
-          </SettingRow>
-        </ItemGroup>
-      </SettingSection>
-
-      {/* ── 帳號（登出入口統一收在這裡，不放首頁／Header 以免誤觸） ── */}
-      <SettingSection
-        title={t('settings.accountTitle')}
-        description={t('settings.accountDesc')}
-        delayMs={400}
-      >
-        <Button variant="destructive" className="w-full" onClick={handleLogout}>
-          {t('settings.logout')}
-        </Button>
-      </SettingSection>
-    </div>
+        {/* ── 帳號（登出入口統一收在這裡，不放首頁／Header 以免誤觸） ── */}
+        <SettingSection
+          title={t('settings.accountTitle')}
+          description={t('settings.accountDesc')}
+        >
+          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+            {t('settings.logout')}
+          </Button>
+        </SettingSection>
+      </>}
+    </FeaturePage>
   );
 };
 

@@ -14,25 +14,20 @@ import { AUTH_TOKEN, expect, t, test } from './fixtures';
 
 /** 桌面版側欄的項目，順序即畫面順序（非管理員） */
 const SIDEBAR_ITEMS = [
-  { labelKey: 'sidebar.home', path: '/' },
-  { labelKey: 'sidebar.nearbyHospitals', path: '/nearby-hospitals' },
-  { labelKey: 'sidebar.health', path: '/personalhealth' },
-  { labelKey: 'sidebar.healthRecords', path: '/health-records' },
-  { labelKey: 'sidebar.medications', path: '/reminders/medications' },
-  { labelKey: 'sidebar.appointments', path: '/reminders/appointments' },
-  { labelKey: 'sidebar.clinicVisits', path: '/clinic-visits' },
-  { labelKey: 'sidebar.knowledgeReports', path: '/knowledge-reports' },
-  { labelKey: 'sidebar.family', path: '/family' },
-  { labelKey: 'sidebar.settings', path: '/settings' },
+  { labelKey: 'nav.home', path: '/' },
+  { labelKey: 'nav.health', path: '/personalhealth' },
+  { labelKey: 'nav.reminders', path: '/reminders' },
+  { labelKey: 'nav.family', path: '/family' },
+  { labelKey: 'nav.settings', path: '/settings' },
 ] as const;
 
 /** 手機底部導覽的五個 tab */
 const BOTTOM_TABS = [
   { labelKey: 'nav.home', path: '/' },
   { labelKey: 'nav.health', path: '/personalhealth' },
-  // 「提醒」格導向 /reminders，再由 RemindersLayout 轉到上次看的子頁；
+  // 「提醒」格導向新版分類入口 /reminders；
   // 每個測試都是新的 session，所以落在預設的用藥
-  { labelKey: 'nav.reminders', path: '/reminders/medications' },
+  { labelKey: 'nav.reminders', path: '/reminders' },
   { labelKey: 'nav.family', path: '/family' },
   { labelKey: 'nav.settings', path: '/settings' },
 ] as const;
@@ -85,7 +80,7 @@ test.describe('Sidebar 側邊導覽（桌面版面）', () => {
     const sidebar = authedPage.getByRole('complementary');
     await expect(sidebar.getByRole('button')).toHaveCount(SIDEBAR_ITEMS.length);
     await expect(
-      sidebar.getByRole('button', { name: t('sidebar.home') }),
+      sidebar.getByRole('button', { name: t('nav.home') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 
@@ -156,7 +151,7 @@ test.describe('舊路徑轉址', () => {
 
 test.describe('登出', () => {
   test('從設定頁登出會清掉 token 並回到登入頁', async ({ authedPage }) => {
-    await authedPage.goto('/settings');
+    await authedPage.goto('/settings/account');
 
     await authedPage.getByRole('button', { name: t('settings.logout') }).click();
 
