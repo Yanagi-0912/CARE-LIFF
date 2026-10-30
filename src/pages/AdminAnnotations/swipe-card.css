@@ -1,0 +1,98 @@
+.annotation-deck {
+  position: relative;
+  isolation: isolate;
+  margin: 0 2px 10px;
+}
+
+.annotation-deck-back {
+  position: absolute;
+  inset: 12px 10px -8px;
+  z-index: -1;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface-2);
+}
+
+.annotation-swipe-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: clamp(14rem, calc(100svh - 22rem), 42rem);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 28px -18px color-mix(in srgb, var(--ink) 35%, transparent);
+  touch-action: pan-y;
+  user-select: none;
+  transition: transform 180ms ease-out;
+  outline: none;
+}
+
+.annotation-swipe-card:focus-visible {
+  box-shadow: 0 0 0 3px var(--primary-soft), 0 0 0 1.5px var(--primary);
+}
+
+.annotation-swipe-card.is-dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+.annotation-card-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 24px;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+}
+
+.annotation-swipe-zone {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding: 14px 20px 10px;
+  background: color-mix(in srgb, var(--primary) 3%, var(--surface));
+  touch-action: none;
+  cursor: grab;
+}
+
+.annotation-swipe-stamp {
+  pointer-events: none;
+  position: absolute;
+  top: 24px;
+  max-width: calc(100% - 40px);
+  border: 3px solid currentColor;
+  border-radius: 12px;
+  padding: 6px 14px;
+  background: var(--surface);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.annotation-swipe-stamp.is-yes {
+  left: 20px;
+  color: var(--primary);
+  transform: rotate(-10deg);
+}
+
+.annotation-swipe-stamp.is-no {
+  right: 20px;
+  color: var(--danger);
+  transform: rotate(10deg);
+}
+
+.annotation-swipe-stamp.is-unknown {
+  left: 50%;
+  color: var(--muted);
+  transform: translateX(-50%);
+}
+
+@media (min-width: 768px) {
+  .annotation-swipe-card { height: clamp(22rem, calc(100svh - 22rem), 38rem); }
+  .annotation-card-content { padding: 32px; }
+}
