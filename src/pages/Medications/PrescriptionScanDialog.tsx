@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CameraIcon, TriangleAlertIcon } from 'lucide-react';
 import { PrescriptionScanError, scanPrescription } from '../../api/medicationApi';
@@ -14,6 +14,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { PrescriptionImageCrop } from './PrescriptionImageCrop';
+import type { ImageCrop } from '@/utils/prescriptionImage';
 
 interface PrescriptionScanDialogProps {
   /** 辨識成功，交給頁面開啟核對畫面（本 dialog 本身不負責顯示草稿） */
@@ -23,7 +25,9 @@ interface PrescriptionScanDialogProps {
   onClose: () => void;
 }
 
-type Status = 'idle' | 'uploading' | 'error';
+const FULL_IMAGE: ImageCrop = { x: 0, y: 0, width: 1, height: 1 };
+
+type Status = 'idle' | 'preview' | 'preparing' | 'uploading' | 'error';
 
 /**
  * 三種辨識失敗原因（unreadable／not_prescription／service_unavailable）加上
@@ -59,16 +63,33 @@ export function PrescriptionScanDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [failureReason, setFailureReason] = useState<PrescriptionScanFailureReason | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [crop, setCrop] = useState<ImageCrop>(FULL_IMAGE);
+  const [cropReady, setCropReady] = useState(false);
+  const [preparationFailed, setPreparationFailed] = useState(false);
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
+  const busy = status === 'preparing' || status === 'uploading';
 
-  const handleFile = async (file: File) => {
-    setStatus('uploading');
+  const handleFile = async (file: File, original = false) => {
+    const abort = new AbortController(); controller.current = abort;
+    setStatus(original ? 'uploading' : 'preparing');
     setFailureReason(null);
+    let prepared = original;
     try {
-      const draft = await scanPrescription(file);
+      const upload = original ? file : (await (await import('@/utils/prescriptionImage')).preparePrescriptionImage(file, {
+        strategy: 'crop', crop, signal: abort.signal,
+      })).file;
+      if (abort.signal.aborted) return;
+      prepared = true; setStatus('uploading');
+      const draft = await scanPrescription(upload);
+      if (abort.signal.aborted) return;
       onScanned(draft);
     } catch (err) {
+      if (abort.signal.aborted) return;
       setStatus('error');
-      setFailureReason(err instanceof PrescriptionScanError ? err.reason : 'service_unavailable');
+      setPreparationFailed(!prepared);
+      setFailureReason(!prepared ? 'unreadable' : err instanceof PrescriptionScanError ? err.reason : 'service_unavailable');
     }
   };
 
@@ -76,14 +97,17 @@ export function PrescriptionScanDialog({
     const file = e.target.files?.[0];
     // 清空 value：同一個檔案重選一次也要能觸發 onChange，重拍失敗後才能重試
     e.target.value = '';
-    if (file) void handleFile(file);
+    if (file) {
+      setSelectedFile(file); setCrop(FULL_IMAGE); setCropReady(false);
+      setPreparationFailed(false); setFailureReason(null); setStatus('preview');
+    }
   };
 
   const copyKey = failureReason ? FAILURE_COPY_KEY[failureReason] : null;
 
   return (
-    <Dialog open onOpenChange={(open) => !open && status !== 'uploading' && onClose()}>
-      <DialogContent className="sm:max-w-[420px]">
+    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{t('meds.scan.title')}</DialogTitle>
           <DialogDescription>{t('meds.scan.desc')}</DialogDescription>
@@ -104,14 +128,22 @@ export function PrescriptionScanDialog({
           onChange={handleInputChange}
         />
 
-        {status === 'uploading' && (
+        {status === 'preview' && selectedFile && <PrescriptionImageCrop file={selectedFile}
+          onChange={setCrop} onReady={() => setCropReady(true)}
+          onError={() => { setPreparationFailed(true); setStatus('error'); }} />}
+
+        {busy && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <Spinner className="size-8" />
-            <p className="text-base font-medium">{t('meds.scan.uploading')}</p>
+            <p role="status" className="text-base font-medium">{t(status === 'preparing' ? 'meds.scan.preparing' : 'meds.scan.uploading')}</p>
           </div>
         )}
 
-        {status === 'error' && copyKey && (
+        {status === 'error' && preparationFailed && <Alert variant="destructive">
+          <TriangleAlertIcon /><AlertTitle>{t('meds.scan.prepareError')}</AlertTitle>
+          <AlertDescription>{t('meds.scan.prepareErrorHint')}</AlertDescription>
+        </Alert>}
+        {status === 'error' && !preparationFailed && copyKey && (
           <Alert variant="destructive">
             <TriangleAlertIcon />
             <AlertTitle>{t(copyKey.title)}</AlertTitle>
@@ -119,7 +151,12 @@ export function PrescriptionScanDialog({
           </Alert>
         )}
 
-        {status !== 'uploading' && (
+        {status === 'preview' && selectedFile && <Button type="button" size="lg" disabled={!cropReady}
+          onClick={() => void handleFile(selectedFile)}>{t('meds.scan.startScan')}</Button>}
+        {status === 'error' && preparationFailed && selectedFile && <Button type="button" variant="outline"
+          onClick={() => void handleFile(selectedFile, true)}>{t('meds.scan.sendOriginal')}</Button>}
+
+        {!busy && (
           <Button
             type="button"
             size="lg"
@@ -127,20 +164,20 @@ export function PrescriptionScanDialog({
             onClick={() => fileInputRef.current?.click()}
           >
             <CameraIcon data-icon="inline-start" className="size-5" />
-            {status === 'error' ? t('meds.scan.retake') : t('meds.scan.captureButton')}
+            {status === 'error' || status === 'preview' ? t('meds.scan.retake') : t('meds.scan.captureButton')}
           </Button>
         )}
 
         {/* DialogFooter 在手機是 flex-col-reverse：DOM 先寫取消，畫面上「改為手動建立」才在上、
             「取消」在最下面，與其他 dialog 的順序一致；取消也用同一種外框膠囊，不用純文字。 */}
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={status === 'uploading'} onClick={onClose}>
+          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
             {t('meds.cancel')}
           </Button>
           <Button
             type="button"
             variant="outline"
-            disabled={status === 'uploading'}
+            disabled={busy}
             onClick={onManualFallback}
           >
             {t('meds.scan.manualFallback')}

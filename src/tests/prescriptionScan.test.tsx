@@ -13,6 +13,19 @@ import { ReminderCard } from '../pages/Medications/ReminderCard';
 import type { DrugCandidate, PrescriptionDraft, RecognizedDrug } from '../types/prescription';
 import type { Medication, MedicationReminder } from '../types/medication';
 import i18n from '../i18n';
+import { preparePrescriptionImage } from '../utils/prescriptionImage';
+
+// Pixel processing and Cropper gestures are covered in Chromium/WebKit e2e tests.
+vi.mock('../utils/prescriptionImage', () => ({
+  preparePrescriptionImage: vi.fn(async (file: File) => ({ file })),
+}));
+vi.mock('../pages/Medications/PrescriptionImageCrop', async () => {
+  const { useEffect } = await import('react');
+  return { PrescriptionImageCrop: function MockCrop({ onReady }: { onReady: () => void }) {
+    useEffect(() => { onReady(); }, [onReady]);
+    return <div aria-label="Mock crop preview" />;
+  } };
+});
 
 // PrescriptionScanError 是真正的 class（保留 actual），其餘 API 一律換成可控制的 mock，
 // 這樣 PrescriptionScanDialog 內的 `err instanceof PrescriptionScanError` 才會成立。
@@ -229,9 +242,10 @@ describe('PrescriptionScanDialog：辨識失敗的三種原因與上傳錯誤', 
       <PrescriptionScanDialog onScanned={vi.fn()} onManualFallback={vi.fn()} onClose={vi.fn()} />,
     );
 
-  const selectFile = () => {
+  const selectFile = async () => {
     const input = screen.getByLabelText('拍照或選擇照片', { selector: 'input' });
     fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(await screen.findByRole('button', { name: '裁切完成，開始辨識' }));
   };
 
   it.each([
@@ -244,7 +258,7 @@ describe('PrescriptionScanDialog：辨識失敗的三種原因與上傳錯誤', 
     );
     renderDialog();
 
-    selectFile();
+    await selectFile();
 
     expect(await screen.findByText(expectedTitle)).toBeInTheDocument();
     // 每種失敗都要能落回手動建立的路徑
@@ -257,7 +271,7 @@ describe('PrescriptionScanDialog：辨識失敗的三種原因與上傳錯誤', 
     );
     renderDialog();
 
-    selectFile();
+    await selectFile();
 
     expect(await screen.findByText('照片檔案太大')).toBeInTheDocument();
   });
@@ -268,9 +282,27 @@ describe('PrescriptionScanDialog：辨識失敗的三種原因與上傳錯誤', 
     );
     renderDialog();
 
-    selectFile();
+    await selectFile();
 
     expect(await screen.findByText('檔案格式不支援')).toBeInTheDocument();
+  });
+
+  it('確認裁切前不處理、不上傳照片', () => {
+    renderDialog();
+    fireEvent.change(screen.getByLabelText('拍照或選擇照片', { selector: 'input' }), { target: { files: [file] } });
+    expect(screen.getByRole('button', { name: '裁切完成，開始辨識' })).toBeInTheDocument();
+    expect(preparePrescriptionImage).not.toHaveBeenCalled();
+    expect(medicationApi.scanPrescription).not.toHaveBeenCalled();
+  });
+
+  it('前處理失敗不自動上傳；只有明確選擇原圖才上傳', async () => {
+    vi.mocked(preparePrescriptionImage).mockRejectedValueOnce(new Error('decode failed'));
+    vi.mocked(medicationApi.scanPrescription).mockResolvedValue(makeDraft());
+    renderDialog(); await selectFile();
+    expect(await screen.findByText('無法處理這張照片')).toBeInTheDocument();
+    expect(medicationApi.scanPrescription).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '直接傳送原圖' }));
+    await waitFor(() => expect(medicationApi.scanPrescription).toHaveBeenCalledWith(file));
   });
 
   it('辨識成功時呼叫 onScanned 並帶回草稿', async () => {
@@ -281,7 +313,7 @@ describe('PrescriptionScanDialog：辨識失敗的三種原因與上傳錯誤', 
       <PrescriptionScanDialog onScanned={onScanned} onManualFallback={vi.fn()} onClose={vi.fn()} />,
     );
 
-    selectFile();
+    await selectFile();
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledWith(draft));
   });
@@ -1913,6 +1945,7 @@ describe('MedicationsPage：送出後的 toast 反映實際發生的事（Fix 3�
     fireEvent.change(fileInput, {
       target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
     });
+    fireEvent.click(await screen.findByRole('button', { name: '裁切完成，開始辨識' }));
 
     fireEvent.click(await screen.findByRole('checkbox', { name: '這個藥不用定時提醒我' }));
     fireEvent.click(screen.getByRole('button', { name: '確認並送出' }));
@@ -1971,6 +2004,7 @@ describe('MedicationsPage：送出後的 toast 反映實際發生的事（Fix 3�
     fireEvent.change(fileInput, {
       target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
     });
+    fireEvent.click(await screen.findByRole('button', { name: '裁切完成，開始辨識' }));
 
     fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
 
@@ -2021,6 +2055,7 @@ describe('MedicationsPage：藥袋送出後的相衝警告', () => {
     fireEvent.change(fileInput, {
       target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
     });
+    fireEvent.click(await screen.findByRole('button', { name: '裁切完成，開始辨識' }));
     fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
 
     const dialog = await screen.findByRole('alertdialog');
@@ -2054,6 +2089,7 @@ describe('MedicationsPage：藥袋送出後的相衝警告', () => {
     fireEvent.change(fileInput, {
       target: { files: [new File(['fake-image'], 'bag.jpg', { type: 'image/jpeg' })] },
     });
+    fireEvent.click(await screen.findByRole('button', { name: '裁切完成，開始辨識' }));
     fireEvent.click(await screen.findByRole('button', { name: '確認並送出' }));
 
     expect(await screen.findByText('已建立 1 項藥品與對應提醒')).toBeInTheDocument();
