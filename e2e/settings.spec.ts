@@ -9,10 +9,13 @@ import { stubSettings } from './stubs';
  * 即時生效與 PATCH 契約、API 失敗時退回本機設定。
  */
 
-async function openPage(page: Page) {
-  await page.goto('/settings');
-  // 「語言設定」「通知設定」也含「設定」二字，要 exact
-  await expect(page.getByRole('heading', { name: t('settings.title'), exact: true })).toBeVisible();
+async function openPage(page: Page, section = 'display') {
+  const titles: Record<string, string> = {
+    display: 'settings.displayTitle', voice: 'settings.voiceTitle',
+    notifications: 'settings.notificationsTitle', account: 'settings.accountTitle',
+  };
+  await page.goto(`/settings/${section}`);
+  await expect(page.getByRole('heading', { name: t(titles[section]), level: 1 })).toBeVisible();
 }
 
 const rootFontSize = (page: Page) =>
@@ -31,13 +34,13 @@ test.describe('設定同步', () => {
       voice_rate: 'slow',
     });
     // 不用 openPage：語言會立刻切成英文，中文標題只閃一下
-    await authedPage.goto('/settings');
+    await authedPage.goto('/settings/voice');
 
     await expect.poll(() => rootFontSize(authedPage)).toBe('24px');
     await expect.poll(() => rootHasClass(authedPage, 'high-contrast')).toBe(false);
     // 語言換成英文後，標題會是英文文案
     await expect(
-      authedPage.getByRole('heading', { name: messages.en['settings.title'], exact: true }),
+      authedPage.getByRole('heading', { name: messages.en['settings.voiceTitle'], level: 1 }),
     ).toBeVisible();
     await expect(
       authedPage.getByRole('group', { name: messages.en['settings.voiceRateLabel'] })
@@ -79,7 +82,7 @@ test.describe('各項設定', () => {
     await authedPage.getByRole('option', { name: 'Bahasa Indonesia' }).click();
 
     await expect(
-      authedPage.getByRole('heading', { name: messages.id['settings.title'], exact: true }),
+      authedPage.getByRole('heading', { name: messages.id['settings.displayTitle'], level: 1 }),
     ).toBeVisible();
     await expect.poll(() => patches.map((c) => c.body)).toContainEqual({ language: 'id' });
     expect((await storedSettings(authedPage)).language).toBe('id');
@@ -87,7 +90,7 @@ test.describe('各項設定', () => {
     // 重新整理後仍是印尼語
     await authedPage.reload();
     await expect(
-      authedPage.getByRole('heading', { name: messages.id['settings.title'], exact: true }),
+      authedPage.getByRole('heading', { name: messages.id['settings.displayTitle'], level: 1 }),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -108,7 +111,7 @@ test.describe('各項設定', () => {
 
   test('通知與語音開關各自送出對應的 snake_case 欄位', async ({ authedPage }) => {
     const { patches } = await stubSettings(authedPage);
-    await openPage(authedPage);
+    await openPage(authedPage, 'notifications');
 
     const rows: Array<[string, string]> = [
       ['settings.medicationReminder', 'notify_reminder'],
@@ -117,6 +120,10 @@ test.describe('各項設定', () => {
       ['settings.voiceReplyToggle', 'voice_reply_enabled'],
     ];
     for (const [labelKey, field] of rows) {
+      if (field === 'voice_reply_enabled') {
+        await authedPage.getByRole('link', { name: t('personalHealth.return'), exact: true }).click();
+        await authedPage.getByRole('link', { name: new RegExp(t('settings.voiceTitle')) }).click();
+      }
       const toggle = authedPage.getByRole('switch', {
         name: t('settings.toggleAria', { label: t(labelKey) }),
       });
@@ -134,7 +141,7 @@ test.describe('各項設定', () => {
 
   test('語速與音色為互斥單選，選取後 PATCH 對應值', async ({ authedPage }) => {
     const { patches } = await stubSettings(authedPage);
-    await openPage(authedPage);
+    await openPage(authedPage, 'voice');
 
     const rate = authedPage.getByRole('group', { name: t('settings.voiceRateLabel') });
     await rate.getByRole('button', { name: t('settings.voiceRateFast') }).click();
@@ -171,5 +178,53 @@ test.describe('各項設定', () => {
 
     await expect.poll(() => rootFontSize(authedPage)).toBe('16px');
     expect((await storedSettings(authedPage)).fontSize).toBe('normal');
+  });
+});
+
+
+test.describe('設定分類導覽', () => {
+  test('從總覽開啟四個子頁並返回，通知切換只送一次且設定不重抓', async ({ authedPage }) => {
+    const { gets, patches } = await stubSettings(authedPage);
+    await authedPage.goto('/settings');
+    await expect(authedPage.getByRole('heading', { name: t('settings.overviewTitle'), level: 1 })).toBeVisible();
+    await expect(authedPage.getByRole('switch')).toHaveCount(0);
+    await expect.poll(() => gets.length).toBeGreaterThan(0);
+    const initialGets = gets.length;
+
+    for (const [section, title] of [
+      ['display', 'settings.displayTitle'], ['voice', 'settings.voiceTitle'],
+      ['notifications', 'settings.notificationsTitle'], ['account', 'settings.accountTitle'],
+    ]) {
+      await authedPage.getByRole('link', { name: new RegExp(t(title)) }).click();
+      await expect(authedPage).toHaveURL(new RegExp(`/settings/${section}$`));
+      await expect(authedPage.getByRole('heading', { name: t(title), level: 1 })).toBeVisible();
+      if (section === 'notifications') {
+        await authedPage.getByRole('switch', {
+          name: t('settings.toggleAria', { label: t('settings.medicalNews') }),
+        }).click();
+        await expect.poll(() => patches.map((call) => call.body)).toEqual([{ notify_medical_news: false }]);
+      }
+      await authedPage.getByRole('link', { name: t('personalHealth.return'), exact: true }).click();
+      await expect(authedPage).toHaveURL(/\/settings$/);
+    }
+    expect(gets).toHaveLength(initialGets);
+    await authedPage.getByRole('link', { name: new RegExp(t('settings.notificationsTitle')) }).click();
+    await expect(authedPage.getByRole('switch', {
+      name: t('settings.toggleAria', { label: t('settings.medicalNews') }),
+    })).not.toBeChecked();
+  });
+
+  test('顯示頁保留淺色、深色與跟隨系統，重載後仍採用選擇', async ({ authedPage }) => {
+    await stubSettings(authedPage);
+    await openPage(authedPage);
+    const group = authedPage.getByRole('group', { name: t('settings.themeTitle') });
+    await group.getByRole('button', { name: t('settings.theme.dark'), exact: true }).click();
+    await expect.poll(() => rootHasClass(authedPage, 'dark')).toBe(true);
+    await authedPage.reload();
+    await expect(group.getByRole('button', { name: t('settings.theme.dark'), exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await group.getByRole('button', { name: t('settings.theme.light'), exact: true }).click();
+    await expect.poll(() => rootHasClass(authedPage, 'dark')).toBe(false);
+    await group.getByRole('button', { name: t('settings.theme.system'), exact: true }).click();
+    await expect.poll(() => authedPage.evaluate(() => localStorage.getItem('care-theme'))).toBe('system');
   });
 });

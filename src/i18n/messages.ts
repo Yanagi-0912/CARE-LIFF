@@ -1,3 +1,9 @@
+import { profileNavigationMessages } from './profileNavigationMessages';
+import { familyNavigationMessages } from './familyNavigationMessages';
+import { settingsNavigationMessages } from './settingsNavigationMessages';
+import { featureNavigationMessages } from './featureNavigationMessages';
+import { uiRefreshMessages } from './uiRefreshMessages';
+import { redesignMessages } from './redesignMessages';
 import { nearbyFeatureMessages } from './nearbyMessages';
 import { medicationFeatureMessages } from './medicationMessages';
 import { appointmentFeatureMessages } from './appointmentMessages';
@@ -522,7 +528,7 @@ const knowledgeFeatureMessages: Record<SupportedLanguage, Record<string, string>
   },
 };
 
-export const messages: Record<SupportedLanguage, Record<string, string>> = {
+const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
   'zh-TW': {
     ...knowledgeFeatureMessages['zh-TW'],
     ...nearbyFeatureMessages['zh-TW'],
@@ -538,6 +544,11 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages['zh-TW'],
     ...systemMessages['zh-TW'],
     ...lostMessages['zh-TW'],
+    ...uiRefreshMessages['zh-TW'],
+    ...profileNavigationMessages['zh-TW'],
+    ...familyNavigationMessages['zh-TW'],
+    ...settingsNavigationMessages['zh-TW'],
+    ...featureNavigationMessages['zh-TW'],
     'nav.home': '首頁',
     'nav.health': '健康',
     'nav.family': '家庭',
@@ -677,6 +688,11 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.en,
     ...systemMessages.en,
     ...lostMessages.en,
+    ...uiRefreshMessages.en,
+    ...profileNavigationMessages.en,
+    ...familyNavigationMessages.en,
+    ...settingsNavigationMessages.en,
+    ...featureNavigationMessages.en,
     'nav.home': 'Home',
     'nav.health': 'Health',
     'nav.family': 'Family',
@@ -815,6 +831,11 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.id,
     ...systemMessages.id,
     ...lostMessages.id,
+    ...uiRefreshMessages.id,
+    ...profileNavigationMessages.id,
+    ...familyNavigationMessages.id,
+    ...settingsNavigationMessages.id,
+    ...featureNavigationMessages.id,
     'nav.home': 'Beranda',
     'nav.health': 'Kesehatan',
     'nav.family': 'Keluarga',
@@ -953,6 +974,11 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.vi,
     ...systemMessages.vi,
     ...lostMessages.vi,
+    ...uiRefreshMessages.vi,
+    ...profileNavigationMessages.vi,
+    ...familyNavigationMessages.vi,
+    ...settingsNavigationMessages.vi,
+    ...featureNavigationMessages.vi,
     'nav.home': 'Trang chủ',
     'nav.health': 'Sức khỏe',
     'nav.family': 'Gia đình',
@@ -1091,6 +1117,11 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.th,
     ...systemMessages.th,
     ...lostMessages.th,
+    ...uiRefreshMessages.th,
+    ...profileNavigationMessages.th,
+    ...familyNavigationMessages.th,
+    ...settingsNavigationMessages.th,
+    ...featureNavigationMessages.th,
     'nav.home': 'หน้าหลัก',
     'nav.health': 'สุขภาพ',
     'nav.family': 'ครอบครัว',
@@ -1229,6 +1260,11 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.ja,
     ...systemMessages.ja,
     ...lostMessages.ja,
+    ...uiRefreshMessages.ja,
+    ...profileNavigationMessages.ja,
+    ...familyNavigationMessages.ja,
+    ...settingsNavigationMessages.ja,
+    ...featureNavigationMessages.ja,
     'nav.home': 'ホーム',
     'nav.health': '健康',
     'nav.family': '家族',
@@ -1353,3 +1389,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     'family.inviteDialog.close': '閉じる',
   },
 };
+
+export const messages = Object.fromEntries(
+  Object.entries(baseMessages).map(([lang, copy]) => [lang, { ...copy, ...redesignMessages[lang as SupportedLanguage] }]),
+) as Record<SupportedLanguage, Record<string, string>>;

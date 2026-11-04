@@ -15,7 +15,7 @@ async function openPage(page: Page, path = '/knowledge-reports') {
     await expect(page.getByRole('dialog')).toBeVisible();
     return;
   }
-  await expect(page.getByRole('heading', { name: t('knowledgeReports.title') })).toBeVisible();
+  await expect(page.getByRole('heading', { name: t('home.knowledgeReports'), exact: true })).toBeVisible();
 }
 
 const rowButton = (page: Page, question: string) =>

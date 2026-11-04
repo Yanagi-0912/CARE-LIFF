@@ -15,6 +15,7 @@ import {
 import { fetchLostSession, LostApiError, markLostFound } from '../../api/lostApi';
 import type { LostSessionView } from '../../types/lost';
 import { queryKeys } from '@/lib/queryClient';
+import { FeaturePage } from '@/components/FeaturePage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -146,7 +147,7 @@ function ComingCard({ name, presence }: { name: string; presence: FamilyPresence
  * 聊天室，也會吃光推播額度。結束（已找到、長輩說安全了、時間到）之後停止輪詢，
  * 最後位置仍留在地圖上。
  */
-export default function LostWatchPage() {
+function LostWatchContent() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get('user')?.trim() || '';
@@ -235,9 +236,9 @@ export default function LostWatchPage() {
     <div className="mx-auto flex max-w-[720px] flex-col gap-4">
       <Card>
         <CardContent className="flex flex-col gap-3">
-          <h1 className="text-[clamp(1.4rem,4vw,1.85rem)] leading-tight font-bold">
+          <h2 className="text-[clamp(1.4rem,4vw,1.85rem)] leading-tight font-bold">
             {t('lost.watch.title', { name })}
-          </h1>
+          </h2>
           <StatusLine view={view} stale={stale} />
           {view.patient_words && (
             <blockquote className="rounded-md border-l-4 border-primary bg-surface-2 px-4 py-3">
@@ -352,4 +353,11 @@ export default function LostWatchPage() {
       {(stale || view.status === 'expired') && <Call110Link />}
     </div>
   );
+}
+
+export default function LostWatchPage() {
+  const { t } = useTranslation();
+  return <FeaturePage title={t('familyNavigation.location')} backTo="/family/location">
+    <LostWatchContent />
+  </FeaturePage>;
 }

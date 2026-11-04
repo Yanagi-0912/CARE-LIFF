@@ -86,7 +86,7 @@ describe('KnowledgeReportsPage', () => {
     renderPage();
 
     expect(
-      screen.getByRole('heading', { name: '一起讓醫療資訊更可靠' }),
+      screen.getByRole('heading', { name: '知識回報' }),
     ).toBeInTheDocument();
 
     await waitFor(() => {
@@ -143,7 +143,7 @@ describe('KnowledgeReportsPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Cùng xây dựng thông tin y tế đáng tin cậy hơn',
+        name: i18n.t('home.knowledgeReports'),
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Quay lại LINE để hỏi/ })).toBeInTheDocument();

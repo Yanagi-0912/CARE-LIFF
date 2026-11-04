@@ -1,6 +1,23 @@
 import i18n, { getInitialLanguage, isSupportedLanguage } from '../i18n';
+import { messages, type SupportedLanguage } from '../i18n/messages';
+import { featureNavigationMessages } from '../i18n/featureNavigationMessages';
+import { familyNavigationMessages } from '../i18n/familyNavigationMessages';
+import { profileNavigationMessages } from '../i18n/profileNavigationMessages';
+import { settingsNavigationMessages } from '../i18n/settingsNavigationMessages';
 
 describe('多語系初始化邏輯', () => {
+  it('新版分類入口與個資流程的六語文案都已載入，不依賴 fallback', () => {
+    const bundles = [featureNavigationMessages, familyNavigationMessages, profileNavigationMessages, settingsNavigationMessages];
+    for (const bundle of bundles) {
+      for (const language of Object.keys(messages) as SupportedLanguage[]) {
+        for (const key of Object.keys(bundle['zh-TW'])) {
+          expect(bundle[language][key], `${language}: ${key}`).toBeTypeOf('string');
+          expect(bundle[language][key].trim(), `${language}: ${key}`).not.toBe('');
+          expect(messages[language][key], `${language}: ${key} 未載入`).toBe(bundle[language][key]);
+        }
+      }
+    }
+  });
   beforeEach(() => {
     localStorage.clear();
     void i18n.changeLanguage('zh-TW');

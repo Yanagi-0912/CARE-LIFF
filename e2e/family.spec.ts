@@ -20,9 +20,74 @@ const GRANDMA = FAMILY_MEMBERS[0];
 const UNSET = FAMILY_MEMBERS[1];
 
 async function openPage(page: Page) {
-  await page.goto('/family');
-  await expect(page.getByRole('heading', { name: t('family.title') })).toBeVisible();
+  await page.goto('/family/members');
+  await expect(page.getByRole('heading', { name: t('familyNavigation.members') })).toBeVisible();
 }
+
+test.describe('家庭分類與子頁', () => {
+  test('三個分類入口可到達真實功能，返回後保留首頁', async ({ authedPage }) => {
+    await stubFamily(authedPage, FAMILY_MEMBERS);
+    await authedPage.goto('/family');
+    await expect(authedPage.getByRole('heading', { name: t('familyNavigation.title') })).toBeVisible();
+    for (const [key, path] of [
+      ['members', '/family/members'],
+      ['permissions', '/family/permissions'],
+      ['location', '/family/location'],
+    ]) {
+      await expect(authedPage.getByRole('link', { name: new RegExp(t(`familyNavigation.${key}`)) })).toHaveAttribute('href', path);
+    }
+    await authedPage.getByRole('link', { name: new RegExp(t('familyNavigation.members')) }).click();
+    await expect(authedPage.getByRole('button', { name: GRANDMA.display_name })).toBeVisible();
+    await expect(authedPage.getByRole('button', { name: t('family.inviteBtn') })).toBeVisible();
+    await authedPage.getByRole('link', { name: t('personalHealth.return') }).click();
+    await expect(authedPage).toHaveURL(/\/family$/);
+    await authedPage.goto('/family/unknown');
+    await expect(authedPage).toHaveURL(/\/family$/);
+    await expect(authedPage.getByRole('heading', { name: t('familyNavigation.title') })).toBeVisible();
+  });
+
+  test('直接開照護權限即可設定角色，更新後顯示實際角色', async ({ authedPage }) => {
+    await stubFamily(authedPage, [GRANDMA]);
+    let role = 'MEMBER';
+    await stubApi(authedPage, {
+      path: '/api/family/members/roles',
+      respond: () => ({ status: 200, body: [
+        { user_id: GRANDMA.user_id, display_name: GRANDMA.display_name, family_role: role, effective_family_role: role },
+      ] }),
+    });
+    const changes = await stubApi(authedPage, {
+      path: `/api/family/members/${GRANDMA.user_id}/role`,
+      method: 'PUT',
+      respond: (request) => {
+        role = (request.body as { family_role: string }).family_role;
+        return { status: 200, body: familyTreeBody([{ ...GRANDMA, family_role: role }]).family_tree };
+      },
+    });
+    await authedPage.goto('/family/permissions');
+    await expect(authedPage.getByRole('heading', { name: t('familyNavigation.permissions') })).toBeVisible();
+    await authedPage.getByRole('button', { name: t('familyRole.guardian'), exact: true }).click();
+    await expect(authedPage.getByRole('button', { name: t('familyRole.guardian'), exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(authedPage.getByText(t('familyRole.manage.saved', { name: GRANDMA.display_name }))).toBeVisible();
+    expect(changes.map((change) => change.body)).toEqual([{ family_role: 'GUARDIAN' }]);
+  });
+
+  for (const [status, key] of [[403, 'lost.watch.forbidden'], [404, 'lost.watch.notFound']] as const) {
+    test(`家人位置由後端區分 ${status}，不以健康資料權限代替`, async ({ authedPage }) => {
+      await stubFamily(authedPage, [{ ...GRANDMA, my_permissions: NO_PERMISSIONS }]);
+      const calls = await stubApi(authedPage, {
+        path: `/api/lost/${GRANDMA.user_id}`,
+        status,
+        body: { detail: 'location unavailable' },
+      });
+      await authedPage.goto('/family/location');
+      await expect(authedPage.getByText(t('familyNavigation.locationNotice'))).toBeVisible();
+      await authedPage.getByRole('link', { name: new RegExp(GRANDMA.display_name) }).click();
+      await expect(authedPage).toHaveURL(new RegExp(`/lost/watch\\?user=${GRANDMA.user_id}$`));
+      await expect(authedPage.getByText(t(key))).toBeVisible();
+      expect(calls).toHaveLength(1);
+    });
+  }
+});
 
 test.describe('族譜列表', () => {
   test('載入中顯示骨架屏，之後進入空狀態並提供邀請鈕', async ({ authedPage }) => {
