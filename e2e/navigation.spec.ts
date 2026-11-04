@@ -12,25 +12,15 @@ import { AUTH_TOKEN, expect, t, test } from './fixtures';
  * 所以兩者不會互相命中。
  */
 
-/** 桌面版側欄的項目，順序即畫面順序（非管理員） */
-const SIDEBAR_ITEMS = [
-  { labelKey: 'nav.home', path: '/' },
+/** 側欄與底部導覽共用的四個分頁，順序即畫面順序 */
+const NAV_ITEMS = [
+  { labelKey: 'nav.tools', path: '/' },
+  { labelKey: 'nav.notifications', path: '/reminders' },
   { labelKey: 'nav.health', path: '/personalhealth' },
-  { labelKey: 'nav.reminders', path: '/reminders' },
-  { labelKey: 'nav.family', path: '/family' },
   { labelKey: 'nav.settings', path: '/settings' },
 ] as const;
-
-/** 手機底部導覽的五個 tab */
-const BOTTOM_TABS = [
-  { labelKey: 'nav.home', path: '/' },
-  { labelKey: 'nav.health', path: '/personalhealth' },
-  // 「提醒」格導向新版分類入口 /reminders；
-  // 每個測試都是新的 session，所以落在預設的用藥
-  { labelKey: 'nav.reminders', path: '/reminders' },
-  { labelKey: 'nav.family', path: '/family' },
-  { labelKey: 'nav.settings', path: '/settings' },
-] as const;
+const SIDEBAR_ITEMS = NAV_ITEMS;
+const BOTTOM_TABS = NAV_ITEMS;
 
 test.describe('Header 頂部列', () => {
   test.beforeEach(async ({ authedPage }) => {
@@ -80,7 +70,7 @@ test.describe('Sidebar 側邊導覽（桌面版面）', () => {
     const sidebar = authedPage.getByRole('complementary');
     await expect(sidebar.getByRole('button')).toHaveCount(SIDEBAR_ITEMS.length);
     await expect(
-      sidebar.getByRole('button', { name: t('nav.home') }),
+      sidebar.getByRole('button', { name: t('nav.tools') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 
@@ -101,14 +91,14 @@ test.describe('BottomNav 底部導覽（手機版面）', () => {
     await authedPage.goto('/');
   });
 
-  test('列出五個 tab，且當前頁面標記 aria-current', async ({ authedPage }) => {
+  test('列出四個 tab，且當前頁面標記 aria-current', async ({ authedPage }) => {
     const bottomNav = authedPage.getByRole('navigation', {
       name: t('sidebar.mainNavAriaLabel'),
     });
 
     await expect(bottomNav.getByRole('button')).toHaveCount(BOTTOM_TABS.length);
     await expect(
-      bottomNav.getByRole('button', { name: t('nav.home') }),
+      bottomNav.getByRole('button', { name: t('nav.tools') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 
@@ -132,7 +122,7 @@ test.describe('舊路徑轉址', () => {
     await expect(authedPage).toHaveURL(/\/reminders\/medications\?from=richmenu$/);
   });
 
-  test('/medications/visits 轉到提醒底下的看診紀錄，底部導覽與子分頁都停在用藥', async ({ authedPage }) => {
+  test('/medications/visits 轉到通知底下的看診紀錄，底部導覽停在通知、子分頁停在用藥', async ({ authedPage }) => {
     await authedPage.goto('/medications/visits');
     await expect(authedPage).toHaveURL(/\/reminders\/medications\/visits$/);
     await expect(authedPage.getByRole('heading', { name: t('visits.title'), level: 1 })).toBeVisible();
@@ -144,7 +134,7 @@ test.describe('舊路徑轉址', () => {
     await expect(
       authedPage
         .getByRole('navigation', { name: t('sidebar.mainNavAriaLabel') })
-        .getByRole('button', { name: t('nav.reminders') }),
+        .getByRole('button', { name: t('nav.notifications') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 });

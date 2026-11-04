@@ -168,11 +168,11 @@ test('更多選項保留規則、帳號、次要匯出與點選作答', async ({
   expect(saves[0].body).toMatchObject({ label: 1 });
 });
 
-test('桌面側欄入口與鍵盤操作仍可使用', async ({ authedPage: page }, testInfo) => {
+test('桌面版從工具首頁進入，鍵盤操作仍可使用', async ({ authedPage: page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const saves = await stubAnnotations(page);
   await page.goto('/');
-  await page.locator('aside').getByRole('button', { name: t('sidebar.annotations') }).click();
+  await page.getByTestId('home-features').getByRole('button', { name: new RegExp(`^${t('sidebar.annotations')}`) }).click();
   await page.getByRole('button', { name: '開始／繼續健康相關標註' }).click();
   await expect(page.getByRole('button', { name: '健康相關（J）', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('annotation-desktop.png'), fullPage: true });
