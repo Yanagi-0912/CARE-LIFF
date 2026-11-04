@@ -4,6 +4,7 @@ import { settingsNavigationMessages } from './settingsNavigationMessages';
 import { featureNavigationMessages } from './featureNavigationMessages';
 import { uiRefreshMessages } from './uiRefreshMessages';
 import { redesignMessages } from './redesignMessages';
+import { settingsRedesignMessages } from './settingsRedesignMessages';
 import { nearbyFeatureMessages } from './nearbyMessages';
 import { medicationFeatureMessages } from './medicationMessages';
 import { appointmentFeatureMessages } from './appointmentMessages';
@@ -1391,5 +1392,9 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
 };
 
 export const messages = Object.fromEntries(
-  Object.entries(baseMessages).map(([lang, copy]) => [lang, { ...copy, ...redesignMessages[lang as SupportedLanguage] }]),
+  Object.entries(baseMessages).map(([lang, copy]) => [lang, {
+    ...copy,
+    ...redesignMessages[lang as SupportedLanguage],
+    ...settingsRedesignMessages[lang as SupportedLanguage],
+  }]),
 ) as Record<SupportedLanguage, Record<string, string>>;
