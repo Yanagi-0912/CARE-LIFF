@@ -5,6 +5,7 @@ import { featureNavigationMessages } from './featureNavigationMessages';
 import { uiRefreshMessages } from './uiRefreshMessages';
 import { redesignMessages } from './redesignMessages';
 import { settingsRedesignMessages } from './settingsRedesignMessages';
+import { healthRedesignMessages } from './healthRedesignMessages';
 import { nearbyFeatureMessages } from './nearbyMessages';
 import { medicationFeatureMessages } from './medicationMessages';
 import { appointmentFeatureMessages } from './appointmentMessages';
@@ -1372,5 +1373,6 @@ export const messages = Object.fromEntries(
     ...copy,
     ...redesignMessages[lang as SupportedLanguage],
     ...settingsRedesignMessages[lang as SupportedLanguage],
+    ...healthRedesignMessages[lang as SupportedLanguage],
   }]),
 ) as Record<SupportedLanguage, Record<string, string>>;

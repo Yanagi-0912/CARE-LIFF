@@ -11,6 +11,7 @@ import { ASSIGNABLE_FAMILY_ROLES, FAMILY_ROLE_LABEL_KEY } from '../../types/fami
 import { queryKeys } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 import { RoleAssignmentNotice } from './RoleAssignmentNotice';
+import { ROLE_EXPLAIN_KEY } from './roleAccess';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -19,14 +20,6 @@ import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-
-/** 每個角色配一句白話說明。長輩要能從這句話判斷該選哪個，而不是從角色名稱猜。 */
-const EXPLAIN_KEY: Record<FamilyRole, string> = {
-  OWNER: 'familyRole.explain.guardian', // 不會被渲染，OWNER 不是可指派的角色
-  GUARDIAN: 'familyRole.explain.guardian',
-  CAREGIVER: 'familyRole.explain.caregiver',
-  MEMBER: 'familyRole.explain.member',
-};
 
 /**
  * 擁有者設定「誰能看我的哪些資料」。
@@ -175,9 +168,9 @@ export function RoleManagerContent() {
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       {notYetEnforced
                         ? t('familyRole.explain.pending', {
-                            text: t(EXPLAIN_KEY[entry.family_role]),
+                            text: t(ROLE_EXPLAIN_KEY[entry.family_role]),
                           })
-                        : t(EXPLAIN_KEY[entry.family_role])}
+                        : t(ROLE_EXPLAIN_KEY[entry.family_role])}
                     </p>
                   )}
                 </Item>

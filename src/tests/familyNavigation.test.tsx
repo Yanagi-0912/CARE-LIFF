@@ -50,6 +50,7 @@ function renderPage(path = '/family') {
       <Routes>
         <Route path="/family/*" element={<FamilyPage />} />
         <Route path="/lost/watch" element={<WatchProbe />} />
+        <Route path="/personalhealth" element={<p>health-home</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -65,22 +66,16 @@ describe('家庭分類導覽', () => {
     ]);
   });
 
-  it('首頁的三個入口可分別到成員、權限與位置，成員頁仍可邀請家人', async () => {
-    renderPage();
-    const members = screen.getByRole('link', { name: new RegExp(i18n.t('familyNavigation.members')) });
-    expect(members).toHaveAttribute('href', '/family/members');
-    expect(screen.getByRole('link', { name: new RegExp(i18n.t('familyNavigation.permissions')) })).toHaveAttribute('href', '/family/permissions');
-    expect(screen.getByRole('link', { name: new RegExp(i18n.t('familyNavigation.location')) })).toHaveAttribute('href', '/family/location');
-    fireEvent.click(members);
-    expect(await screen.findByRole('button', { name: member.display_name })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /加入家人/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: i18n.t('personalHealth.return') }));
-    expect(screen.getByRole('link', { name: new RegExp(i18n.t('familyNavigation.location')) })).toBeInTheDocument();
+  // 加入成功頁、LINE 訊息與舊書籤仍指向 /family 與 /family/members；家人名單已併進健康首頁
+  it.each(['/family', '/family/members', '/family/unknown'])('%s 轉到健康首頁', (path) => {
+    renderPage(path);
+    expect(screen.getByText('health-home')).toBeInTheDocument();
   });
 
-  it('未知家庭網址回到分類首頁', () => {
-    renderPage('/family/unknown');
-    expect(screen.getByRole('link', { name: new RegExp(i18n.t('familyNavigation.members')) })).toHaveAttribute('href', '/family/members');
+  it('家人資料頁可前往位置分享，並正確編碼 ID', async () => {
+    renderPage(`/family/members/${encodeURIComponent(member.user_id)}`);
+    fireEvent.click(await screen.findByRole('link', { name: '查看家人位置' }));
+    expect(screen.getByTestId('selected-family-member')).toHaveTextContent('U-family+one&two');
   });
 
   it('直接開啟權限頁就能指派角色，送出既有 API 並更新角色狀態', async () => {
@@ -112,12 +107,12 @@ describe('家庭分類導覽', () => {
     expect(screen.getByTestId('selected-family-member')).toHaveTextContent('U-family+one&two');
   });
 
-  it.each(['/family/permissions', '/family/location'])('%s 無家人時可前往成員頁邀請', async (path) => {
+  it.each(['/family/permissions', '/family/location'])('%s 無家人時可回健康首頁邀請', async (path) => {
     vi.mocked(familyApi.fetchFamilyTree).mockResolvedValue(tree([]));
     renderPage(path);
     expect(await screen.findByText('還沒有家庭成員')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: i18n.t('familyNavigation.members') }));
-    expect(await screen.findByRole('button', { name: /加入家人/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: '回到健康' }));
+    expect(screen.getByText('health-home')).toBeInTheDocument();
   });
 
   it.each(['/family/permissions', '/family/location'])('%s 族譜失敗時可重試恢復', async (path) => {

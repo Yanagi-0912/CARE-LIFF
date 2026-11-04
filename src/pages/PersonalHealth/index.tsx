@@ -1,19 +1,30 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, ChevronRightIcon, FileTextIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react';
+import { ArrowLeftIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react';
 import liff from '@line/liff';
 import { toast } from 'sonner';
 import { getPersonalHealthProfile, upsertPersonalHealthProfile, type HealthProfile, type UpsertPersonalHealthPayload } from '@/api/profileApi';
 import { useLiff } from '@/hooks/useLiff';
 import { queryKeys } from '@/lib/queryClient';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { CHRONIC_OPTIONS, GENDER_OPTIONS, profileToFormValues, type HealthData } from './healthForm';
 import ProfileEditor from './ProfileEditor';
+import { FamilySection } from '../Family/FamilySection';
 
 type View = 'summary' | 'details' | 'edit';
 
@@ -62,6 +73,15 @@ export default function PersonalHealthPage() {
     const discardEditor = () => {
         setEditorSession(current => ({ ...current, id: current.id + 1 }));
         returnToView('details');
+    };
+    const editorForm = useRef<HTMLFormElement>(null);
+    const [editorDirty, setEditorDirty] = useState(false);
+    const handleDirtyChange = useCallback((dirty: boolean) => setEditorDirty(dirty), []);
+    const [confirmingLeave, setConfirmingLeave] = useState(false);
+    // 有改過才問；沒改過就直接離開，不要多一道關卡。
+    const leaveEditor = () => {
+        if (editorDirty) setConfirmingLeave(true);
+        else discardEditor();
     };
     const saveProfile = async (form: HealthData) => {
         // isMutating 立即讀取快取狀態，避免 React 尚未重繪時的連續送出。
@@ -146,7 +166,7 @@ export default function PersonalHealthPage() {
                     <Button variant="outline" size="icon" className="shrink-0 rounded-full"
                         aria-label={t('personalHealth.return')}
                         disabled={isSaving}
-                        onClick={() => view === 'edit' ? discardEditor() : returnToView('summary')}>
+                        onClick={() => view === 'edit' ? leaveEditor() : returnToView('summary')}>
                         <ArrowLeftIcon aria-hidden="true" />
                     </Button>
                 )}
@@ -211,16 +231,32 @@ export default function PersonalHealthPage() {
             {profile !== undefined && (view === 'edit' || editorSession.active) && (
                 <div hidden={view !== 'edit'}>
                     <ProfileEditor key={editorSession.id} profile={profile} liffName={liffName}
-                        isSaving={isSaving} onSave={saveProfile} onCancel={discardEditor} />
+                        isSaving={isSaving} onSave={saveProfile} onCancel={leaveEditor}
+                        onDirtyChange={handleDirtyChange} formRef={editorForm} />
                 </div>
             )}
-            {view === 'summary' && (
-                    <button type="button" className="care-entry-row" onClick={() => navigate('/personalhealth/consult')}>
-                        <span className="care-entry-icon"><FileTextIcon aria-hidden="true" /></span>
-                        <span className="min-w-0 flex-1"><strong className="block text-lg">{t('personalHealth.viewConsult')}</strong><span className="text-sm text-muted-foreground">{t('personalHealth.consultDesc')}</span></span>
-                        <ChevronRightIcon className="size-5 shrink-0 text-faint" aria-hidden="true" />
-                    </button>
-            )}
+            <AlertDialog open={confirmingLeave} onOpenChange={setConfirmingLeave}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t('personalHealth.leave.title')}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base">{t('personalHealth.leave.desc')}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="h-auto min-h-11 py-2 whitespace-normal" onClick={discardEditor}>
+                            {t('personalHealth.leave.discard')}
+                        </AlertDialogCancel>
+                        {/* 走表單本身的送出：驗證、自動補上沒按「新增」的病名與防重複送出都在那裡。
+                            驗證沒過就留在編輯畫面，錯誤訊息照常出現。 */}
+                        <AlertDialogAction className="h-auto min-h-11 py-2 whitespace-normal" onClick={() => {
+                            setConfirmingLeave(false);
+                            editorForm.current?.requestSubmit();
+                        }}>
+                            {t('personalHealth.leave.save')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {view === 'summary' && <FamilySection />}
         </div>
     );
 }

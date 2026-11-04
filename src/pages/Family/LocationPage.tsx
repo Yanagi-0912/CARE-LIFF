@@ -9,7 +9,7 @@ export default function FamilyLocationPage() {
   const { t } = useTranslation();
   const { members, loading, error, refetch } = useFamily();
   return (
-    <FeaturePage title={t('familyNavigation.location')} description={t('familyNavigation.locationSelect')} backTo="/family">
+    <FeaturePage title={t('familyNavigation.location')} description={t('familyNavigation.locationSelect')} backTo="/personalhealth">
       <div className="mb-5">
         <Alert>
           <InfoIcon aria-hidden="true" />
