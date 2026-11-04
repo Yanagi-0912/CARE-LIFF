@@ -6,6 +6,7 @@ import {
   CalendarHeartIcon,
   DropletIcon,
   FootprintsIcon,
+  FileTextIcon,
   HeartPulseIcon,
   LockIcon,
   RotateCwIcon,
@@ -135,7 +136,7 @@ export default function HealthRecordsPage() {
     <FeaturePage
       title={isViewingFamily ? t('health.titleForMember', { name: targetName }) : isLanding ? t('health.title') : t(tabs.find(tab => tab.key === activeTab)!.labelKey)}
       description={isLanding ? t('health.description') : undefined}
-      backTo={isLanding ? (isViewingFamily ? '/family/members' : '/') : recordsUrl()}
+      backTo={isLanding ? (isViewingFamily ? `/family/members/${encodeURIComponent(targetUserId)}` : '/') : recordsUrl()}
     >
 
       {isViewingFamily && familyLoading ? (
@@ -178,6 +179,9 @@ export default function HealthRecordsPage() {
         <div className="flex flex-col gap-3">
           {tabs.map(({ key, labelKey, Icon }) => <EntryLink key={key} to={recordsUrl(key)} title={t(labelKey)}
             description={t(`featureNav.record.${key}`)} icon={Icon} />)}
+          {/* 諮詢紀錄只列自己的：看家人的諮詢紀錄走家人資料頁，那裡另有 PRIVATE 讀取權的判斷 */}
+          {!isViewingFamily && <EntryLink to="/personalhealth/consult" title={t('health.consultEntry')}
+            description={t('health.consultEntryDesc')} icon={FileTextIcon} />}
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={(value) => handleTabChange(String(value))}>

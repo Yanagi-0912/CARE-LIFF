@@ -9,6 +9,7 @@ import liff from '@line/liff';
 // 1. 匯入整包 API 物件，方便後面使用 vi.mocked 存取
 import * as api from '../api/profileApi';
 import type { HealthProfile } from '../api/profileApi';
+import type { FamilyMember } from '../types/family';
 import PersonalHealthPage from '../pages/PersonalHealth/index.tsx';
 import { queryKeys } from '@/lib/queryClient';
 import { Toaster } from '@/components/ui/sonner';
@@ -28,6 +29,16 @@ vi.mock('@line/liff', () => ({
         isLoggedIn: vi.fn(() => true),
     },
 }));
+// 健康首頁的家人區塊吃族譜；這裡只驗個人資料，族譜給固定資料，不打網路
+const familyState = {
+    members: [] as FamilyMember[],
+    roleAssignment: null,
+    loading: false,
+    error: null as string | null,
+    refetch: vi.fn(),
+};
+vi.mock('../hooks/useFamily', () => ({ useFamily: () => familyState }));
+
 function NavigationHarness() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -40,6 +51,7 @@ function NavigationHarness() {
         <Routes>
             <Route path="/personalhealth" element={<PersonalHealthPage />} />
             <Route path="/elsewhere" element={<p>其他頁面</p>} />
+            <Route path="/family/members/:userId" element={<p>家人資料頁</p>} />
         </Routes>
     </>;
 }
@@ -73,6 +85,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
     beforeEach(async () => {
         localStorage.clear();
         await i18n.changeLanguage('zh-TW');
+        familyState.members = [];
 
         // 3. 使用 vi.mocked 幫 API 函式與 SDK 重置紀錄
         vi.mocked(api.getPersonalHealthProfile).mockReset();
@@ -143,16 +156,69 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     });
 
-    it.each(['取消', '返回'])('%s 捨棄編輯並回到詳細資料', async (button) => {
+    it('摘要下方列出家人，並有新增家人與我的健康紀錄入口；諮詢紀錄移到健康紀錄頁', async () => {
+        setupApiMocks({ name: '陳明德', age: 65, gender: 'male', height: 165, weight: 60 });
+        familyState.members = [{ user_id: 'U-mom', display_name: '媽媽', relationship_type: 'parent', family_role: 'GUARDIAN' }];
+        renderProfile();
+        expect(await screen.findByText('陳明德')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: '家人' })).toBeInTheDocument();
+        expect(screen.getByText('主要照顧者')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '新增家人' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: '我的健康紀錄' })).toHaveAttribute('href', '/health-records');
+        expect(screen.queryByRole('button', { name: /查看諮詢紀錄/ })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('link', { name: /媽媽/ }));
+        expect(screen.getByText('家人資料頁')).toBeInTheDocument();
+    });
+
+    it.each(['取消', '返回'])('有修改時按%s先問要不要儲存，選「不儲存」才捨棄並回到詳細資料', async (button) => {
         setupApiMocks({ name: '陳明德', age: 65, gender: 'male', height: 165, weight: 60 });
         renderProfile();
         await waitForFormReady('陳明德');
         fireEvent.change(screen.getByLabelText('年齡'), { target: { value: '70' } });
         fireEvent.click(screen.getByRole('button', { name: button, exact: true }));
-        expect(screen.getByRole('heading', { name: '詳細個人資料' })).toBeInTheDocument();
+        const dialog = await screen.findByRole('alertdialog', { name: '要儲存變更嗎？' });
+        expect(dialog).toHaveTextContent('離開前，選擇是否保留這次修改。');
+        // 對話框開著時底下的頁面被設成 inert，要帶 hidden 才找得到；重點是還沒離開編輯畫面
+        expect(screen.getByRole('heading', { name: '編輯個人資料', hidden: true })).toBeInTheDocument();
+        fireEvent.click(within(dialog).getByRole('button', { name: '不儲存' }));
+        expect(await screen.findByRole('heading', { name: '詳細個人資料' })).toBeInTheDocument();
         expect(api.upsertPersonalHealthProfile).not.toHaveBeenCalled();
         fireEvent.click(screen.getByRole('button', { name: '編輯個人資料' }));
         expect(screen.getByLabelText('年齡')).toHaveValue(65);
+    });
+
+    it.each(['取消', '返回'])('沒有修改時按%s直接回到詳細資料，不多問', async (button) => {
+        setupApiMocks({ name: '陳明德', age: 65, gender: 'male', height: 165, weight: 60 });
+        renderProfile();
+        await waitForFormReady('陳明德');
+        fireEvent.click(screen.getByRole('button', { name: button, exact: true }));
+        expect(screen.getByRole('heading', { name: '詳細個人資料' })).toBeInTheDocument();
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+
+    it('確認框選「儲存」走同一個儲存流程，成功後回到詳細資料', async () => {
+        setupApiMocks({ name: '陳明德', age: 65, gender: 'male', height: 165, weight: 60 });
+        renderProfile();
+        await waitForFormReady('陳明德');
+        fireEvent.change(screen.getByLabelText('年齡'), { target: { value: '66' } });
+        fireEvent.click(screen.getByRole('button', { name: '返回', exact: true }));
+        const dialog = await screen.findByRole('alertdialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }));
+        await waitFor(() => expect(api.upsertPersonalHealthProfile).toHaveBeenCalledTimes(1));
+        expect(vi.mocked(api.upsertPersonalHealthProfile).mock.calls[0][0]).toMatchObject({ age: 66 });
+        expect(await screen.findByRole('heading', { name: '詳細個人資料' })).toBeInTheDocument();
+    });
+
+    it('確認框選「儲存」但欄位不合格時留在編輯畫面，不送出', async () => {
+        setupApiMocks({ name: '陳明德', age: 65, gender: 'male', height: 165, weight: 60 });
+        renderProfile();
+        await waitForFormReady('陳明德');
+        fireEvent.change(screen.getByLabelText('年齡'), { target: { value: '0' } });
+        fireEvent.click(screen.getByRole('button', { name: '取消', exact: true }));
+        fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '儲存' }));
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+        expect(screen.getByRole('heading', { name: '編輯個人資料' })).toBeInTheDocument();
+        expect(api.upsertPersonalHealthProfile).not.toHaveBeenCalled();
     });
 
     it('儲存全部欄位後回到詳細資料，摘要立即同步年齡', async () => {
@@ -285,6 +351,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         window.dispatchEvent(beforeUnload);
         expect(beforeUnload.defaultPrevented).toBe(true);
         fireEvent.click(screen.getByRole('button', { name: '取消', exact: true }));
+        fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '不儲存' }));
         const afterDiscard = new Event('beforeunload', { cancelable: true });
         window.dispatchEvent(afterDiscard);
         expect(afterDiscard.defaultPrevented).toBe(false);
@@ -586,7 +653,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             expect(screen.getByRole('status')).toHaveTextContent('正在讀取您的健康資料…');
             expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
             expect(screen.queryByRole('button', { name: '儲存紀錄' })).not.toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /查看諮詢紀錄/ })).toBeEnabled();
+            expect(screen.getByRole('heading', { name: '家人' })).toBeInTheDocument();
         });
 
         it('讀取失敗時不渲染表單，只有錯誤說明與重新載入；重新載入成功後才出現表單並帶入資料', async () => {
@@ -610,7 +677,7 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
             ).toBeInTheDocument();
             expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
             expect(screen.queryByRole('button', { name: '儲存紀錄' })).not.toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /查看諮詢紀錄/ })).toBeEnabled();
+            expect(screen.getByRole('heading', { name: '家人' })).toBeInTheDocument();
 
             fireEvent.click(screen.getByRole('button', { name: '重新載入' }));
 

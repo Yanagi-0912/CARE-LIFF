@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { UserPlusIcon } from 'lucide-react';
@@ -11,6 +11,8 @@ interface Props {
   liffReady: boolean;
   onSuccess: () => void;
   onError: (msg: string) => void;
+  /** 換成別的入口外觀（健康首頁的「加入家人」格子與「新增家人」列）；預設是一顆按鈕。 */
+  renderTrigger?: (open: () => void) => ReactNode;
 }
 
 /**
@@ -27,7 +29,7 @@ interface Props {
  * 原因見 InviteDialog 的 `invite` prop 說明。每次點開都是一組新的邀請碼，
  * 上一次關掉沒用掉的那組就讓它七天後自然過期。
  */
-export function InviteButton({ liffReady, onSuccess, onError }: Props) {
+export function InviteButton({ liffReady, onSuccess, onError, renderTrigger }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const invite = useMutation({ mutationFn: createInvite });
@@ -39,15 +41,17 @@ export function InviteButton({ liffReady, onSuccess, onError }: Props) {
 
   return (
     <>
-      <Button
-        type="button"
-        id="family-invite-btn"
-        className="shrink-0 rounded-full"
-        onClick={handleOpen}
-      >
-        <UserPlusIcon data-icon="inline-start" />
-        {t('family.inviteBtn')}
-      </Button>
+      {renderTrigger ? renderTrigger(handleOpen) : (
+        <Button
+          type="button"
+          id="family-invite-btn"
+          className="shrink-0 rounded-full"
+          onClick={handleOpen}
+        >
+          <UserPlusIcon data-icon="inline-start" />
+          {t('family.inviteBtn')}
+        </Button>
+      )}
 
       {open && (
         <InviteDialog

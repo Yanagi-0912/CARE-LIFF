@@ -38,8 +38,8 @@ export function FamilyDataState({ loading, error, empty, refetch, children }: {
         <EmptyDescription>{t('family.empty')}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Link className={buttonVariants({ variant: 'outline' })} to="/family/members">
-          {t('familyNavigation.members')}
+        <Link className={buttonVariants({ variant: 'outline' })} to="/personalhealth">
+          {t('familyMember.backToHealth')}
         </Link>
       </EmptyContent>
     </Empty>;

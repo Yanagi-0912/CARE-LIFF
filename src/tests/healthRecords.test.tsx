@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithToaster } from './testUtils';
 import HealthRecordsPage from '../pages/HealthRecords';
 import Home from '../pages/Home';
-import FamilyPage from '../pages/Family';
+import { FamilySection } from '../pages/Family/FamilySection';
 import * as healthApi from '../api/healthApi';
 import * as profileApi from '../api/profileApi';
 import type { FamilyMember, FamilyPermissions } from '../types/family';
@@ -143,6 +143,8 @@ describe('9.1 路由與入口', () => {
     renderHealthRecords('/health-records?user=U-mom');
     expect(await screen.findByRole('link', { name: /血壓/ })).toHaveAttribute('href', '/health-records?user=U-mom&tab=blood_pressure');
     expect(screen.queryByRole('link', { name: /經期/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /諮詢紀錄/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '返回' })).toHaveAttribute('href', '/family/members/U-mom');
     expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
   });
 
@@ -164,14 +166,18 @@ describe('9.1 路由與入口', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/health-records');
   });
 
-  it('族譜頁上方的「我的健康紀錄」會導向 /health-records', () => {
+  it('健康首頁的「我的健康紀錄」連到 /health-records', () => {
     renderWithToaster(
-      <MemoryRouter initialEntries={['/family/members']}>
-        <Routes><Route path="/family/*" element={<FamilyPage />} /></Routes>
+      <MemoryRouter initialEntries={['/personalhealth']}>
+        <FamilySection />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole('button', { name: /我的健康紀錄/ }));
-    expect(mockNavigate).toHaveBeenCalledWith('/health-records');
+    expect(screen.getByRole('link', { name: /我的健康紀錄/ })).toHaveAttribute('href', '/health-records');
+  });
+
+  it('自己的紀錄入口有諮詢紀錄（看家人時不列，見下一則）', async () => {
+    renderHealthRecords('/health-records');
+    expect(await screen.findByRole('link', { name: /諮詢紀錄/ })).toHaveAttribute('href', '/personalhealth/consult');
   });
 
   it('?tab= 選擇預設分頁', async () => {

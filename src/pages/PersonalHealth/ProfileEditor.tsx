@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,9 +20,12 @@ type Props = {
     isSaving: boolean;
     onSave: (form: HealthData) => Promise<void>;
     onCancel: () => void;
+    /** 有沒有未儲存的修改；父層據此決定返回時要不要先問「要儲存變更嗎？」 */
+    onDirtyChange: (dirty: boolean) => void;
+    formRef?: Ref<HTMLFormElement>;
 };
 
-export default function ProfileEditor({ profile, liffName, isSaving, onSave, onCancel }: Props) {
+export default function ProfileEditor({ profile, liffName, isSaving, onSave, onCancel, onDirtyChange, formRef }: Props) {
     const { t } = useTranslation();
     const [customDraft, setCustomDraft] = useState('');
     const submissionInFlight = useRef(false);
@@ -73,15 +76,17 @@ export default function ProfileEditor({ profile, liffName, isSaving, onSave, onC
     });
 
     const form = useWatch({ control, compute: values => values });
+    const dirty = isDirty || Boolean(customDraft.trim());
+    useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
     useEffect(() => {
-        if (!isDirty && !customDraft.trim() && !isSaving) return;
+        if (!dirty && !isSaving) return;
         const warnBeforeUnload = (event: BeforeUnloadEvent) => {
             event.preventDefault();
             event.returnValue = '';
         };
         window.addEventListener('beforeunload', warnBeforeUnload);
         return () => window.removeEventListener('beforeunload', warnBeforeUnload);
-    }, [isDirty, customDraft, isSaving]);
+    }, [dirty, isSaving]);
 
 
     // 以下的 setValue 都帶 shouldDirty：沒標成 dirty 的欄位，背景重抓回來時會被
@@ -152,7 +157,7 @@ export default function ProfileEditor({ profile, liffName, isSaving, onSave, onC
         : t('personalHealth.genderPlaceholder');
 
     return (
-        <form id="personalHealthForm" className="flex flex-col gap-5" noValidate
+        <form ref={formRef} id="personalHealthForm" className="flex flex-col gap-5" noValidate
             onSubmit={event => {
                 event.preventDefault();
                 if (isSaving || submissionInFlight.current) return;

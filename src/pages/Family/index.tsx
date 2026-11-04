@@ -1,36 +1,24 @@
-import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { MapPinIcon, ShieldCheckIcon, UsersIcon } from 'lucide-react';
 
-import { EntryLink, FeaturePage } from '@/components/FeaturePage';
-import FamilyMembersPage from './MembersPage';
 import FamilyPermissionsPage from './PermissionsPage';
 import FamilyLocationPage from './LocationPage';
+import MemberDetailPage from './MemberDetailPage';
+import MemberAccessPage from './MemberAccessPage';
+import MemberRolePage from './MemberRolePage';
 
-function FamilyLandingPage() {
-  const { t } = useTranslation();
-  return (
-    <FeaturePage title={t('familyNavigation.title')} description={t('familyNavigation.description')}>
-      <div className="care-entry-list">
-        <EntryLink to="/family/members" title={t('familyNavigation.members')}
-          description={t('familyNavigation.membersDescription')} icon={UsersIcon} />
-        <EntryLink to="/family/permissions" title={t('familyNavigation.permissions')}
-          description={t('familyNavigation.permissionsDescription')} icon={ShieldCheckIcon} />
-        <EntryLink to="/family/location" title={t('familyNavigation.location')}
-          description={t('familyNavigation.locationDescription')} icon={MapPinIcon} />
-      </div>
-    </FeaturePage>
-  );
-}
-
+// 家人名單已併進健康首頁。/family 與 /family/members 仍要接得住：加入成功頁、
+// LINE 訊息與舊書籤都還指著它們。
 export default function FamilyPage() {
   return (
     <Routes>
-      <Route index element={<FamilyLandingPage />} />
-      <Route path="members" element={<FamilyMembersPage />} />
+      <Route index element={<Navigate to="/personalhealth" replace />} />
+      <Route path="members" element={<Navigate to="/personalhealth" replace />} />
+      <Route path="members/:userId" element={<MemberDetailPage />} />
+      <Route path="members/:userId/access" element={<MemberAccessPage />} />
+      <Route path="members/:userId/role" element={<MemberRolePage />} />
       <Route path="permissions" element={<FamilyPermissionsPage />} />
       <Route path="location" element={<FamilyLocationPage />} />
-      <Route path="*" element={<Navigate to="/family" replace />} />
+      <Route path="*" element={<Navigate to="/personalhealth" replace />} />
     </Routes>
   );
 }

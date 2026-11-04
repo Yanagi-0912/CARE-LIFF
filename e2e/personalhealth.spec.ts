@@ -62,6 +62,10 @@ test.describe('個人健康資料', () => {
     await fillBasicFields(authedPage);
 
     await authedPage.getByRole('button', { name: CANCEL() }).click();
+    // 有改過才會問；選「不儲存」才捨棄
+    const leave = authedPage.getByRole('alertdialog', { name: t('personalHealth.leave.title') });
+    await expect(leave).toContainText(t('personalHealth.leave.desc'));
+    await leave.getByRole('button', { name: t('personalHealth.leave.discard') }).click();
     await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
     await expect(authedPage.locator('#name')).toBeVisible();
     await fillBasicFields(authedPage);
@@ -70,6 +74,20 @@ test.describe('個人健康資料', () => {
     await fillBodyFields(authedPage);
     await authedPage.getByRole('button', { name: SAVE() }).click();
     await expect(authedPage.getByText(t('personalHealth.saveSuccess'))).toBeVisible();
+  });
+
+  test('離開前選「儲存」走同一個儲存流程；沒改過時直接離開不多問', async ({ authedPage }) => {
+    await authedPage.getByRole('button', { name: CANCEL() }).click();
+    await expect(authedPage.getByRole('heading', { name: t('personalHealth.details'), exact: true })).toBeVisible();
+    await expect(authedPage.getByRole('alertdialog')).toHaveCount(0);
+
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
+    await fillBasicFields(authedPage);
+    await fillBodyFields(authedPage);
+    await authedPage.getByRole('button', { name: t('personalHealth.return') }).click();
+    await authedPage.getByRole('alertdialog').getByRole('button', { name: t('personalHealth.leave.save'), exact: true }).click();
+    await expect(authedPage.getByText(t('personalHealth.saveSuccess'))).toBeVisible();
+    await expect(authedPage.getByRole('heading', { name: t('personalHealth.details'), exact: true })).toBeVisible();
   });
 
   test.describe('必填與範圍驗證', () => {
@@ -284,7 +302,8 @@ test.describe('讀取健康檔案失敗時', () => {
     await expect(authedPage.getByRole('button', { name: SAVE() })).toHaveCount(0);
 
     healthy = true;
-    await authedPage.getByRole('button', { name: t('personalHealth.retry') }).click();
+    // 健康首頁下方的家人區塊也有自己的「重新載入」；這裡要的是個人資料那一顆
+    await authedPage.getByRole('button', { name: t('personalHealth.retry') }).first().click();
 
     await authedPage.getByRole('button', { name: t('personalHealth.details'), exact: true }).click();
     await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
@@ -319,6 +338,7 @@ test.describe('個人健康的網址與儲存生命週期', () => {
     await authedPage.goForward();
     await expect(authedPage.locator('#age')).toHaveValue('70');
     await authedPage.getByRole('button', { name: CANCEL(), exact: true }).click();
+    await authedPage.getByRole('alertdialog').getByRole('button', { name: t('personalHealth.leave.discard') }).click();
     await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
     await expect(authedPage.locator('#age')).toHaveValue('65');
   });

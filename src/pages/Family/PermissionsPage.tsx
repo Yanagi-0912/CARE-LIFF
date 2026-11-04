@@ -8,7 +8,7 @@ export default function FamilyPermissionsPage() {
   const { t } = useTranslation();
   const { members, loading, error, refetch } = useFamily();
   return (
-    <FeaturePage title={t('familyNavigation.permissions')} description={t('familyRole.manage.desc')} backTo="/family">
+    <FeaturePage title={t('familyNavigation.permissions')} description={t('familyRole.manage.desc')} backTo="/personalhealth">
       <FamilyDataState loading={loading} error={error} empty={members.length === 0} refetch={refetch}>
         <RoleManagerContent />
       </FamilyDataState>

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithToaster } from './testUtils';
 import FamilyPage from '../pages/Family';
+import { FamilySection } from '../pages/Family/FamilySection';
 import * as profileApi from '../api/profileApi';
 import * as familyApi from '../api/familyApi';
 import * as healthApi from '../api/healthApi';
@@ -137,11 +138,13 @@ function HealthRecordsProbe() {
   return <div>health-records-for:{params.get('user')}</div>;
 }
 
-function renderPage() {
+/** 預設開媽媽的家人資料頁；健康首頁的家人區塊掛在 /personalhealth。 */
+function renderPage(path = '/family/members/U-mom') {
   return renderWithToaster(
-    <MemoryRouter initialEntries={['/family/members']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/family/*" element={<FamilyPage />} />
+        <Route path="/personalhealth" element={<FamilySection />} />
         <Route path="/personalhealth/consult" element={<div>consult</div>} />
         <Route path="/health-records" element={<HealthRecordsProbe />} />
       </Routes>
@@ -150,12 +153,10 @@ function renderPage() {
 }
 
 async function expandCard() {
-  fireEvent.click(screen.getByRole('button', { name: '媽媽' }));
-  // 展開是 Collapsible，內容要等一次 render
   await waitFor(() => expect(screen.getByText('健康狀況')).toBeInTheDocument());
 }
 
-describe('家人卡片依角色降級', () => {
+describe('家人資料頁依權限降級', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ age: 68 });
@@ -206,7 +207,6 @@ describe('家人卡片依角色降級', () => {
     familyState.members = [memberAs(null)];
     renderPage();
 
-    // 卡片收合時就要講清楚這位家人的資料看不到，不必先展開才發現一片空白
     expect(screen.getByText('您沒有查看這位家人資料的權限')).toBeInTheDocument();
     await expandCard();
     expect(profileApi.getPersonalHealthProfile).not.toHaveBeenCalled();
@@ -217,7 +217,7 @@ describe('家人卡片依角色降級', () => {
     renderPage();
     await expandCard();
 
-    expect(screen.getByRole('button', { name: /移除這位家人/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '移除家人' })).toBeInTheDocument();
   });
 
   it('影子模式下（後端回滿權限）介面與變更前完全相同', async () => {
@@ -241,7 +241,7 @@ describe('家人卡片依角色降級', () => {
   });
 });
 
-describe('家人卡片的健康紀錄區塊（血壓、血糖、步數，Task 11）', () => {
+describe('家人資料頁的健康紀錄區塊（血壓、血糖、步數，Task 11）', () => {
   const BP: HealthMeasurement = {
     id: 'm-bp-1',
     user_id: 'U-mom',
@@ -297,7 +297,7 @@ describe('家人卡片的健康紀錄區塊（血壓、血糖、步數，Task 11
     expect(healthApi.fetchMeasurements).toHaveBeenCalledWith('U-mom', { kind: 'blood_glucose' });
     expect(healthApi.fetchStepCounts).toHaveBeenCalledWith('U-mom');
 
-    expect(await screen.findByText('健康紀錄')).toBeInTheDocument();
+    expect(await screen.findByText('最近健康紀錄')).toBeInTheDocument();
     expect(screen.getByText('高於範圍')).toBeInTheDocument();
     expect(screen.getByText('正常範圍')).toBeInTheDocument();
     expect(screen.getByText('62 步')).toBeInTheDocument();
@@ -341,7 +341,7 @@ describe('家人卡片的健康紀錄區塊（血壓、血糖、步數，Task 11
 
     expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
     expect(healthApi.fetchStepCounts).not.toHaveBeenCalled();
-    expect(screen.queryByText('健康紀錄')).not.toBeInTheDocument();
+    expect(screen.queryByText('最近健康紀錄')).not.toBeInTheDocument();
   });
 
   it('影子模式：寬鬆權限放寬成 GUARDIAN，但嚴格判定仍是 MEMBER 時，隱藏且不發請求', async () => {
@@ -360,7 +360,7 @@ describe('家人卡片的健康紀錄區塊（血壓、血糖、步數，Task 11
 
     expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
     expect(healthApi.fetchStepCounts).not.toHaveBeenCalled();
-    expect(screen.queryByText('健康紀錄')).not.toBeInTheDocument();
+    expect(screen.queryByText('最近健康紀錄')).not.toBeInTheDocument();
   });
 });
 
@@ -375,21 +375,22 @@ describe('引導式角色指派', () => {
     await i18n.changeLanguage('zh-TW');
   });
 
-  it('權限已生效（enforced）且有未設定的家人：說還有幾位、現在以一般家人處理', () => {
+  it('權限已生效（enforced）且有未設定的家人：說還有幾位、現在以一般家人處理，並給設定入口', () => {
     familyState.roleAssignment = assignment({
       rbac_migration_state: 'enforced',
       unassigned_member_ids: ['U-a', 'U-b'],
     });
-    renderPage();
+    renderPage('/personalhealth');
 
     expect(
       screen.getByText('還有 2 位家人尚未設定權限，目前會以「一般家人」處理。'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /設定家人權限/ })).toHaveAttribute('href', '/family/permissions');
   });
 
   it('還沒生效（shadow）且有人沒設定：講明在那之前所有家人都看得到，不說「以一般家人處理」', () => {
     familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-a', 'U-b'] });
-    renderPage();
+    renderPage('/personalhealth');
 
     expect(screen.getByText(shadowPending(2))).toBeInTheDocument();
     // 舊文案在 shadow 時是謊話：角色沒有作用，未設定的人並不是以一般家人處理
@@ -397,171 +398,238 @@ describe('引導式角色指派', () => {
   });
 
   it('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', () => {
-    // 「都設定好了」代表卡片上的家人也有角色，否則卡片會顯示「尚未設定權限」
     familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({ is_complete: true });
-    renderPage();
+    renderPage('/personalhealth');
 
     expect(
       screen.getByText('權限設定目前沒有生效，所有家人都看得到您的健康狀況與對話紀錄。'),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/尚未設定權限/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/未設定權限/)).not.toBeInTheDocument();
   });
 
-  it('權限已生效且全部設定完：不顯示提示，但入口仍在', () => {
+  it('權限已生效且全部設定完：不顯示提示，家人格子仍可進入各自的設定', () => {
     familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({
       is_complete: true,
       rbac_migration_state: 'enforced',
     });
-    renderPage();
+    renderPage('/personalhealth');
 
-    expect(screen.queryByText(/尚未設定權限/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/未設定權限/)).not.toBeInTheDocument();
     expect(screen.queryByText(/沒有生效/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /設定家人權限/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /媽媽/ })).toHaveAttribute('href', '/family/members/U-mom');
   });
 
-  it('shadow 時對話框頂端也說明，角色說明前面標上「權限生效後」', async () => {
-    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: 'CAREGIVER', effective_family_role: 'CAREGIVER' },
-      { user_id: 'U-dad', display_name: '爸爸', family_role: null, effective_family_role: 'MEMBER' },
-    ]);
-    familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-dad'] });
-    renderPage();
+  describe('單一家人的設定權限頁', () => {
+    it('未設定時不預先選中任何角色、不能儲存；三種角色都附說明與經期提示', async () => {
+      familyState.members = [{ ...memberAs('GUARDIAN'), family_role: null }];
+      familyState.roleAssignment = assignment({ rbac_migration_state: 'enforced', unassigned_member_ids: ['U-mom'] });
+      renderPage('/family/members/U-mom/role');
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    const dialog = await screen.findByRole('dialog');
-
-    expect(within(dialog).getByText(shadowPending(1))).toBeInTheDocument();
-    expect(
-      await within(dialog).findByText(
-        '權限生效後：看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('enforced 時角色說明就是現況，不加前綴', async () => {
-    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: 'MEMBER', effective_family_role: 'MEMBER' },
-    ]);
-    familyState.roleAssignment = assignment({
-      is_complete: true,
-      rbac_migration_state: 'enforced',
+      for (const name of [/^主要照顧者/, /^協助照顧者/, /^一般家人/]) {
+        expect(screen.getByRole('radio', { name })).not.toBeChecked();
+      }
+      expect(screen.getByText('看得到您的健康狀況與對話紀錄，也能幫您設定用藥與健康資料。')).toBeInTheDocument();
+      expect(screen.getByText('經期紀錄僅本人可見。')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '儲存權限設定' })).toBeDisabled();
     });
-    renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    const dialog = await screen.findByRole('dialog');
+    it('shadow 時頁首說明實況，角色說明前面標上「權限生效後」', () => {
+      familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
+      familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-dad'] });
+      renderPage('/family/members/U-mom/role');
 
-    expect(
-      await within(dialog).findByText('只看得到用藥時間與藥名，看不到健康狀況與對話紀錄。'),
-    ).toBeInTheDocument();
-    expect(within(dialog).queryByText(/權限生效後/)).not.toBeInTheDocument();
-  });
-
-  it('未設定的成員不預先選中任何角色，選了才送出並顯示說明', async () => {
-    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: null, effective_family_role: 'MEMBER' },
-    ]);
-    vi.mocked(familyApi.setFamilyRole).mockResolvedValue({
-      user_id: 'U-me',
-      family_members: [],
-      created_at: '',
-      updated_at: '',
+      expect(screen.getByText(shadowPending(1))).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /^協助照顧者/ })).toBeChecked();
+      expect(
+        screen.getByText('權限生效後：看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。'),
+      ).toBeInTheDocument();
     });
-    familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-mom'] });
-    renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    await waitFor(() => expect(screen.getByText('尚未設定')).toBeInTheDocument());
+    it('選好按儲存才送出既有 API，成功後回到家人資料頁', async () => {
+      vi.mocked(familyApi.setFamilyRole).mockResolvedValue({
+        user_id: 'U-me', family_members: [], created_at: '', updated_at: '',
+      });
+      familyState.members = [{ ...memberAs('GUARDIAN'), family_role: null }];
+      renderPage('/family/members/U-mom/role');
 
-    // 未設定 ≠ 已選「一般家人」。預先選中會讓擁有者以為自己設定過了
-    const memberToggle = screen.getByRole('button', { name: '一般家人' });
-    expect(memberToggle).toHaveAttribute('aria-pressed', 'false');
+      fireEvent.click(screen.getByRole('radio', { name: /^協助照顧者/ }));
+      expect(familyApi.setFamilyRole).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: '儲存權限設定' }));
 
-    fireEvent.click(screen.getByRole('button', { name: '協助照顧者' }));
-    await waitFor(() =>
-      expect(familyApi.setFamilyRole).toHaveBeenCalledWith('U-mom', 'CAREGIVER'),
-    );
+      await waitFor(() => expect(familyApi.setFamilyRole).toHaveBeenCalledWith('U-mom', 'CAREGIVER'));
+      expect(await screen.findByText('已更新 媽媽 的權限')).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: '家人資料' })).toBeInTheDocument();
+    });
+
+    it('儲存失敗時提示錯誤並留在設定頁', async () => {
+      vi.mocked(familyApi.setFamilyRole).mockRejectedValue(new Error('權限服務忙碌中'));
+      familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'MEMBER' }];
+      renderPage('/family/members/U-mom/role');
+
+      fireEvent.click(screen.getByRole('radio', { name: /^主要照顧者/ }));
+      fireEvent.click(screen.getByRole('button', { name: '儲存權限設定' }));
+
+      expect(await screen.findByText('權限服務忙碌中')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '設定權限' })).toBeInTheDocument();
+    });
   });
 
-  it('一位家人一頁：只有一位時不畫導覽列', async () => {
-    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
-    ]);
-    renderPage();
+  describe('查詢紀錄', () => {
+    it.each([
+      ['GUARDIAN', [['用藥與掛號資訊', '可查看與管理'], ['健康資料與量測', '可查看與管理'], ['看診紀錄與錄音摘要', '可查看與管理'], ['健康諮詢對話', '唯讀']]],
+      ['CAREGIVER', [['用藥與掛號資訊', '可查看與管理'], ['健康資料與量測', '唯讀'], ['看診紀錄與錄音摘要', '唯讀']]],
+      ['MEMBER', [['用藥與掛號資訊', '唯讀']]],
+    ] as const)('%s：依角色列出他能用您的哪些資料，碰不到的類別不列', (role, expected) => {
+      familyState.members = [{ ...memberAs('GUARDIAN'), family_role: role }];
+      renderPage('/family/members/U-mom/access');
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    await waitFor(() => expect(screen.getByText('媽媽')).toBeInTheDocument());
+      const rows = screen.getAllByRole('listitem');
+      expect(rows.map((row) => row.textContent)).toEqual(expected.map(([label, level]) => `${label}${level}`));
+    });
 
-    expect(screen.queryByRole('button', { name: '下一位家人' })).not.toBeInTheDocument();
-    expect(screen.queryByText('第 1 位，共 1 位')).not.toBeInTheDocument();
+    it('未設定角色時說明要先設定，並可返回成員資料', () => {
+      familyState.members = [{ ...memberAs('GUARDIAN'), family_role: null }];
+      renderPage('/family/members/U-mom/access');
+
+      expect(screen.getByText('請先設定權限。')).toBeInTheDocument();
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '返回成員資料' })).toHaveAttribute('href', '/family/members/U-mom');
+    });
   });
 
-  it('多位家人時用上一位／下一位切換，計數跟著走，兩端按鈕停用', async () => {
-    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
-      { user_id: 'U-son', display_name: '大兒子', family_role: null },
-      { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
-    ]);
-    renderPage();
+  describe('全部家人的權限頁（/family/permissions）', () => {
+    it('shadow 時頁首也說明，角色說明前面標上「權限生效後」', async () => {
+      vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+        { user_id: 'U-mom', display_name: '媽媽', family_role: 'CAREGIVER', effective_family_role: 'CAREGIVER' },
+        { user_id: 'U-dad', display_name: '爸爸', family_role: null, effective_family_role: 'MEMBER' },
+      ]);
+      familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-dad'] });
+      renderPage('/family/permissions');
+      const dialog = document.body;
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+      expect(within(dialog).getByText(shadowPending(1))).toBeInTheDocument();
+      expect(
+        await within(dialog).findByText(
+          '權限生效後：看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。',
+        ),
+      ).toBeInTheDocument();
+    });
 
-    const prev = screen.getByRole('button', { name: '上一位家人' });
-    const next = screen.getByRole('button', { name: '下一位家人' });
-    expect(prev).toBeDisabled();
-    expect(next).toBeEnabled();
+    it('enforced 時角色說明就是現況，不加前綴', async () => {
+      vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+        { user_id: 'U-mom', display_name: '媽媽', family_role: 'MEMBER', effective_family_role: 'MEMBER' },
+      ]);
+      familyState.roleAssignment = assignment({
+        is_complete: true,
+        rbac_migration_state: 'enforced',
+      });
+      renderPage('/family/permissions');
+      const dialog = document.body;
 
-    fireEvent.click(next);
-    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
-    expect(prev).toBeEnabled();
+      expect(
+        await within(dialog).findByText('只看得到用藥時間與藥名，看不到健康狀況與對話紀錄。'),
+      ).toBeInTheDocument();
+      expect(within(dialog).queryByText(/權限生效後/)).not.toBeInTheDocument();
+    });
 
-    fireEvent.click(next);
-    expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
-    expect(next).toBeDisabled();
+    it('未設定的成員不預先選中任何角色，選了才送出並顯示說明', async () => {
+      vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+        { user_id: 'U-mom', display_name: '媽媽', family_role: null, effective_family_role: 'MEMBER' },
+      ]);
+      vi.mocked(familyApi.setFamilyRole).mockResolvedValue({
+        user_id: 'U-me',
+        family_members: [],
+        created_at: '',
+        updated_at: '',
+      });
+      familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-mom'] });
+      renderPage('/family/permissions');
+      await waitFor(() => expect(screen.getByText('尚未設定')).toBeInTheDocument());
 
-    fireEvent.click(prev);
-    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+      // 未設定 ≠ 已選「一般家人」。預先選中會讓擁有者以為自己設定過了
+      const memberToggle = screen.getByRole('button', { name: '一般家人' });
+      expect(memberToggle).toHaveAttribute('aria-pressed', 'false');
 
-    // 每位家人的角色群組各自以名字標示，按到的一定是眼前這位的
-    const sonGroup = screen.getByRole('group', { name: '大兒子 的權限' });
-    expect(sonGroup).toBeInTheDocument();
-  });
+      fireEvent.click(screen.getByRole('button', { name: '協助照顧者' }));
+      await waitFor(() =>
+        expect(familyApi.setFamilyRole).toHaveBeenCalledWith('U-mom', 'CAREGIVER'),
+      );
+    });
 
-  it('平滑捲動途中的 scroll 事件不會把計數推回舊頁，捲到之後照常跟著手指走', async () => {
-    vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
-      { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
-      { user_id: 'U-son', display_name: '大兒子', family_role: null },
-      { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
-    ]);
-    renderPage();
+    it('一位家人一頁：只有一位時不畫導覽列', async () => {
+      vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+        { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+      ]);
+      renderPage('/family/permissions');
+      await waitFor(() => expect(screen.getByText('媽媽')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+      expect(screen.queryByRole('button', { name: '下一位家人' })).not.toBeInTheDocument();
+      expect(screen.queryByText('第 1 位，共 1 位')).not.toBeInTheDocument();
+    });
 
-    // jsdom 沒有排版，clientWidth 預設 0；給它一個寬度才能模擬捲動位置
-    const track = screen.getByRole('group', { name: '家人的權限' });
-    Object.defineProperty(track, 'clientWidth', { configurable: true, value: 300 });
+    it('多位家人時用上一位／下一位切換，計數跟著走，兩端按鈕停用', async () => {
+      vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+        { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+        { user_id: 'U-son', display_name: '大兒子', family_role: null },
+        { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
+      ]);
+      renderPage('/family/permissions');
+      await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: '下一位家人' }));
-    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+      const prev = screen.getByRole('button', { name: '上一位家人' });
+      const next = screen.getByRole('button', { name: '下一位家人' });
+      expect(prev).toBeDisabled();
+      expect(next).toBeEnabled();
 
-    // 平滑捲動剛開始：位置還在第 1 頁附近，四捨五入回推會得到第 1 頁。
-    // 這是先前會讓計數與按鈕閃一下的來源，現在要被擋掉。
-    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 12 });
-    fireEvent.scroll(track);
-    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+      fireEvent.click(next);
+      expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+      expect(prev).toBeEnabled();
 
-    // 捲到目的地之後，手指自己滑到第 3 頁仍然要更新計數
-    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 300 });
-    fireEvent.scroll(track);
-    expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+      fireEvent.click(next);
+      expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
+      expect(next).toBeDisabled();
 
-    Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 600 });
-    fireEvent.scroll(track);
-    expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
+      fireEvent.click(prev);
+      expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+      // 每位家人的角色群組各自以名字標示，按到的一定是眼前這位的
+      const sonGroup = screen.getByRole('group', { name: '大兒子 的權限' });
+      expect(sonGroup).toBeInTheDocument();
+    });
+
+    it('平滑捲動途中的 scroll 事件不會把計數推回舊頁，捲到之後照常跟著手指走', async () => {
+      vi.mocked(familyApi.fetchMemberRoles).mockResolvedValue([
+        { user_id: 'U-mom', display_name: '媽媽', family_role: 'GUARDIAN' },
+        { user_id: 'U-son', display_name: '大兒子', family_role: null },
+        { user_id: 'U-dau', display_name: '女兒', family_role: 'MEMBER' },
+      ]);
+      renderPage('/family/permissions');
+      await waitFor(() => expect(screen.getByText('第 1 位，共 3 位')).toBeInTheDocument());
+
+      // jsdom 沒有排版，clientWidth 預設 0；給它一個寬度才能模擬捲動位置
+      const track = screen.getByRole('group', { name: '家人的權限' });
+      Object.defineProperty(track, 'clientWidth', { configurable: true, value: 300 });
+
+      fireEvent.click(screen.getByRole('button', { name: '下一位家人' }));
+      expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+      // 平滑捲動剛開始：位置還在第 1 頁附近，四捨五入回推會得到第 1 頁。
+      // 這是先前會讓計數與按鈕閃一下的來源，現在要被擋掉。
+      Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 12 });
+      fireEvent.scroll(track);
+      expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+      // 捲到目的地之後，手指自己滑到第 3 頁仍然要更新計數
+      Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 300 });
+      fireEvent.scroll(track);
+      expect(screen.getByText('第 2 位，共 3 位')).toBeInTheDocument();
+
+      Object.defineProperty(track, 'scrollLeft', { configurable: true, value: 600 });
+      fireEvent.scroll(track);
+      expect(screen.getByText('第 3 位，共 3 位')).toBeInTheDocument();
+    });
   });
 });
 
@@ -579,12 +647,12 @@ describe('指派完最後一位家人後，提示跟著後端的狀態走', () =
     familyMode.real = false;
   });
 
-  it('後端切成 enforced 後，族譜頁與對話框的提示都消失，角色說明拿掉「生效後」', async () => {
+  it('後端切成 enforced 後，設定頁的提示消失，角色說明拿掉「生效後」', async () => {
     let assigned = false;
     const tree = (): GetFamilyTreeResponse => ({
       family_tree: {
         user_id: 'U-me',
-        family_members: [memberAs('GUARDIAN')],
+        family_members: [{ ...memberAs('GUARDIAN'), family_role: assigned ? 'CAREGIVER' : null }],
         created_at: '',
         updated_at: '',
       },
@@ -607,19 +675,21 @@ describe('指派完最後一位家人後，提示跟著後端的狀態走', () =
       return tree().family_tree;
     });
 
-    renderPage();
+    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
+    renderPage('/family/members/U-mom/role');
     expect(await screen.findByText(shadowPending(1))).toBeInTheDocument();
+    expect(screen.getAllByText(/權限生效後/).length).toBe(3);
 
-    fireEvent.click(screen.getByRole('button', { name: /設定家人權限/ }));
-    const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(shadowPending(1))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /^協助照顧者/ }));
+    fireEvent.click(screen.getByRole('button', { name: '儲存權限設定' }));
 
-    fireEvent.click(await within(dialog).findByRole('button', { name: '協助照顧者' }));
+    // 回到家人資料頁時族譜已重抓：角色換成新的，查詢紀錄與提醒說明出現
+    expect(await screen.findByRole('link', { name: /查詢紀錄/ })).toBeInTheDocument();
+    expect(screen.getByText('已設定權限')).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.queryByText(shadowPending(1))).not.toBeInTheDocument());
-    expect(
-      await within(dialog).findByText('看得到您的健康狀況，能幫您設定用藥；看不到對話紀錄。'),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('link', { name: '設定權限' })[0]);
+    expect(await screen.findByRole('radio', { name: /^協助照顧者/ })).toBeChecked();
+    expect(screen.queryByText(shadowPending(1))).not.toBeInTheDocument();
     expect(screen.queryByText(/權限生效後/)).not.toBeInTheDocument();
     expect(screen.queryByText(/目前會以「一般家人」處理/)).not.toBeInTheDocument();
   });
@@ -662,7 +732,6 @@ describe('設定稱謂後，族譜畫面直接更新', () => {
     renderPage();
 
     expect(await screen.findByText('尚未設定稱謂')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '兒子' }));
     fireEvent.click(await screen.findByRole('button', { name: '設定稱謂' }));
     const dialog = await screen.findByRole('dialog', { name: '設定稱謂' });
     fireEvent.click(within(dialog).getByRole('button', { name: '子/女' }));

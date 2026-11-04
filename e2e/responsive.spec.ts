@@ -71,7 +71,10 @@ const VIEWPORTS = [
 
 const PAGES = [
   { path: '/medications', ready: (p: Page) => p.getByText(LONG_NAME) },
-  { path: '/family/members', ready: (p: Page) => p.getByText(FAMILY_MEMBERS[0].display_name) },
+  { path: '/personalhealth', ready: (p: Page) => p.getByText(FAMILY_MEMBERS[0].display_name) },
+  { path: `/family/members/${FAMILY_MEMBERS[0].user_id}`, ready: (p: Page) => p.getByRole('heading', { name: t('family.healthTitle') }) },
+  { path: `/family/members/${FAMILY_MEMBERS[0].user_id}/access`, ready: (p: Page) => p.getByText(t('familyAccess.category.consultations')) },
+  { path: `/family/members/${FAMILY_MEMBERS[0].user_id}/role`, ready: (p: Page) => p.getByText(t('familyAccess.menstrualNote')) },
   { path: '/knowledge-reports', ready: (p: Page) => p.getByText('糖尿病患者的飲食建議') },
   { path: '/personalhealth/consult', ready: (p: Page) => p.locator('#summary-select') },
 ] as const;
