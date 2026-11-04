@@ -1,10 +1,14 @@
 import { type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { ShieldAlertIcon } from 'lucide-react';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { isAdminRole } from '../../utils/roles';
 import { queryKeys } from '@/lib/queryClient';
+import { FeaturePage } from '@/components/FeaturePage';
+import { Card, CardContent } from '@/components/ui/card';
+import { buttonVariants } from '@/components/ui/button';
 
 function AdminRoute({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -27,8 +31,23 @@ function AdminRoute({ children }: { children: ReactNode }) {
     );
   }
 
+  // 停在原網址說明原因，而不是默默導回首頁：從連結點進來的人才知道不是壞掉。
   if (state === 'denied') {
-    return <Navigate to="/" replace />;
+    return (
+      <FeaturePage title={t('adminRoute.deniedTitle')} backTo="/">
+        <Card>
+          <CardContent className="flex flex-col items-start gap-4">
+            <p className="flex items-center gap-2 text-base">
+              <ShieldAlertIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              {t('adminRoute.deniedDesc')}
+            </p>
+            <Link to="/" className={buttonVariants({ variant: 'outline' })}>
+              {t('adminRoute.backToTools')}
+            </Link>
+          </CardContent>
+        </Card>
+      </FeaturePage>
+    );
   }
 
   return <>{children}</>;

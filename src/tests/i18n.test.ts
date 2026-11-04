@@ -4,10 +4,14 @@ import { featureNavigationMessages } from '../i18n/featureNavigationMessages';
 import { familyNavigationMessages } from '../i18n/familyNavigationMessages';
 import { profileNavigationMessages } from '../i18n/profileNavigationMessages';
 import { settingsNavigationMessages } from '../i18n/settingsNavigationMessages';
+import { settingsRedesignMessages } from '../i18n/settingsRedesignMessages';
 
 describe('多語系初始化邏輯', () => {
   it('新版分類入口與個資流程的六語文案都已載入，不依賴 fallback', () => {
-    const bundles = [featureNavigationMessages, familyNavigationMessages, profileNavigationMessages, settingsNavigationMessages];
+    const bundles = [
+      featureNavigationMessages, familyNavigationMessages, profileNavigationMessages,
+      settingsNavigationMessages, settingsRedesignMessages,
+    ];
     for (const bundle of bundles) {
       for (const language of Object.keys(messages) as SupportedLanguage[]) {
         for (const key of Object.keys(bundle['zh-TW'])) {

@@ -12,7 +12,8 @@ import { stubSettings } from './stubs';
 async function openPage(page: Page, section = 'display') {
   const titles: Record<string, string> = {
     display: 'settings.displayTitle', voice: 'settings.voiceTitle',
-    notifications: 'settings.notificationsTitle', account: 'settings.accountTitle',
+    notifications: 'settings.notificationsTitle', about: 'settings.aboutTitle',
+    account: 'settings.accountTitle',
   };
   await page.goto(`/settings/${section}`);
   await expect(page.getByRole('heading', { name: t(titles[section]), level: 1 })).toBeVisible();
@@ -76,13 +77,13 @@ test.describe('各項設定', () => {
 
   test('切換語言後整頁換語言並持久化', async ({ authedPage }) => {
     const { patches } = await stubSettings(authedPage);
-    await openPage(authedPage);
+    await openPage(authedPage, 'voice');
 
     await authedPage.locator('#language-select').click();
     await authedPage.getByRole('option', { name: 'Bahasa Indonesia' }).click();
 
     await expect(
-      authedPage.getByRole('heading', { name: messages.id['settings.displayTitle'], level: 1 }),
+      authedPage.getByRole('heading', { name: messages.id['settings.voiceTitle'], level: 1 }),
     ).toBeVisible();
     await expect.poll(() => patches.map((c) => c.body)).toContainEqual({ language: 'id' });
     expect((await storedSettings(authedPage)).language).toBe('id');
@@ -90,7 +91,7 @@ test.describe('各項設定', () => {
     // 重新整理後仍是印尼語
     await authedPage.reload();
     await expect(
-      authedPage.getByRole('heading', { name: messages.id['settings.displayTitle'], level: 1 }),
+      authedPage.getByRole('heading', { name: messages.id['settings.voiceTitle'], level: 1 }),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -183,7 +184,7 @@ test.describe('各項設定', () => {
 
 
 test.describe('設定分類導覽', () => {
-  test('從總覽開啟四個子頁並返回，通知切換只送一次且設定不重抓', async ({ authedPage }) => {
+  test('從總覽開啟五個子頁並返回，通知切換只送一次且設定不重抓', async ({ authedPage }) => {
     const { gets, patches } = await stubSettings(authedPage);
     await authedPage.goto('/settings');
     await expect(authedPage.getByRole('heading', { name: t('settings.overviewTitle'), level: 1 })).toBeVisible();
@@ -193,7 +194,8 @@ test.describe('設定分類導覽', () => {
 
     for (const [section, title] of [
       ['display', 'settings.displayTitle'], ['voice', 'settings.voiceTitle'],
-      ['notifications', 'settings.notificationsTitle'], ['account', 'settings.accountTitle'],
+      ['notifications', 'settings.notificationsTitle'], ['about', 'settings.aboutTitle'],
+      ['account', 'settings.accountTitle'],
     ]) {
       await authedPage.getByRole('link', { name: new RegExp(t(title)) }).click();
       await expect(authedPage).toHaveURL(new RegExp(`/settings/${section}$`));
@@ -212,6 +214,23 @@ test.describe('設定分類導覽', () => {
     await expect(authedPage.getByRole('switch', {
       name: t('settings.toggleAria', { label: t('settings.medicalNews') }),
     })).not.toBeChecked();
+  });
+
+  test('從通知分頁開啟通知設定，返回時回到通知分頁', async ({ authedPage }) => {
+    await stubSettings(authedPage);
+    await authedPage.goto('/reminders');
+    await authedPage.getByRole('main').getByRole('link', { name: t('notify.settings'), exact: true }).click();
+    await expect(authedPage).toHaveURL(/\/settings\/notifications$/);
+    await expect(authedPage.getByRole('heading', { name: t('settings.notificationsTitle'), level: 1 })).toBeVisible();
+    await authedPage.getByRole('link', { name: t('personalHealth.return'), exact: true }).click();
+    await expect(authedPage).toHaveURL(/\/reminders$/);
+  });
+
+  test('關於 CARE 提供測試版法務與隱私說明的入口', async ({ authedPage }) => {
+    await stubSettings(authedPage);
+    await openPage(authedPage, 'about');
+    await authedPage.getByRole('link', { name: t('settings.legalLink') }).click();
+    await expect(authedPage).toHaveURL(/\/legal\/testing$/);
   });
 
   test('顯示頁保留淺色、深色與跟隨系統，重載後仍採用選擇', async ({ authedPage }) => {

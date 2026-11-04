@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import liff from '@line/liff';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { CheckIcon, ChevronRightIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { CheckIcon, ChevronRightIcon, InfoIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
 
 import { FeaturePage } from '@/components/FeaturePage';
 import { ReportFormDialog } from './ReportFormDialog';
@@ -25,6 +25,8 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -110,6 +112,7 @@ function KnowledgeReportsPage() {
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
   const [sort, setSort] = useState<ReportSort>('newest');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReport | null>(null);
+  const [explainerOpen, setExplainerOpen] = useState(false);
   // /knowledge-reports/new 渲染的是同一個頁面元件，只是掛載時自動開表單。
   // 這樣 Rich Menu 或 LINE 訊息能直接把使用者送進表單，又不必複製一份頁面。
   const [formOpen, setFormOpen] = useState(location.pathname.endsWith('/new'));
@@ -216,6 +219,29 @@ function KnowledgeReportsPage() {
           </Button>
         </AlertDescription>
       </Alert>
+
+      <button type="button" className="care-entry-row care-entry-soft" onClick={() => setExplainerOpen(true)}>
+        <InfoIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        <strong className="min-w-0 flex-1 text-base">{t('knowledgeReports.explainer.open')}</strong>
+        <ChevronRightIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+      </button>
+
+      <Dialog open={explainerOpen} onOpenChange={setExplainerOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <span className="care-entry-icon care-tone-green"><InfoIcon aria-hidden="true" /></span>
+            <DialogTitle className="text-xl leading-snug">{t('knowledgeReports.explainer.open')}</DialogTitle>
+            <DialogDescription className="text-base leading-relaxed">
+              {t('knowledgeReports.explainer.body')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              {t('knowledgeReports.explainer.close')}
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* items-stretch（grid 預設）讓兩張卡等高；元件本身不帶 mb-*，
           間距一律由這層的 gap 控制。 */}

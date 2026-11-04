@@ -28,7 +28,7 @@ export default function RemindersLayout() {
       <div className="flex flex-col gap-3">
         <EntryLink to="/reminders/medications" title={t('home.medications')} description={t('notify.medicationsDesc')} icon={PillIcon} tone="amber" />
         <EntryLink to="/reminders/appointments" title={t('home.appointments')} description={t('notify.appointmentsDesc')} icon={CalendarDaysIcon} tone="coral" />
-        <Link to="/settings/notifications" className="care-entry-row care-entry-soft">
+        <Link to="/settings/notifications" state={{ from: 'reminders' }} className="care-entry-row care-entry-soft">
           <SettingsIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
           <strong className="min-w-0 flex-1 text-base">{t('notify.settings')}</strong>
           <ChevronRightIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />

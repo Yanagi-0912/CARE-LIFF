@@ -1,14 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
-import { BellIcon, TypeIcon, UserRoundIcon, Volume2Icon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import liff from '@line/liff';
+import {
+  BellIcon,
+  ChevronRightIcon,
+  InfoIcon,
+  MoonIcon,
+  ShieldCheckIcon,
+  SunIcon,
+  TypeIcon,
+  Volume2Icon,
+} from 'lucide-react';
 import { EntryLink, FeaturePage } from '@/components/FeaturePage';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Empty } from '@/components/ui/empty';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {
   Item,
@@ -26,6 +36,8 @@ import { getUserSettings, updateUserSettings } from '../../api/settingsApi';
 import type { UpdateUserSettingsPayload } from '../../api/settingsApi';
 import { isAuthenticated } from '../../utils/auth';
 import { useLiffAuth } from '../../context/liffAuth';
+import { useLiff } from '../../hooks/useLiff';
+import { queryKeys } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import {
   applyTheme,
@@ -67,25 +79,22 @@ const GROUP_LABEL = 'text-[0.95rem] font-semibold text-foreground min-[480px]:te
    變體負責（原本是這裡自己抄一串 aria-pressed:），這裡只剩版面。 */
 const SEGMENT_ITEM = 'h-auto min-h-12 min-w-0 flex-1 whitespace-normal wrap-anywhere py-2 font-bold';
 
-/** 設定區塊：標題 + 說明 + 內容 */
+/** 設定區塊：選填標題 + 內容 */
 function SettingSection({
   title,
-  description,
   children,
 }: {
-  title: string;
-  description?: string;
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
     <Card
       className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300 mb-3"
     >
-      <CardHeader>
+      {title && <CardHeader>
         {/* CardTitle 渲染的是 div，這裡保留 h1 底下的區段標題語意。 */}
         <h2 className="text-lg font-bold">{title}</h2>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
+      </CardHeader>}
       <CardContent>{children}</CardContent>
     </Card>
   );
@@ -100,6 +109,45 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
       </ItemContent>
       <ItemActions>{children}</ItemActions>
     </Item>
+  );
+}
+
+const THEME_ICONS = { light: SunIcon, dark: MoonIcon, system: null } as const;
+/* 帶圖示的主題鈕在特大字級下放不進一列；寧可整顆換行，也不要把「淺色」擠成直排。 */
+const THEME_ITEM = 'min-w-max whitespace-nowrap';
+
+/** 帳號頁獨立成元件：LIFF 初始化與 LINE 名稱查詢只有這一頁需要。 */
+function AccountSection() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { isLoggedIn, logout } = useLiffAuth();
+  const { liffReady } = useLiff();
+  const { data: liffProfile } = useQuery({
+    queryKey: queryKeys.liffProfile,
+    queryFn: () => liff.getProfile(),
+    enabled: liffReady && isLoggedIn,
+    retry: false,
+    staleTime: Infinity,
+  });
+  const lineName = liffProfile?.displayName?.trim();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    // 登出入口統一收在這裡，不放首頁／Header 以免誤觸
+    <SettingSection title={t('settings.accountTitle')}>
+      <p className="text-base">
+        {t(isLoggedIn ? 'settings.loginStatusSignedIn' : 'settings.loginStatusSignedOut')}
+      </p>
+      {lineName && <p className="mt-1 text-base wrap-anywhere">{t('settings.lineName', { name: lineName })}</p>}
+      <Button variant="destructive" className="mt-4 w-full" onClick={handleLogout}>
+        {t('settings.logout')}
+      </Button>
+      <p className="mt-3 text-sm text-muted-foreground">{t('settings.accountDesc')}</p>
+    </SettingSection>
   );
 }
 
@@ -118,18 +166,22 @@ const languageOptions: Array<{ value: LanguageChoice; label: string }> = [
 /* ────────── 元件 ────────── */
 const SettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const { theme, setTheme } = useTheme();
   const section = pathname.split('/')[2] || '';
   const sectionTitles: Record<string, string> = {
     display: 'settings.displayTitle',
     voice: 'settings.voiceTitle',
     notifications: 'settings.notificationsTitle',
+    about: 'settings.aboutTitle',
     account: 'settings.accountTitle',
   };
   const sectionTitle = sectionTitles[section];
-  const { logout } = useLiffAuth();
+  // 通知分頁的「通知設定」入口會帶 from，返回時回到使用者原本所在的通知分頁。
+  const cameFromReminders = (state as { from?: unknown } | null)?.from === 'reminders';
+  const backTo = !section
+    ? undefined
+    : section === 'notifications' && cameFromReminders ? '/reminders' : '/settings';
   const fontSizeLabelMap = {
     normal: t('settings.fontSizeNormal'),
     large: t('settings.fontSizeLarge'),
@@ -261,11 +313,6 @@ const SettingsPage: React.FC = () => {
     persistSettings({ voice_gender: gender });
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   // 後端同步不能寫在 setSettings 的 updater 裡：updater 必須是純函式，
   // StrictMode（dev）會把它執行兩次，每點一次開關就送出兩筆一樣的 PATCH。
   const toggle = (key: keyof typeof toggleFieldMap) => {
@@ -282,7 +329,7 @@ const SettingsPage: React.FC = () => {
     <FeaturePage
       title={t(sectionTitle ?? 'settings.overviewTitle')}
       description={section ? undefined : t('settings.overviewDesc')}
-      backTo={section ? '/settings' : undefined}
+      backTo={backTo}
     >
       {!section && <div className="space-y-3">
         <EntryLink to="/settings/display" title={t('settings.displayTitle')}
@@ -291,17 +338,16 @@ const SettingsPage: React.FC = () => {
           description={t('settings.voiceDesc')} icon={Volume2Icon} />
         <EntryLink to="/settings/notifications" title={t('settings.notificationsTitle')}
           description={t('settings.notificationsEntryDesc')} icon={BellIcon} />
+        <EntryLink to="/settings/about" title={t('settings.aboutTitle')}
+          description={t('settings.aboutEntryDesc')} icon={InfoIcon} />
         <EntryLink to="/settings/account" title={t('settings.accountTitle')}
-          description={t('settings.accountEntryDesc')} icon={UserRoundIcon} />
+          description={t('settings.accountEntryDesc')} icon={ShieldCheckIcon} />
       </div>}
 
       {section === 'display' && <>
 
         {/* ── 字體大小 ── */}
-        <SettingSection
-          title={t('settings.fontSizeTitle')}
-          description={t('settings.fontSizeDesc')}
-        >
+        <SettingSection title={t('settings.fontSizeTitle')}>
           {/* ToggleGroup 取代原本三顆各自帶 aria-pressed 的獨立按鈕：
               三者互斥，應為一個群組而非三個彼此無關的切換鈕，
               方向鍵在群組內移動焦點也由元件提供。
@@ -327,62 +373,27 @@ const SettingsPage: React.FC = () => {
             ))}
           </ToggleGroup>
           {/* 預覽區跟著 --base-font-size 即時縮放 */}
-          <Empty className="mt-3 border border-dashed p-4">
-            <span className="text-base font-semibold">
-              {t('settings.preview')}
-            </span>
-          </Empty>
+          <div className="mt-3 rounded-lg bg-[var(--primary-softer)] p-4">
+            <p className="text-sm text-muted-foreground">{t('settings.previewLabel')}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{t('settings.previewText')}</p>
+          </div>
         </SettingSection>
 
-        {/* ── 語言設定 ── */}
-        <SettingSection
-          title={t('settings.languageTitle')}
-          description={t('settings.languageDesc')}
-        >
-          <Field>
-            <FieldLabel htmlFor="language-select" className="text-base">
-              {t('settings.displayLanguage')}
-            </FieldLabel>
-            <Select
-              value={settings.language}
-              onValueChange={(value) => handleLanguage(value as SettingsState['language'])}
-            >
-              <SelectTrigger id="language-select" className="w-full font-semibold">
-                {/* SelectValue 預設顯示原始值（en），需以函式 child 對應回標籤 */}
-                <SelectValue>
-                  {(value) =>
-                    languageOptions.find((option) => option.value === value)?.label ?? String(value)
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {languageOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        </SettingSection>
-
-        <SettingSection title={t('settings.themeTitle')} description={t('settings.themeDesc')}>
-          <ToggleGroup variant="primary" className="w-full" value={[theme ?? 'system']}
+        {/* ── 顯示模式與高對比 ── */}
+        <SettingSection title={t('settings.themeTitle')}>
+          <ToggleGroup variant="primary" className="w-full flex-wrap" value={[theme ?? 'system']}
             onValueChange={(values) => { if (values[0]) setTheme(values[0]); }}
             aria-label={t('settings.themeTitle')}>
-            {(['light', 'dark', 'system'] as const).map((value) => (
-              <ToggleGroupItem key={value} value={value} className={SEGMENT_ITEM}>
-                {t(`settings.theme.${value}`)}
-              </ToggleGroupItem>
-            ))}
+            {(['light', 'dark', 'system'] as const).map((value) => {
+              const Icon = THEME_ICONS[value];
+              return (
+                <ToggleGroupItem key={value} value={value} className={cn(SEGMENT_ITEM, THEME_ITEM)}>
+                  {Icon && <Icon aria-hidden="true" />}
+                  {t(`settings.theme.${value}`)}
+                </ToggleGroupItem>
+              );
+            })}
           </ToggleGroup>
-        </SettingSection>
-
-        {/* ── 高對比模式 ── */}
-        <SettingSection
-          title={t('settings.highContrastTitle')}
-          description={t('settings.highContrastDesc')}
-        >
           <SettingRow label={t('settings.highContrastToggle')}>
             {/* 原手刻 toggle 是普通 button，沒有 role="switch" 與 aria-checked，
                 螢幕閱讀器只會唸「按鈕」；Base UI Switch 兩者皆備，鍵盤操作也內建。
@@ -394,16 +405,14 @@ const SettingsPage: React.FC = () => {
               aria-label={t('settings.toggleAria', { label: t('settings.highContrastToggle') })}
             />
           </SettingRow>
+          <p className="text-sm text-muted-foreground">{t('settings.highContrastDesc')}</p>
         </SettingSection>
 
       </>}
 
       {section === 'notifications' && <>
         {/* ── 通知設定 ── */}
-        <SettingSection
-          title={t('settings.notificationsTitle')}
-          description={t('settings.notificationsDesc')}
-        >
+        <SettingSection>
           <ItemGroup>
             <SettingRow label={t('settings.medicationReminder')}>
               <Switch
@@ -434,11 +443,33 @@ const SettingsPage: React.FC = () => {
       </>}
 
       {section === 'voice' && <>
-        {/* ── 語音回覆 ── */}
-        <SettingSection
-          title={t('settings.voiceTitle')}
-          description={t('settings.voiceDesc')}
-        >
+        <SettingSection>
+          <Field>
+            <FieldLabel htmlFor="language-select" className="text-base font-semibold">
+              {t('settings.displayLanguage')}
+            </FieldLabel>
+            <Select
+              value={settings.language}
+              onValueChange={(value) => handleLanguage(value as SettingsState['language'])}
+            >
+              <SelectTrigger id="language-select" className="w-full font-semibold">
+                {/* SelectValue 預設顯示原始值（en），需以函式 child 對應回標籤 */}
+                <SelectValue>
+                  {(value) =>
+                    languageOptions.find((option) => option.value === value)?.label ?? String(value)
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {languageOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
           <SettingRow label={t('settings.voiceReplyToggle')}>
             <Switch
               checked={settings.voiceReplyEnabled}
@@ -491,13 +522,13 @@ const SettingsPage: React.FC = () => {
               ))}
             </ToggleGroup>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">{t('settings.languageNote')}</p>
         </SettingSection>
 
       </>}
 
-      {section === 'account' && <>
-        {/* ── 關於 ── */}
-        <SettingSection title={t('settings.aboutTitle')}>
+      {section === 'about' && <>
+        <SettingSection>
           <ItemGroup>
             <SettingRow label={t('settings.version')}>
               <span className="num font-bold">{t('settings.appVersion')}</span>
@@ -510,16 +541,15 @@ const SettingsPage: React.FC = () => {
         </SettingSection>
 
 
-        {/* ── 帳號（登出入口統一收在這裡，不放首頁／Header 以免誤觸） ── */}
-        <SettingSection
-          title={t('settings.accountTitle')}
-          description={t('settings.accountDesc')}
-        >
-          <Button variant="destructive" className="w-full" onClick={handleLogout}>
-            {t('settings.logout')}
-          </Button>
-        </SettingSection>
+        {/* /legal/testing 是公開頁，App 內沒有其他入口 */}
+        <Link to="/legal/testing" className="care-entry-row care-entry-soft">
+          <ShieldCheckIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+          <strong className="min-w-0 flex-1 text-base">{t('settings.legalLink')}</strong>
+          <ChevronRightIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        </Link>
       </>}
+
+      {section === 'account' && <AccountSection />}
     </FeaturePage>
   );
 };
