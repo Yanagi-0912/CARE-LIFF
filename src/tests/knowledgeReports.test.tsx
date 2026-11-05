@@ -86,7 +86,7 @@ describe('KnowledgeReportsPage', () => {
     renderPage();
 
     expect(
-      screen.getByRole('heading', { name: '一起讓醫療資訊更可靠' }),
+      screen.getByRole('heading', { name: '知識回報' }),
     ).toBeInTheDocument();
 
     await waitFor(() => {
@@ -137,13 +137,25 @@ describe('KnowledgeReportsPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('可打開說明，看到回報包含哪些內容後關閉', async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: '回報包含哪些內容？' }));
+
+    const dialog = screen.getByRole('dialog', { name: '回報包含哪些內容？' });
+    expect(dialog).toHaveTextContent('資料來源網址、回報原因與補充說明。');
+
+    fireEvent.click(screen.getByRole('button', { name: '關閉' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
   it('切換越南文後，頁面與回報狀態均使用越南文', async () => {
     await i18n.changeLanguage('vi');
     renderPage();
 
     expect(
       screen.getByRole('heading', {
-        name: 'Cùng xây dựng thông tin y tế đáng tin cậy hơn',
+        name: i18n.t('home.knowledgeReports'),
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Quay lại LINE để hỏi/ })).toBeInTheDocument();

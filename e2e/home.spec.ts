@@ -8,32 +8,26 @@ import { expect, stubProfileApi, t, test } from './fixtures';
  * 否則 getByRole 會同時命中導覽列。
  */
 
-/** 一般使用者看得到的八張卡片，順序即畫面順序 */
+/** 一般使用者看得到的四張卡片，順序即畫面順序 */
 const FEATURE_CARDS = [
-  { titleKey: 'home.nearbyHospitals', descKey: 'home.nearbyHospitalsDesc', path: '/nearby-hospitals' },
-  { titleKey: 'home.personalHealth', descKey: 'home.personalHealthDesc', path: '/personalhealth' },
-  { titleKey: 'home.healthRecords', descKey: 'home.healthRecordsDesc', path: '/health-records' },
-  { titleKey: 'home.medications', descKey: 'home.medicationsDesc', path: '/reminders/medications' },
-  { titleKey: 'home.appointments', descKey: 'home.appointmentsDesc', path: '/reminders/appointments' },
-  { titleKey: 'home.clinicVisits', descKey: 'home.clinicVisitsDesc', path: '/clinic-visits' },
-  { titleKey: 'home.family', descKey: 'home.familyDesc', path: '/family' },
-  { titleKey: 'home.knowledgeReports', descKey: 'home.knowledgeReportsDesc', path: '/knowledge-reports' },
-  { titleKey: 'home.settings', descKey: 'home.settingsDesc', path: '/settings' },
+  { titleKey: 'home.nearbyTitle', descKey: 'home.nearbyShort', path: '/nearby-hospitals' },
+  { titleKey: 'tools.clinicVisits', descKey: 'home.clinicShort', path: '/clinic-visits' },
+  { titleKey: 'home.knowledgeReports', descKey: 'home.reportsShort', path: '/knowledge-reports' },
 ] as const;
 
-test.describe('首頁 (Home)', () => {
+test.describe('工具首頁 (Home)', () => {
   test.beforeEach(async ({ authedPage }) => {
-    await authedPage.goto('/');
+    await authedPage.goto('/tools');
   });
 
   test('顯示標題與引導說明', async ({ authedPage }) => {
     await expect(
-      authedPage.getByRole('heading', { name: t('home.title'), level: 1 }),
+      authedPage.getByRole('heading', { name: t('tools.title'), level: 1 }),
     ).toBeVisible();
-    await expect(authedPage.getByText(t('home.subtitle'))).toBeVisible();
+    await expect(authedPage.getByText(t('home.introDesc'))).toBeVisible();
   });
 
-  test('渲染八張功能卡片，標題與描述都正確', async ({ authedPage }) => {
+  test('渲染三張功能卡片，標題與描述都正確', async ({ authedPage }) => {
     const features = authedPage.getByTestId('home-features');
     const cards = features.getByRole('button');
 
@@ -60,14 +54,15 @@ test.describe('首頁 (Home)', () => {
     });
   }
 
-  test('管理員多看到一張知識審核卡片', async ({ authedPage }) => {
+  test('管理員在工具首頁多看到知識回報審核', async ({ authedPage }) => {
     // 後註冊的 route 會蓋掉 fixture 的預設 stub
     await stubProfileApi(authedPage, { name: '管理員', role: 'admin' });
     await authedPage.reload();
 
     const features = authedPage.getByTestId('home-features');
     await expect(features.getByRole('button')).toHaveCount(FEATURE_CARDS.length + 1);
-    await expect(features).toContainText(t('home.adminKnowledgeReports'));
+    await features.getByRole('button', { name: new RegExp(`^${t('home.adminKnowledgeReports')}`) }).click();
+    await expect(authedPage).toHaveURL(/admin\/knowledge-reports$/);
   });
 
   test('一般使用者看不到知識審核卡片', async ({ authedPage }) => {

@@ -120,6 +120,8 @@ test.describe('LINE 個人資料（liff.getProfile）', () => {
     await stubProfileApi(authedPage, null);
 
     await authedPage.goto('/personalhealth');
+    await authedPage.getByRole('button', { name: t('personalHealth.details'), exact: true }).click();
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
 
     await expect(authedPage.locator('#name')).toHaveValue(LINE_DISPLAY_NAME);
   });
@@ -132,6 +134,8 @@ test.describe('LINE 個人資料（liff.getProfile）', () => {
     await stubProfileApi(authedPage, { name: '王大明', gender: 'male', age: 72 });
 
     await authedPage.goto('/personalhealth');
+    await authedPage.getByRole('button', { name: t('personalHealth.details'), exact: true }).click();
+    await authedPage.getByRole('button', { name: t('personalHealth.edit'), exact: true }).click();
 
     // 兩個 effect 誰先回來都不該影響結果（見 PersonalHealth 內的註解）
     await expect(authedPage.locator('#name')).toHaveValue('王大明');
@@ -154,7 +158,7 @@ test.describe('主動登出後不得自動登回去', () => {
       line_user_id: LINE_USER_ID,
     });
 
-    await authedPage.goto('/settings');
+    await authedPage.goto('/settings/account');
     await authedPage.getByRole('button', { name: t('settings.logout') }).click();
 
     await expect(authedPage).toHaveURL(/\/login(\?|$)/);
@@ -175,7 +179,7 @@ test.describe('主動登出後不得自動登回去', () => {
       line_user_id: LINE_USER_ID,
     });
 
-    await authedPage.goto('/settings');
+    await authedPage.goto('/settings/account');
     await authedPage.getByRole('button', { name: t('settings.logout') }).click();
     await authedPage.getByRole('button', { name: t('login.relogin') }).click();
 
@@ -183,6 +187,6 @@ test.describe('主動登出後不得自動登回去', () => {
       .poll(() => authedPage.evaluate(() => localStorage.getItem('CARE_AUTH_TOKEN')))
       .toBe(SERVER_TOKEN);
     // 回到被踢出來時的那一頁，而不是首頁——深連結還原（saveRedirectUrl）也一起驗到
-    await expect(authedPage).toHaveURL(/\/settings$/);
+    await expect(authedPage).toHaveURL(/\/settings\/account$/);
   });
 });

@@ -119,12 +119,12 @@ test.describe('諮詢紀錄（本人）', () => {
     await expect(authedPage.getByText('資料暫時無法讀取，請稍後再試')).toBeVisible();
   });
 
-  test('「返回個人健康資料」導向 /personalhealth', async ({ authedPage }) => {
+  test('「返回健康紀錄」導向 /health-records', async ({ authedPage }) => {
     await stubConsultations(authedPage);
     await openPage(authedPage);
 
-    await authedPage.getByRole('button', { name: t('consultRecord.backToHealth') }).click();
-    await expect(authedPage).toHaveURL(/\/personalhealth$/);
+    await authedPage.getByRole('button', { name: t('consultRecord.backToRecords') }).click();
+    await expect(authedPage).toHaveURL(/\/health-records$/);
   });
 });
 

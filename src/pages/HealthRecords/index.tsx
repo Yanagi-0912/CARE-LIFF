@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarHeartIcon,
+  ChevronRightIcon,
   DropletIcon,
   FootprintsIcon,
+  FileTextIcon,
   HeartPulseIcon,
   LockIcon,
   RotateCwIcon,
@@ -17,6 +19,7 @@ import { getLineUserId } from '../../utils/auth';
 import { canReadHealthRecords, canRecordHealthFor } from '../../utils/familyPermissions';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { queryKeys } from '@/lib/queryClient';
+import { FeaturePage } from '@/components/FeaturePage';
 import { MeasurementTab } from './MeasurementTab';
 import { MenstrualTab } from './MenstrualTab';
 import { StepsTab } from './StepsTab';
@@ -123,13 +126,19 @@ export default function HealthRecordsPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[800px] flex-col gap-4 p-4">
-      <header>
-        <h1 className="text-2xl font-extrabold">
-          {isViewingFamily ? t('health.titleForMember', { name: targetName }) : t('health.title')}
-        </h1>
-        <p className="mt-1 text-muted-foreground">{t('health.description')}</p>
-      </header>
+    <FeaturePage
+      title={isViewingFamily ? t('health.titleForMember', { name: targetName }) : t('health.title')}
+      description={t('health.description')}
+      backTo={isViewingFamily ? `/family/members/${encodeURIComponent(targetUserId)}` : undefined}
+    >
+      {/* 諮詢紀錄只列自己的：看家人的諮詢紀錄走家人資料頁，那裡另有 PRIVATE 讀取權的判斷 */}
+      {!isViewingFamily && (
+        <Link to="/personalhealth/consult" className="care-entry-row care-entry-soft mb-4">
+          <FileTextIcon className="size-5 shrink-0" aria-hidden="true" />
+          <strong className="min-w-0 flex-1 text-base">{t('health.consultEntry')}</strong>
+          <ChevronRightIcon className="size-5 shrink-0" aria-hidden="true" />
+        </Link>
+      )}
 
       {isViewingFamily && familyLoading ? (
         <p className="flex items-center gap-2 py-6 text-base text-muted-foreground" role="status">
@@ -169,7 +178,7 @@ export default function HealthRecordsPage() {
         </Empty>
       ) : (
         <Tabs value={activeTab} onValueChange={(value) => handleTabChange(String(value))}>
-          <TabsList className="w-full" aria-label={t('health.tabListLabel')}>
+          <TabsList className="w-full flex-wrap rounded-2xl" aria-label={t('health.tabListLabel')}>
             {tabs.map(({ key, labelKey, Icon }) => (
               <TabsTrigger key={key} value={key}>
                 <Icon data-icon="inline-start" />
@@ -204,6 +213,6 @@ export default function HealthRecordsPage() {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+    </FeaturePage>
   );
 }

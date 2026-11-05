@@ -100,7 +100,7 @@ export function MenstrualTab() {
           <EmptyTitle>{t('health.menstrual.genderGateTitle')}</EmptyTitle>
           <EmptyDescription>{t('health.menstrual.genderGateDesc')}</EmptyDescription>
         </EmptyHeader>
-        <Button type="button" variant="outline" className="mx-auto mt-2" render={<Link to="/personalhealth" />}>
+        <Button type="button" variant="outline" className="mx-auto mt-2" render={<Link to="/" />}>
           {t('health.menstrual.genderGateLink')}
         </Button>
       </Empty>

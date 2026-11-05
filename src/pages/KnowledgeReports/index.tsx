@@ -4,9 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import liff from '@line/liff';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { CheckIcon, ChevronRightIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { CheckIcon, ChevronRightIcon, InfoIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
 
-import DecryptedText from '../../components/DecryptedText/DecryptedText';
+import { FeaturePage } from '@/components/FeaturePage';
 import { ReportFormDialog } from './ReportFormDialog';
 import {
   fetchKnowledgeReports,
@@ -25,6 +25,8 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -38,8 +40,6 @@ import {
 import {
   DetailItem,
   DetailList,
-  KnowledgeHero,
-  KnowledgePage,
   ReportRow,
   ReportTag,
   ReportsEmpty,
@@ -112,6 +112,7 @@ function KnowledgeReportsPage() {
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
   const [sort, setSort] = useState<ReportSort>('newest');
   const [selectedReport, setSelectedReport] = useState<KnowledgeReport | null>(null);
+  const [explainerOpen, setExplainerOpen] = useState(false);
   // /knowledge-reports/new 渲染的是同一個頁面元件，只是掛載時自動開表單。
   // 這樣 Rich Menu 或 LINE 訊息能直接把使用者送進表單，又不必複製一份頁面。
   const [formOpen, setFormOpen] = useState(location.pathname.endsWith('/new'));
@@ -199,7 +200,8 @@ function KnowledgeReportsPage() {
   };
 
   return (
-    <KnowledgePage>
+    <FeaturePage title={t('home.knowledgeReports')} description={t('home.reportsShort')} backTo="/tools">
+      <div className="flex flex-col gap-4">
       {/* Alert 是 [icon | 內容] 的兩欄 grid。行動鈕必須放進 AlertDescription 裡，
           直接當 Alert 的第三個子元素會被塞進圖示那一欄並被拉成整列寬。 */}
       <Alert>
@@ -218,43 +220,45 @@ function KnowledgeReportsPage() {
         </AlertDescription>
       </Alert>
 
+      <button type="button" className="care-entry-row care-entry-soft" onClick={() => setExplainerOpen(true)}>
+        <InfoIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        <strong className="min-w-0 flex-1 text-base">{t('knowledgeReports.explainer.open')}</strong>
+        <ChevronRightIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+      </button>
+
+      <Dialog open={explainerOpen} onOpenChange={setExplainerOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <span className="care-entry-icon care-tone-green"><InfoIcon aria-hidden="true" /></span>
+            <DialogTitle className="text-xl leading-snug">{t('knowledgeReports.explainer.open')}</DialogTitle>
+            <DialogDescription className="text-base leading-relaxed">
+              {t('knowledgeReports.explainer.body')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              {t('knowledgeReports.explainer.close')}
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* items-stretch（grid 預設）讓兩張卡等高；元件本身不帶 mb-*，
           間距一律由這層的 gap 控制。 */}
       <div className="grid gap-4 min-[900px]:grid-cols-2">
-        <KnowledgeHero
-          avatar={t('knowledgeReports.avatar')}
-          eyebrow={t('knowledgeReports.eyebrow')}
-          title={
-            <DecryptedText
-              text={t('knowledgeReports.title')}
-              speed={34}
-              sequential
-              revealDirection="center"
-              useOriginalCharsOnly
-              animateOn="view"
-            />
-          }
-          stats={
-            <StatsRow
-              label={t('knowledgeReports.statsLabel')}
-              items={[
-                { value: counts.all, label: t('knowledgeReports.stats.total') },
-                { value: counts.reviewing, label: t('knowledgeReports.stats.reviewing') },
-                { value: counts.resolved, label: t('knowledgeReports.stats.updated') },
-              ]}
-            />
-          }
-          action={
+        <Card>
+          <CardContent className="space-y-4">
+            <StatsRow label={t('knowledgeReports.statsLabel')} items={[
+              { value: counts.all, label: t('knowledgeReports.stats.total') },
+              { value: counts.reviewing, label: t('knowledgeReports.stats.reviewing') },
+              { value: counts.resolved, label: t('knowledgeReports.stats.updated') },
+            ]} />
             <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => handleFormOpenChange(true)}>
-                {t('knowledgeReports.form.open')}
-              </Button>
-              <Button type="button" variant="outline" onClick={handleAskInLine}>
-                {t('knowledgeReports.askInLine')}
-              </Button>
+              <Button type="button" onClick={() => handleFormOpenChange(true)}>{t('knowledgeReports.form.open')}</Button>
+              <Button type="button" variant="outline" onClick={handleAskInLine}>{t('knowledgeReports.askInLine')}</Button>
             </div>
-          }
-        />
+          </CardContent>
+        </Card>
 
         <ReportFormDialog key={formKey} open={formOpen} onOpenChange={handleFormOpenChange} />
 
@@ -465,7 +469,8 @@ function KnowledgeReportsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </KnowledgePage>
+      </div>
+    </FeaturePage>
   );
 }
 

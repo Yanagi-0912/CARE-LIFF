@@ -11,34 +11,15 @@ import { ASSIGNABLE_FAMILY_ROLES, FAMILY_ROLE_LABEL_KEY } from '../../types/fami
 import { queryKeys } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 import { RoleAssignmentNotice } from './RoleAssignmentNotice';
+import { ROLE_EXPLAIN_KEY } from './roleAccess';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-
-interface Props {
-  onClose: () => void;
-}
-
-/** 每個角色配一句白話說明。長輩要能從這句話判斷該選哪個，而不是從角色名稱猜。 */
-const EXPLAIN_KEY: Record<FamilyRole, string> = {
-  OWNER: 'familyRole.explain.guardian', // 不會被渲染，OWNER 不是可指派的角色
-  GUARDIAN: 'familyRole.explain.guardian',
-  CAREGIVER: 'familyRole.explain.caregiver',
-  MEMBER: 'familyRole.explain.member',
-};
 
 /**
  * 擁有者設定「誰能看我的哪些資料」。
@@ -61,14 +42,10 @@ const EXPLAIN_KEY: Record<FamilyRole, string> = {
  * 會自己把它捲進來。滑動不是唯一的切換方式——長輩不一定知道可以滑，所以另外給
  * 上一位／下一位按鈕與「第 x 位，共 n 位」，按鈕與計數是主要導覽，滑動是捷徑。
  */
-export function RoleManagerDialog({ onClose }: Props) {
+export function RoleManagerContent() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
-  // 打開時先聚焦標題。實測預設會聚焦到最下面的「取消」，整個 dialog 因此
-  // 一開就捲掉 150px，標題與最上面的權限提示都在畫面外。
-  const titleRef = useRef<HTMLHeadingElement>(null);
-
   // 與族譜頁同一個 query key，命中快取不會多打一次。下面指派成功後會失效
   // familyTree：最後一位設定完、後端切成 enforced 時，提示會跟著換掉或消失。
   const { roleAssignment } = useFamily();
@@ -113,15 +90,7 @@ export function RoleManagerDialog({ onClose }: Props) {
   const list = entries ?? [];
 
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent initialFocus={titleRef} className="max-h-[85dvh] overflow-y-auto sm:max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
-            {t('familyRole.manage.title')}
-          </DialogTitle>
-          <DialogDescription>{t('familyRole.manage.desc')}</DialogDescription>
-        </DialogHeader>
-
+    <div className="flex min-w-0 flex-col gap-4">
         <RoleAssignmentNotice status={roleAssignment} />
 
         {isPending ? (
@@ -199,9 +168,9 @@ export function RoleManagerDialog({ onClose }: Props) {
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       {notYetEnforced
                         ? t('familyRole.explain.pending', {
-                            text: t(EXPLAIN_KEY[entry.family_role]),
+                            text: t(ROLE_EXPLAIN_KEY[entry.family_role]),
                           })
-                        : t(EXPLAIN_KEY[entry.family_role])}
+                        : t(ROLE_EXPLAIN_KEY[entry.family_role])}
                     </p>
                   )}
                 </Item>
@@ -210,11 +179,7 @@ export function RoleManagerDialog({ onClose }: Props) {
           </MemberPager>
         )}
 
-        <DialogClose render={<Button type="button" variant="outline" className="mt-4 w-full" />}>
-          {t('familyPermission.cancel')}
-        </DialogClose>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }
 

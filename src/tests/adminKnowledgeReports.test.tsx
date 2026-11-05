@@ -540,7 +540,7 @@ describe('AdminRoute', () => {
     await i18n.changeLanguage('zh-TW');
   });
 
-  it('非 admin 會被導向首頁', async () => {
+  it('非 admin 停在原網址，看到僅限管理員的說明與回到工具的入口', async () => {
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({
       role: 'user',
     } as Awaited<ReturnType<typeof profileApi.getPersonalHealthProfile>>);
@@ -548,7 +548,7 @@ describe('AdminRoute', () => {
     renderWithToaster(
       <MemoryRouter initialEntries={['/admin/knowledge-reports']}>
         <Routes>
-          <Route path="/" element={<div>home-page</div>} />
+          <Route path="/tools" element={<div>home-page</div>} />
           <Route
             path="/admin/knowledge-reports"
             element={
@@ -563,9 +563,11 @@ describe('AdminRoute', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('確認權限中…');
 
-    await waitFor(() => {
-      expect(screen.getByText('home-page')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('此功能僅限管理員使用。')).toBeInTheDocument();
     expect(screen.queryByText('admin-page')).not.toBeInTheDocument();
+    expect(screen.queryByText('home-page')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: '回到工具' }));
+    expect(await screen.findByText('home-page')).toBeInTheDocument();
   });
 });

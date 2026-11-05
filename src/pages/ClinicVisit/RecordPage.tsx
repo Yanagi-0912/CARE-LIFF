@@ -95,7 +95,7 @@ export default function ClinicRecordPage() {
     const sentId = sent?.id ?? sent?._id;
     return (
       <main className="mx-auto max-w-md px-4 py-10 text-center">
-        <CheckCircle2 className="mx-auto h-14 w-14 text-green-600" aria-hidden />
+        <CheckCircle2 className="mx-auto h-14 w-14 text-success" aria-hidden />
         <p className="mt-4 text-lg leading-relaxed">{t('clinic.done')}</p>
         <div className="mt-8 space-y-3">
           {sentId && (
@@ -168,8 +168,8 @@ export default function ClinicRecordPage() {
         </div>
         {recorder.state === 'recording' && (
           // 錄音中一定要一直看得見，這是徵詢同意之外的第二個誠實要求。
-          <p className="mt-3 flex items-center justify-center gap-2 text-base text-red-600">
-            <span className="h-3 w-3 animate-pulse rounded-full bg-red-600" aria-hidden />
+          <p className="mt-3 flex items-center justify-center gap-2 text-base text-destructive">
+            <span className="h-3 w-3 animate-pulse rounded-full bg-destructive" aria-hidden />
             {t('clinic.recordingNotice')}
           </p>
         )}

@@ -1,92 +1,49 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { renderWithToaster } from './testUtils';
 import Sidebar from '../components/Sidebar';
-import * as profileApi from '../api/profileApi';
 import i18n from '../i18n';
-
-vi.mock('../api/profileApi', () => ({
-  getPersonalHealthProfile: vi.fn(),
-}));
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => ({
-  ...(await vi.importActual<typeof import('react-router-dom')>('react-router-dom')),
+  ...await vi.importActual<typeof import('react-router-dom')>('react-router-dom'),
   useNavigate: () => mockNavigate,
 }));
 
-describe('Sidebar', () => {
+describe('桌面主要導覽', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
     await i18n.changeLanguage('zh-TW');
   });
+  const renderAt = (path: string) => renderWithToaster(
+    <MemoryRouter initialEntries={[path]}><Sidebar /></MemoryRouter>,
+  );
 
-  const renderAt = (path: string) =>
-    renderWithToaster(
-      <MemoryRouter initialEntries={[path]}>
-        <Sidebar />
-      </MemoryRouter>,
-    );
-
-  it('標記目前頁面，點擊其他項目時導覽過去', () => {
-    renderAt('/reminders/medications');
-
-    expect(screen.getByRole('button', { name: '用藥提醒' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('button', { name: '首頁' })).not.toHaveAttribute('aria-current');
-
-    fireEvent.click(screen.getByRole('button', { name: '家庭介面' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/family');
-  });
-
-  it('健康紀錄與個人健康各有入口，點了導到健康紀錄頁', () => {
+  it('提供與手機一致的五個入口', () => {
     renderAt('/');
-
-    // 兩者是不同的東西：累積的量測數字 vs 偶爾更新的基本資料，側欄要分得開
-    expect(screen.getByRole('button', { name: '個人健康' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '健康紀錄' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/health-records');
+    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['健康', '提醒', '首頁', '工具', '設定']);
+    fireEvent.click(screen.getByRole('button', { name: '工具' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/tools');
   });
 
-  it('在健康紀錄頁時標記為目前頁面', () => {
-    renderAt('/health-records');
-
-    expect(screen.getByRole('button', { name: '健康紀錄' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    // startsWith 判斷不能讓「個人健康」也跟著亮起來
-    expect(screen.getByRole('button', { name: '個人健康' })).not.toHaveAttribute('aria-current');
-  });
-
-  it('首頁只在路徑正好是 / 時才算目前頁面', () => {
-    // '/' 若用 startsWith 判斷會對所有路徑成立，這裡確保它是完全比對
-    renderAt('/settings');
-
-    expect(screen.getByRole('button', { name: '首頁' })).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('button', { name: '系統設定' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-  });
-
-  it('非管理員看不到審核佇列入口，管理員才看得到', async () => {
-    renderAt('/');
-    expect(screen.queryByRole('button', { name: '知識審核' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '標記頁面' })).not.toBeInTheDocument();
-
-    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ role: 'admin' });
-    renderAt('/');
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: '知識審核' }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('button', { name: '標記頁面' }).length).toBeGreaterThan(0);
-    });
+  it.each([
+    ['/', '首頁'],
+    ['/personalhealth?view=edit', '首頁'],
+    ['/family/members', '首頁'],
+    ['/lost/watch', '首頁'],
+    ['/reminders/appointments', '提醒'],
+    ['/medications/visits', '提醒'],
+    ['/tools', '工具'],
+    ['/clinic-visits/record', '工具'],
+    ['/admin/knowledge-reports', '工具'],
+    ['/settings/display', '設定'],
+    ['/health-records', '健康'],
+    ['/personalhealth/consult', '健康'],
+  ])('%s 標示所屬的 %s 入口', (path, label) => {
+    renderAt(path);
+    const current = screen.getAllByRole('button').filter(button => button.getAttribute('aria-current') === 'page');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent(label);
   });
 });

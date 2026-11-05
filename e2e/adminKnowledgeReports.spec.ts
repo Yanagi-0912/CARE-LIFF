@@ -116,17 +116,20 @@ const rowButton = (page: Page, question: string) =>
   page.getByRole('button', { name: t('adminKnowledgeReports.viewReport', { question }) });
 
 test.describe('管理員守門', () => {
-  test('一般使用者進入審核頁會被導回首頁', async ({ authedPage }) => {
+  test('一般使用者進入審核頁看到僅限管理員，可回到工具', async ({ authedPage }) => {
     await stubProfileApi(authedPage, { name: '一般人', role: 'user' });
     await authedPage.goto('/admin/knowledge-reports');
 
-    await expect(authedPage).toHaveURL(/\/$/);
-    await expect(authedPage.getByRole('heading', { name: t('home.title'), level: 1 })).toBeVisible();
+    await expect(authedPage.getByText(t('adminRoute.deniedDesc'))).toBeVisible();
+    await expect(authedPage).toHaveURL(/\/admin\/knowledge-reports$/);
+    await authedPage.getByRole('link', { name: t('adminRoute.backToTools') }).click();
+    await expect(authedPage).toHaveURL(/\/tools$/);
+    await expect(authedPage.getByRole('heading', { name: t('tools.title'), level: 1 })).toBeVisible();
   });
 
   test('尚未建檔（profile 404）也視為非管理員', async ({ authedPage }) => {
     await authedPage.goto('/admin/knowledge-reports');
-    await expect(authedPage).toHaveURL(/\/$/);
+    await expect(authedPage.getByText(t('adminRoute.deniedDesc'))).toBeVisible();
   });
 
   test('管理員可進入，且側欄多出審核入口', async ({ authedPage }) => {

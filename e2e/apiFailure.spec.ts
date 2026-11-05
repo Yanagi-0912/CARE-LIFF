@@ -35,14 +35,14 @@ test.describe('401 全域救援', () => {
       status: 401,
       body: { detail: 'Token expired' },
     });
-    await authedPage.goto('/family');
+    await authedPage.goto('/family/location');
 
     await expect(authedPage).toHaveURL(/\/login(\?|$)/);
     // token 是否被清掉在這裡驗不到：fixture 的 addInitScript 會在導向 /login 那次
     // 頁面載入時把假 token 寫回去。清 token 的行為由 vitest 的 auth 測試涵蓋。
     expect(
       await authedPage.evaluate(() => sessionStorage.getItem('CARE_REDIRECT_URL')),
-    ).toBe('/family');
+    ).toBe('/family/location');
   });
 
   test('列表類頁面在網路中斷時落入錯誤狀態而非白畫面', async ({ authedPage }) => {
@@ -86,7 +86,7 @@ const PAGES = [
   '/personalhealth',
   '/personalhealth/consult',
   '/medications',
-  '/family',
+  `/family/members/${FAMILY_MEMBERS[0].user_id}`,
   '/knowledge-reports',
   '/knowledge-reports/new',
   '/settings',
@@ -108,9 +108,8 @@ test.describe('正常路徑下 console 不得出現錯誤', () => {
       await expect(authedPage.locator('#root')).not.toBeEmpty();
       // 讓 lazy 頁面與各查詢落地
       await authedPage.waitForLoadState('networkidle');
-      // 順手互動：展開家人卡片、切到對話分頁、搜尋附近醫院
-      if (path === '/family') {
-        await authedPage.getByRole('button', { name: FAMILY_MEMBERS[0].display_name }).click();
+      // 順手互動：等家人資料頁的健康資料、切到對話分頁、搜尋附近醫院
+      if (path.startsWith('/family/members/')) {
         await expect(authedPage.getByText(`78 ${t('personalHealth.unit.age')}`)).toBeVisible();
       }
       if (path === '/personalhealth/consult') {
