@@ -195,12 +195,18 @@ export default function PersonalHealthPage() {
             )) : view === 'summary' ? (
                 <>
                     <section className="mb-6 flex items-center gap-4 py-2" aria-label={t('personalHealth.step1.title')}>
-                        <Avatar className="size-20 shrink-0 rounded-2xl after:rounded-2xl">
-                            <AvatarImage className="rounded-2xl" src={liffProfile?.pictureUrl} alt={t('personalHealth.avatarAlt', { name })} />
-                            <AvatarFallback className="rounded-2xl bg-primary/10 text-3xl font-bold text-primary">
-                                {name.charAt(0) || t('personalHealth.avatarFallback')}
-                            </AvatarFallback>
-                        </Avatar>
+                        {/* 圓形頭像＋「LINE」標籤：與家人頭像同形狀，也說明照片來自 LINE */}
+                        <div className="relative shrink-0 pb-2">
+                            <Avatar className="size-20">
+                                <AvatarImage src={liffProfile?.pictureUrl} alt={t('personalHealth.avatarAlt', { name })} />
+                                <AvatarFallback className="bg-accent text-3xl font-bold text-accent-foreground">
+                                    {name.charAt(0) || t('personalHealth.avatarFallback')}
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 text-sm leading-relaxed font-bold text-primary-foreground ring-2 ring-background">
+                                {t('personalHealth.lineBadge')}
+                            </span>
+                        </div>
                         <div className="min-w-0">
                             <p className="text-2xl font-bold break-words text-ink">{name || empty}</p>
                             <p className="text-base text-muted-foreground">{data.age ? `${data.age} ${t('personalHealth.unit.age')}` : t('personalHealth.ageNotSet')}</p>

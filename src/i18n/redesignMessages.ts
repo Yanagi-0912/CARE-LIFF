@@ -3,6 +3,7 @@ import type { SupportedLanguage } from './messages';
 /** Figma「CARE｜產品 UI 與互動原型」四分頁版面新增或改寫的文案；最後合併，會蓋過同名舊字串。 */
 export const redesignMessages: Record<SupportedLanguage, Record<string, string>> = {
   'zh-TW': {
+    'personalHealth.lineBadge': 'LINE',
     'consultRecord.backToRecords': '返回健康紀錄',
     'nav.tools': '工具',
     'tools.title': '健康工具',
@@ -10,6 +11,7 @@ export const redesignMessages: Record<SupportedLanguage, Record<string, string>>
     'tools.adminOnly': '管理員專用',
   },
   en: {
+    'personalHealth.lineBadge': 'LINE',
     'consultRecord.backToRecords': 'Back to health records',
     'nav.tools': 'Tools',
     'tools.title': 'Health tools',
@@ -17,6 +19,7 @@ export const redesignMessages: Record<SupportedLanguage, Record<string, string>>
     'tools.adminOnly': 'Administrators only',
   },
   id: {
+    'personalHealth.lineBadge': 'LINE',
     'consultRecord.backToRecords': 'Kembali ke catatan kesehatan',
     'nav.tools': 'Alat',
     'tools.title': 'Alat kesehatan',
@@ -24,6 +27,7 @@ export const redesignMessages: Record<SupportedLanguage, Record<string, string>>
     'tools.adminOnly': 'Khusus admin',
   },
   vi: {
+    'personalHealth.lineBadge': 'LINE',
     'consultRecord.backToRecords': 'Quay lại hồ sơ sức khỏe',
     'nav.tools': 'Công cụ',
     'tools.title': 'Công cụ sức khỏe',
@@ -31,6 +35,7 @@ export const redesignMessages: Record<SupportedLanguage, Record<string, string>>
     'tools.adminOnly': 'Chỉ dành cho quản trị viên',
   },
   th: {
+    'personalHealth.lineBadge': 'LINE',
     'consultRecord.backToRecords': 'กลับไปที่บันทึกสุขภาพ',
     'nav.tools': 'เครื่องมือ',
     'tools.title': 'เครื่องมือสุขภาพ',
@@ -38,6 +43,7 @@ export const redesignMessages: Record<SupportedLanguage, Record<string, string>>
     'tools.adminOnly': 'สำหรับผู้ดูแลระบบเท่านั้น',
   },
   ja: {
+    'personalHealth.lineBadge': 'LINE',
     'consultRecord.backToRecords': '健康記録に戻る',
     'nav.tools': 'ツール',
     'tools.title': '健康ツール',
