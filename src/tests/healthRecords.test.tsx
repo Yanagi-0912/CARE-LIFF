@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithToaster } from './testUtils';
 import HealthRecordsPage from '../pages/HealthRecords';
 import Home from '../pages/Home';
-import { FamilySection } from '../pages/Family/FamilySection';
 import * as healthApi from '../api/healthApi';
 import * as profileApi from '../api/profileApi';
 import type { FamilyMember, FamilyPermissions } from '../types/family';
@@ -127,25 +126,20 @@ afterEach(() => {
 // ── 9.1 路由與入口 ─────────────────────────────────────────────────────
 
 describe('9.1 路由與入口', () => {
-  it('新版入口不讀取量測資料，選擇分類後才顯示紀錄', async () => {
+  it('/health-records 直接顯示分頁並讀取量測，沒有另一層入口頁，也沒有返回鈕', async () => {
     renderHealthRecords('/health-records');
-    const pressure = await screen.findByRole('link', { name: /血壓/ });
-    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
-    fireEvent.click(pressure);
     expect(await screen.findByRole('tab', { name: /血壓/ })).toBeInTheDocument();
     await waitFor(() => expect(healthApi.fetchMeasurements).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('link', { name: '返回' }));
-    expect(await screen.findByRole('link', { name: /血壓/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '返回' })).not.toBeInTheDocument();
   });
 
-  it('家人健康分類連結保留查看對象', async () => {
+  it('看家人時直接顯示分頁、不列諮詢紀錄，返回鈕回到家人資料頁', async () => {
     familyState.members = [familyMember({ my_strict_permissions: GUARDIAN_PERMISSIONS })];
     renderHealthRecords('/health-records?user=U-mom');
-    expect(await screen.findByRole('link', { name: /血壓/ })).toHaveAttribute('href', '/health-records?user=U-mom&tab=blood_pressure');
-    expect(screen.queryByRole('link', { name: /經期/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: /血壓/ })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /經期/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /諮詢紀錄/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '返回' })).toHaveAttribute('href', '/family/members/U-mom');
-    expect(healthApi.fetchMeasurements).not.toHaveBeenCalled();
   });
 
   it('/health-records 顯示血壓、血糖、步數三個分頁（性別未知時經期先出現，待判定為男性後才收起）', async () => {
@@ -166,16 +160,7 @@ describe('9.1 路由與入口', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/health-records');
   });
 
-  it('健康首頁的「我的健康紀錄」連到 /health-records', () => {
-    renderWithToaster(
-      <MemoryRouter initialEntries={['/personalhealth']}>
-        <FamilySection />
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole('link', { name: /我的健康紀錄/ })).toHaveAttribute('href', '/health-records');
-  });
-
-  it('自己的紀錄入口有諮詢紀錄（看家人時不列，見下一則）', async () => {
+  it('自己的健康紀錄頁有諮詢紀錄連結（看家人時不列）', async () => {
     renderHealthRecords('/health-records');
     expect(await screen.findByRole('link', { name: /諮詢紀錄/ })).toHaveAttribute('href', '/personalhealth/consult');
   });

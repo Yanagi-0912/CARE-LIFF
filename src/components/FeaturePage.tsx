@@ -32,15 +32,14 @@ export function FeaturePage({ title, description, backTo, children }: {
   </div>;
 }
 
-export function EntryLink({ to, title, description, icon: Icon, tone = 'green' }: {
+export function EntryLink({ to, title, description, icon: Icon }: {
   to: string;
   title: string;
   description?: string;
   icon: LucideIcon;
-  tone?: 'green' | 'coral' | 'amber' | 'violet';
 }) {
   return <Link to={to} className="care-entry-row">
-    <span className={`care-entry-icon care-tone-${tone}`}><Icon aria-hidden="true" /></span>
+    <span className="care-entry-icon care-tone-green"><Icon aria-hidden="true" /></span>
     <span className="min-w-0 flex-1 wrap-anywhere">
       <strong className="block text-lg">{title}</strong>
       {description && <span className="block text-sm text-muted-foreground">{description}</span>}

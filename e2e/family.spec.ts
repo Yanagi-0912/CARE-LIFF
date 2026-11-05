@@ -85,15 +85,13 @@ test.describe('舊網址與分類子頁', () => {
 });
 
 test.describe('健康首頁的家人區塊', () => {
-  test('載入中顯示骨架，之後進入空狀態並提供加入家人與新增家人', async ({ authedPage }) => {
+  test('載入中顯示骨架，之後進入空狀態，只留家人列最後的加入家人', async ({ authedPage }) => {
     await stubFamily(authedPage, [], { delayMs: 1500 });
     await openHome(authedPage);
 
     await expect(authedPage.locator('[aria-busy="true"]')).toBeVisible();
     await expect(authedPage.getByText(t('family.empty'))).toBeVisible({ timeout: 5000 });
     await expect(authedPage.getByRole('button', { name: t('healthHome.addFamilyTile') })).toBeVisible();
-    await expect(authedPage.getByRole('button', { name: t('healthHome.addFamily') })).toBeVisible();
-    await expect(authedPage.getByRole('link', { name: t('healthHome.myRecords') })).toHaveAttribute('href', '/health-records');
   });
 
   test('載入失敗顯示錯誤與重試，重試成功後顯示成員', async ({ authedPage }) => {
@@ -352,15 +350,24 @@ test.describe('權限提示', () => {
       path: '/api/family/me',
       body: familyTreeBody(FAMILY_MEMBERS, roleAssignment),
     });
-    await openHome(page);
+    // 首頁只用家人格子上的標籤表示權限；完整說明放在設定權限頁
+    await page.goto(`/family/members/${UNSET.user_id}/role`);
   }
 
-  test('還沒生效且有人沒設定：說在那之前所有家人都看得到，入口仍在', async ({ authedPage }) => {
+  test('首頁不放權限提示框與設定入口，只看標籤', async ({ authedPage }) => {
+    await stubApi(authedPage, { path: '/api/family/me', body: familyTreeBody(FAMILY_MEMBERS, status({})) });
+    await openHome(authedPage);
+
+    await expect(authedPage.getByText(t('familyRole.shadowPendingNotice_one', { count: 1 }))).toHaveCount(0);
+    await expect(authedPage.getByRole('link', { name: t('familyRole.manage.open') })).toHaveCount(0);
+    await expect(authedPage.getByRole('link', { name: new RegExp(UNSET.display_name) })).toContainText(t('familyMember.roleUnset'));
+  });
+
+  test('還沒生效且有人沒設定：設定權限頁說在那之前所有家人都看得到', async ({ authedPage }) => {
     await openWith(authedPage, status({}));
 
     await expect(authedPage.getByText(t('familyRole.shadowPendingNotice_one', { count: 1 }))).toBeVisible();
     await expect(authedPage.getByText(t('familyRole.unassignedNotice_one', { count: 1 }))).toHaveCount(0);
-    await expect(authedPage.getByRole('link', { name: t('familyRole.manage.open') })).toHaveAttribute('href', '/family/permissions');
   });
 
   test('已生效且有人沒設定：未設定的人以一般家人處理', async ({ authedPage }) => {

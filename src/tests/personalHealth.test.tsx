@@ -156,15 +156,16 @@ describe('PersonalHealthPage 核心表單邏輯測試', () => {
         expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     });
 
-    it('摘要下方列出家人，並有新增家人與我的健康紀錄入口；諮詢紀錄移到健康紀錄頁', async () => {
+    it('摘要下方只列出家人與加入家人；新增家人、我的健康紀錄與諮詢紀錄都不在首頁', async () => {
         setupApiMocks({ name: '陳明德', age: 65, gender: 'male', height: 165, weight: 60 });
         familyState.members = [{ user_id: 'U-mom', display_name: '媽媽', relationship_type: 'parent', family_role: 'GUARDIAN' }];
         renderProfile();
         expect(await screen.findByText('陳明德')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: '家人' })).toBeInTheDocument();
         expect(screen.getByText('主要照顧者')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '新增家人' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: '我的健康紀錄' })).toHaveAttribute('href', '/health-records');
+        expect(screen.getByRole('button', { name: '加入家人' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '新增家人' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: '我的健康紀錄' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /查看諮詢紀錄/ })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('link', { name: /媽媽/ }));
         expect(screen.getByText('家人資料頁')).toBeInTheDocument();

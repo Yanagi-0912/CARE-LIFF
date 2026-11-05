@@ -216,16 +216,6 @@ test.describe('設定分類導覽', () => {
     })).not.toBeChecked();
   });
 
-  test('從通知分頁開啟通知設定，返回時回到通知分頁', async ({ authedPage }) => {
-    await stubSettings(authedPage);
-    await authedPage.goto('/reminders');
-    await authedPage.getByRole('main').getByRole('link', { name: t('notify.settings'), exact: true }).click();
-    await expect(authedPage).toHaveURL(/\/settings\/notifications$/);
-    await expect(authedPage.getByRole('heading', { name: t('settings.notificationsTitle'), level: 1 })).toBeVisible();
-    await authedPage.getByRole('link', { name: t('personalHealth.return'), exact: true }).click();
-    await expect(authedPage).toHaveURL(/\/reminders$/);
-  });
-
   test('關於 CARE 提供測試版法務與隱私說明的入口', async ({ authedPage }) => {
     await stubSettings(authedPage);
     await openPage(authedPage, 'about');

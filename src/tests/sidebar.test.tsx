@@ -22,7 +22,7 @@ describe('桌面主要導覽', () => {
 
   it('提供與手機一致的五個入口', () => {
     renderAt('/');
-    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['首頁', '提醒', '工具', '設定', '健康']);
+    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['健康', '提醒', '首頁', '工具', '設定']);
     fireEvent.click(screen.getByRole('button', { name: '工具' }));
     expect(mockNavigate).toHaveBeenCalledWith('/tools');
   });

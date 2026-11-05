@@ -375,37 +375,38 @@ describe('引導式角色指派', () => {
     await i18n.changeLanguage('zh-TW');
   });
 
-  it('權限已生效（enforced）且有未設定的家人：說還有幾位、現在以一般家人處理，並給設定入口', () => {
+  it('首頁只用家人格子上的標籤表示權限，不放提示框或「設定家人權限」入口', () => {
     familyState.roleAssignment = assignment({
       rbac_migration_state: 'enforced',
       unassigned_member_ids: ['U-a', 'U-b'],
     });
     renderPage('/personalhealth');
 
+    expect(screen.getByRole('link', { name: /媽媽/ })).toHaveTextContent(/[已未]設定權限/);
+    expect(screen.queryByText(/尚未設定權限，目前會以「一般家人」處理/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /設定家人權限/ })).not.toBeInTheDocument();
+  });
+
+  it('權限說明改由設定權限頁提供：已生效且有未設定的家人時說還有幾位、以一般家人處理', () => {
+    familyState.roleAssignment = assignment({
+      rbac_migration_state: 'enforced',
+      unassigned_member_ids: ['U-a', 'U-b'],
+    });
+    renderPage('/family/members/U-mom/role');
+
     expect(
       screen.getByText('還有 2 位家人尚未設定權限，目前會以「一般家人」處理。'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /設定家人權限/ })).toHaveAttribute('href', '/family/permissions');
   });
 
-  it('還沒生效（shadow）且有人沒設定：講明在那之前所有家人都看得到，不說「以一般家人處理」', () => {
-    familyState.roleAssignment = assignment({ unassigned_member_ids: ['U-a', 'U-b'] });
-    renderPage('/personalhealth');
-
-    expect(screen.getByText(shadowPending(2))).toBeInTheDocument();
-    // 舊文案在 shadow 時是謊話：角色沒有作用，未設定的人並不是以一般家人處理
-    expect(screen.queryByText(/目前會以「一般家人」處理/)).not.toBeInTheDocument();
-  });
-
-  it('都設定好了卻還是 shadow（總閘關閉）：直說權限沒有生效', () => {
+  it('總閘關閉（全部設定好仍是 shadow）時，設定權限頁直說權限沒有生效', () => {
     familyState.members = [{ ...memberAs('GUARDIAN'), family_role: 'CAREGIVER' }];
     familyState.roleAssignment = assignment({ is_complete: true });
-    renderPage('/personalhealth');
+    renderPage('/family/members/U-mom/role');
 
     expect(
       screen.getByText('權限設定目前沒有生效，所有家人都看得到您的健康狀況與對話紀錄。'),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/未設定權限/)).not.toBeInTheDocument();
   });
 
   it('權限已生效且全部設定完：不顯示提示，家人格子仍可進入各自的設定', () => {

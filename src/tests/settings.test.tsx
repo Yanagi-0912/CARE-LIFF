@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import { renderWithToaster as render } from './testUtils';
 import userEvent from '@testing-library/user-event';
 
-import { MemoryRouter, Route, Routes, type InitialEntry } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import liff from '@line/liff';
 import { ThemeProvider } from 'next-themes';
 
@@ -53,7 +53,7 @@ const signedInAuth = {
 vi.mocked(useLiffAuth).mockReturnValue(signedInAuth);
 
 // 設定頁的登出入口用到 useNavigate，必須包在 Router 裡才能渲染
-async function renderSettings(initialLanguage = 'zh-TW' as const, path: InitialEntry = '/settings/voice') {
+async function renderSettings(initialLanguage = 'zh-TW' as const, path = '/settings/voice') {
   await i18n.changeLanguage(initialLanguage);
   return render(
     <ThemeProvider attribute="class" defaultTheme="system">
@@ -343,23 +343,6 @@ describe('關於 CARE', () => {
     expect(screen.getByText('CARE 團隊')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '測試版法務與隱私說明' })).toHaveAttribute('href', '/legal/testing');
     expect(screen.queryByRole('button', { name: '登出' })).not.toBeInTheDocument();
-  });
-});
-
-describe('通知設定的返回目標', () => {
-  beforeEach(async () => {
-    localStorage.clear();
-    await i18n.changeLanguage('zh-TW');
-  });
-
-  it('從通知分頁進來時返回通知分頁', async () => {
-    await renderSettings('zh-TW', { pathname: '/settings/notifications', state: { from: 'reminders' } });
-    expect(screen.getByRole('link', { name: '返回' })).toHaveAttribute('href', '/reminders');
-  });
-
-  it('從設定總覽或直接開啟時返回設定總覽', async () => {
-    await renderSettings('zh-TW', '/settings/notifications');
-    expect(screen.getByRole('link', { name: '返回' })).toHaveAttribute('href', '/settings');
   });
 });
 

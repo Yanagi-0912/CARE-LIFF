@@ -14,11 +14,11 @@ import { AUTH_TOKEN, expect, t, test } from './fixtures';
 
 /** 側欄與底部導覽共用的四個分頁，順序即畫面順序 */
 const NAV_ITEMS = [
-  { labelKey: 'nav.home', path: '/' },
+  { labelKey: 'nav.health', path: '/health-records' },
   { labelKey: 'nav.reminders', path: '/reminders' },
+  { labelKey: 'nav.home', path: '/' },
   { labelKey: 'nav.tools', path: '/tools' },
   { labelKey: 'nav.settings', path: '/settings' },
-  { labelKey: 'nav.health', path: '/health-records' },
 ] as const;
 const SIDEBAR_ITEMS = NAV_ITEMS;
 const BOTTOM_TABS = NAV_ITEMS;
@@ -81,7 +81,7 @@ test.describe('Sidebar 側邊導覽（桌面版面）', () => {
       const button = sidebar.getByRole('button', { name: t(item.labelKey) });
 
       await button.click();
-      await expect(authedPage).toHaveURL(new RegExp(`${item.path}$`));
+      await expect(authedPage).toHaveURL(new RegExp(`${item.path}(/[a-z-]+)?$`));
       await expect(button).toHaveAttribute('aria-current', 'page');
     });
   }
@@ -111,7 +111,7 @@ test.describe('BottomNav 底部導覽（手機版面）', () => {
       const button = bottomNav.getByRole('button', { name: t(tab.labelKey) });
 
       await button.click();
-      await expect(authedPage).toHaveURL(new RegExp(`${tab.path}$`));
+      await expect(authedPage).toHaveURL(new RegExp(`${tab.path}(/[a-z-]+)?$`));
       await expect(button).toHaveAttribute('aria-current', 'page');
     });
   }

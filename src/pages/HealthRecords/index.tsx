@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarHeartIcon,
+  ChevronRightIcon,
   DropletIcon,
   FootprintsIcon,
   FileTextIcon,
@@ -18,7 +19,7 @@ import { getLineUserId } from '../../utils/auth';
 import { canReadHealthRecords, canRecordHealthFor } from '../../utils/familyPermissions';
 import { getPersonalHealthProfile } from '../../api/profileApi';
 import { queryKeys } from '@/lib/queryClient';
-import { EntryLink, FeaturePage } from '@/components/FeaturePage';
+import { FeaturePage } from '@/components/FeaturePage';
 import { MeasurementTab } from './MeasurementTab';
 import { MenstrualTab } from './MenstrualTab';
 import { StepsTab } from './StepsTab';
@@ -113,7 +114,6 @@ export default function HealthRecordsPage() {
   }, [showMenstrualTab]);
 
   const requestedTab = searchParams.get('tab');
-  const isLanding = requestedTab === null;
   const activeTab = tabs.some((tab) => tab.key === requestedTab)
     ? (requestedTab as TabKey)
     : tabs[0].key;
@@ -125,19 +125,20 @@ export default function HealthRecordsPage() {
     setSearchParams(params, { replace: true });
   };
 
-  const recordsUrl = (tab?: TabKey) => {
-    const params = new URLSearchParams(searchParams);
-    if (tab) params.set('tab', tab);
-    else params.delete('tab');
-    return `/health-records${params.size ? `?${params}` : ''}`;
-  };
-
   return (
     <FeaturePage
-      title={isViewingFamily ? t('health.titleForMember', { name: targetName }) : isLanding ? t('health.title') : t(tabs.find(tab => tab.key === activeTab)!.labelKey)}
-      description={isLanding ? t('health.description') : undefined}
-      backTo={isLanding ? (isViewingFamily ? `/family/members/${encodeURIComponent(targetUserId)}` : undefined) : recordsUrl()}
+      title={isViewingFamily ? t('health.titleForMember', { name: targetName }) : t('health.title')}
+      description={t('health.description')}
+      backTo={isViewingFamily ? `/family/members/${encodeURIComponent(targetUserId)}` : undefined}
     >
+      {/* 諮詢紀錄只列自己的：看家人的諮詢紀錄走家人資料頁，那裡另有 PRIVATE 讀取權的判斷 */}
+      {!isViewingFamily && (
+        <Link to="/personalhealth/consult" className="care-entry-row care-entry-soft mb-4">
+          <FileTextIcon className="size-5 shrink-0" aria-hidden="true" />
+          <strong className="min-w-0 flex-1 text-base">{t('health.consultEntry')}</strong>
+          <ChevronRightIcon className="size-5 shrink-0" aria-hidden="true" />
+        </Link>
+      )}
 
       {isViewingFamily && familyLoading ? (
         <p className="flex items-center gap-2 py-6 text-base text-muted-foreground" role="status">
@@ -175,17 +176,9 @@ export default function HealthRecordsPage() {
             <EmptyDescription>{t('familyPermission.askOwner')}</EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : isLanding ? (
-        <div className="flex flex-col gap-3">
-          {tabs.map(({ key, labelKey, Icon }) => <EntryLink key={key} to={recordsUrl(key)} title={t(labelKey)}
-            description={t(`featureNav.record.${key}`)} icon={Icon} />)}
-          {/* 諮詢紀錄只列自己的：看家人的諮詢紀錄走家人資料頁，那裡另有 PRIVATE 讀取權的判斷 */}
-          {!isViewingFamily && <EntryLink to="/personalhealth/consult" title={t('health.consultEntry')}
-            description={t('health.consultEntryDesc')} icon={FileTextIcon} />}
-        </div>
       ) : (
         <Tabs value={activeTab} onValueChange={(value) => handleTabChange(String(value))}>
-          <TabsList className="w-full" aria-label={t('health.tabListLabel')}>
+          <TabsList className="w-full flex-wrap rounded-2xl" aria-label={t('health.tabListLabel')}>
             {tabs.map(({ key, labelKey, Icon }) => (
               <TabsTrigger key={key} value={key}>
                 <Icon data-icon="inline-start" />

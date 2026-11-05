@@ -166,7 +166,7 @@ const languageOptions: Array<{ value: LanguageChoice; label: string }> = [
 /* ────────── 元件 ────────── */
 const SettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { pathname, state } = useLocation();
+  const { pathname } = useLocation();
   const { theme, setTheme } = useTheme();
   const section = pathname.split('/')[2] || '';
   const sectionTitles: Record<string, string> = {
@@ -177,11 +177,7 @@ const SettingsPage: React.FC = () => {
     account: 'settings.accountTitle',
   };
   const sectionTitle = sectionTitles[section];
-  // 通知分頁的「通知設定」入口會帶 from，返回時回到使用者原本所在的通知分頁。
-  const cameFromReminders = (state as { from?: unknown } | null)?.from === 'reminders';
-  const backTo = !section
-    ? undefined
-    : section === 'notifications' && cameFromReminders ? '/reminders' : '/settings';
+  const backTo = section ? '/settings' : undefined;
   const fontSizeLabelMap = {
     normal: t('settings.fontSizeNormal'),
     large: t('settings.fontSizeLarge'),

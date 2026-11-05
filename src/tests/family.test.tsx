@@ -257,14 +257,22 @@ describe('FamilyPage', () => {
     });
   });
 
-  it('沒有家人時說明可以邀請，加入家人與新增家人都在，我的健康紀錄入口照常顯示', () => {
+  it('沒有家人時說明可以邀請，只留家人列最後的「加入家人」，不再有新增家人與健康紀錄兩列', () => {
     familyState.members = [];
     renderPage('/');
 
     expect(screen.getByText('邀請家人加入，就能一起看顧彼此的健康狀況。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '加入家人' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '新增家人' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '我的健康紀錄' })).toHaveAttribute('href', '/health-records');
+    expect(screen.queryByRole('button', { name: '新增家人' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '我的健康紀錄' })).not.toBeInTheDocument();
+  });
+
+  it('家人與加入家人排成同一列可左右滑動，加入家人在最後', () => {
+    renderPage('/');
+    const row = screen.getByRole('list', { name: '家人' });
+    const items = within(row).getAllByRole('listitem');
+    expect(within(items[items.length - 1]).getByRole('button', { name: '加入家人' })).toBeInTheDocument();
+    expect(row).toHaveClass('overflow-x-auto', 'snap-x');
   });
 
   it('載入中顯示骨架，不顯示空狀態', () => {
@@ -479,11 +487,11 @@ describe('FamilyPage', () => {
     });
   });
 
-  it('「新增家人」列也開同一個邀請 dialog', async () => {
+  it('家人列最後的「加入家人」開啟邀請 dialog', async () => {
     vi.mocked(familyApi.createInvite).mockResolvedValue(inviteResponse);
     renderPage('/');
 
-    fireEvent.click(screen.getByRole('button', { name: '新增家人' }));
+    fireEvent.click(screen.getByRole('button', { name: '加入家人' }));
 
     expect(await screen.findByRole('img', { name: '邀請家人' })).toBeInTheDocument();
     expect(familyApi.createInvite).toHaveBeenCalledTimes(1);

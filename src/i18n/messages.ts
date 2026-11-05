@@ -1,7 +1,6 @@
 import { profileNavigationMessages } from './profileNavigationMessages';
 import { familyNavigationMessages } from './familyNavigationMessages';
 import { settingsNavigationMessages } from './settingsNavigationMessages';
-import { featureNavigationMessages } from './featureNavigationMessages';
 import { uiRefreshMessages } from './uiRefreshMessages';
 import { redesignMessages } from './redesignMessages';
 import { settingsRedesignMessages } from './settingsRedesignMessages';
@@ -550,7 +549,6 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
     ...profileNavigationMessages['zh-TW'],
     ...familyNavigationMessages['zh-TW'],
     ...settingsNavigationMessages['zh-TW'],
-    ...featureNavigationMessages['zh-TW'],
     'nav.home': '首頁',
     'nav.health': '健康',
     'nav.family': '家庭',
@@ -690,7 +688,6 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
     ...profileNavigationMessages.en,
     ...familyNavigationMessages.en,
     ...settingsNavigationMessages.en,
-    ...featureNavigationMessages.en,
     'nav.home': 'Home',
     'nav.health': 'Health',
     'nav.family': 'Family',
@@ -829,7 +826,6 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
     ...profileNavigationMessages.id,
     ...familyNavigationMessages.id,
     ...settingsNavigationMessages.id,
-    ...featureNavigationMessages.id,
     'nav.home': 'Beranda',
     'nav.health': 'Kesehatan',
     'nav.family': 'Keluarga',
@@ -968,7 +964,6 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
     ...profileNavigationMessages.vi,
     ...familyNavigationMessages.vi,
     ...settingsNavigationMessages.vi,
-    ...featureNavigationMessages.vi,
     'nav.home': 'Trang chủ',
     'nav.health': 'Sức khỏe',
     'nav.family': 'Gia đình',
@@ -1107,7 +1102,6 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
     ...profileNavigationMessages.th,
     ...familyNavigationMessages.th,
     ...settingsNavigationMessages.th,
-    ...featureNavigationMessages.th,
     'nav.home': 'หน้าหลัก',
     'nav.health': 'สุขภาพ',
     'nav.family': 'ครอบครัว',
@@ -1246,7 +1240,6 @@ const baseMessages: Record<SupportedLanguage, Record<string, string>> = {
     ...profileNavigationMessages.ja,
     ...familyNavigationMessages.ja,
     ...settingsNavigationMessages.ja,
-    ...featureNavigationMessages.ja,
     'nav.home': 'ホーム',
     'nav.health': '健康',
     'nav.family': '家族',
