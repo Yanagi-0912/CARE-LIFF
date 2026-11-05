@@ -39,6 +39,11 @@ export default defineConfig({
       // playwright.config.ts 的 timezoneId 已經是 Asia/Taipei，這裡對齊它。
       TZ: 'Asia/Taipei',
     },
+    // Node 26 起內建全域 localStorage（Web Storage），沒指定 --localstorage-file 時是
+    // undefined，而且會蓋掉 jsdom 提供的那一個——所有碰 localStorage 的測試都變成
+    // 「Cannot read properties of undefined」。CI 的 setup-node 用 lts/*，Node 26 成為
+    // LTS 後一夜之間 263 條測試全紅。關掉 Node 自己的，讓 jsdom 的生效；Node 24 也認得這個旗標。
+    execArgv: ['--no-experimental-webstorage'],
     // e2e 由 Playwright 跑，vitest 不要抓。
     // .worktrees：git worktree 是同一個 repo 的另一份簽出，裡面有一模一樣的
     // 測試檔，不排除會讓每個測試跑兩次，且其 e2e 目錄不符合上面的 'e2e/**' 樣式。
