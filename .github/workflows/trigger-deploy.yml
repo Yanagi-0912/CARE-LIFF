@@ -32,7 +32,10 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: lts/*
+          # 釘在 24，不用 lts/*：Node 26 成為 LTS 後 `playwright install` 會在下載完後卡住
+          # （本機重現：Node 26 逾時、Node 24 35 秒完成），整個 job 跑到 30 分鐘被取消。
+          # 升 Node 前先確認 Playwright 支援，並拿掉 vite.config.ts 裡 webstorage 的註記。
+          node-version: 24
           cache: npm
       # --ignore-scripts：理由同 playwright.yml（避免套件在安裝階段執行任意程式）
       - name: Install dependencies
