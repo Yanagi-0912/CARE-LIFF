@@ -19,9 +19,7 @@ vi.mock('../utils/auth', async () => ({
 
 const entries = [
   ['home.nearbyTitle', '/nearby-hospitals'],
-  ['tools.healthRecords', '/health-records'],
   ['tools.clinicVisits', '/clinic-visits'],
-  ['visits.title', '/reminders/medications/visits'],
   ['home.knowledgeReports', '/knowledge-reports'],
 ];
 
@@ -33,21 +31,23 @@ describe('工具首頁', () => {
     await i18n.changeLanguage('zh-TW');
   });
 
-  it('一般使用者看到五項工具，看不到管理員入口', async () => {
+  it('一般使用者看到三項工具，看不到管理員入口', async () => {
     renderWithToaster(<Home />);
     expect(screen.getByRole('heading', { name: i18n.t('tools.title') })).toBeInTheDocument();
     await waitFor(() => expect(profileApi.getPersonalHealthProfile).toHaveBeenCalled());
-    expect(screen.getAllByRole('button')).toHaveLength(5);
+    expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: /知識回報審核/ })).not.toBeInTheDocument();
   });
 
-  it('管理員另外看到知識回報審核與標記頁面', async () => {
+  it('管理員另外看到知識回報審核；健康紀錄、看診紀錄與標記頁面不在工具頁', async () => {
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ role: 'admin' });
     renderWithToaster(<Home />);
     fireEvent.click(await screen.findByRole('button', { name: /知識回報審核/ }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/admin/knowledge-reports');
-    fireEvent.click(screen.getByRole('button', { name: /標記頁面/ }));
-    expect(mockNavigate).toHaveBeenLastCalledWith('/admin/annotations');
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+    for (const name of [/我的健康紀錄/, /看診紀錄/, /標記頁面/]) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
   });
 
   it.each(entries)('%s 開啟 %s', (label, path) => {

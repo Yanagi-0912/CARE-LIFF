@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowRightIcon, BookOpenIcon, ClipboardListIcon, HeartPulseIcon, MapPinIcon, MicIcon, ShieldCheckIcon, TagsIcon,
+  ArrowRightIcon, BookOpenIcon, MapPinIcon, MicIcon, ShieldCheckIcon,
 } from 'lucide-react';
 import { getPersonalHealthProfile } from '@/api/profileApi';
 import { queryKeys } from '@/lib/queryClient';
@@ -11,12 +11,9 @@ import { isAuthenticated } from '@/utils/auth';
 
 const features = [
   { title: 'home.nearbyTitle', desc: 'home.nearbyShort', icon: MapPinIcon, path: '/nearby-hospitals', tone: 'green' },
-  { title: 'tools.healthRecords', desc: 'home.recordsShort', icon: HeartPulseIcon, path: '/health-records', tone: 'coral' },
   { title: 'tools.clinicVisits', desc: 'home.clinicShort', icon: MicIcon, path: '/clinic-visits', tone: 'amber' },
-  { title: 'visits.title', desc: 'tools.visitsShort', icon: ClipboardListIcon, path: '/reminders/medications/visits', tone: 'amber' },
   { title: 'home.knowledgeReports', desc: 'home.reportsShort', icon: BookOpenIcon, path: '/knowledge-reports', tone: 'violet' },
   { title: 'home.adminKnowledgeReports', desc: 'tools.adminOnly', icon: ShieldCheckIcon, path: '/admin/knowledge-reports', tone: 'coral', adminOnly: true },
-  { title: 'sidebar.annotations', desc: 'tools.adminOnly', icon: TagsIcon, path: '/admin/annotations', tone: 'violet', adminOnly: true },
 ] as const;
 
 export default function Home() {

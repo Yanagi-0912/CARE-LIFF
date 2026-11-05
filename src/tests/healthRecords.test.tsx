@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithToaster } from './testUtils';
 import HealthRecordsPage from '../pages/HealthRecords';
-import Home from '../pages/Home';
 import * as healthApi from '../api/healthApi';
 import * as profileApi from '../api/profileApi';
 import type { FamilyMember, FamilyPermissions } from '../types/family';
@@ -147,17 +146,6 @@ describe('9.1 路由與入口', () => {
     expect(await screen.findByRole('tab', { name: /血壓/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /血糖/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /步數/ })).toBeInTheDocument();
-  });
-
-  it('工具首頁「我的健康紀錄」卡片會導向 /health-records', () => {
-    vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue({ role: 'user' });
-    renderWithToaster(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>,
-    );
-    fireEvent.click(screen.getByText('我的健康紀錄').closest('button')!);
-    expect(mockNavigate).toHaveBeenCalledWith('/health-records');
   });
 
   it('自己的健康紀錄頁有諮詢紀錄連結（看家人時不列）', async () => {

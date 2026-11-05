@@ -138,30 +138,38 @@ test.describe('健康首頁的家人區塊', () => {
   });
 });
 
+const GRANDMA_PROFILE = {
+  name: '林阿嬤',
+  gender: 'female',
+  age: 78,
+  height: 155,
+  weight: 52,
+  chronic_diseases: ['hypertension'],
+  chronic_custom: ['痛風'],
+  major_illness_history: '',
+  surgery_history: '白內障手術',
+};
+
 test.describe('家人資料頁', () => {
   test.beforeEach(async ({ authedPage }) => {
     await stubFamily(authedPage, FAMILY_MEMBERS);
   });
 
   test('進頁後顯示載入中，再列出已填的健康欄位', async ({ authedPage }) => {
+    // 回應等測試看到「載入中」才放行：固定延遲會和頁面載入時間賽跑，頁面慢時載入中早已消失
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
     const profileCalls = await stubApi(authedPage, {
       path: `/api/profiles/${GRANDMA.user_id}`,
-      delayMs: 800,
-      body: {
-        name: '林阿嬤',
-        gender: 'female',
-        age: 78,
-        height: 155,
-        weight: 52,
-        chronic_diseases: ['hypertension'],
-        chronic_custom: ['痛風'],
-        major_illness_history: '',
-        surgery_history: '白內障手術',
+      respond: async () => {
+        await gate;
+        return { status: 200, body: GRANDMA_PROFILE };
       },
     });
     await openMember(authedPage, GRANDMA);
 
     await expect(authedPage.getByText(t('family.healthLoading')).first()).toBeVisible();
+    release();
     const panel = authedPage.getByRole('region', { name: t('family.healthTitle') }).locator('dl');
     await expect(panel).toBeVisible({ timeout: 5000 });
     await expect(panel).toContainText(`78 ${t('personalHealth.unit.age')}`);

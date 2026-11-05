@@ -11,9 +11,7 @@ import { expect, stubProfileApi, t, test } from './fixtures';
 /** 一般使用者看得到的四張卡片，順序即畫面順序 */
 const FEATURE_CARDS = [
   { titleKey: 'home.nearbyTitle', descKey: 'home.nearbyShort', path: '/nearby-hospitals' },
-  { titleKey: 'tools.healthRecords', descKey: 'home.recordsShort', path: '/health-records' },
   { titleKey: 'tools.clinicVisits', descKey: 'home.clinicShort', path: '/clinic-visits' },
-  { titleKey: 'visits.title', descKey: 'tools.visitsShort', path: '/reminders/medications/visits' },
   { titleKey: 'home.knowledgeReports', descKey: 'home.reportsShort', path: '/knowledge-reports' },
 ] as const;
 
@@ -29,7 +27,7 @@ test.describe('工具首頁 (Home)', () => {
     await expect(authedPage.getByText(t('home.introDesc'))).toBeVisible();
   });
 
-  test('渲染五張功能卡片，標題與描述都正確', async ({ authedPage }) => {
+  test('渲染三張功能卡片，標題與描述都正確', async ({ authedPage }) => {
     const features = authedPage.getByTestId('home-features');
     const cards = features.getByRole('button');
 
@@ -56,13 +54,13 @@ test.describe('工具首頁 (Home)', () => {
     });
   }
 
-  test('管理員在工具首頁多看到知識回報審核與標記頁面', async ({ authedPage }) => {
+  test('管理員在工具首頁多看到知識回報審核', async ({ authedPage }) => {
     // 後註冊的 route 會蓋掉 fixture 的預設 stub
     await stubProfileApi(authedPage, { name: '管理員', role: 'admin' });
     await authedPage.reload();
 
     const features = authedPage.getByTestId('home-features');
-    await expect(features.getByRole('button')).toHaveCount(FEATURE_CARDS.length + 2);
+    await expect(features.getByRole('button')).toHaveCount(FEATURE_CARDS.length + 1);
     await features.getByRole('button', { name: new RegExp(`^${t('home.adminKnowledgeReports')}`) }).click();
     await expect(authedPage).toHaveURL(/admin\/knowledge-reports$/);
   });
