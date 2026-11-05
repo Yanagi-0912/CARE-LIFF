@@ -133,8 +133,10 @@ function AppContent() {
             <Route path="/join" element={<JoinPage />} />
 
             {/* 4. 套用 ProtectedRoute */}
-            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
+            {/* 舊網址與頁內連結（?view=details／edit）沿用，與首頁是同一頁 */}
             <Route path="/personalhealth" element={<ProtectedRoute><PersonalHealth /></ProtectedRoute>} />
+            <Route path="/tools" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/personalhealth/consult" element={<ProtectedRoute><ConsultRecordsPage /></ProtectedRoute>} />
             <Route path="/health-records" element={<ProtectedRoute><HealthRecordsPage /></ProtectedRoute>} />
             {/* 用藥與掛號收在同一個「提醒」分頁底下，子頁切換由 RemindersLayout 負責。

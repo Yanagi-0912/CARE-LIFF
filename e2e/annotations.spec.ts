@@ -171,7 +171,7 @@ test('更多選項保留規則、帳號、次要匯出與點選作答', async ({
 test('桌面版從工具首頁進入，鍵盤操作仍可使用', async ({ authedPage: page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const saves = await stubAnnotations(page);
-  await page.goto('/');
+  await page.goto('/tools');
   await page.getByTestId('home-features').getByRole('button', { name: new RegExp(`^${t('sidebar.annotations')}`) }).click();
   await page.getByRole('button', { name: '開始／繼續健康相關標註' }).click();
   await expect(page.getByRole('button', { name: '健康相關（J）', exact: true })).toBeVisible();
@@ -183,7 +183,7 @@ test('桌面版從工具首頁進入，鍵盤操作仍可使用', async ({ authe
 
 test('一般帳號看不到標記入口，也不能直接開啟頁面', async ({ authedPage: page }) => {
   await stubProfileApi(page, { name: '一般使用者', role: 'user' });
-  await page.goto('/');
+  await page.goto('/tools');
   await expect(page.getByTestId('home-features')).toBeVisible();
   await expect(page.getByRole('button', { name: t('sidebar.annotations'), exact: true })).toHaveCount(0);
   await page.goto('/admin/annotations');

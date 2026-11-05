@@ -19,7 +19,7 @@ const FEATURE_CARDS = [
 
 test.describe('工具首頁 (Home)', () => {
   test.beforeEach(async ({ authedPage }) => {
-    await authedPage.goto('/');
+    await authedPage.goto('/tools');
   });
 
   test('顯示標題與引導說明', async ({ authedPage }) => {

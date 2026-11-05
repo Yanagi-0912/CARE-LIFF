@@ -136,7 +136,7 @@ export default function HealthRecordsPage() {
     <FeaturePage
       title={isViewingFamily ? t('health.titleForMember', { name: targetName }) : isLanding ? t('health.title') : t(tabs.find(tab => tab.key === activeTab)!.labelKey)}
       description={isLanding ? t('health.description') : undefined}
-      backTo={isLanding ? (isViewingFamily ? `/family/members/${encodeURIComponent(targetUserId)}` : '/') : recordsUrl()}
+      backTo={isLanding ? (isViewingFamily ? `/family/members/${encodeURIComponent(targetUserId)}` : undefined) : recordsUrl()}
     >
 
       {isViewingFamily && familyLoading ? (

@@ -106,7 +106,7 @@ export default function ClinicVisitListPage() {
 
   return (
     <FeaturePage title={isSelf ? t('clinic.title') : t('clinic.titleForMember', { name: target?.name ?? '' })}
-      description={t('clinic.intro')} backTo="/">
+      description={t('clinic.intro')} backTo="/tools">
       <div className="space-y-4">
 
       {targets.length > 1 && (

@@ -20,23 +20,26 @@ describe('桌面主要導覽', () => {
     <MemoryRouter initialEntries={[path]}><Sidebar /></MemoryRouter>,
   );
 
-  it('提供與手機一致的四個入口', () => {
+  it('提供與手機一致的五個入口', () => {
     renderAt('/');
-    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['工具', '通知', '健康', '設定']);
-    fireEvent.click(screen.getByRole('button', { name: '健康' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/personalhealth');
+    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['首頁', '提醒', '工具', '設定', '健康']);
+    fireEvent.click(screen.getByRole('button', { name: '工具' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/tools');
   });
 
   it.each([
-    ['/personalhealth/consult', '健康'],
-    ['/family/members', '健康'],
-    ['/lost/watch', '健康'],
-    ['/reminders/appointments', '通知'],
-    ['/medications/visits', '通知'],
-    ['/health-records', '工具'],
+    ['/', '首頁'],
+    ['/personalhealth?view=edit', '首頁'],
+    ['/family/members', '首頁'],
+    ['/lost/watch', '首頁'],
+    ['/reminders/appointments', '提醒'],
+    ['/medications/visits', '提醒'],
+    ['/tools', '工具'],
     ['/clinic-visits/record', '工具'],
     ['/admin/knowledge-reports', '工具'],
     ['/settings/display', '設定'],
+    ['/health-records', '健康'],
+    ['/personalhealth/consult', '健康'],
   ])('%s 標示所屬的 %s 入口', (path, label) => {
     renderAt(path);
     const current = screen.getAllByRole('button').filter(button => button.getAttribute('aria-current') === 'page');

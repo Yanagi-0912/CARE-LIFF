@@ -88,8 +88,8 @@ export function MemberNotFound() {
         <EmptyDescription>{t('familyMember.notFoundDesc')}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Link className={buttonVariants({ variant: 'outline' })} to="/personalhealth">
-          {t('familyMember.backToHealth')}
+        <Link className={buttonVariants({ variant: 'outline' })} to="/">
+          {t('familyMember.backToHome')}
         </Link>
       </EmptyContent>
     </Empty>
@@ -186,7 +186,7 @@ function MemberDetail({ member }: { member: FamilyMember }) {
     },
     onSuccess: () => {
       // 先離開這頁再讓族譜重抓：否則重抓回來的那一瞬間會閃過「找不到這位家人」。
-      navigate('/personalhealth', { replace: true });
+      navigate('/', { replace: true });
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.familyTree }),
         queryClient.invalidateQueries({ queryKey: queryKeys.familyMemberRoles }),

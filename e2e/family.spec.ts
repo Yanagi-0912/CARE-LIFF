@@ -33,11 +33,11 @@ const familyList = (page: Page) =>
   page.getByRole('region', { name: t('healthHome.family') }).getByRole('list');
 
 test.describe('舊網址與分類子頁', () => {
-  test('/family、/family/members 與未知網址都轉到健康首頁', async ({ authedPage }) => {
+  test('/family、/family/members 與未知網址都轉到首頁', async ({ authedPage }) => {
     await stubFamily(authedPage, FAMILY_MEMBERS);
     for (const path of ['/family', '/family/members', '/family/unknown']) {
       await authedPage.goto(path);
-      await expect(authedPage).toHaveURL(/\/personalhealth$/);
+      await expect(authedPage).toHaveURL(/:\d+\/$/);
       await expect(familyList(authedPage)).toContainText(GRANDMA.display_name);
     }
   });
@@ -378,7 +378,7 @@ test.describe('權限提示', () => {
 });
 
 test.describe('移除家人', () => {
-  test('按下移除先確認；取消不送出，確定後回到健康首頁、名單少了她', async ({ authedPage }) => {
+  test('按下移除先確認；取消不送出，確定後回到首頁、名單少了她', async ({ authedPage }) => {
     const store = await stubFamilyStore(authedPage, FAMILY_MEMBERS);
     await stubApi(authedPage, { path: `/api/profiles/${GRANDMA.user_id}`, status: 404, body: {} });
     await openMember(authedPage, GRANDMA);
@@ -401,7 +401,7 @@ test.describe('移除家人', () => {
 
     await expect(authedPage.getByText(t('familyPermission.remove.success', { name: GRANDMA.display_name }))).toBeVisible();
     expect(store.deletes.map((call) => call.url.pathname)).toEqual([`/api/family/members/${GRANDMA.user_id}`]);
-    await expect(authedPage).toHaveURL(/\/personalhealth$/);
+    await expect(authedPage).toHaveURL(/:\d+\/$/);
     const list = familyList(authedPage);
     await expect(list.getByRole('listitem')).toHaveCount(2);
     await expect(list).not.toContainText(GRANDMA.display_name);

@@ -200,7 +200,7 @@ function KnowledgeReportsPage() {
   };
 
   return (
-    <FeaturePage title={t('home.knowledgeReports')} description={t('home.reportsShort')} backTo="/">
+    <FeaturePage title={t('home.knowledgeReports')} description={t('home.reportsShort')} backTo="/tools">
       <div className="flex flex-col gap-4">
       {/* Alert 是 [icon | 內容] 的兩欄 grid。行動鈕必須放進 AlertDescription 裡，
           直接當 Alert 的第三個子元素會被塞進圖示那一欄並被拉成整列寬。 */}

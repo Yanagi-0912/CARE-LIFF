@@ -13,7 +13,7 @@ export default function BottomNav() {
         {navigationItems.map(({ path, label, icon: Icon }) => (
           <button type="button" key={path} aria-current={activePath === path ? 'page' : undefined}
             onClick={() => navigate(path)}>
-            <span className={path === '/personalhealth' ? 'care-nav-icon care-primary-nav' : 'care-nav-icon'}>
+            <span className={path === '/' ? 'care-nav-icon care-primary-nav' : 'care-nav-icon'}>
               <Icon className="size-6" strokeWidth={activePath === path ? 2.2 : 1.8} aria-hidden="true" />
             </span>
             <span>{t(label)}</span>

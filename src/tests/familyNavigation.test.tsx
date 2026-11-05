@@ -50,7 +50,7 @@ function renderPage(path = '/family') {
       <Routes>
         <Route path="/family/*" element={<FamilyPage />} />
         <Route path="/lost/watch" element={<WatchProbe />} />
-        <Route path="/personalhealth" element={<p>health-home</p>} />
+        <Route path="/" element={<p>health-home</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -111,7 +111,7 @@ describe('家庭分類導覽', () => {
     vi.mocked(familyApi.fetchFamilyTree).mockResolvedValue(tree([]));
     renderPage(path);
     expect(await screen.findByText('還沒有家庭成員')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: '回到健康' }));
+    fireEvent.click(screen.getByRole('link', { name: '回到首頁' }));
     expect(screen.getByText('health-home')).toBeInTheDocument();
   });
 

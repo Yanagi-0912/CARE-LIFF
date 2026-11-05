@@ -85,7 +85,7 @@ test.describe('看診錄音清單', () => {
 
   test('首頁卡片進得來，本人可以開始錄音', async ({ authedPage }) => {
     await stubApi(authedPage, { path: '/api/clinic-visits', method: 'GET', body: [] });
-    await authedPage.goto('/');
+    await authedPage.goto('/tools');
     await authedPage
       .getByTestId('home-features')
       .getByRole('button', { name: new RegExp(t('home.clinicVisits')) })

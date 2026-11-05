@@ -23,7 +23,7 @@ export default function RemindersLayout() {
   const activeTab = TABS.find((tab) => pathname.startsWith(tab.path));
 
   if (pathname === '/reminders' || pathname === '/reminders/') return (
-    <FeaturePage title={t('notify.title')} description={t('notify.desc')}>
+    <FeaturePage title={t('nav.reminders')} description={t('notify.desc')}>
       <h2 className="mb-3 text-lg font-bold">{t('notify.items')}</h2>
       <div className="flex flex-col gap-3">
         <EntryLink to="/reminders/medications" title={t('home.medications')} description={t('notify.medicationsDesc')} icon={PillIcon} tone="amber" />

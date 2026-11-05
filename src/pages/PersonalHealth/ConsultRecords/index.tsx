@@ -505,17 +505,17 @@ const ConsultRecordsPage: React.FC = () => {
                     </Button>
                 )}
 
-                {/* 與個人健康頁底部的「查看諮詢紀錄」互為往返。
-                    用 navigate 指定路徑而非 navigate(-1)：從家庭頁深連結進來時
-                    上一頁是家庭頁，按「返回個人健康資料」卻跳回家庭頁會很怪。 */}
+                {/* 與「健康」分頁（我的健康紀錄）的「諮詢紀錄」入口互為往返。
+                    用 navigate 指定路徑而非 navigate(-1)：從家人資料頁深連結進來時
+                    上一頁是家人資料頁，按「返回健康紀錄」卻跳回家人頁會很怪。 */}
                 <Button
                     type="button"
                     variant="outline"
                     className="w-full sm:w-fit"
-                    onClick={() => navigate('/personalhealth')}
+                    onClick={() => navigate('/health-records')}
                 >
                     <ArrowLeftIcon data-icon="inline-start" />
-                    {t('consultRecord.backToHealth')}
+                    {t('consultRecord.backToRecords')}
                 </Button>
             </div>
 

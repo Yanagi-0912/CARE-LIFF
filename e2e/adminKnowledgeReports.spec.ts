@@ -123,7 +123,7 @@ test.describe('管理員守門', () => {
     await expect(authedPage.getByText(t('adminRoute.deniedDesc'))).toBeVisible();
     await expect(authedPage).toHaveURL(/\/admin\/knowledge-reports$/);
     await authedPage.getByRole('link', { name: t('adminRoute.backToTools') }).click();
-    await expect(authedPage).toHaveURL(/\/$/);
+    await expect(authedPage).toHaveURL(/\/tools$/);
     await expect(authedPage.getByRole('heading', { name: t('tools.title'), level: 1 })).toBeVisible();
   });
 

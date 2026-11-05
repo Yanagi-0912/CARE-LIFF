@@ -25,7 +25,7 @@ export default function MemberRolePage() {
   const { t } = useTranslation();
   const { member, loading, error, refetch, roleAssignment } = useFamilyMember();
   return (
-    <FeaturePage title={t('familyRolePage.title')} backTo={member ? memberPath(member) : '/personalhealth'}>
+    <FeaturePage title={t('familyRolePage.title')} backTo={member ? memberPath(member) : '/'}>
       <FamilyDataState loading={loading} error={error} empty={false} refetch={refetch}>
         {member
           // key：換人時選取狀態從那個人目前的角色重新開始

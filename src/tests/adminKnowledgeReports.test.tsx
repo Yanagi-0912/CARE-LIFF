@@ -548,7 +548,7 @@ describe('AdminRoute', () => {
     renderWithToaster(
       <MemoryRouter initialEntries={['/admin/knowledge-reports']}>
         <Routes>
-          <Route path="/" element={<div>home-page</div>} />
+          <Route path="/tools" element={<div>home-page</div>} />
           <Route
             path="/admin/knowledge-reports"
             element={

@@ -130,7 +130,7 @@ const NearbyHospitalsPage = () => {
   const facilities = nearbyResult?.facilities ?? nameResult?.facilities ?? [];
 
   return (
-    <FeaturePage title={t('home.nearbyTitle')} description={t('nearby.desc')} backTo="/">
+    <FeaturePage title={t('home.nearbyTitle')} description={t('nearby.desc')} backTo="/tools">
       <div className="flex flex-col gap-4">
 
       <Tabs value={mode} onValueChange={(value) => setMode(value as SearchMode)}>

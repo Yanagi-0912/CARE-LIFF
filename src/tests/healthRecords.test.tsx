@@ -80,7 +80,7 @@ function renderHealthRecords(initialEntry = '/health-records?tab=blood_pressure'
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/health-records" element={<HealthRecordsPage />} />
-        <Route path="/personalhealth" element={<div>個人健康頁面</div>} />
+        <Route path="/" element={<div>個人健康頁面</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -380,7 +380,7 @@ describe('9.4 經期分頁：男性、未設定、女性三種情形', () => {
 
     expect(await screen.findByText('尚未設定性別')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /前往個人健康頁設定/ });
-    expect(link).toHaveAttribute('href', '/personalhealth');
+    expect(link).toHaveAttribute('href', '/');
   });
 
   it('女性：顯示週期長度與經期天數', async () => {

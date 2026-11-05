@@ -17,7 +17,7 @@ export default function MemberAccessPage() {
   const { t } = useTranslation();
   const { member, loading, error, refetch, roleAssignment } = useFamilyMember();
   const role = member?.family_role;
-  const backTo = member ? memberPath(member) : '/personalhealth';
+  const backTo = member ? memberPath(member) : '/';
 
   return (
     <FeaturePage title={t('familyAccess.title')} backTo={backTo}>

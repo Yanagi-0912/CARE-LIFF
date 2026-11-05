@@ -11,14 +11,14 @@ import MemberRolePage from './MemberRolePage';
 export default function FamilyPage() {
   return (
     <Routes>
-      <Route index element={<Navigate to="/personalhealth" replace />} />
-      <Route path="members" element={<Navigate to="/personalhealth" replace />} />
+      <Route index element={<Navigate to="/" replace />} />
+      <Route path="members" element={<Navigate to="/" replace />} />
       <Route path="members/:userId" element={<MemberDetailPage />} />
       <Route path="members/:userId/access" element={<MemberAccessPage />} />
       <Route path="members/:userId/role" element={<MemberRolePage />} />
       <Route path="permissions" element={<FamilyPermissionsPage />} />
       <Route path="location" element={<FamilyLocationPage />} />
-      <Route path="*" element={<Navigate to="/personalhealth" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

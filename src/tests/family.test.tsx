@@ -80,14 +80,14 @@ function ConsultProbe() {
 
 /**
  * 掛真的 Routes 而非 mock useNavigate：這樣連查詢字串有沒有正確帶上都驗得到。
- * 預設開媽媽的家人資料頁；家人名單在健康首頁（/personalhealth）的家人區塊。
+ * 預設開媽媽的家人資料頁；家人名單在首頁（/）的家人區塊。
  */
 function renderPage(path = '/family/members/U-mom') {
   return renderWithToaster(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/family/*" element={<FamilyPage />} />
-        <Route path="/personalhealth" element={<FamilySection />} />
+        <Route path="/" element={<FamilySection />} />
         <Route path="/personalhealth/consult" element={<ConsultProbe />} />
       </Routes>
     </MemoryRouter>,
@@ -105,7 +105,7 @@ describe('FamilyPage', () => {
 
   it('健康首頁列出家人，點了進到他的家人資料頁並看到稱謂', async () => {
     vi.mocked(profileApi.getPersonalHealthProfile).mockResolvedValue(null);
-    renderPage('/personalhealth');
+    renderPage('/');
 
     fireEvent.click(screen.getByRole('link', { name: /媽媽/ }));
 
@@ -118,7 +118,7 @@ describe('FamilyPage', () => {
       { ...mom, family_role: 'CAREGIVER' },
       { ...mom, user_id: 'U-son', display_name: '兒子', relationship_type: null, family_role: null },
     ];
-    renderPage('/personalhealth');
+    renderPage('/');
 
     const [momTile, sonTile, addTile] = screen.getAllByRole('listitem');
     expect(within(momTile).getByText('已設定權限')).toBeInTheDocument();
@@ -158,11 +158,11 @@ describe('FamilyPage', () => {
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 
-  it('網址上的家人不在名單裡時說明找不到，並可回到健康首頁', () => {
+  it('網址上的家人不在名單裡時說明找不到，並可回到首頁', () => {
     renderPage('/family/members/U-gone');
 
     expect(screen.getByText('找不到這位家人')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '回到健康' })).toHaveAttribute('href', '/personalhealth');
+    expect(screen.getByRole('link', { name: '回到首頁' })).toHaveAttribute('href', '/');
   });
 
   describe('設定稱謂', () => {
@@ -259,7 +259,7 @@ describe('FamilyPage', () => {
 
   it('沒有家人時說明可以邀請，加入家人與新增家人都在，我的健康紀錄入口照常顯示', () => {
     familyState.members = [];
-    renderPage('/personalhealth');
+    renderPage('/');
 
     expect(screen.getByText('邀請家人加入，就能一起看顧彼此的健康狀況。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '加入家人' })).toBeInTheDocument();
@@ -270,7 +270,7 @@ describe('FamilyPage', () => {
   it('載入中顯示骨架，不顯示空狀態', () => {
     familyState.members = [];
     familyState.loading = true;
-    renderPage('/personalhealth');
+    renderPage('/');
 
     expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument();
     expect(screen.queryByText('邀請家人加入，就能一起看顧彼此的健康狀況。')).not.toBeInTheDocument();
@@ -279,7 +279,7 @@ describe('FamilyPage', () => {
   it('載入失敗時顯示錯誤訊息與重新載入按鈕', () => {
     familyState.members = [];
     familyState.error = '載入族譜失敗';
-    renderPage('/personalhealth');
+    renderPage('/');
 
     expect(screen.getByText('無法載入家人名單')).toBeInTheDocument();
     expect(screen.getByText('載入族譜失敗')).toBeInTheDocument();
@@ -396,7 +396,7 @@ describe('FamilyPage', () => {
   };
 
   async function openInviteDialog() {
-    renderPage('/personalhealth');
+    renderPage('/');
     fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
     return screen.findByRole('img', { name: '邀請家人' });
   }
@@ -452,7 +452,7 @@ describe('FamilyPage', () => {
       qr_url: null,
     });
 
-    renderPage('/personalhealth');
+    renderPage('/');
     fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
 
     expect(
@@ -469,7 +469,7 @@ describe('FamilyPage', () => {
       invite_url: null,
     });
 
-    renderPage('/personalhealth');
+    renderPage('/');
     fireEvent.click(screen.getByRole('button', { name: /加入家人/ }));
 
     await waitFor(() => {
@@ -481,7 +481,7 @@ describe('FamilyPage', () => {
 
   it('「新增家人」列也開同一個邀請 dialog', async () => {
     vi.mocked(familyApi.createInvite).mockResolvedValue(inviteResponse);
-    renderPage('/personalhealth');
+    renderPage('/');
 
     fireEvent.click(screen.getByRole('button', { name: '新增家人' }));
 

@@ -1,4 +1,4 @@
-import { BellIcon, HeartIcon, LayoutGridIcon, SettingsIcon, type LucideIcon } from 'lucide-react';
+import { BellIcon, HeartPulseIcon, HomeIcon, LayoutGridIcon, SettingsIcon, type LucideIcon } from 'lucide-react';
 
 type NavigationItem = {
   path: string;
@@ -8,20 +8,26 @@ type NavigationItem = {
   owns: readonly string[];
 };
 
-/** 手機底部導覽與桌機側欄共用的四個分頁，順序即畫面順序。 */
+/** 手機底部導覽與桌機側欄共用的五個分頁，順序即畫面順序。 */
 export const navigationItems: readonly NavigationItem[] = [
-  // 不屬於其他分頁的路徑（附近醫療、健康紀錄、看診錄音、知識回報、管理頁）都亮「工具」
-  { path: '/', label: 'nav.tools', icon: LayoutGridIcon, owns: [] },
-  { path: '/reminders', label: 'nav.notifications', icon: BellIcon, owns: ['/medications'] },
-  { path: '/personalhealth', label: 'nav.health', icon: HeartIcon, owns: ['/family', '/lost'] },
+  { path: '/', label: 'nav.home', icon: HomeIcon, owns: ['/personalhealth', '/family', '/lost'] },
+  { path: '/reminders', label: 'nav.reminders', icon: BellIcon, owns: ['/medications'] },
+  { path: '/tools', label: 'nav.tools', icon: LayoutGridIcon,
+    owns: ['/nearby-hospitals', '/clinic-visits', '/knowledge-reports', '/admin'] },
   { path: '/settings', label: 'nav.settings', icon: SettingsIcon, owns: [] },
+  { path: '/health-records', label: 'nav.health', icon: HeartPulseIcon, owns: ['/personalhealth/consult'] },
 ];
 
 const underPrefix = (pathname: string, prefix: string) =>
-  pathname === prefix || pathname.startsWith(`${prefix}/`);
+  prefix === '/' ? pathname === '/' : pathname === prefix || pathname.startsWith(`${prefix}/`);
 
+/** 取最長的相符前綴：/personalhealth/consult 屬於「健康」，其餘 /personalhealth 屬於「首頁」。 */
 export function activeNavigationPath(pathname: string) {
-  return navigationItems.find(({ path, owns }) =>
-    path !== '/' && [path, ...owns].some(prefix => underPrefix(pathname, prefix)),
-  )?.path ?? '/';
+  let best = { path: '/', length: -1 };
+  for (const { path, owns } of navigationItems) {
+    for (const prefix of [path, ...owns]) {
+      if (underPrefix(pathname, prefix) && prefix.length > best.length) best = { path, length: prefix.length };
+    }
+  }
+  return best.path;
 }

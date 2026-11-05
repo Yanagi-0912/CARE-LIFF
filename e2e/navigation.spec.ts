@@ -14,10 +14,11 @@ import { AUTH_TOKEN, expect, t, test } from './fixtures';
 
 /** 側欄與底部導覽共用的四個分頁，順序即畫面順序 */
 const NAV_ITEMS = [
-  { labelKey: 'nav.tools', path: '/' },
-  { labelKey: 'nav.notifications', path: '/reminders' },
-  { labelKey: 'nav.health', path: '/personalhealth' },
+  { labelKey: 'nav.home', path: '/' },
+  { labelKey: 'nav.reminders', path: '/reminders' },
+  { labelKey: 'nav.tools', path: '/tools' },
   { labelKey: 'nav.settings', path: '/settings' },
+  { labelKey: 'nav.health', path: '/health-records' },
 ] as const;
 const SIDEBAR_ITEMS = NAV_ITEMS;
 const BOTTOM_TABS = NAV_ITEMS;
@@ -70,7 +71,7 @@ test.describe('Sidebar 側邊導覽（桌面版面）', () => {
     const sidebar = authedPage.getByRole('complementary');
     await expect(sidebar.getByRole('button')).toHaveCount(SIDEBAR_ITEMS.length);
     await expect(
-      sidebar.getByRole('button', { name: t('nav.tools') }),
+      sidebar.getByRole('button', { name: t('nav.home') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 
@@ -91,14 +92,14 @@ test.describe('BottomNav 底部導覽（手機版面）', () => {
     await authedPage.goto('/');
   });
 
-  test('列出四個 tab，且當前頁面標記 aria-current', async ({ authedPage }) => {
+  test('列出五個 tab，且當前頁面標記 aria-current', async ({ authedPage }) => {
     const bottomNav = authedPage.getByRole('navigation', {
       name: t('sidebar.mainNavAriaLabel'),
     });
 
     await expect(bottomNav.getByRole('button')).toHaveCount(BOTTOM_TABS.length);
     await expect(
-      bottomNav.getByRole('button', { name: t('nav.tools') }),
+      bottomNav.getByRole('button', { name: t('nav.home') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 
@@ -122,7 +123,7 @@ test.describe('舊路徑轉址', () => {
     await expect(authedPage).toHaveURL(/\/reminders\/medications\?from=richmenu$/);
   });
 
-  test('/medications/visits 轉到通知底下的看診紀錄，底部導覽停在通知、子分頁停在用藥', async ({ authedPage }) => {
+  test('/medications/visits 轉到提醒底下的看診紀錄，底部導覽停在提醒、子分頁停在用藥', async ({ authedPage }) => {
     await authedPage.goto('/medications/visits');
     await expect(authedPage).toHaveURL(/\/reminders\/medications\/visits$/);
     await expect(authedPage.getByRole('heading', { name: t('visits.title'), level: 1 })).toBeVisible();
@@ -134,7 +135,7 @@ test.describe('舊路徑轉址', () => {
     await expect(
       authedPage
         .getByRole('navigation', { name: t('sidebar.mainNavAriaLabel') })
-        .getByRole('button', { name: t('nav.notifications') }),
+        .getByRole('button', { name: t('nav.reminders') }),
     ).toHaveAttribute('aria-current', 'page');
   });
 });

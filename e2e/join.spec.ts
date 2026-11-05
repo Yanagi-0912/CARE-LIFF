@@ -61,8 +61,8 @@ test.describe('加入家庭', () => {
 
     await expect(authedPage.getByText(t('family.join.successTitle'))).toBeVisible();
     expect(accepts[0].body).toEqual({ code: CODE });
-    // 成功後 1.5 秒自動導向家庭頁；/family 已併進健康首頁，會再轉到 /personalhealth
-    await expect(authedPage).toHaveURL(/\/personalhealth$/, { timeout: 5000 });
+    // 成功後 1.5 秒自動導向家庭頁；/family 已併進健康首頁，會再轉到首頁 /
+    await expect(authedPage).toHaveURL(/:\d+\/$/, { timeout: 5000 });
   });
 
   test('已是成員時顯示提示與前往家族頁面的按鈕', async ({ authedPage }) => {
