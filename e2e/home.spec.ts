@@ -8,7 +8,7 @@ import { expect, stubProfileApi, t, test } from './fixtures';
  * 否則 getByRole 會同時命中導覽列。
  */
 
-/** 一般使用者看得到的八張卡片，順序即畫面順序 */
+/** 一般使用者看得到的九張卡片，順序即畫面順序 */
 const FEATURE_CARDS = [
   { titleKey: 'home.nearbyHospitals', descKey: 'home.nearbyHospitalsDesc', path: '/nearby-hospitals' },
   { titleKey: 'home.personalHealth', descKey: 'home.personalHealthDesc', path: '/personalhealth' },
@@ -19,6 +19,12 @@ const FEATURE_CARDS = [
   { titleKey: 'home.family', descKey: 'home.familyDesc', path: '/family' },
   { titleKey: 'home.knowledgeReports', descKey: 'home.knowledgeReportsDesc', path: '/knowledge-reports' },
   { titleKey: 'home.settings', descKey: 'home.settingsDesc', path: '/settings' },
+] as const;
+
+/** 只有管理員看得到、接在一般卡片之後的卡片 */
+const ADMIN_CARDS = [
+  { titleKey: 'home.adminKnowledgeReports', path: '/admin/knowledge-reports' },
+  { titleKey: 'sidebar.annotations', path: '/admin/annotations' },
 ] as const;
 
 test.describe('首頁 (Home)', () => {
@@ -60,19 +66,38 @@ test.describe('首頁 (Home)', () => {
     });
   }
 
-  test('管理員多看到一張知識審核卡片', async ({ authedPage }) => {
+  test('管理員多看到知識審核與標記頁面兩張卡片', async ({ authedPage }) => {
     // 後註冊的 route 會蓋掉 fixture 的預設 stub
     await stubProfileApi(authedPage, { name: '管理員', role: 'admin' });
     await authedPage.reload();
 
-    const features = authedPage.getByTestId('home-features');
-    await expect(features.getByRole('button')).toHaveCount(FEATURE_CARDS.length + 1);
-    await expect(features).toContainText(t('home.adminKnowledgeReports'));
+    const cards = authedPage.getByTestId('home-features').getByRole('button');
+    await expect(cards).toHaveCount(FEATURE_CARDS.length + ADMIN_CARDS.length);
+    for (const card of ADMIN_CARDS) {
+      await expect(cards.filter({ hasText: t(card.titleKey) })).toHaveCount(1);
+    }
   });
 
-  test('一般使用者看不到知識審核卡片', async ({ authedPage }) => {
-    await expect(authedPage.getByTestId('home-features')).not.toContainText(
-      t('home.adminKnowledgeReports'),
-    );
+  for (const card of ADMIN_CARDS) {
+    test(`管理員點擊「${card.titleKey}」卡片導向 ${card.path}`, async ({ authedPage }) => {
+      await stubProfileApi(authedPage, { name: '管理員', role: 'admin' });
+      await authedPage.reload();
+
+      await authedPage
+        .getByTestId('home-features')
+        .getByRole('button')
+        .filter({ hasText: t(card.titleKey) })
+        .click();
+
+      await expect(authedPage).toHaveURL(new RegExp(`${card.path}$`));
+    });
+  }
+
+  test('一般使用者看不到管理員卡片', async ({ authedPage }) => {
+    const features = authedPage.getByTestId('home-features');
+    await expect(features.getByRole('button')).toHaveCount(FEATURE_CARDS.length);
+    for (const card of ADMIN_CARDS) {
+      await expect(features).not.toContainText(t(card.titleKey));
+    }
   });
 });
