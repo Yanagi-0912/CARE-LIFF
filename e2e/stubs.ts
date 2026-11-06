@@ -147,9 +147,9 @@ export function stubFamily(
  * 同一份成員清單，移除之後重抓族譜就看不到那個人——跟真後端一樣。
  * 對方已不在清單裡時 DELETE 回 404（後端合約：不是家人）。
  */
-export async function stubFamilyStore(
+export async function stubFamilyStore<Member extends { user_id: string }>(
   page: Page,
-  members: readonly { user_id: string }[],
+  members: readonly Member[],
   roleAssignment: unknown = null,
 ) {
   const state = { members: [...members] };
