@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { HeartPulseIcon, ShieldCheckIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
+import { ClipboardListIcon, HeartPulseIcon, ShieldCheckIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
 
 import { useLiff } from '../../hooks/useLiff';
 import { useFamily } from '../../hooks/useFamily';
@@ -68,6 +68,16 @@ const FamilyPage = () => {
       >
         <HeartPulseIcon data-icon="inline-start" />
         {t('family.myHealthRecords')}
+      </Button>
+
+      <Button
+        variant="outline"
+        className="mb-5 w-full"
+        nativeButton={false}
+        render={<Link to="/family/long-term-care" />}
+      >
+        <ClipboardListIcon data-icon="inline-start" />
+        {t('careTask.title')}
       </Button>
 
       {/* 引導式角色指派的入口與提示。

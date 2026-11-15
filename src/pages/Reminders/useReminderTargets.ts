@@ -32,7 +32,10 @@ function readSelfUserId(): string | undefined {
  * `canWrite` 請傳模組層級的函式，不要傳 inline arrow：它在 useMemo 的依賴裡，
  * 每次 render 換一個新函式會讓清單每次都重算。
  */
-export function useReminderTargets(canWrite: (member: FamilyMember) => boolean) {
+export function useReminderTargets(
+  canWrite: (member: FamilyMember) => boolean,
+  canRead = canReadGeneral,
+) {
   const { t } = useTranslation();
   const { members } = useFamily();
 
@@ -43,14 +46,14 @@ export function useReminderTargets(canWrite: (member: FamilyMember) => boolean) 
     () => [
       { userId: selfUserId, name: t('meds.self'), canWrite: true },
       ...members
-        .filter((member) => canReadGeneral(member))
+        .filter(canRead)
         .map((member) => ({
           userId: member.user_id as string | undefined,
           name: member.display_name || t('family.unset'),
           canWrite: canWrite(member),
         })),
     ],
-    [selfUserId, members, t, canWrite],
+    [selfUserId, members, t, canWrite, canRead],
   );
 
   const selectedTarget = targets.find((target) => target.userId === selectedUserId);
