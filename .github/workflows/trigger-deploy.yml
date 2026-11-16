@@ -32,7 +32,10 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: lts/*
+          # 固定 Node 24：lts/* 在 2026-11 跳到 Node 26，Node 26 內建的 localStorage
+          # 會蓋掉 jsdom 的，vitest 裡 localStorage 變成 undefined（233 項失敗）。
+          # 要升版時先確認 vitest + jsdom 在新版 Node 下測試全過。
+          node-version: 24
           cache: npm
       # --ignore-scripts：理由同 playwright.yml（避免套件在安裝階段執行任意程式）
       - name: Install dependencies
