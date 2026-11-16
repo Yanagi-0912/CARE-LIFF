@@ -11,6 +11,7 @@ import { annotationMessages } from './annotationMessages';
 import { healthRecordFeatureMessages } from './healthRecordMessages';
 import { systemMessages } from './systemMessages';
 import { lostMessages } from './lostMessages';
+import { careTaskMessages } from './careTaskMessages';
 export type SupportedLanguage = 'zh-TW' | 'en' | 'id' | 'vi' | 'th' | 'ja';
 
 export const fallbackLanguage: SupportedLanguage = 'zh-TW';
@@ -538,6 +539,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages['zh-TW'],
     ...systemMessages['zh-TW'],
     ...lostMessages['zh-TW'],
+    ...careTaskMessages['zh-TW'],
     'nav.home': '首頁',
     'nav.health': '健康',
     'nav.family': '家庭',
@@ -677,6 +679,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.en,
     ...systemMessages.en,
     ...lostMessages.en,
+    ...careTaskMessages.en,
     'nav.home': 'Home',
     'nav.health': 'Health',
     'nav.family': 'Family',
@@ -815,6 +818,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.id,
     ...systemMessages.id,
     ...lostMessages.id,
+    ...careTaskMessages.en,
     'nav.home': 'Beranda',
     'nav.health': 'Kesehatan',
     'nav.family': 'Keluarga',
@@ -953,6 +957,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.vi,
     ...systemMessages.vi,
     ...lostMessages.vi,
+    ...careTaskMessages.en,
     'nav.home': 'Trang chủ',
     'nav.health': 'Sức khỏe',
     'nav.family': 'Gia đình',
@@ -1091,6 +1096,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.th,
     ...systemMessages.th,
     ...lostMessages.th,
+    ...careTaskMessages.en,
     'nav.home': 'หน้าหลัก',
     'nav.health': 'สุขภาพ',
     'nav.family': 'ครอบครัว',
@@ -1229,6 +1235,7 @@ export const messages: Record<SupportedLanguage, Record<string, string>> = {
     ...healthRecordFeatureMessages.ja,
     ...systemMessages.ja,
     ...lostMessages.ja,
+    ...careTaskMessages.en,
     'nav.home': 'ホーム',
     'nav.health': '健康',
     'nav.family': '家族',

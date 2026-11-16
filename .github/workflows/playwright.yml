@@ -10,14 +10,18 @@ jobs:
     # 測試跑到一半被 GitHub 依上限取消（run 35049398102，不是測試失敗）。
     # 併同 playwright.config.ts 改成 2 個 worker，預估約 10 分，這裡留 30 分緩衝。
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    # 固定 ubuntu-24.04：ubuntu-latest 在 2026-11 換成 26.04，目前鎖定的 Playwright
+    # 不支援在 26.04 安裝 Chromium（Install Playwright Browsers 直接失敗）。
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v5
     - uses: actions/setup-node@v5
       with:
-        # 釘在 24，不用 lts/*：Node 26 成為 LTS 後 `playwright install` 會在下載完後卡住
-        # （本機重現：Node 26 逾時、Node 24 35 秒完成），整個 job 跑到 30 分鐘被取消。
-        # 升 Node 前先確認 Playwright 支援，並拿掉 vite.config.ts 裡 webstorage 的註記。
+        # 釘在 Node 24，不用 lts/*（2026-11 lts/* 跳到 Node 26）：
+        # - Node 26 內建的 localStorage 會蓋掉 jsdom 的，vitest 裡 localStorage 變成 undefined
+        #   （main 上 233 項失敗）；vite.config.ts 另有關掉 webstorage 的保險。
+        # - Node 26 下 `playwright install` 會在下載完後卡住（本機重現：Node 26 逾時、Node 24 35 秒完成）。
+        # 升 Node 前先確認 vitest + jsdom 與 Playwright 都支援，並拿掉 vite.config.ts 裡 webstorage 的註記。
         node-version: 24
         cache: npm
     # --ignore-scripts：CI 不需要任何套件的 lifecycle script（lockfile 裡唯一有

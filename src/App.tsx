@@ -16,6 +16,7 @@ const Home = lazy(() => import('./pages/Home'));
 const PersonalHealth = lazy(() => import('./pages/PersonalHealth'));
 const HealthRecordsPage = lazy(() => import('./pages/HealthRecords'));
 const Family = lazy(() => import('./pages/Family'));
+const LongTermCarePage = lazy(() => import('./pages/LongTermCare'));
 const JoinPage = lazy(() => import('./pages/Join'));
 const ConsultRecordsPage = lazy(() => import('./pages/PersonalHealth/ConsultRecords'));
 const KnowledgeReportsPage = lazy(() => import('./pages/KnowledgeReports'));
@@ -167,6 +168,7 @@ function AppContent() {
             <Route path="/clinic-visits/:recordId" element={<ProtectedRoute><ClinicVisitDetailPage /></ProtectedRoute>} />
             <Route path="/nearby-hospitals" element={<ProtectedRoute><NearbyHospitalsPage /></ProtectedRoute>} />
             <Route path="/family" element={<ProtectedRoute><Family /></ProtectedRoute>} />
+            <Route path="/family/long-term-care" element={<ProtectedRoute><LongTermCarePage /></ProtectedRoute>} />
             {/* 走失求救：從 LINE 卡片的按鈕打開（後端 lost_location_service 組網址） */}
             <Route path="/lost/share" element={<ProtectedRoute><LostSharePage /></ProtectedRoute>} />
             <Route path="/lost/watch" element={<ProtectedRoute><LostWatchPage /></ProtectedRoute>} />

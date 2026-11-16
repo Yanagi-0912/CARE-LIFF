@@ -10,6 +10,7 @@
 const APP_PATHS = new Set([
   '/',
   '/family',
+  '/family/long-term-care',
   '/settings',
   '/personalhealth',
   '/personalhealth/consult',
