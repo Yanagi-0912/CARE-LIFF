@@ -442,6 +442,265 @@ export function stubReminderList(
   });
 }
 
+/* ───────────── 掛號提醒 ───────────── */
+
+export type AppointmentStatusDto = 'scheduled' | 'departed' | 'attended' | 'missed' | 'cancelled';
+
+/** 對齊 types/appointment.ts 的 AppointmentReminder */
+export type AppointmentDto = {
+  id: string;
+  user_id: string;
+  creator_user_id: string;
+  appointment_at: string;
+  facility_id: string | null;
+  hospital_name: string;
+  hospital_address: string | null;
+  hospital_phone: string | null;
+  department: string;
+  doctor_name: string | null;
+  serial_number: string | null;
+  note: string | null;
+  status: AppointmentStatusDto;
+  departed_at: string | null;
+  departed_by_user_id: string | null;
+  attended_at: string | null;
+  attended_by_user_id: string | null;
+  cancelled_at: string | null;
+  cancelled_by_user_id: string | null;
+  enabled: boolean;
+  notify_at: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+export function appointment(
+  overrides: Partial<AppointmentDto> & Pick<AppointmentDto, 'id' | 'appointment_at'>,
+): AppointmentDto {
+  return {
+    user_id: LINE_USER_ID,
+    creator_user_id: LINE_USER_ID,
+    facility_id: null,
+    hospital_name: '臺大醫院',
+    hospital_address: null,
+    hospital_phone: null,
+    department: '心臟內科',
+    doctor_name: null,
+    serial_number: null,
+    note: null,
+    status: 'scheduled',
+    departed_at: null,
+    departed_by_user_id: null,
+    attended_at: null,
+    attended_by_user_id: null,
+    cancelled_at: null,
+    cancelled_by_user_id: null,
+    enabled: true,
+    notify_at: [],
+    created_at: '2026-09-01T00:00:00+08:00',
+    updated_at: '2026-09-01T00:00:00+08:00',
+    ...overrides,
+  };
+}
+
+/** 測試裡的「現在」：2026-09-15（週二）早上 8 點，台灣時間 */
+export const APPOINTMENT_NOW = new Date('2026-09-15T08:00:00+08:00');
+
+type AppointmentAction = 'depart' | 'attend' | 'cancel';
+
+/**
+ * 後端的狀態機：哪些狀態可以做這個動作、做完變成什麼、蓋上哪一組時間與人。
+ * 重複做同一個動作是冪等的 200（保留第一位回報者）；其餘不在 from 裡的狀態回 409。
+ * 出發與到診只在門診當天接受，取消不限日期。
+ */
+const APPOINTMENT_TRANSITIONS: Record<
+  AppointmentAction,
+  {
+    from: readonly AppointmentStatusDto[];
+    to: AppointmentStatusDto;
+    stamp: 'departed' | 'attended' | 'cancelled';
+    sameDayOnly: boolean;
+    conflict: string;
+  }
+> = {
+  depart: {
+    from: ['scheduled'],
+    to: 'departed',
+    stamp: 'departed',
+    sameDayOnly: true,
+    conflict: 'e2e：這次門診的狀態已經改變，無法回報出發。',
+  },
+  attend: {
+    from: ['scheduled', 'departed'],
+    to: 'attended',
+    stamp: 'attended',
+    sameDayOnly: true,
+    conflict: 'e2e：這次門診的狀態已經改變，無法回報到診。',
+  },
+  cancel: {
+    from: ['scheduled', 'departed'],
+    to: 'cancelled',
+    stamp: 'cancelled',
+    sameDayOnly: false,
+    conflict: 'e2e：這次門診已經結束，無法取消。',
+  },
+};
+
+/** 台灣時間（+08:00）的 ISO 字串；store 內所有時間都用這個 offset */
+function taipeiIso(date: Date): string {
+  return `${new Date(date.getTime() + 8 * 3_600_000).toISOString().slice(0, 19)}+08:00`;
+}
+
+/**
+ * 有狀態的掛號提醒後端，所有端點共用同一份 items。
+ *
+ * 「現在」由 now 決定，同時用 page.clock 把瀏覽器的 Date 釘在同一刻：
+ * 前端的「是不是門診當天」「時間是否已過」與這裡的分區用的是同一個瞬間，
+ * 測試不會因為實際日期而改變結果。計時器照常走，React Query 的重試不受影響。
+ *
+ * 分區只在這裡（isPast），跟真後端一樣：已取消、或門診當天已經結束的歸過去。
+ * 為了簡單，假設所有門診都用 +08:00。
+ */
+export async function stubAppointmentStore(
+  page: Page,
+  initial: { items?: AppointmentDto[]; now?: Date } = {},
+) {
+  const now = initial.now ?? APPOINTMENT_NOW;
+  await page.clock.setFixedTime(now);
+
+  const state = {
+    // 深拷貝：狀態轉移會就地改 item，共用的 fixture 常數被改到會污染同一個 worker 的下一個測試
+    items: structuredClone(initial.items ?? []),
+    seq: 1,
+    /** 設成非 null 時，GET 列表一律回這個錯誤（模擬後端故障） */
+    outage: null as { status: number; detail: string } | null,
+  };
+
+  const today = taipeiIso(now).slice(0, 10);
+  const isPast = (item: AppointmentDto) =>
+    item.status === 'cancelled' || item.appointment_at.slice(0, 10) < today;
+  const byTime = (a: AppointmentDto, b: AppointmentDto) =>
+    Date.parse(a.appointment_at) - Date.parse(b.appointment_at);
+
+  /** 套用狀態轉移。測試也可以直接呼叫，模擬家屬在 LINE 卡片上按了按鈕 */
+  const apply = (action: AppointmentAction, id: string, by: string = LINE_USER_ID) => {
+    const item = state.items.find((candidate) => candidate.id === id);
+    if (!item) return { status: 404, body: { detail: 'e2e：找不到這筆掛號提醒。' } };
+    const rule = APPOINTMENT_TRANSITIONS[action];
+    if (item.status === rule.to) return { status: 200, body: item };
+    const offDay = rule.sameDayOnly && item.appointment_at.slice(0, 10) !== today;
+    if (!rule.from.includes(item.status) || offDay) {
+      return { status: 409, body: { detail: rule.conflict } };
+    }
+    Object.assign(item, {
+      status: rule.to,
+      [`${rule.stamp}_at`]: taipeiIso(now),
+      [`${rule.stamp}_by_user_id`]: by,
+      notify_at: rule.to === 'departed' ? item.notify_at : [],
+      updated_at: taipeiIso(now),
+    });
+    return { status: 200, body: item };
+  };
+
+  const COLLECTION = '/api/appointments/reminders';
+  const ITEM = /^\/api\/appointments\/reminders\/([^/]+)$/;
+  const ACTION = /^\/api\/appointments\/reminders\/([^/]+)\/(depart|attend|cancel)$/;
+  const idOf = (call: ApiCall, pattern: RegExp) =>
+    decodeURIComponent(pattern.exec(call.url.pathname)?.[1] ?? '');
+
+  const gets = await stubApi(page, {
+    path: COLLECTION,
+    method: 'GET',
+    respond: (call) => {
+      if (state.outage) return { status: state.outage.status, body: { detail: state.outage.detail } };
+      const params = call.url.searchParams;
+      const owner = params.get('target_user_id') ?? LINE_USER_ID;
+      const past = params.get('scope') === 'past';
+      const scoped = state.items
+        .filter((item) => item.user_id === owner && isPast(item) === past)
+        .sort(past ? (a, b) => byTime(b, a) : byTime);
+      if (!past) return { status: 200, body: { items: scoped, next_cursor: null, total_count: scoped.length } };
+
+      const offset = Number(params.get('cursor') ?? 0);
+      const end = offset + Number(params.get('limit') ?? 20);
+      return {
+        status: 200,
+        body: {
+          items: scoped.slice(offset, end),
+          next_cursor: end < scoped.length ? String(end) : null,
+          total_count: scoped.length,
+        },
+      };
+    },
+  });
+
+  const posts = await stubApi(page, {
+    path: COLLECTION,
+    method: 'POST',
+    respond: (call) => {
+      const created = appointment({
+        ...(call.body as Omit<AppointmentDto, 'id'>),
+        id: `appt-new-${state.seq++}`,
+        creator_user_id: LINE_USER_ID,
+        created_at: taipeiIso(now),
+        updated_at: taipeiIso(now),
+      });
+      state.items.push(created);
+      return { status: 200, body: created };
+    },
+  });
+
+  const deletePast = await stubApi(page, {
+    path: COLLECTION,
+    method: 'DELETE',
+    respond: (call) => {
+      if (call.url.searchParams.get('scope') !== 'past') return { status: 400, body: { detail: 'e2e：缺少 scope' } };
+      const owner = call.url.searchParams.get('target_user_id') ?? LINE_USER_ID;
+      if (owner !== LINE_USER_ID) return { status: 403, body: { detail: 'e2e：只能刪除自己的紀錄。' } };
+      const before = state.items.length;
+      state.items = state.items.filter((item) => item.user_id !== owner || !isPast(item));
+      return { status: 200, body: { deleted: before - state.items.length } };
+    },
+  });
+
+  const puts = await stubApi(page, {
+    path: ITEM,
+    method: 'PUT',
+    respond: (call) => {
+      const item = state.items.find((candidate) => candidate.id === idOf(call, ITEM));
+      if (!item) return { status: 404, body: { detail: 'e2e：找不到這筆掛號提醒。' } };
+      const patch = call.body as Partial<AppointmentDto>;
+      Object.assign(item, patch, { updated_at: taipeiIso(now) });
+      // 後端：改了門診時間就重置成待看診
+      if (patch.appointment_at) item.status = 'scheduled';
+      return { status: 200, body: item };
+    },
+  });
+
+  const deletes = await stubApi(page, {
+    path: ITEM,
+    method: 'DELETE',
+    respond: (call) => {
+      const id = idOf(call, ITEM);
+      const before = state.items.length;
+      state.items = state.items.filter((item) => item.id !== id);
+      return state.items.length < before
+        ? { status: 200, body: { ok: true } }
+        : { status: 404, body: { detail: 'e2e：找不到這筆掛號提醒。' } };
+    },
+  });
+
+  const actions = await stubApi(page, {
+    path: ACTION,
+    method: 'POST',
+    respond: (call) => {
+      const [, id, action] = ACTION.exec(call.url.pathname) ?? [];
+      return apply(action as AppointmentAction, decodeURIComponent(id));
+    },
+  });
+
+  return { state, apply, gets, posts, puts, deletes, deletePast, actions };
+}
+
 /* ───────────── 使用者設定 ───────────── */
 
 export const DEFAULT_API_SETTINGS = {
